@@ -1,0 +1,223 @@
+# Tech Context — NeureCore Gold Stack
+
+## Technology Stack
+
+### Backend Runtime & Framework
+- **Runtime**: Node.js 20+ (via NestJS CLI)
+- **Framework**: NestJS 11.0.1
+  - HTTP decorators (@Controller, @Get, @Post, etc.)
+  - WebSocket support (@WebSocketGateway via Socket.IO)
+  - Dependency injection container
+  - Module-based architecture
+  - Guards, Filters, Interceptors, Pipes
+
+### HTTP & WebSocket
+- **HTTP Server**: Express.js (via @nestjs/platform-express)
+- **WebSocket**: Socket.IO 4.8.1 (via @nestjs/websockets)
+- **Authentication**: Passport.js + JWT
+
+### Database & ORM
+- **Primary DB**: PostgreSQL 16
+  - Connection: Via Prisma ORM
+  - Port: 5432 (Docker)
+  - Extensions: pgvector (for embeddings)
+  - Credentials: neurecore/password
+  - Database: neurecore_dev
+- **Vector DB**: PostgreSQL 16 with pgvector
+  - Port: 5433 (Docker)
+  - Database: neurecore_vectors
+  - Use case: Embedding storage for semantic search
+
+- **ORM**: Prisma 5.22.0
+  - Schema-driven migrations
+  - Type-safe query builder
+  - Relations and nested operations
+  - Seed scripts support
+
+### Cache Layer
+- **Redis 7-alpine**
+  - Port: 6379 (Docker)
+  - Key use cases:
+    - Session storage
+    - JWT blacklist (logout/revocation)
+    - Rate limiting cache
+    - Real-time user status
+  - Client Libs: ioredis (5.9.3) & Upstash/redis (1.37.0)
+
+### Authentication & Authorization
+- **JWT (JSON Web Tokens)**
+  - Signing: HS256 (HMAC-SHA256)
+  - Secret: JWT_SECRET env var
+  - Access Token TTL: 15 minutes (configurable)
+  - Refresh Token: 7 days (configurable)
+  - Strategy: Passport + @nestjs/jwt
+
+- **Validation & Schemas**
+  - Zod (v3.24.2): Runtime type validation
+  - Used for: Env vars, DTOs, request payloads
+  - Guard: @nestjs/common's built-in validation pipe
+
+- **Password Security**
+  - Algorithm: bcryptjs (2.4.3)
+  - Salt rounds: 10 (configurable)
+  - Comparison: Timing-safe
+
+### Frontend Frameworks
+- **Runtime**: Node.js 20+
+- **React**: 19 (via Next.js)
+- **Next.js**: 15 (App Router)
+  - Streaming SSR support
+  - API routes (/api/*)
+  - Image optimization
+  - Environment variable loading
+
+### Frontend UI & Styling
+- **CSS Framework**: Tailwind CSS 4
+- **Component Library**: Radix UI v1
+  - Dialog, Dropdown, Tooltip, etc.
+- **Animation**: Framer Motion (12.34.2)
+- **Data Visualization**: Recharts (3.7.0)
+- **Charts/Graphs**: ReactFlow (11.11.4) for node-based workflows
+- **Command Palette**: cmdk (1.1.1)
+- **Date Utilities**: date-fns (4.1.0)
+
+### AI & Language Models
+- **LangChain**: 0.3.0
+  - Core (langchain): Agent/chain framework
+  - OpenAI (langchain/openai): GPT integration
+  - LangChain/core: Base interfaces/components
+
+- **OpenAI SDK**: 4.77.0
+  - Direct API access
+  - GPT-4, GPT-3.5-turbo support
+  - Streaming responses
+
+### Observability & Tracing
+- **OpenTelemetry**: Full instrumentation
+  - SDK Node (0.205.0)
+  - Auto instrumentations for Node (0.62.0)
+  - Resources & semantic conventions
+  - Exporters: OTLP HTTP tracer
+
+- **Logging**: Pino (9.14.0)
+  - Structured JSON logging
+  - HTTP request logging via pino-http (10.5.0)
+  - Performance optimized
+
+- **Monitoring**: Sentry (v10)
+  - Next.js integration (@sentry/nextjs)
+  - Error tracking
+  - Performance monitoring
+  - Release tracking
+
+### Security & Validation
+- **Helmet**: 8.1.0 (HTTP headers hardening)
+- **class-validator**: 0.14.1 (DTO validation decorators)
+- **class-transformer**: 0.5.1 (DTO transformation)
+- **bcryptjs**: 2.4.3 (password hashing)
+- **uuid**: 11.1.0 (unique identifiers)
+- **Throttler**: @nestjs/throttler (rate limiting)
+
+### Testing Frameworks
+- **Jest**: 30.0.0
+  - Unit tests (*.spec.ts)
+  - Integration tests (*.integration-spec.ts)
+  - E2E tests (test/jest-e2e.json)
+- **Supertest**: 7.0.0 (HTTP assertions)
+- **Testing Library**: (implicit with Jest)
+
+### Development Tools
+- **TypeScript**: 5.7.3
+  - Target: ES2020 (modern Node.js)
+  - Strict mode enabled
+  - Path aliases (~, @)
+  - tsconfig-paths for runtime resolution
+
+- **Linting & Formatting**
+  - ESLint: 9.18.0 (with TypeScript support)
+  - Prettier: 3.4.2 (code formatting)
+  - @typescript-eslint/eslint-plugin: 8.20.0
+
+- **Bundler**: NestJS CLI (internal)
+  - Compilation: tsc
+  - Watching: ts-loader
+
+### Docker & Deployment
+- **Docker**: Multi-stage builds
+  - Base: node:20-alpine
+  - Stages: Builder → Production
+  - Benefits: Smaller image size, faster pulls
+
+- **Docker Compose**: 3.8 schema
+  - Services: postgres, pgvector, redis
+  - Health checks: Built-in for all services
+  - Volumes: Named volumes for persistence
+  - Networks: Default bridge network
+
+- **Production Hosting**
+  - Vercel (frontends & edge functions)
+  - Self-hosted VPS or AWS/Heroku (backend)
+  - Postgres: Managed (AWS RDS, Railway, etc.)
+  - Redis: Managed (Upstash, AWS ElastiCache, etc.)
+
+## Environment Variables
+
+### Backend (.env)
+```
+# App
+NODE_ENV=development
+PORT=3000
+
+# Database
+DATABASE_URL=postgresql://neurecore:password@localhost:5432/neurecore_dev
+
+# Vector Store
+VECTOR_DB_URL=postgresql://neurecore:password@localhost:5433/neurecore_vectors
+
+# Cache
+REDIS_URL=redis://localhost:6379
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# JWT
+JWT_SECRET=your-secret-key-min-32-chars
+JWT_ACCESS_EXPIRES=15m
+JWT_REFRESH_EXPIRES=7d
+
+# OpenAI
+OPENAI_API_KEY=sk-...
+
+# Sentry (optional)
+SENTRY_DSN=...
+SENTRY_ENVIRONMENT=development
+SENTRY_RELEASE=...
+
+# Application
+API_BASE_URL=http://localhost:3000
+FRONTEND_BASE_URL=http://localhost:3001
+```
+
+### Frontend (.env.local)
+```
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
+NEXT_PUBLIC_WS_URL=ws://localhost:3000
+NEXT_PUBLIC_SENTRY_DSN=...
+```
+
+## Performance Considerations
+
+- **Database**: Indexes on tenantId, userId, and foreign keys
+- **Caching**: Redis for sessions, token blacklist, rate limiting
+- **Compression**: gzip via Helmet
+- **Rate Limiting**: @nestjs/throttler with Redis backend
+- **Connection Pooling**: Prisma connection pool (tunable)
+- **Vector Search**: pgvector for efficient similarity queries
+
+## Architecture Patterns Used
+
+- **Dependency Injection**: NestJS IoC container
+- **Repository Pattern**: Services abstract Prisma queries
+- **Strategy Pattern**: Passport strategies for different auth flows
+- **Guard Pattern**: Auth and role guards on routes
+- **Decorator Pattern**: Custom decorators for tenant context
+- **Observer Pattern**: Socket.IO event emitters

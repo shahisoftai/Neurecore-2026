@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    /* Base Options */
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolvePackageJsonExports": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "removeComments": true,
+
+    /* Decorators */
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* Output */
+    "target": "ES2023",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "incremental": true,
+
+    /* Type Checking */
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "noFallthroughCasesInSwitch": false,
+
+    /* Types */
+    "types": ["jest", "node"],
+
+    /* Path Mappings */
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }
+  },
+  "include": ["src/**/*", "api/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test/**/*",
+    "../frontend-tenant/**",
+    "../frontend-admin/**"
+  ]
+}

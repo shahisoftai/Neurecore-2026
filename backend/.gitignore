@@ -1,0 +1,67 @@
+run backend on 3000, front admin on 3001 and front tenant on 3002# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+*.lcov
+.nyc_output
+
+# Build output
+/dist
+/build
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Prisma
+prisma/.env
+prisma/migrations/**/*.sql.applied
+
+# Docker
+docker-compose.override.yml
+
+# Temp files
+*.tmp
+*.temp
+.cache
+
+# Generated files
+/generated
+.next
+.vercel
+.env*.local
+# Ignore compiled serverless wrapper emitted by mistaken builds
+api/*.js
+api/*.js.map

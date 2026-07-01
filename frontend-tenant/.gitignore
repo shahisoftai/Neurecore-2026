@@ -1,0 +1,12 @@
+.vercel
+
+# Test artifacts
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Build outputs
+.next/
+node_modules/
+.env*

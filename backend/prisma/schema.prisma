@@ -1,0 +1,2274 @@
+// Prisma Schema - NeureCore Gold
+// Phase 1+2+3: Foundation + Agent Runtime + Governance/Observability Tables
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ─────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  PLATFORM_ADMIN
+  SECURITY_OFFICER
+  SUPPORT
+  OWNER
+  ADMIN
+  USER
+  AUDITOR
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELLED
+}
+
+// DEPRECATED: TenantPlan enum - use Tier model instead
+// Kept for migration compatibility only
+enum TenantPlan {
+  STARTER
+  GROWTH
+  PRO
+  ENTERPRISE
+}
+
+// ─── Phase 2 Enums ────────────────────────────────────────────────────────
+
+enum AgentStatus {
+  IDLE
+  RUNNING
+  PAUSED
+  ERROR
+  TERMINATED
+  ARCHIVED // Phase 1 Gap 7 — soft-delete preserving audit trail
+  DEPRECATED // Phase 1 Gap 7 — flagged for replacement, still listed
+}
+
+enum AgentType {
+  CORE
+  FUNCTIONAL
+  EXECUTIVE
+  META
+}
+
+enum TaskStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  FAILED
+  ARCHIVED
+}
+
+enum MemoryType {
+  SHORT_TERM
+  LONG_TERM
+  EPISODIC
+}
+
+enum ToolCategory {
+  COMMUNICATION
+  DATABASE
+  API
+  FILE
+  CALCULATION
+  SEARCH
+  CUSTOM
+}
+
+// ─── Phase 3 Enums ────────────────────────────────────────────────────────
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum ApprovalPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+  APPROVAL_REQUEST
+  AGENT_ALERT
+  BILLING_ALERT
+  SECURITY_ALERT
+}
+
+enum GovernanceActionType {
+  BLOCK
+  REQUIRE_APPROVAL
+  RATE_LIMIT
+  ALERT
+  LOG_ONLY
+}
+
+enum DepartmentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MetricType {
+  COUNTER
+  GAUGE
+  HISTOGRAM
+}
+
+// ─── Phase 4.3 / 4.4 Enums ───────────────────────────────────────────────
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum ExpenseCategory {
+  AGENT_EXECUTION
+  TOOL_USAGE
+  API_CALL
+  MODEL_INFERENCE
+  CONNECTOR_SYNC
+  CUSTOM
+}
+
+enum BillingEventType {
+  INVOICE_CREATED
+  INVOICE_ISSUED
+  INVOICE_PAID
+  INVOICE_OVERDUE
+  INVOICE_CANCELLED
+  EXPENSE_RECORDED
+  BUDGET_EXCEEDED
+  THRESHOLD_WARNING
+  TAX_APPLIED
+}
+
+// ─── Tier (Phase 6: Unified Tier-Agent Architecture) ───────────────────────
+
+model Tier {
+  id          String  @id @default(uuid())
+  name        String // "Free", "Starter", "Pro", "Enterprise"
+  slug        String  @unique // "free", "starter", "pro", "enterprise"
+  description String?
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  // Pricing
+  monthlyPrice Decimal @default(0) @db.Decimal(10, 2)
+  yearlyPrice  Decimal @default(0) @db.Decimal(10, 2)
+  currency     String  @default("USD")
+
+  // Limits
+  maxUsers                Int @default(2)
+  maxAgents               Int @default(3)
+  maxDepartments          Int @default(1)
+  maxStorageGB            Int @default(1)
+  maxApiCalls             Int @default(1000)
+  maxConversationMessages Int @default(500)
+  maxFileSizeMB           Int @default(10)
+
+  // Feature flags
+  allowCustomBranding Boolean @default(false)
+  allowApiAccess      Boolean @default(false)
+  allowSso            Boolean @default(false)
+  allowAuditExport    Boolean @default(false)
+
+  // Relations
+  tierAgentPools TierAgentPool[]
+  tenants        Tenant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tiers")
+}
+
+// ─── TierAgentPool (Phase 6: Agent allocation per tier) ─────────────────────
+
+model TierAgentPool {
+  id         String        @id @default(uuid())
+  tierId     String
+  tier       Tier          @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  templateId String
+  template   AgentTemplate @relation(fields: [templateId], references: [id])
+
+  // Slot position in tier (1 = first available, 2 = second, etc.)
+  slot Int @default(1)
+
+  // Whether tenant MUST have this agent (true) or optional (false)
+  isRequired Boolean @default(false)
+
+  // Tier-specific default config overrides
+  defaultBudgetPerDay Decimal? @db.Decimal(10, 4)
+  defaultModel        String?
+  isDefaultSelected   Boolean  @default(true) // pre-selected on tenant creation
+
+  createdAt DateTime @default(now())
+
+  // Phase 6: Agents created from this pool entry
+  agents Agent[]
+
+  @@unique([tierId, templateId])
+  @@index([tierId])
+  @@map("tier_agent_pools")
+}
+
+// ─── Tenant ────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id       String       @id @default(uuid())
+  name     String
+  slug     String       @unique
+  status   TenantStatus @default(ACTIVE)
+  logoUrl  String?
+  website  String?
+  industry String?
+  settings Json         @default("{}")
+  metadata Json         @default("{}")
+
+  // Phase B: Google Workspace identifiers (cached after first connect)
+  googleDriveRootFolderId String?
+  googleCalendarId        String?
+
+  // WS-2: Onboarding state machine
+  onboardingCompletedAt DateTime?
+  onboardingStep        String?
+
+  // WS-6: Drive cleanup retention (days). Auto-cleanup only deletes Drive folders for
+  // TERMINATED agents older than this many days. ARCHIVED agents are preserved.
+  retentionDays Int @default(90)
+
+  // Tier relation (Phase 6: replaces plan + agentLimit)
+  tierId String
+  tier   Tier   @relation(fields: [tierId], references: [id])
+
+  // DEPRECATED: plan and agentLimit removed - use tier instead
+  // plan       TenantPlan   (use tier.slug)
+  // agentLimit Int          (use tier.maxAgents)
+
+  // Relations
+  users            User[]
+  auditLogs        AuditLog[]
+  sessions         Session[]
+  agents           Agent[]
+  agentTemplates   AgentTemplate[]
+  tasks            Task[]
+  workflows        Workflow[]
+  toolIntegrations ToolIntegration[]
+  memoryEntries    MemoryEntry[]
+  departments      Department[]
+  approvalRequests ApprovalRequest[]
+  governanceRules  GovernanceRule[]
+  notifications    Notification[]
+  apiKeys          ApiKey[]
+  metrics          TenantMetric[]
+
+  // Phase 4 back-relations
+  analyticsModels        AnalyticsModel[]
+  analyticsFeatures      AnalyticsFeature[]
+  crmConnectors          CrmConnector[]
+  tenantLimit            TenantLimit?
+  oauthTokens            OAuthToken[]
+  integrationCredentials IntegrationCredential[]
+  invoices               Invoice[]
+  expenses               Expense[]
+  billingEvents          BillingEvent[]
+  quotaUsages            QuotaUsage[]
+  onboardingInvitations  OnboardingInvitation[]
+  brevoUsageCounters     BrevoUsageCounter[]
+
+  // Phase 5 back-relations - Routines
+  routines    Routine[]
+  routineRuns RoutineRun[]
+
+  // Phase 5 back-relations - Costs
+  costRecords    CostRecord[]
+  budgetPolicies BudgetPolicy[]
+
+  // Phase 5 back-relations - Goals & Projects
+  goals    Goal[]
+  projects Project[]
+
+  // EAOS-1 back-relations - Universal entity model
+  entityStates        EntityState[]
+  stateHistoryEntries StateHistory[]
+  entityOwnerships    EntityOwnership[]
+  entityLabels        EntityLabel[]
+  userFavorites       UserFavorite[]
+  userRecentAccesses  UserRecentAccess[]
+  entityWatchers      EntityWatcher[]
+  entityHealths       EntityHealth[]
+  entityRelationships EntityRelationship[]
+  workspaceLayouts    WorkspaceLayout[]
+  capabilityConfigs   CapabilityConfig[]
+
+  // Phase 3 (EAOS-3) back-relations
+  missionFeedItems    MissionFeedItem[]
+  aiActionInvocations AIActionInvocation[]
+
+  // EAOS-4 back-relations - Knowledge Hub
+  knowledgeEntries KnowledgeEntry[]
+  knowledgePacks   KnowledgePack[]
+
+  // EAOS-5 back-relations - Solution Packs
+  installedPacks   TenantInstalledPack[]
+  packInstallations PackInstallation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tenants")
+}
+
+// ─── User ──────────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String? // Optional: null for Google Sign-In users who have no password
+  firstName    String
+  lastName     String
+  role         UserRole  @default(USER)
+  avatarUrl    String?
+  isActive     Boolean   @default(true)
+  isVerified   Boolean   @default(false)
+  lastLoginAt  DateTime?
+  metadata     Json      @default("{}")
+
+  // Google Sign-In identity (unique — one account per Google ID)
+  googleId      String? @unique
+  googlePicture String?
+
+  // Tenant relation — null for SUPER_ADMIN / PLATFORM_ADMIN
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Phase 2 — primary department assignment (nullable; user can belong to multiple via projects)
+  departmentId String?
+  department   Department? @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+
+  // Relations
+  sessions           Session[]
+  auditLogs          AuditLog[]
+  refreshTokens      RefreshToken[]
+  agents             Agent[]
+  tasksCreated       Task[]            @relation("TaskCreator")
+  approvalsRequested ApprovalRequest[] @relation("ApprovalRequests")
+  approvalsReviewed  ApprovalRequest[] @relation("ApprovalReviews")
+  notifications      Notification[]
+  apiKeys            ApiKey[]
+
+  // Phase 5 back-relations - Routines
+  routines    Routine[]
+  routineRuns RoutineRun[]
+
+  // Phase 5 back-relations - Goals
+  goals Goal[]
+
+  // WS-2: Onboarding invitations sent by this user
+  onboardingInvitations OnboardingInvitation[]
+
+  // EAOS-1 back-relations - Universal entity model
+  entityStatesEntered     EntityState[]        @relation("EntityStateEnteredBy")
+  stateHistoryTransitions StateHistory[]       @relation("StateHistoryTransitionedBy")
+  ownedEntities           EntityOwnership[]    @relation("EntityOwnershipOwner")
+  managedEntities         EntityOwnership[]    @relation("EntityOwnershipManager")
+  createdLabels           EntityLabel[]        @relation("EntityLabelCreatedBy")
+  favorites               UserFavorite[]       @relation("UserFavorites")
+  recentAccesses          UserRecentAccess[]   @relation("UserRecentAccesses")
+  entityWatchers          EntityWatcher[]      @relation("EntityWatcherUser")
+  workspaceLayouts        WorkspaceLayout[]    @relation("WorkspaceLayoutUser")
+  capabilityConfigs       CapabilityConfig[]   @relation("CapabilityConfigUser")
+  missionFeedItems        MissionFeedItem[]    @relation("MissionFeedUser")
+  aiActionInvocations     AIActionInvocation[] @relation("AIActionInvokedBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([departmentId])
+  @@map("users")
+}
+
+// ─── Session ───────────────────────────────────────────────────────────────
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String?
+  ipAddress String?
+  userAgent String?
+  isActive  Boolean  @default(true)
+  expiresAt DateTime
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tenantId])
+  @@map("sessions")
+}
+
+// ─── Refresh Token ─────────────────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  isRevoked Boolean  @default(false)
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+// ─── Audit Log ─────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String  @id @default(uuid())
+  actor      String // userId or "system"
+  action     String // e.g. "auth.login", "agent.create"
+  resource   String? // resource type
+  resourceId String? // resource id
+  tenantId   String?
+  ipAddress  String?
+  userAgent  String?
+  result     String  @default("success") // success | failure
+  details    Json    @default("{}")
+
+  user   User?   @relation(fields: [actor], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([actor])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 2 Models
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Agent Template ───────────────────────────────────────────────────────
+
+model AgentTemplate {
+  id           String    @id @default(uuid())
+  name         String
+  description  String?   @db.Text
+  type         AgentType @default(FUNCTIONAL)
+  model        String    @default("gpt-4o-mini")
+  systemPrompt String?   @db.Text
+  instructions String?   @db.Text
+  permissions  Json      @default("[]")
+  config       Json      @default("{}")
+  isPublic     Boolean   @default(false) // platform-wide template
+  version      String    @default("1.0.0")
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Phase 6: Link to tier agent pools
+  tierAgentPools TierAgentPool[]
+
+  // Phase 1 Gap 8 — template lifecycle / deprecation
+  deprecatedAt           DateTime?
+  supersededByTemplateId String?
+  supersededByTemplate   AgentTemplate?  @relation("TemplateSupersession", fields: [supersededByTemplateId], references: [id], onDelete: SetNull)
+  supersedesTemplates    AgentTemplate[] @relation("TemplateSupersession")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([deprecatedAt])
+  @@index([supersededByTemplateId])
+  @@map("agent_templates")
+}
+
+// ─── Agent ────────────────────────────────────────────────────────────────
+
+model Agent {
+  id           String      @id @default(uuid())
+  name         String
+  description  String?
+  type         AgentType   @default(FUNCTIONAL)
+  status       AgentStatus @default(IDLE)
+  model        String      @default("gpt-4o-mini") // LLM model ID
+  systemPrompt String?     @db.Text
+  instructions String?     @db.Text
+  budgetPerDay Decimal?    @db.Decimal(10, 4)
+  totalSpend   Decimal     @default(0) @db.Decimal(10, 4)
+  permissions  Json        @default("[]") // array of allowed actions
+  config       Json        @default("{}")
+  metadata     Json        @default("{}")
+  isActive     Boolean     @default(true)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+
+  // Phase 6: Agents are selected from tier pool, not created freely
+  tierAgentPoolId String?
+  tierAgentPool   TierAgentPool? @relation(fields: [tierAgentPoolId], references: [id])
+
+  // Template info stored for reference (template may change, agent keeps snapshot)
+  templateId      String?
+  templateVersion String?
+
+  // Phase B: Google Drive folder for this agent (auto-created on Google connect)
+  googleDriveFolderId String?
+
+  // Phase C: Per-agent email identity (used when sending as this agent)
+  emailAlias       String? // e.g., sales-agent@company.com
+  emailProvider    String? @default("brevo") // 'brevo' | 'gmail' | null
+  emailDisplayName String? // e.g., "Sales Agent" — used as From name
+
+  // WS-5: HTML or plain-text signature appended to outbound emails
+  emailSignature String? @db.Text
+
+  // Whether this agent slot is active for this tenant
+  // Tenant can toggle selected agents within their tier allocation
+  isSelected Boolean @default(true)
+
+  departmentId String?
+  department   Department? @relation("DepartmentAgents", fields: [departmentId], references: [id])
+
+  tasks         Task[]
+  memoryEntries MemoryEntry[]
+  executionLogs ExecutionLog[]
+  expenses      Expense[]      @relation("AgentExpenses")
+  quotaUsages   QuotaUsage[]   @relation("AgentQuotaUsage")
+
+  // Phase 5 back-relations - Costs
+  costRecords    CostRecord[]
+  budgetPolicies BudgetPolicy[]
+
+  // Phase 5 back-relations - Routines
+  routineRuns   RoutineRun[]
+  // Phase 1 — Routines owned by this agent (back-relation)
+  ownedRoutines Routine[]    @relation("RoutineOwner")
+
+  // Phase 5 back-relations - Goals
+  goals Goal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([type])
+  @@index([departmentId])
+  @@index([tierAgentPoolId])
+  @@map("agents")
+}
+
+// ─── Task ─────────────────────────────────────────────────────────────────
+
+model Task {
+  id          String       @id @default(uuid())
+  title       String
+  description String?      @db.Text
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  input       Json         @default("{}")
+  output      Json?
+  error       String?      @db.Text
+  retryCount  Int          @default(0)
+  maxRetries  Int          @default(3)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  agentId String?
+  agent   Agent?  @relation(fields: [agentId], references: [id])
+
+  workflowId String?
+  workflow   Workflow? @relation(fields: [workflowId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation("TaskCreator", fields: [createdById], references: [id])
+
+  executionLogs ExecutionLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([agentId])
+  @@index([workflowId])
+  @@index([status])
+  @@index([priority])
+  @@map("tasks")
+}
+
+// ─── Workflow ─────────────────────────────────────────────────────────────
+
+model Workflow {
+  id          String         @id @default(uuid())
+  name        String
+  description String?        @db.Text
+  status      WorkflowStatus @default(DRAFT)
+  definition  Json           @default("{}") // DAG / step definitions
+  config      Json           @default("{}")
+  isTemplate  Boolean        @default(false)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("workflows")
+}
+
+// ─── Memory Entry ─────────────────────────────────────────────────────────
+
+model MemoryEntry {
+  id         String     @id @default(uuid())
+  type       MemoryType @default(SHORT_TERM)
+  content    String     @db.Text
+  summary    String?    @db.Text
+  embedding  String?    @db.Text // JSON-serialised float[] (pgvector on separate DB)
+  importance Float      @default(0.5)
+  expiresAt  DateTime?
+  metadata   Json       @default("{}")
+
+  agentId String?
+  agent   Agent?  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([agentId])
+  @@index([tenantId])
+  @@index([type])
+  @@map("memory_entries")
+}
+
+// ─── Tool Integration ─────────────────────────────────────────────────────
+
+model ToolIntegration {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  category    ToolCategory @default(CUSTOM)
+  config      Json         @default("{}") // endpoint, auth, schema
+  isActive    Boolean      @default(true)
+  isBuiltIn   Boolean      @default(false)
+
+  tenantId String? // null = platform-wide built-in
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  executionLogs ExecutionLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([category])
+  @@map("tool_integrations")
+}
+
+// ─── Execution Log ────────────────────────────────────────────────────────
+
+model ExecutionLog {
+  id      String  @id @default(uuid())
+  agentId String?
+  agent   Agent?  @relation(fields: [agentId], references: [id])
+
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id])
+
+  toolId String?
+  tool   ToolIntegration? @relation(fields: [toolId], references: [id])
+
+  step            String // e.g. "plan", "execute", "evaluate"
+  input           Json    @default("{}")
+  output          Json?
+  tokensUsed      Int     @default(0)
+  costUsd         Decimal @default(0) @db.Decimal(10, 6)
+  durationMs      Int     @default(0)
+  success         Boolean @default(true)
+  error           String? @db.Text
+  evaluationScore Float? // 0–1 quality score from AgentEvaluator
+  reflection      String? @db.Text // evaluator notes
+
+  createdAt DateTime @default(now())
+
+  @@index([agentId])
+  @@index([taskId])
+  @@index([createdAt])
+  @@map("execution_logs")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 3 Models
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Department ───────────────────────────────────────────────────────────
+
+model Department {
+  id          String           @id @default(uuid())
+  name        String
+  description String?
+  status      DepartmentStatus @default(ACTIVE)
+  headAgentId String?
+  parentId    String?
+  metadata    Json             @default("{}")
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children Department[] @relation("DepartmentHierarchy")
+  agents   Agent[]      @relation("DepartmentAgents")
+  members  User[]       @relation("DepartmentMembers")
+
+  // Phase 5 back-relations - Costs
+  costRecords    CostRecord[]
+  budgetPolicies BudgetPolicy[]
+
+  // Phase 5 back-relations - Goals & Projects
+  goals    Goal[]
+  projects Project[]
+
+  // EAOS-1 back-relation - Universal entity model (departments are
+  // the "responsible team" for any entity).
+  ownedAsTeam EntityOwnership[] @relation("EntityOwnershipTeam")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([parentId])
+  @@map("departments")
+}
+
+// ─── Department Template ──────────────────────────────────────────────────
+// Platform-wide blueprint (SuperAdmin managed). Tenants deploy from these.
+
+model DepartmentTemplate {
+  id          String  @id @default(uuid())
+  name        String // e.g. "Startup Org", "E-Commerce Pack"
+  slug        String  @unique
+  description String? @db.Text
+  // JSON array: [{ name, description?, type?, parentSlug? }]
+  // type: "EXECUTIVE" | "CORE" | "FUNCTIONAL"
+  structure   Json    @default("[]")
+  isPublic    Boolean @default(true)
+  category    String  @default("general") // "startup" | "enterprise" | "ecommerce" | etc.
+  tags        Json    @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isPublic])
+  @@index([category])
+  @@map("department_templates")
+}
+
+// ─── Governance Rule ──────────────────────────────────────────────────────
+
+model GovernanceRule {
+  id           String               @id @default(uuid())
+  name         String
+  description  String?
+  trigger      String // e.g. "task.cost > 10", "agent.action == 'email'"
+  actionType   GovernanceActionType @default(LOG_ONLY)
+  actionConfig Json                 @default("{}")
+  isActive     Boolean              @default(true)
+  priority     Int                  @default(0)
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([isActive])
+  @@map("governance_rules")
+}
+
+// ─── Approval Request ─────────────────────────────────────────────────────
+
+model ApprovalRequest {
+  id              String           @id @default(uuid())
+  title           String
+  description     String?          @db.Text
+  resourceType    String // "task", "agent_action", "workflow", "budget"
+  resourceId      String?
+  payload         Json             @default("{}")
+  status          ApprovalStatus   @default(PENDING)
+  priority        ApprovalPriority @default(MEDIUM)
+  requiredRole    String? // role required to approve
+  expiresAt       DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?          @db.Text
+  metadata        Json             @default("{}")
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  requestedById String?
+  requestedBy   User?   @relation("ApprovalRequests", fields: [requestedById], references: [id])
+
+  reviewedById String?
+  reviewedBy   User?   @relation("ApprovalReviews", fields: [reviewedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([requestedById])
+  @@map("approval_requests")
+}
+
+// ─── Notification ─────────────────────────────────────────────────────────
+
+model Notification {
+  id      String           @id @default(uuid())
+  type    NotificationType @default(INFO)
+  title   String
+  message String           @db.Text
+  isRead  Boolean          @default(false)
+  payload Json             @default("{}")
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+// ─── API Key ──────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  name       String
+  keyHash    String    @unique
+  prefix     String // first 8 chars shown in UI
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  isActive   Boolean   @default(true)
+  scopes     Json      @default("[]")
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+// ─── Tenant Metric ────────────────────────────────────────────────────────
+
+model TenantMetric {
+  id         String     @id @default(uuid())
+  type       MetricType @default(GAUGE)
+  name       String // e.g. "agent.executions", "task.completions"
+  value      Float
+  labels     Json       @default("{}")
+  recordedAt DateTime   @default(now())
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([name])
+  @@index([recordedAt])
+  @@map("tenant_metrics")
+}
+
+// ─── Phase 4 Models: Analytics & Connectors ─────────────────────────────────
+
+model AnalyticsModel {
+  id          String  @id @default(uuid())
+  name        String
+  version     String
+  description String? @db.Text
+  metadata    Json    @default("{}")
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  analyticsFeatures AnalyticsFeature[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("analytics_models")
+}
+
+model AnalyticsFeature {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  modelId String?
+  model   AnalyticsModel? @relation(fields: [modelId], references: [id])
+
+  features   Json
+  recordedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([modelId])
+  @@map("analytics_features")
+}
+
+model CrmConnector {
+  id       String  @id @default(uuid())
+  name     String
+  provider String
+  config   Json    @default("{}")
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("crm_connectors")
+}
+
+model TenantLimit {
+  id       String @id @default(uuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  limits   Json   @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tenant_limits")
+}
+
+// ─── Phase 4.5: Quota Usage Tracking ─────────────────────────────────────
+
+model QuotaUsage {
+  id       String    @id @default(uuid())
+  tenantId String
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId  String?
+  agent    Agent?    @relation("AgentQuotaUsage", fields: [agentId], references: [id])
+  quotaKey String // e.g. "agent_executions", "api_calls_per_minute", "model_scoring"
+  used     Int       @default(0)
+  limit    Int       @default(0)
+  resetAt  DateTime? // null = never resets (lifetime quota)
+  period   String    @default("daily") // hourly | daily | monthly | lifetime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, agentId, quotaKey, period])
+  @@index([tenantId])
+  @@index([quotaKey])
+  @@map("quota_usage")
+}
+
+// ─── Phase 4.3: OAuth Token Store ─────────────────────────────────────────
+
+model OAuthToken {
+  id           String    @id @default(uuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider     String // e.g. "salesforce", "hubspot"
+  accessToken  String    @db.Text // encrypted at application layer
+  refreshToken String?   @db.Text // encrypted
+  expiresAt    DateTime?
+  scopes       Json      @default("[]")
+  metadata     Json      @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, provider])
+  @@index([tenantId])
+  @@map("oauth_tokens")
+}
+
+// ─── Phase 4.4: Financial Module ──────────────────────────────────────────
+
+model Invoice {
+  id        String        @id @default(uuid())
+  number    String        @unique // e.g. "INV-2026-001"
+  status    InvoiceStatus @default(DRAFT)
+  currency  String        @default("USD")
+  subtotal  Decimal       @db.Decimal(14, 4)
+  taxAmount Decimal       @default(0) @db.Decimal(14, 4)
+  total     Decimal       @db.Decimal(14, 4)
+  lineItems Json          @default("[]") // [{ description, qty, unitPrice, amount }]
+  issuedAt  DateTime?
+  dueAt     DateTime?
+  paidAt    DateTime?
+  notes     String?       @db.Text
+  metadata  Json          @default("{}")
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  expenses      Expense[]
+  billingEvents BillingEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model Expense {
+  id          String          @id @default(uuid())
+  category    ExpenseCategory @default(CUSTOM)
+  description String
+  amountUsd   Decimal         @db.Decimal(14, 6)
+  currency    String          @default("USD")
+  metadata    Json            @default("{}")
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  agentId String?
+  agent   Agent?  @relation("AgentExpenses", fields: [agentId], references: [id])
+
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  recordedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([agentId])
+  @@index([invoiceId])
+  @@map("expenses")
+}
+
+model BillingEvent {
+  id          String           @id @default(uuid())
+  type        BillingEventType
+  payload     Json             @default("{}")
+  processedAt DateTime?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([type])
+  @@map("billing_events")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Routines Module (Paperclip Integration)
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum RoutineStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  DISABLED
+}
+
+enum RoutineTriggerType {
+  SCHEDULE // Cron-based scheduling
+  WEBHOOK // HTTP webhook trigger
+  EVENT // Event-based trigger
+  MANUAL // Manual trigger only
+}
+
+enum RoutineRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Routine {
+  id          String        @id @default(uuid())
+  name        String
+  description String?       @db.Text
+  status      RoutineStatus @default(DRAFT)
+
+  // LangGraph workflow definition
+  graphDefinition Json @default("{}") // Nodes, edges, conditional logic
+
+  // Configuration
+  config   Json @default("{}") // maxIterations, timeout, retryPolicy
+  metadata Json @default("{}")
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Owner agent — the agent that executes this routine (Gap 1, Phase 1)
+  // Nullable for backward compatibility with routines created before Phase 1.
+  ownerAgentId String?
+  ownerAgent   Agent?  @relation("RoutineOwner", fields: [ownerAgentId], references: [id], onDelete: SetNull)
+
+  // Relations
+  triggers RoutineTrigger[]
+  runs     RoutineRun[]
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([ownerAgentId])
+  @@map("routines")
+}
+
+model RoutineTrigger {
+  id     String             @id @default(uuid())
+  type   RoutineTriggerType
+  name   String? // Optional trigger name
+  config Json               @default("{}") // cron expression, webhook secret, event filter
+
+  // Webhook specifics
+  webhookPath   String? @unique // /webhooks/routines/:id/:secret
+  webhookSecret String? // For webhook signature validation
+
+  isActive Boolean @default(true)
+
+  routineId String
+  routine   Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+
+  lastFiredAt DateTime?
+  nextFireAt  DateTime? // For schedule triggers
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([routineId])
+  @@index([type])
+  @@index([webhookPath])
+  @@map("routine_triggers")
+}
+
+model RoutineRun {
+  id String @id @default(uuid())
+
+  // Execution state (LangGraph checkpoint)
+  state    Json? // Serialized graph state for resumption
+  threadId String // LangGraph thread identifier
+
+  // Execution results
+  status RoutineRunStatus @default(PENDING)
+  input  Json             @default("{}")
+  output Json?
+  error  String?          @db.Text
+
+  // Metrics
+  startedAt   DateTime?
+  completedAt DateTime?
+  durationMs  Int?
+
+  // Trigger info
+  triggerType RoutineTriggerType?
+  triggerId   String?
+
+  routineId String
+  routine   Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Agent execution
+  agentId String?
+  agent   Agent?  @relation(fields: [agentId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([routineId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([triggerType])
+  @@map("routine_runs")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Cost Tracking Module (Paperclip Integration)
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum BudgetPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum BudgetScope {
+  TENANT
+  DEPARTMENT
+  AGENT
+  MODEL
+}
+
+enum BudgetAction {
+  ALERT
+  BLOCK
+  DEGRADE
+}
+
+enum BudgetIncidentStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model CostRecord {
+  id String @id @default(uuid())
+
+  // Cost attribution
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  agentId String?
+  agent   Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  // LLM Cost details
+  provider     String // OPENAI, ANTHROPIC, MINIMAX, DEEPSEEK
+  model        String
+  inputTokens  Int     @default(0)
+  outputTokens Int     @default(0)
+  costCents    Decimal @db.Decimal(10, 4)
+
+  // Time window for aggregation
+  windowStart DateTime
+  windowEnd   DateTime
+
+  // Optional: Link to LangSmith run for traceability
+  langSmithRunId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([agentId])
+  @@index([departmentId])
+  @@index([provider])
+  @@index([model])
+  @@index([windowStart, windowEnd])
+  @@map("cost_records")
+}
+
+model BudgetPolicy {
+  id String @id @default(uuid())
+
+  // Policy details
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name       String
+  limitCents Decimal      @db.Decimal(12, 2)
+  period     BudgetPeriod @default(MONTHLY)
+  scope      BudgetScope  @default(TENANT)
+
+  // Alert configuration
+  alertThresholds Int[]        @default([50, 75, 90]) // percentages at which to alert
+  action          BudgetAction @default(ALERT) // What to do when exceeded
+
+  enabled           Boolean  @default(true)
+  currentSpendCents Decimal  @default(0) @db.Decimal(12, 2)
+  resetAt           DateTime // When the budget period resets
+
+  // Scope relations - separate fields for different scope types
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  agentId String?
+  agent   Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  // Optional: scope by model (stored as string for flexibility)
+  modelPattern String?
+
+  incidents BudgetIncident[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([scope])
+  @@index([departmentId])
+  @@index([agentId])
+  @@index([enabled])
+  @@index([resetAt])
+  @@map("budget_policies")
+}
+
+// ─── Phase D: Goals & Projects ───────────────────────────────────────────────
+
+enum GoalLevel {
+  COMPANY
+  DEPARTMENT
+  TEAM
+  INDIVIDUAL
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  ARCHIVED
+}
+
+model Goal {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String? @db.Text
+
+  level    GoalLevel  @default(INDIVIDUAL)
+  status   GoalStatus @default(ACTIVE)
+  progress Int        @default(0) // 0-100
+
+  // Hierarchy
+  parentId String?
+  parent   Goal?   @relation("GoalHierarchy", fields: [parentId], references: [id])
+  children Goal[]  @relation("GoalHierarchy")
+
+  // Ownership
+  ownerAgentId String?
+  ownerAgent   Agent?  @relation(fields: [ownerAgentId], references: [id], onDelete: SetNull)
+
+  ownerUserId String?
+  ownerUser   User?   @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+
+  // Linking
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  // Dates
+  targetDate  DateTime?
+  completedAt DateTime?
+
+  // Metrics
+  metrics Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([parentId])
+  @@index([status])
+  @@index([ownerAgentId])
+  @@index([ownerUserId])
+  @@map("goals")
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+model Project {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?       @db.Text
+  status      ProjectStatus @default(ACTIVE)
+
+  // Linking
+  goalIds      String[]    @default([]) // Related goals
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  // Dates
+  targetDate DateTime?
+
+  // Metadata
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([departmentId])
+  @@map("projects")
+}
+
+model BudgetIncident {
+  id String @id @default(uuid())
+
+  budgetPolicyId String
+  budgetPolicy   BudgetPolicy @relation(fields: [budgetPolicyId], references: [id], onDelete: Cascade)
+
+  threshold  Int // percentage that triggered this incident
+  totalCents Decimal              @db.Decimal(12, 2) // spend at time of incident
+  status     BudgetIncidentStatus @default(ACTIVE)
+
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([budgetPolicyId])
+  @@index([status])
+  @@map("budget_incidents")
+}
+
+// ─── Integration Credentials (Phase A: Week 1) ─────────────────────────────────
+
+enum IntegrationProvider {
+  GOOGLE
+  BREVO
+  SLACK
+  MICROSOFT
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  PENDING
+}
+
+model IntegrationCredential {
+  id       String              @id @default(uuid())
+  tenantId String
+  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider IntegrationProvider
+  label    String? // Human-readable label e.g. "Google Workspace"
+  status   IntegrationStatus   @default(PENDING)
+
+  // Encrypted credentials (AES-256-GCM)
+  // Structure varies by provider:
+  // GOOGLE: { accessToken, refreshToken, expiryDate, scopes }
+  // BREVO: { apiKey }
+  // SLACK: { botToken, signingSecret }
+  // MICROSOFT: { accessToken, refreshToken, expiryDate }
+  encryptedCredentials String @db.Text
+
+  // OAuth-specific fields
+  scopes     String[]  @default([])
+  expiresAt  DateTime?
+  lastSyncAt DateTime?
+
+  // Token from Google (used for redirect URI validation)
+  state String?
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, provider])
+  @@index([tenantId])
+  @@index([status])
+  @@map("integration_credentials")
+}
+
+// ─── Onboarding Invitations (WS-2) ────────────────────────────────────────
+
+model OnboardingInvitation {
+  id          String    @id @default(uuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email       String
+  role        UserRole  @default(USER)
+  token       String    @unique
+  acceptedAt  DateTime?
+  expiresAt   DateTime
+  invitedById String?
+  invitedBy   User?     @relation(fields: [invitedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([token])
+  @@map("onboarding_invitations")
+}
+
+// ─── Brevo Usage Counters (WS-5) ───────────────────────────────────────────
+
+model BrevoUsageCounter {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  sentCount Int      @default(0)
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
+  @@map("brevo_usage_counters")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EAOS-1 — Universal Entity Model
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 1, Task 1.38 (per EAOS-implementation-roadmap.md v1.3 + EAOS-
+// implementation-plan.md §1.3-1.5). Every entity in EAOS exposes:
+//   - state (state machine, transitions, history)
+//   - ownership (owner, team, manager, AI assistant)
+//   - labels (standard + custom + priority + quarters)
+//   - favorites / recents / watching (per user)
+//   - health (computed status with signals, trend, alerts)
+//   - relationships (typed edges between entities)
+//   - workspace layout (per user per entity)
+//
+// All models are tenant-scoped (every row has tenantId). The
+// tenantId is on the model itself rather than only on related models
+// because it makes tenant-scoped queries simpler and more obvious.
+//
+// All EAOS-1 migrations are ADDITIVE — no existing model is modified.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Enums ────────────────────────────────────────────────────────────────
+
+// Universal state machine every entity follows. Sub-state is per-entity.
+enum UniversalStateValue {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+  PAUSED
+  SUSPENDED
+  ARCHIVED
+  DELETED
+
+  @@map("universal_state_value")
+}
+
+// What kind of entity this row is. Maps to the EAOS resource taxonomy.
+enum EntityType {
+  DEPARTMENT
+  AGENT
+  USER
+  PROJECT
+  GOAL
+  TASK
+  WORKFLOW
+  ROUTINE
+  TOOL_INTEGRATION
+  EXPENSE
+  INVOICE
+  KNOWLEDGE_ENTRY
+  TEMPLATE
+  FACILITY
+  CUSTOMER
+  ASSET
+  VENDOR
+  PROCESS
+  DOCUMENT
+
+  @@map("entity_type")
+}
+
+// Severity for EntityHealth.
+enum HealthSeverity {
+  HEALTHY
+  WARNING
+  CRITICAL
+
+  @@map("health_severity")
+}
+
+// Trend for EntityHealth.
+enum HealthTrend {
+  IMPROVING
+  STABLE
+  DEGRADING
+
+  @@map("health_trend")
+}
+
+// Label kind: STANDARD (built-in enum like priority), CUSTOM (user-defined).
+enum LabelKind {
+  STANDARD
+  CUSTOM
+  PRIORITY
+  QUARTER
+
+  @@map("label_kind")
+}
+
+// Type of typed relationship between two entities.
+enum RelationshipType {
+  PARENT_OF
+  CHILD_OF
+  SIBLING_OF
+  OPERATES_IN
+  COLLABORATES_WITH
+  ASSIGNED_TO
+  REFERENCES
+  DEPENDS_ON
+
+  @@map("relationship_type")
+}
+
+// ─── EntityState — the universal state machine ──────────────────────────
+
+model EntityState {
+  id           String              @id @default(uuid())
+  tenantId     String             @map("tenantid")
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityType   EntityType         @map("entitytype")
+  entityId     String             @map("entityid")
+  currentState UniversalStateValue @map("currentstate")
+  subState     String?            @map("substate") // Entity-specific (e.g. "on_track", "idle")
+  enteredAt    DateTime           @default(now()) @map("enteredat")
+  enteredById  String?            @map("enteredbyid")
+  enteredBy    User?              @relation("EntityStateEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
+  metadata     Json               @default("{}") @map("metadata")
+
+  history StateHistory[]
+
+  // One state row per entity.
+  @@unique([tenantId, entityType, entityId])
+  @@index([tenantId, entityType, currentState])
+  @@index([tenantId, currentState])
+  @@map("entity_states")
+}
+
+// ─── StateHistory — append-only log of state transitions ──────────────────
+
+model StateHistory {
+  id               String              @id @default(uuid())
+  tenantId         String             @map("tenantid")
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityType       EntityType         @map("entitytype")
+  entityId         String             @map("entityid")
+  fromState        UniversalStateValue @map("fromstate")
+  toState          UniversalStateValue @map("tostate")
+  transitionedAt   DateTime           @default(now()) @map("transitionedat")
+  transitionedById String?            @map("transitionedbyid")
+  transitionedBy   User?              @relation("StateHistoryTransitionedBy", fields: [transitionedById], references: [id], onDelete: SetNull)
+  reason           String?            @map("reason") // human-readable explanation
+  isAuto           Boolean            @default(false) @map("isauto") // true for system-driven transitions
+  metadata         Json               @default("{}") @map("metadata")
+
+  // Optional back-link to EntityState for unified queries.
+  entityStateId String?      @map("entitystateid")
+  entityState   EntityState? @relation(fields: [entityStateId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, entityType, entityId, transitionedAt])
+  @@index([tenantId, transitionedAt])
+  @@map("state_history")
+}
+
+// ─── EntityOwnership — owner, team, manager, AI assistant ────────────────
+
+model EntityOwnership {
+  id                String      @id @default(uuid())
+  tenantId          String     @map("tenantid")
+  tenant            Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityType        EntityType @map("entitytype")
+  entityId          String     @map("entityid")
+  ownerId           String?    @map("ownerid")
+  owner             User?       @relation("EntityOwnershipOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  responsibleTeamId String?    @map("responsibleteamid")
+  responsibleTeam   Department? @relation("EntityOwnershipTeam", fields: [responsibleTeamId], references: [id], onDelete: SetNull)
+  managerId         String?    @map("managerid")
+  manager           User?       @relation("EntityOwnershipManager", fields: [managerId], references: [id], onDelete: SetNull)
+  aiAssistantId     String?    @map("aiassistantid") // FK to Agent (AI Employee) when AI owns/co-owns the entity
+  notes             String?    @map("notes") // free-form notes about the ownership structure
+  createdAt         DateTime   @default(now()) @map("createdat")
+  updatedAt         DateTime   @updatedAt @map("updatedat")
+
+  @@unique([tenantId, entityType, entityId])
+  @@index([tenantId, ownerId])
+  @@index([tenantId, responsibleTeamId])
+  @@map("entity_ownerships")
+}
+
+// ─── EntityLabel — standard + custom + priority + quarters ───────────────
+
+model EntityLabel {
+  id          String     @id @default(uuid())
+  tenantId    String    @map("tenantid")
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityType  EntityType @map("entitytype")
+  entityId    String    @map("entityid")
+  kind        LabelKind  @default(CUSTOM)
+  // key: namespace slug ("priority", "quarter", or user-defined).
+  // value: the label's value ("high", "Q3-2026", or user-defined).
+  // Examples:
+  //   kind=PRIORITY, key="priority", value="high"
+  //   kind=QUARTER,  key="quarter",  value="Q3-2026"
+  //   kind=CUSTOM,   key="region",   value="EMEA"
+  key         String    @map("key")
+  value       String    @map("value")
+  color       String?   @map("color") // optional hex color override (e.g. "#FF5733")
+  createdById String?   @map("createdbyid")
+  createdBy   User?      @relation("EntityLabelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now()) @map("createdat")
+
+  @@unique([tenantId, entityType, entityId, kind, key])
+  @@index([tenantId, kind, key])
+  @@index([tenantId, entityType, entityId])
+  @@map("entity_labels")
+}
+
+// ─── UserFavorite — pinned entities per user ─────────────────────────────
+
+model UserFavorite {
+  id         String     @id @default(uuid())
+  tenantId   String    @map("tenantid")
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String    @map("userid")
+  user       User       @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  entityType EntityType @map("entitytype")
+  entityId   String    @map("entityid")
+  pinnedAt   DateTime  @default(now()) @map("pinnedat")
+  // For ordering within a user's favorites.
+  sortOrder  Int       @default(0) @map("sortorder")
+
+  @@unique([userId, entityType, entityId])
+  @@index([userId, sortOrder])
+  @@index([tenantId, userId])
+  @@map("user_favorites")
+}
+
+// ─── UserRecentAccess — recent access log per user (with TTL cleanup) ───
+
+model UserRecentAccess {
+  id         String     @id @default(uuid())
+  tenantId   String    @map("tenantid")
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String    @map("userid")
+  user       User       @relation("UserRecentAccesses", fields: [userId], references: [id], onDelete: Cascade)
+  entityType EntityType @map("entitytype")
+  entityId   String    @map("entityid")
+  accessedAt DateTime   @default(now()) @map("accessedat")
+
+  // Compound unique: a user can only have ONE row per entity; repeated
+  // access updates accessedAt via upsert.
+  @@unique([userId, entityType, entityId])
+  @@index([userId, accessedAt(sort: Desc)])
+  @@index([tenantId, userId])
+  @@map("user_recent_accesses")
+}
+
+// ─── EntityWatcher — watch subscriptions (notifications on changes) ─────
+
+model EntityWatcher {
+  id                 String     @id @default(uuid())
+  tenantId           String    @map("tenantid")
+  tenant             Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  watcherId          String    @map("watcherid")
+  watcher            User       @relation("EntityWatcherUser", fields: [watcherId], references: [id], onDelete: Cascade)
+  entityType         EntityType @map("entitytype")
+  entityId           String    @map("entityid")
+  // What events to watch for (subset of universal events).
+  watchOnStateChange Boolean   @default(true) @map("watchonstatechange")
+  watchOnUpdate      Boolean   @default(true) @map("watchonupdate")
+  watchOnComment     Boolean   @default(false) @map("watchoncomment")
+  watchOnAssign      Boolean   @default(false) @map("watchonassign")
+  createdAt          DateTime  @default(now()) @map("createdat")
+
+  @@unique([watcherId, entityType, entityId])
+  @@index([tenantId, entityType, entityId])
+  @@map("entity_watchers")
+}
+
+// ─── EntityHealth — computed health with signals, trend, alerts ──────────
+
+model EntityHealth {
+  id         String         @id @default(uuid())
+  tenantId   String        @map("tenantid")
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityType EntityType    @map("entitytype")
+  entityId   String       @map("entityid")
+  // Overall severity (healthy / warning / critical).
+  severity   HealthSeverity @default(HEALTHY) @map("severity")
+  // Trend (improving / stable / degrading).
+  trend      HealthTrend    @default(STABLE) @map("trend")
+  // Numeric health score 0-100 (0 = critical, 100 = perfect).
+  score      Int           @default(100) @map("score")
+  // Open alerts (count of unresolved issues).
+  openAlerts Int           @default(0) @map("openalerts")
+  // Computed signal snapshot — flexible JSON for per-entity signals.
+  // Examples:
+  //   - { error_rate: 0.4, budget_usage: 62, goal_progress: 78 }
+  //   - { open_tasks: 12, overdue_tasks: 3, blocked_tasks: 1 }
+  signals    Json          @default("{}") @map("signals")
+  // Last signal update timestamp.
+  updatedAt  DateTime      @updatedAt @map("updatedat")
+
+  @@unique([tenantId, entityType, entityId])
+  @@index([tenantId, severity])
+  @@index([tenantId, updatedAt(sort: Desc)])
+  @@map("entity_healths")
+}
+
+// ─── EntityRelationship — typed edges between entities ──────────────────
+
+model EntityRelationship {
+  id        String           @id @default(uuid())
+  tenantId  String          @map("tenantid")
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // Source
+  fromType  EntityType      @map("fromtype")
+  fromId    String         @map("fromid")
+  // Target
+  toType    EntityType      @map("totype")
+  toId      String         @map("toid")
+  // Type of edge.
+  type      RelationshipType @map("type")
+  // Optional: hierarchical ordering (for parent/child trees).
+  position  Int            @default(0) @map("position")
+  // Optional metadata (e.g. "since 2024-01-15", "primary: true").
+  metadata  Json           @default("{}") @map("metadata")
+  createdAt DateTime        @default(now()) @map("createdat")
+
+  @@unique([tenantId, fromType, fromId, toType, toId, type])
+  @@index([tenantId, fromType, fromId])
+  @@index([tenantId, toType, toId])
+  @@index([tenantId, type])
+  @@map("entity_relationships")
+}
+
+// ─── WorkspaceLayout — per-user per-entity-type layout persistence ──────
+
+model WorkspaceLayout {
+  id         String     @id @default(uuid())
+  tenantId   String
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User       @relation("WorkspaceLayoutUser", fields: [userId], references: [id], onDelete: Cascade)
+  // Layout is per-user per-entity-type (e.g. workspace layout for "agent" entities).
+  entityType EntityType
+  // Layout JSON: left rail expanded, intelligence expanded, density, etc.
+  // Per EAOS-NUWS-principles.md §5.1 + §7.5.4.
+  layout     Json       @default("{}")
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([userId, entityType])
+  @@index([tenantId, userId])
+  @@map("workspace_layouts")
+}
+
+// ─── CapabilityConfig — per-user per-entity-type panel/config toggles ───
+
+model CapabilityConfig {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation("CapabilityConfigUser", fields: [userId], references: [id], onDelete: Cascade)
+  // The 10 capability panels (identity, context, intelligence, operations,
+  // resources, collaboration, insights, automation, activity, lifecycle)
+  // — per EAOS-NUWS-principles.md §1.2.
+  capability String // e.g. "intelligence", "operations"
+  // Per-capability config: collapsed, ordering, custom widgets, etc.
+  config     Json     @default("{}")
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, capability])
+  @@index([tenantId, userId])
+  @@map("capability_configs")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EAOS-3 / Phase 3 — Mission Feed + AI Action Invocation
+// ═══════════════════════════════════════════════════════════════════════════
+// Per `EAOS-implementation-plan.md` §4.6 + `EAOS-api-contract.md` §8.13,
+// §13.2. Purely ADDITIVE — no existing model is modified.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Mission Feed item severity / priority
+enum MissionFeedPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+
+  @@map("mission_feed_priority")
+}
+
+// Mission Feed item category (what kind of AI-prioritized action)
+enum MissionFeedCategory {
+  APPROVAL_REQUIRED
+  ANOMALY_DETECTED
+  HEALTH_DEGRADED
+  AI_INSIGHT
+  COST_ALERT
+  LIFECYCLE_BLOCKED
+  COLLABORATION_REQUEST
+  SYSTEM
+  PACK_INSTALLED
+
+  @@map("mission_feed_category")
+}
+
+// AI Action invocation status (the lifecycle in §13.2 of api-contract)
+enum AIActionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+
+  @@map("ai_action_status")
+}
+
+// ─── MissionFeedItem — dashboard-prioritized items needing attention ─────
+
+model MissionFeedItem {
+  id            String              @id @default(uuid())
+  tenantId      String
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // The user this item is targeted to (nullable = tenant-wide).
+  userId        String?
+  user          User?               @relation("MissionFeedUser", fields: [userId], references: [id], onDelete: Cascade)
+  category      MissionFeedCategory
+  priority      MissionFeedPriority @default(MEDIUM)
+  title         String
+  description   String?
+  // What entity (if any) the item is about.
+  entityType    String?
+  entityId      String?
+  // Suggested action payload (deep-link target, button label, etc.).
+  actionPayload Json                @default("{}")
+  // Dismissed at (per user; null = not dismissed).
+  dismissedAt   DateTime?
+  // AI-confidence in the prioritization (0-1).
+  confidence    Float               @default(0.5)
+  // Source event id for idempotency / dedup.
+  sourceEventId String?
+  // When the underlying situation was detected.
+  detectedAt    DateTime            @default(now())
+  createdAt     DateTime            @default(now())
+
+  @@index([tenantId, userId, dismissedAt])
+  @@index([tenantId, priority, detectedAt])
+  @@index([tenantId, category])
+  @@index([sourceEventId])
+  @@map("mission_feed_items")
+}
+
+// ─── AIActionInvocation — record of every AI Action invocation ────────────
+
+model AIActionInvocation {
+  id               String         @id @default(uuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // The AI Action id (e.g. "ai:summary", "ai:forecast").
+  actionId         String
+  // The target entity.
+  entityType       String?
+  entityId         String?
+  // Who invoked it.
+  invokedById      String
+  invokedBy        User           @relation("AIActionInvokedBy", fields: [invokedById], references: [id], onDelete: Cascade)
+  // Input parameters.
+  input            Json           @default("{}")
+  // Resulting output (null until completed).
+  output           Json?
+  // Lifecycle state.
+  status           AIActionStatus @default(PENDING)
+  // Cost tracking (per `EAOS-rbac-model.md` §6).
+  tokensUsed       Int            @default(0)
+  estimatedCostUsd Decimal?       @db.Decimal(10, 4)
+  // Latency (ms).
+  durationMs       Int?
+  // Error info if failed.
+  errorMessage     String?
+  // Streaming support.
+  streamUrl        String?
+  // Idempotency-Key from the request (per api-contract §7.4).
+  idempotencyKey   String?
+  startedAt        DateTime       @default(now())
+  completedAt      DateTime?
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, invokedById, startedAt])
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, status])
+  @@index([tenantId, actionId])
+  @@map("ai_action_invocations")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EAOS-4 — Knowledge Hub
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 6, Task 6.2 (per EAOS-implementation-roadmap.md §10 +
+// EAOS-implementation-plan.md §7.1, §9.7 + EAOS-api-contract.md §8.17).
+//
+// Two new tables: knowledge_entries + knowledge_packs.
+// One new enum: knowledge_type.
+// pgvector extension is enabled in the migration; the contentVector column
+// uses Prisma's `Unsupported` because pgvector has no native Prisma type.
+// All changes are ADDITIVE — no existing model is modified.
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum KnowledgeType {
+  POLICY
+  SOP
+  PLAYBOOK
+  TEMPLATE
+  PROMPT
+  REGULATION
+  CONTRACT
+  REPORT
+  DOCUMENTATION
+  FAQ
+  GUIDE
+  BRIEFING
+
+  @@map("knowledge_type")
+}
+
+model KnowledgeEntry {
+  id       String @id @default(uuid())
+  tenantId String
+
+  // Classification
+  type          KnowledgeType
+  title         String
+  content       String
+  contentVector Unsupported("vector(1536)")?
+  language      String                       @default("en")
+
+  // Organization
+  tags         String[]
+  departmentId String?
+  entityTypes  String[]
+
+  // Provenance
+  source    String  @default("manual")
+  sourceUrl String?
+  authorId  String?
+
+  // Lifecycle
+  status  String @default("published")
+  version String @default("1.0.0")
+
+  // RAG metadata
+  chunkCount      Int       @default(1)
+  retrievalCount  Int       @default(0)
+  lastRetrievedAt DateTime?
+
+  // Effective dating
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, type])
+  @@index([tenantId, status])
+  @@index([tenantId, departmentId])
+  @@map("knowledge_entries")
+}
+
+model KnowledgePack {
+  id             String   @id @default(uuid())
+  tenantId       String
+  solutionPackId String?
+  name           String
+  description    String?
+  installedAt    DateTime @default(now())
+  Tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("knowledge_packs")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EAOS-5 — Solution Packs (Phase 7)
+// ═══════════════════════════════════════════════════════════════════════════
+// Per `EAOS-implementation-roadmap.md` §11 + `EAOS-implementation-plan.md`
+// §5, §9.8 + `EAOS-api-contract.md` §8.19. All ADDITIVE.
+enum SolutionPackCategory {
+  VERTICAL
+  HORIZONTAL
+
+  @@map("solution_pack_category")
+}
+
+enum SolutionPackStatus {
+  draft
+  beta
+  stable
+  deprecated
+
+  @@map("solution_pack_status")
+}
+
+enum PackTierRequired {
+  COMMUNITY
+  STARTER
+  PRO
+  ENTERPRISE
+
+  @@map("pack_tier_required")
+}
+
+enum SolutionPackOwnerKind {
+  SEED
+  PLATFORM
+  TENANT
+
+  @@map("solution_pack_owner_kind")
+}
+
+model SolutionPack {
+  id                String                @id @default(uuid())
+  slug              String                @unique
+  name              String
+  version           String                @default("1.0.0")
+  category          SolutionPackCategory
+  description       String
+  shortDescription  String                @default("")
+  icon              String                @default("")
+  color             String                @default("#6366f1")
+  tierRequired      PackTierRequired      @default(PRO)
+  status            SolutionPackStatus    @default(stable)
+  ownerKind         SolutionPackOwnerKind @default(SEED)
+  ownerId           String?
+  extensions        Json                  @default("{}")
+  requiresPacks     String[]              @default([])
+  conflictsWith     String[]              @default([])
+  tags              String[]              @default([])
+  monthlyPriceUsd   Int                   @default(0)
+  estimatedAiCredits Int                  @default(0)
+  sortOrder         Int                   @default(100)
+  publishedAt       DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  installations     TenantInstalledPack[]
+
+  @@index([status])
+  @@index([category])
+  @@index([tierRequired])
+  @@map("solution_packs")
+}
+
+model TenantInstalledPack {
+  id                  String        @id @default(uuid())
+  tenantId            String
+  solutionPackId      String
+  packSlug            String
+  packVersion         String
+  extensionsSnapshot  Json          @default("{}")
+  installedById       String?
+  installedAt         DateTime      @default(now())
+  uninstalledAt       DateTime?
+  uninstalledById     String?
+  themingImpact       Json          @default("{}")
+
+  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  solutionPack        SolutionPack  @relation(fields: [solutionPackId], references: [id])
+
+  @@unique([tenantId, solutionPackId])
+  @@index([tenantId])
+  @@index([solutionPackId])
+  @@index([tenantId, uninstalledAt])
+  @@map("tenant_installed_packs")
+}
+
+model PackInstallation {
+  id              String        @id @default(uuid())
+  tenantId        String
+  solutionPackId  String
+  action          String
+  success         Boolean
+  errorMessage    String?
+  performedById   String?
+  performedAt     DateTime      @default(now())
+
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([solutionPackId])
+  @@index([tenantId, performedAt])
+  @@map("pack_installations")
+}

@@ -1,0 +1,250 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Accent palette (Creatio-style violet, Phase 2) ─────────── */
+:root,
+.theme-dark,
+.theme-light,
+.theme-high-contrast,
+.theme-colorblind {
+  --accent-50:  #f5f3ff;
+  --accent-100: #ede9fe;
+  --accent-200: #ddd6fe;
+  --accent-300: #c4b5fd;
+  --accent-400: #a78bfa;
+  --accent-500: #8b5cf6;
+  --accent-600: #7c3aed;
+  --accent-700: #6d28d9;
+  --accent-800: #5b21b6;
+  --accent-900: #4c1d95;
+}
+
+/* Semantic state colors (Phase 2 — used by StatusBadge) */
+:root,
+.theme-dark,
+.theme-light,
+.theme-high-contrast,
+.theme-colorblind {
+  --state-success: #10b981;
+  --state-warning: #f59e0b;
+  --state-danger:  #ef4444;
+  --state-info:    #3b82f6;
+  --state-neutral: #71717a;
+}
+
+.theme-high-contrast {
+  --state-success: #00ff88;
+  --state-warning: #ffcc00;
+  --state-danger:  #ff3300;
+  --state-info:    #00aaff;
+  --state-neutral: #aaaaaa;
+}
+
+.theme-colorblind {
+  --state-success: #0072B2;   /* blue */
+  --state-warning: #E69F00;   /* orange */
+  --state-danger:  #D55E00;   /* vermilion */
+  --state-info:    #009E73;   /* bluish-green */
+  --state-neutral: #555555;
+}
+
+/* ─── Default (dark) theme ──────────────────────────────────── */
+:root,
+.theme-dark {
+  --surface:         #09090b;
+  --surface-raised:  #111113;
+  --surface-overlay: #18181b;
+  --surface-border:  #27272a;
+  --surface-muted:   #3f3f46;
+  --status-profit:   #22c55e;
+  --status-risk:     #ef4444;
+  --status-ops:      #3b82f6;
+  --status-strategy: #a855f7;
+  --status-warn:     #f59e0b;
+  --status-neutral:  #71717a;
+  --text-primary:    #f4f4f5;
+  --text-secondary:  #a1a1aa;
+  color-scheme: dark;
+}
+
+/* ─── Light theme (Phase 2 — Creatio polish: white panels + subtle shadow) ── */
+.theme-light {
+  --surface:         #ffffff;
+  --surface-raised:  #fafafa;
+  --surface-overlay: #f4f4f5;
+  --surface-border:  #e4e4e7;
+  --surface-muted:   #a1a1aa;
+  --status-profit:   #16a34a;
+  --status-risk:     #dc2626;
+  --status-ops:      #2563eb;
+  --status-strategy: #7c3aed;
+  --status-warn:     #d97706;
+  --status-neutral:  #52525b;
+  --text-primary:    #09090b;
+  --text-secondary:  #52525b;
+  color-scheme: light;
+}
+
+/* ─── High-contrast theme (WCAG AAA) ─────────────────────────── */
+.theme-high-contrast {
+  --surface:         #000000;
+  --surface-raised:  #0a0a0a;
+  --surface-overlay: #111111;
+  --surface-border:  #ffffff;
+  --surface-muted:   #888888;
+  --status-profit:   #00ff88;
+  --status-risk:     #ff3300;
+  --status-ops:      #00aaff;
+  --status-strategy: #cc44ff;
+  --status-warn:     #ffcc00;
+  --status-neutral:  #aaaaaa;
+  --text-primary:    #ffffff;
+  --text-secondary:  #cccccc;
+  color-scheme: dark;
+}
+
+/* ─── Font families ──────────────────────────────────────────── */
+.font-dyslexia-friendly {
+  font-family: 'OpenDyslexic', 'Comic Sans MS', 'Verdana', sans-serif !important;
+  letter-spacing: 0.03em;
+  word-spacing:   0.1em;
+  line-height:    1.8;
+}
+
+.font-monospace {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+}
+
+/* ─── Text size tiers ─────────────────────────────────────────── */
+.text-size-sm   { font-size: 0.8125rem; }   /* 13px */
+.text-size-md   { font-size: 0.875rem;  }   /* 14px – default */
+.text-size-lg   { font-size: 1rem;      }   /* 16px */
+.text-size-xl   { font-size: 1.125rem;  }   /* 18px */
+
+/* ─── Colorblind-safe palette overlay ───────────────────────── */
+.colorblind-mode {
+  --status-profit:   #0072B2;   /* blue     – safe for all */
+  --status-risk:     #D55E00;   /* vermilion */
+  --status-ops:      #009E73;   /* bluish-green */
+  --status-strategy: #CC79A7;   /* reddish-purple */
+  --status-warn:     #E69F00;   /* orange   */
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--surface);
+  color: var(--text-primary, #f4f4f5);
+}
+
+/* Honour reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.reduce-motion *,
+.reduce-motion ::before,
+.reduce-motion ::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface-raised); }
+::-webkit-scrollbar-thumb { background: var(--surface-muted); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+/* ReactFlow dark theme */
+.react-flow__background { background: var(--surface-raised) !important; }
+.react-flow__edge-path { stroke: #3b82f6 !important; }
+.react-flow__node { border-radius: 8px !important; }
+
+/* ─── Phase 2 — Creatio-style component utility classes ───────── */
+
+/* Card surfaces used by KpiCard, EntityTable wrappers */
+.card-surface {
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05), 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.card-surface:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.card-interactive {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.card-interactive:hover {
+  border-color: var(--accent-500);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Accent utility (used by QuickAction hover, focus rings) */
+.accent-ring {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+}
+
+.accent-text {
+  color: var(--accent-500);
+}
+
+.accent-bg {
+  background: var(--accent-500);
+}
+
+/* Status badge color utilities — referenced by StatusBadge */
+.badge-success { background: var(--state-success); color: white; }
+.badge-warning { background: var(--state-warning); color: white; }
+.badge-danger  { background: var(--state-danger);  color: white; }
+.badge-info    { background: var(--state-info);    color: white; }
+.badge-neutral { background: var(--state-neutral); color: white; }
+
+/* Detail panel slide-in animation */
+.detail-panel {
+  background: var(--surface-raised);
+  border-left: 1px solid var(--surface-border);
+  box-shadow: -4px 0 16px rgb(0 0 0 / 0.15);
+  animation: slideInLeft 0.25s ease-out;
+}
+
+@keyframes slideInLeft {
+  0%   { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0);    opacity: 1; }
+}
+
+/* Top bar gradient backdrop (Phase 3 will use) */
+.topbar-surface {
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--surface-border);
+  backdrop-filter: blur(8px);
+}
+
+/* Command center hero gradient (Phase 4 will use) */
+.hero-gradient {
+  background:
+    radial-gradient(ellipse at top left, var(--accent-900) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, #1e1b4b 0%, transparent 60%),
+    var(--surface);
+}
+
+/* Light-theme hero (white background, subtle accent glow) */
+.theme-light .hero-gradient {
+  background:
+    radial-gradient(ellipse at top left, var(--accent-100) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, #ede9fe 0%, transparent 60%),
+    #ffffff;
+}

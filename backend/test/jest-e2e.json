@@ -1,0 +1,36 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "coverageDirectory": "../coverage/e2e",
+  "collectCoverageFrom": [
+    "../src/**/*.ts",
+    "!**/*.spec.ts",
+    "!**/*.d.ts",
+    "!**/node_modules/**"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 60,
+      "functions": 60,
+      "lines": 60,
+      "statements": 60
+    }
+  },
+  "testTimeout": 60000,
+  "setupFilesAfterEnv": ["<rootDir>/setup/integration.setup.ts"],
+  "clearMocks": true,
+  "detectOpenHandles": true,
+  "forceExit": true,
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/../src/$1",
+    "^@modules/(.*)$": "<rootDir>/../src/modules/$1",
+    "^@common/(.*)$": "<rootDir>/../src/common/$1",
+    "^@config/(.*)$": "<rootDir>/../src/config/$1",
+    "^@infrastructure/(.*)$": "<rootDir>/../src/infrastructure/$1"
+  }
+}

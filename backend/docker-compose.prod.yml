@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # ─── PostgreSQL Database ───────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: neurecore_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-neurecore}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: ${POSTGRES_DB:-neurecore_prod}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-neurecore} -d ${POSTGRES_DB:-neurecore_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - neurecore_net
+
+  # ─── Redis Cache ───────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: neurecore_redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - neurecore_net
+
+  # ─── NeureCore Backend API + Socket.IO ─────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: neurecore_backend
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3000}
+      
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-neurecore}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-neurecore_prod}?schema=public&connect_timeout=30&pool_timeout=30&connection_limit=10
+      
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required - min 32 chars}
+      JWT_ACCESS_EXPIRES: ${JWT_ACCESS_EXPIRES:-15m}
+      JWT_REFRESH_EXPIRES: ${JWT_REFRESH_EXPIRES:-7d}
+      
+      # Frontend URLs
+      TENANT_FRONTEND_URL: ${TENANT_FRONTEND_URL:-https://tenant.guvhq.shahisoft.store}
+      ADMIN_FRONTEND_URL: ${ADMIN_FRONTEND_URL:-https://admin.guvhq.shahisoft.store}
+      
+      # AI APIs (optional)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      
+      # Rate limiting
+      THROTTLE_TTL: ${THROTTLE_TTL:-60000}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-60}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - neurecore_net
+    volumes:
+      - backend_logs:/app/logs
+
+# ─── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  neurecore_net:
+    name: neurecore_network
+    driver: bridge
+
+# ─── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    name: neurecore_postgres_data
+  redis_data:
+    name: neurecore_redis_data
+  backend_logs:
+    name: neurecore_backend_logs

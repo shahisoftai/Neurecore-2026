@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+# Monorepo uses pnpm-lock.yaml; npm's package-lock.json must NEVER be committed
+package-lock.json
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Prisma
+prisma/generated/
+
+# Docker volumes (dev)
+docker-volumes/
+
+# Misc
+*.local
+*.tsbuildinfo
+
+# Temp folder (not part of main project)
+Temp/
+
+# Jest cache (regenerated on every test run; hashes change constantly)
+.jest-cache/
+
+# Sentry Config File
+.env.sentry-build-plugin
+.vercel
+.env*.local
+.env*
