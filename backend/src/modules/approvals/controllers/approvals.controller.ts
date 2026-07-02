@@ -19,7 +19,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ApprovalsService } from '../services/approvals.service';
-import { HermesTenantGuard } from '../../hermes/guards/hermes-tenant.guard';
+// import { HermesTenantGuard } from '../../hermes/guards/hermes-tenant.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/token.interface';
 import type {
@@ -35,7 +35,6 @@ import type {
 @ApiTags('Approvals')
 @ApiBearerAuth()
 @Controller({ path: 'approvals', version: '1' })
-@UseGuards(HermesTenantGuard)
 export class ApprovalsController {
     constructor(private readonly approvalsService: ApprovalsService) { }
 

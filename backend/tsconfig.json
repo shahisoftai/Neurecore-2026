@@ -33,8 +33,10 @@
     "types": ["jest", "node"],
 
     /* Path Mappings */
+    "baseUrl": "./",
     "paths": {
-      "@shared/*": ["../shared/*"]
+      "@/*": ["src/*"],
+      "@shared/*": ["src/shared/*"]
     }
   },
   "include": ["src/**/*", "api/**/*"],

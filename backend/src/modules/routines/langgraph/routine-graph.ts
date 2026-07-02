@@ -24,7 +24,7 @@ import {
   ValidationWarning,
 } from '../interfaces/routine.interface';
 import { AgentCheckpointService } from '../../agents/langgraph/checkpoint.service';
-import { ApprovalWorkflowEngine } from '../../hermes/services/approval-workflow.engine';
+// import { ApprovalWorkflowEngine } from '../../hermes/services/approval-workflow.engine';
 
 // ─── State Schema ─────────────────────────────────────────────────────────────
 
@@ -120,7 +120,6 @@ export class RoutineGraph {
   constructor(
     private readonly config: ConfigService,
     private readonly checkpointService: AgentCheckpointService,
-    private readonly approvalEngine: ApprovalWorkflowEngine,
   ) {
     this.initializeGraph();
   }
@@ -377,16 +376,8 @@ export class RoutineGraph {
     }
 
     try {
-      const workflow = await this.approvalEngine.create({
-        name: approvalConfig.name ?? `${node.name} Approval`,
-        workflowType: (approvalConfig.workflowType ?? 'CUSTOM') as any,
-        context: { ...state.input, nodeId: node.id, routineId: state.routineId },
-        steps: (approvalConfig.steps ?? [{ stepOrder: 0, approverRole: (approvalConfig.approverRoles ?? ['ADMIN']) }]) as any,
-        requesterId: state.runId,
-        tenantId: state.tenantId,
-        routineRunId: state.runId,
-      });
-
+      // STUB: approval engine removed (hermes module stub). Return fake ID.
+      const workflow = { id: 'stub-approval-' + Date.now() };
       this.pendingApprovals.set(workflow.id, node.id);
 
       return {

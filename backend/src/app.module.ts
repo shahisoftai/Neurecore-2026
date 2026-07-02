@@ -20,7 +20,7 @@ import { ToolsModule } from './modules/tools/tools.module';
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
 // Phase 3
 import { GovernanceModule } from './modules/governance/governance.module';
-import { HermesModule } from './modules/hermes/hermes.module';
+// import { HermesModule } from './modules/hermes/hermes.module'; // disabled pre-deploy: module not production-ready
 import { ObservabilityModule } from './modules/observability/observability.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
@@ -115,7 +115,7 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
 
     // Phase 3 — Governance, Observability, Notifications, Departments, Models
     GovernanceModule,
-    HermesModule,
+    // HermesModule, // disabled pre-deploy
     ObservabilityModule,
     NotificationsModule,
     DepartmentsModule,

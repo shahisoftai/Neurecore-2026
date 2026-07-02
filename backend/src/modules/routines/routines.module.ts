@@ -30,7 +30,7 @@ import { ToolsModule } from '../tools/tools.module';
 import { DatabaseModule } from '../../infrastructure/database/database.module';
 
 @Module({
-  imports: [DatabaseModule, AgentsModule, ToolsModule, forwardRef(() => require('../hermes/hermes.module').HermesModule)],
+  imports: [DatabaseModule, AgentsModule, ToolsModule, /* forwardRef(() => require('../hermes/hermes.module').HermesModule) */],
   controllers: [RoutinesController, WebhooksController],
   providers: [
     // Repositories (Injectable)

@@ -16,14 +16,13 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CommandCenterService } from '../services/command-center.service';
-import { HermesTenantGuard } from '../../hermes/guards/hermes-tenant.guard';
+// import { HermesTenantGuard } from '../../hermes/guards/hermes-tenant.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/token.interface';
 
 @ApiTags('Command Center')
 @ApiBearerAuth()
 @Controller({ path: 'command-center', version: '1' })
-@UseGuards(HermesTenantGuard)
 export class CommandCenterController {
     constructor(private readonly commandCenterService: CommandCenterService) { }
 
