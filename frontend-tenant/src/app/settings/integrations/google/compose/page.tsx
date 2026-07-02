@@ -98,14 +98,12 @@ export default function ComposeEmailPage() {
       )}
 
       {success && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div
           className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-sm text-green-500 flex items-center gap-2"
         >
           <CheckCircle2 className="w-4 h-4" />
           Email sent successfully! Redirecting to inbox...
-        </motion.div>
+        </div>
       )}
 
       <Card className="p-6 space-y-4">

@@ -10,7 +10,7 @@ import {
   Unlink,
   Mail,
   Calendar,
-  Drive,
+  HardDrive as Drive,
   Sheet,
   Folder,
   AlertTriangle,

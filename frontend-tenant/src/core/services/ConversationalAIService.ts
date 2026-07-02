@@ -65,7 +65,10 @@ export class ConversationalAIService implements IConversationalAIService {
       const payload =
         (response as { data?: { data?: { reply: string; conversationId?: string } } })
           ?.data ?? response;
-      const innerData = payload?.data ?? payload;
+      const innerData: { reply?: string; conversationId?: string } =
+        (payload && typeof payload === "object" && "data" in payload && payload.data)
+          ? (payload.data as { reply?: string; conversationId?: string })
+          : (payload as { reply?: string; conversationId?: string });
 
       if (innerData?.reply) {
         this.conversationId = innerData.conversationId ?? this.conversationId;

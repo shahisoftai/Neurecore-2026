@@ -40,12 +40,9 @@ const chatService: IChatService = {
       if (backendData && typeof backendData.reply === 'string') {
         return {
           id: makeId(),
-          type: 'assistant',
+          type: 'info',
           message: backendData.reply,
-          conversationId: backendData.conversationId,
-          tokens: backendData.tokens,
-          model: backendData.model,
-          provider: backendData.provider,
+          tokens: { input: 0, output: 0 },
           timestamp: new Date().toISOString(),
         };
       }

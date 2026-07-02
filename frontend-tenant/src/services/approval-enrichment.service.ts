@@ -10,7 +10,7 @@
  * SOLID: DIP - depends on abstract HTTP interface via api.ts
  */
 
-import { api } from '@/services/api';
+import api from '@/services/api';
 import type { SignalType } from '@/components/approvals';
 
 interface ApprovalSignal {

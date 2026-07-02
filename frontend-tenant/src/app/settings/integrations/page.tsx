@@ -13,7 +13,7 @@ import {
   Link2,
   Mail,
   Calendar,
-  Drive,
+  HardDrive as Drive,
   ChevronRight,
   Sheet,
 } from 'lucide-react';
