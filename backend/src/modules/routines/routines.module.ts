@@ -5,7 +5,7 @@
  * Implements automated workflow execution with triggers and checkpointing.
  */
 
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 // Controllers
@@ -30,7 +30,7 @@ import { ToolsModule } from '../tools/tools.module';
 import { DatabaseModule } from '../../infrastructure/database/database.module';
 
 @Module({
-  imports: [DatabaseModule, AgentsModule, ToolsModule],
+  imports: [DatabaseModule, AgentsModule, ToolsModule, forwardRef(() => require('../hermes/hermes.module').HermesModule)],
   controllers: [RoutinesController, WebhooksController],
   providers: [
     // Repositories (Injectable)

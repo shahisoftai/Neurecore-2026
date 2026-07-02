@@ -140,6 +140,67 @@ enum DepartmentStatus {
   INACTIVE
 }
 
+// ─── Hermes Layer Enums ───────────────────────────────────────────────────────
+
+enum HermesAgentType {
+  HR
+  FINANCE
+  SALES
+  MARKETING
+  LEGAL
+  RESEARCH
+  ENGINEERING
+  QA
+  SECURITY
+  OPERATIONS
+  CUSTOMER_SUPPORT
+  CUSTOM
+}
+
+enum HermesAgentStatus {
+  IDLE
+  RUNNING
+  SUSPENDED
+}
+
+enum ToolPermissionLevel {
+  ALLOW
+  DENY
+  READ_ONLY
+  WRITE_ONLY
+  APPROVAL_REQUIRED
+}
+
+enum HermesMemoryType {
+  PERSONAL
+  EPISODIC
+  PROCEDURAL
+}
+
+enum SessionStatus {
+  ACTIVE
+  SUSPENDED
+  COMPLETED
+  EXPIRED
+}
+
+enum MessageRole {
+  USER
+  HERMES
+  SYSTEM
+}
+
+enum ApprovalWorkflowType {
+  HIRE
+  FIRE
+  REFUND
+  CONTRACT
+  BUDGET
+  VENDOR_PAYMENT
+  DATA_ACCESS
+  CUSTOM
+}
+
 enum MetricType {
   COUNTER
   GAUGE
@@ -346,7 +407,7 @@ model Tenant {
   knowledgePacks   KnowledgePack[]
 
   // EAOS-5 back-relations - Solution Packs
-  installedPacks   TenantInstalledPack[]
+  installedPacks    TenantInstalledPack[]
   packInstallations PackInstallation[]
 
   createdAt DateTime @default(now())
@@ -583,6 +644,13 @@ model Agent {
   departmentId String?
   department   Department? @relation("DepartmentAgents", fields: [departmentId], references: [id])
 
+  // Hermes Layer — link to HermesAgent for Hermes-powered agents
+  hermesAgentId String?      @unique
+  hermesAgent   HermesAgent? @relation(fields: [hermesAgentId], references: [id])
+
+  // Workspace-level isolation
+  workspaceId String?
+
   tasks         Task[]
   memoryEntries MemoryEntry[]
   executionLogs ExecutionLog[]
@@ -609,6 +677,7 @@ model Agent {
   @@index([type])
   @@index([departmentId])
   @@index([tierAgentPoolId])
+  @@index([workspaceId])
   @@map("agents")
 }
 
@@ -661,14 +730,20 @@ model Workflow {
   name        String
   description String?        @db.Text
   status      WorkflowStatus @default(DRAFT)
+  isActive    Boolean        @default(false)
   definition  Json           @default("{}") // DAG / step definitions
   config      Json           @default("{}")
   isTemplate  Boolean        @default(false)
 
+  lastExecutedAt DateTime?
+  executionCount Int       @default(0)
+  successRate    Float     @default(0) // 0–100
+
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  tasks Task[]
+  tasks      Task[]
+  executions WorkflowExecution[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -676,6 +751,26 @@ model Workflow {
   @@index([tenantId])
   @@index([status])
   @@map("workflows")
+}
+
+// ─── Workflow Execution ───────────────────────────────────────────────────
+
+model WorkflowExecution {
+  id         String   @id @default(uuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  status       String    @default("RUNNING") // RUNNING | COMPLETED | FAILED | CANCELLED
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  durationMs   Int?
+  errorMessage String?
+
+  tenantId String
+
+  @@index([workflowId])
+  @@index([tenantId])
+  @@map("workflow_executions")
 }
 
 // ─── Memory Entry ─────────────────────────────────────────────────────────
@@ -696,11 +791,15 @@ model MemoryEntry {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  // Workspace-level isolation
+  workspaceId String?
+
   createdAt DateTime @default(now())
 
   @@index([agentId])
   @@index([tenantId])
   @@index([type])
+  @@index([workspaceId])
   @@map("memory_entries")
 }
 
@@ -1695,16 +1794,16 @@ enum RelationshipType {
 
 model EntityState {
   id           String              @id @default(uuid())
-  tenantId     String             @map("tenantid")
+  tenantId     String              @map("tenantid")
   tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityType   EntityType         @map("entitytype")
-  entityId     String             @map("entityid")
+  entityType   EntityType          @map("entitytype")
+  entityId     String              @map("entityid")
   currentState UniversalStateValue @map("currentstate")
-  subState     String?            @map("substate") // Entity-specific (e.g. "on_track", "idle")
-  enteredAt    DateTime           @default(now()) @map("enteredat")
-  enteredById  String?            @map("enteredbyid")
-  enteredBy    User?              @relation("EntityStateEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
-  metadata     Json               @default("{}") @map("metadata")
+  subState     String?             @map("substate") // Entity-specific (e.g. "on_track", "idle")
+  enteredAt    DateTime            @default(now()) @map("enteredat")
+  enteredById  String?             @map("enteredbyid")
+  enteredBy    User?               @relation("EntityStateEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
+  metadata     Json                @default("{}") @map("metadata")
 
   history StateHistory[]
 
@@ -1719,18 +1818,18 @@ model EntityState {
 
 model StateHistory {
   id               String              @id @default(uuid())
-  tenantId         String             @map("tenantid")
+  tenantId         String              @map("tenantid")
   tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityType       EntityType         @map("entitytype")
-  entityId         String             @map("entityid")
+  entityType       EntityType          @map("entitytype")
+  entityId         String              @map("entityid")
   fromState        UniversalStateValue @map("fromstate")
   toState          UniversalStateValue @map("tostate")
-  transitionedAt   DateTime           @default(now()) @map("transitionedat")
-  transitionedById String?            @map("transitionedbyid")
-  transitionedBy   User?              @relation("StateHistoryTransitionedBy", fields: [transitionedById], references: [id], onDelete: SetNull)
-  reason           String?            @map("reason") // human-readable explanation
-  isAuto           Boolean            @default(false) @map("isauto") // true for system-driven transitions
-  metadata         Json               @default("{}") @map("metadata")
+  transitionedAt   DateTime            @default(now()) @map("transitionedat")
+  transitionedById String?             @map("transitionedbyid")
+  transitionedBy   User?               @relation("StateHistoryTransitionedBy", fields: [transitionedById], references: [id], onDelete: SetNull)
+  reason           String?             @map("reason") // human-readable explanation
+  isAuto           Boolean             @default(false) @map("isauto") // true for system-driven transitions
+  metadata         Json                @default("{}") @map("metadata")
 
   // Optional back-link to EntityState for unified queries.
   entityStateId String?      @map("entitystateid")
@@ -1745,20 +1844,20 @@ model StateHistory {
 
 model EntityOwnership {
   id                String      @id @default(uuid())
-  tenantId          String     @map("tenantid")
+  tenantId          String      @map("tenantid")
   tenant            Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityType        EntityType @map("entitytype")
-  entityId          String     @map("entityid")
-  ownerId           String?    @map("ownerid")
+  entityType        EntityType  @map("entitytype")
+  entityId          String      @map("entityid")
+  ownerId           String?     @map("ownerid")
   owner             User?       @relation("EntityOwnershipOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  responsibleTeamId String?    @map("responsibleteamid")
+  responsibleTeamId String?     @map("responsibleteamid")
   responsibleTeam   Department? @relation("EntityOwnershipTeam", fields: [responsibleTeamId], references: [id], onDelete: SetNull)
-  managerId         String?    @map("managerid")
+  managerId         String?     @map("managerid")
   manager           User?       @relation("EntityOwnershipManager", fields: [managerId], references: [id], onDelete: SetNull)
-  aiAssistantId     String?    @map("aiassistantid") // FK to Agent (AI Employee) when AI owns/co-owns the entity
-  notes             String?    @map("notes") // free-form notes about the ownership structure
-  createdAt         DateTime   @default(now()) @map("createdat")
-  updatedAt         DateTime   @updatedAt @map("updatedat")
+  aiAssistantId     String?     @map("aiassistantid") // FK to Agent (AI Employee) when AI owns/co-owns the entity
+  notes             String?     @map("notes") // free-form notes about the ownership structure
+  createdAt         DateTime    @default(now()) @map("createdat")
+  updatedAt         DateTime    @updatedAt @map("updatedat")
 
   @@unique([tenantId, entityType, entityId])
   @@index([tenantId, ownerId])
@@ -1770,10 +1869,10 @@ model EntityOwnership {
 
 model EntityLabel {
   id          String     @id @default(uuid())
-  tenantId    String    @map("tenantid")
+  tenantId    String     @map("tenantid")
   tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   entityType  EntityType @map("entitytype")
-  entityId    String    @map("entityid")
+  entityId    String     @map("entityid")
   kind        LabelKind  @default(CUSTOM)
   // key: namespace slug ("priority", "quarter", or user-defined).
   // value: the label's value ("high", "Q3-2026", or user-defined).
@@ -1781,12 +1880,12 @@ model EntityLabel {
   //   kind=PRIORITY, key="priority", value="high"
   //   kind=QUARTER,  key="quarter",  value="Q3-2026"
   //   kind=CUSTOM,   key="region",   value="EMEA"
-  key         String    @map("key")
-  value       String    @map("value")
-  color       String?   @map("color") // optional hex color override (e.g. "#FF5733")
-  createdById String?   @map("createdbyid")
+  key         String     @map("key")
+  value       String     @map("value")
+  color       String?    @map("color") // optional hex color override (e.g. "#FF5733")
+  createdById String?    @map("createdbyid")
   createdBy   User?      @relation("EntityLabelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt   DateTime  @default(now()) @map("createdat")
+  createdAt   DateTime   @default(now()) @map("createdat")
 
   @@unique([tenantId, entityType, entityId, kind, key])
   @@index([tenantId, kind, key])
@@ -1798,15 +1897,15 @@ model EntityLabel {
 
 model UserFavorite {
   id         String     @id @default(uuid())
-  tenantId   String    @map("tenantid")
+  tenantId   String     @map("tenantid")
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userId     String    @map("userid")
+  userId     String     @map("userid")
   user       User       @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
   entityType EntityType @map("entitytype")
-  entityId   String    @map("entityid")
-  pinnedAt   DateTime  @default(now()) @map("pinnedat")
+  entityId   String     @map("entityid")
+  pinnedAt   DateTime   @default(now()) @map("pinnedat")
   // For ordering within a user's favorites.
-  sortOrder  Int       @default(0) @map("sortorder")
+  sortOrder  Int        @default(0) @map("sortorder")
 
   @@unique([userId, entityType, entityId])
   @@index([userId, sortOrder])
@@ -1818,12 +1917,12 @@ model UserFavorite {
 
 model UserRecentAccess {
   id         String     @id @default(uuid())
-  tenantId   String    @map("tenantid")
+  tenantId   String     @map("tenantid")
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userId     String    @map("userid")
+  userId     String     @map("userid")
   user       User       @relation("UserRecentAccesses", fields: [userId], references: [id], onDelete: Cascade)
   entityType EntityType @map("entitytype")
-  entityId   String    @map("entityid")
+  entityId   String     @map("entityid")
   accessedAt DateTime   @default(now()) @map("accessedat")
 
   // Compound unique: a user can only have ONE row per entity; repeated
@@ -1838,18 +1937,18 @@ model UserRecentAccess {
 
 model EntityWatcher {
   id                 String     @id @default(uuid())
-  tenantId           String    @map("tenantid")
+  tenantId           String     @map("tenantid")
   tenant             Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  watcherId          String    @map("watcherid")
+  watcherId          String     @map("watcherid")
   watcher            User       @relation("EntityWatcherUser", fields: [watcherId], references: [id], onDelete: Cascade)
   entityType         EntityType @map("entitytype")
-  entityId           String    @map("entityid")
+  entityId           String     @map("entityid")
   // What events to watch for (subset of universal events).
-  watchOnStateChange Boolean   @default(true) @map("watchonstatechange")
-  watchOnUpdate      Boolean   @default(true) @map("watchonupdate")
-  watchOnComment     Boolean   @default(false) @map("watchoncomment")
-  watchOnAssign      Boolean   @default(false) @map("watchonassign")
-  createdAt          DateTime  @default(now()) @map("createdat")
+  watchOnStateChange Boolean    @default(true) @map("watchonstatechange")
+  watchOnUpdate      Boolean    @default(true) @map("watchonupdate")
+  watchOnComment     Boolean    @default(false) @map("watchoncomment")
+  watchOnAssign      Boolean    @default(false) @map("watchonassign")
+  createdAt          DateTime   @default(now()) @map("createdat")
 
   @@unique([watcherId, entityType, entityId])
   @@index([tenantId, entityType, entityId])
@@ -1860,25 +1959,25 @@ model EntityWatcher {
 
 model EntityHealth {
   id         String         @id @default(uuid())
-  tenantId   String        @map("tenantid")
+  tenantId   String         @map("tenantid")
   tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityType EntityType    @map("entitytype")
-  entityId   String       @map("entityid")
+  entityType EntityType     @map("entitytype")
+  entityId   String         @map("entityid")
   // Overall severity (healthy / warning / critical).
   severity   HealthSeverity @default(HEALTHY) @map("severity")
   // Trend (improving / stable / degrading).
   trend      HealthTrend    @default(STABLE) @map("trend")
   // Numeric health score 0-100 (0 = critical, 100 = perfect).
-  score      Int           @default(100) @map("score")
+  score      Int            @default(100) @map("score")
   // Open alerts (count of unresolved issues).
-  openAlerts Int           @default(0) @map("openalerts")
+  openAlerts Int            @default(0) @map("openalerts")
   // Computed signal snapshot — flexible JSON for per-entity signals.
   // Examples:
   //   - { error_rate: 0.4, budget_usage: 62, goal_progress: 78 }
   //   - { open_tasks: 12, overdue_tasks: 3, blocked_tasks: 1 }
-  signals    Json          @default("{}") @map("signals")
+  signals    Json           @default("{}") @map("signals")
   // Last signal update timestamp.
-  updatedAt  DateTime      @updatedAt @map("updatedat")
+  updatedAt  DateTime       @updatedAt @map("updatedat")
 
   @@unique([tenantId, entityType, entityId])
   @@index([tenantId, severity])
@@ -1890,21 +1989,21 @@ model EntityHealth {
 
 model EntityRelationship {
   id        String           @id @default(uuid())
-  tenantId  String          @map("tenantid")
+  tenantId  String           @map("tenantid")
   tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   // Source
-  fromType  EntityType      @map("fromtype")
-  fromId    String         @map("fromid")
+  fromType  EntityType       @map("fromtype")
+  fromId    String           @map("fromid")
   // Target
-  toType    EntityType      @map("totype")
-  toId      String         @map("toid")
+  toType    EntityType       @map("totype")
+  toId      String           @map("toid")
   // Type of edge.
   type      RelationshipType @map("type")
   // Optional: hierarchical ordering (for parent/child trees).
-  position  Int            @default(0) @map("position")
+  position  Int              @default(0) @map("position")
   // Optional metadata (e.g. "since 2024-01-15", "primary: true").
-  metadata  Json           @default("{}") @map("metadata")
-  createdAt DateTime        @default(now()) @map("createdat")
+  metadata  Json             @default("{}") @map("metadata")
+  createdAt DateTime         @default(now()) @map("createdat")
 
   @@unique([tenantId, fromType, fromId, toType, toId, type])
   @@index([tenantId, fromType, fromId])
@@ -2200,31 +2299,31 @@ enum SolutionPackOwnerKind {
 }
 
 model SolutionPack {
-  id                String                @id @default(uuid())
-  slug              String                @unique
-  name              String
-  version           String                @default("1.0.0")
-  category          SolutionPackCategory
-  description       String
-  shortDescription  String                @default("")
-  icon              String                @default("")
-  color             String                @default("#6366f1")
-  tierRequired      PackTierRequired      @default(PRO)
-  status            SolutionPackStatus    @default(stable)
-  ownerKind         SolutionPackOwnerKind @default(SEED)
-  ownerId           String?
-  extensions        Json                  @default("{}")
-  requiresPacks     String[]              @default([])
-  conflictsWith     String[]              @default([])
-  tags              String[]              @default([])
-  monthlyPriceUsd   Int                   @default(0)
-  estimatedAiCredits Int                  @default(0)
-  sortOrder         Int                   @default(100)
-  publishedAt       DateTime?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
+  id                 String                @id @default(uuid())
+  slug               String                @unique
+  name               String
+  version            String                @default("1.0.0")
+  category           SolutionPackCategory
+  description        String
+  shortDescription   String                @default("")
+  icon               String                @default("")
+  color              String                @default("#6366f1")
+  tierRequired       PackTierRequired      @default(PRO)
+  status             SolutionPackStatus    @default(stable)
+  ownerKind          SolutionPackOwnerKind @default(SEED)
+  ownerId            String?
+  extensions         Json                  @default("{}")
+  requiresPacks      String[]              @default([])
+  conflictsWith      String[]              @default([])
+  tags               String[]              @default([])
+  monthlyPriceUsd    Int                   @default(0)
+  estimatedAiCredits Int                   @default(0)
+  sortOrder          Int                   @default(100)
+  publishedAt        DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
-  installations     TenantInstalledPack[]
+  installations TenantInstalledPack[]
 
   @@index([status])
   @@index([category])
@@ -2233,20 +2332,20 @@ model SolutionPack {
 }
 
 model TenantInstalledPack {
-  id                  String        @id @default(uuid())
-  tenantId            String
-  solutionPackId      String
-  packSlug            String
-  packVersion         String
-  extensionsSnapshot  Json          @default("{}")
-  installedById       String?
-  installedAt         DateTime      @default(now())
-  uninstalledAt       DateTime?
-  uninstalledById     String?
-  themingImpact       Json          @default("{}")
+  id                 String    @id @default(uuid())
+  tenantId           String
+  solutionPackId     String
+  packSlug           String
+  packVersion        String
+  extensionsSnapshot Json      @default("{}")
+  installedById      String?
+  installedAt        DateTime  @default(now())
+  uninstalledAt      DateTime?
+  uninstalledById    String?
+  themingImpact      Json      @default("{}")
 
-  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  solutionPack        SolutionPack  @relation(fields: [solutionPackId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  solutionPack SolutionPack @relation(fields: [solutionPackId], references: [id])
 
   @@unique([tenantId, solutionPackId])
   @@index([tenantId])
@@ -2256,19 +2355,219 @@ model TenantInstalledPack {
 }
 
 model PackInstallation {
-  id              String        @id @default(uuid())
-  tenantId        String
-  solutionPackId  String
-  action          String
-  success         Boolean
-  errorMessage    String?
-  performedById   String?
-  performedAt     DateTime      @default(now())
+  id             String   @id @default(uuid())
+  tenantId       String
+  solutionPackId String
+  action         String
+  success        Boolean
+  errorMessage   String?
+  performedById  String?
+  performedAt    DateTime @default(now())
 
-  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([solutionPackId])
   @@index([tenantId, performedAt])
   @@map("pack_installations")
+}
+
+// ─── Hermes Layer ───────────────────────────────────────────────────────────────
+
+model HermesAgent {
+  id           String            @id @default(cuid())
+  name         String
+  type         HermesAgentType
+  status       HermesAgentStatus @default(IDLE)
+  description  String?
+  model        String?
+  systemPrompt String?           @db.Text
+  config       Json              @default("{}")
+  permissions  String[]          @default([])
+  allowedPaths String[]          @default([])
+  blockedPaths String[]          @default([])
+  maxFileSize  Int               @default(10485760)
+  isActive     Boolean           @default(true)
+  tenantId     String
+  workspaceId  String?
+
+  capabilities    HermesCapability[]
+  toolPermissions HermesToolPermission[]
+  memory          HermesMemoryEntry[]
+  sessions        HermesSession[]
+  auditLogs       HermesAuditLog[]
+
+  // Back-relations
+  agents Agent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([type, tenantId])
+  @@index([status, tenantId])
+  @@index([workspaceId])
+}
+
+model HermesCapability {
+  id            String  @id @default(cuid())
+  hermesAgentId String
+  name          String
+  description   String?
+  inputSchema   Json?
+  outputSchema  Json?
+  costEstimate  Float?
+  avgDuration   Int?
+  usageCount    Int     @default(0)
+
+  hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
+  @@unique([hermesAgentId, name])
+  @@index([hermesAgentId])
+}
+
+model HermesToolPermission {
+  id            String              @id @default(cuid())
+  hermesAgentId String
+  toolName      String
+  permission    ToolPermissionLevel @default(DENY)
+  conditions    Json?
+
+  hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
+  @@unique([hermesAgentId, toolName])
+  @@index([hermesAgentId])
+}
+
+model HermesSession {
+  id            String        @id @default(cuid())
+  hermesAgentId String
+  userId        String
+  tenantId      String
+  workspaceId   String?
+  threadId      String        @unique @default(cuid())
+  status        SessionStatus @default(ACTIVE)
+  context       Json          @default("{}")
+
+  messages HermesMessage[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime?
+
+  hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
+  @@index([hermesAgentId, tenantId])
+  @@index([userId, tenantId])
+  @@index([threadId])
+  @@index([status, tenantId])
+}
+
+model HermesMessage {
+  id          String      @id @default(cuid())
+  sessionId   String
+  role        MessageRole
+  content     String      @db.Text
+  metadata    Json?
+  toolCalls   Json?
+  toolResults Json?
+  error       String?
+  createdAt   DateTime    @default(now())
+
+  session HermesSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+model HermesMemoryEntry {
+  id            String           @id @default(cuid())
+  hermesAgentId String
+  tenantId      String
+  workspaceId   String?
+  type          HermesMemoryType
+  content       String           @db.Text
+  summary       String?          @db.Text
+  embedding     Float[]
+  importance    Float            @default(0.5)
+  source        String?
+  metadata      Json?
+  expiresAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
+  @@index([hermesAgentId, tenantId])
+  @@index([hermesAgentId, type])
+  @@index([tenantId])
+}
+
+model HermesAuditLog {
+  id             String   @id @default(cuid())
+  hermesAgentId  String
+  sessionId      String?
+  taskId         String?
+  tenantId       String
+  workspaceId    String?
+  action         String
+  resource       String?
+  resourceId     String?
+  request        Json?
+  response       Json?
+  decision       String?
+  reason         String?
+  governanceRule String?
+  durationMs     Int?
+  costUsd        Float?
+  tokensUsed     Int?
+  createdAt      DateTime @default(now())
+
+  hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
+  @@index([hermesAgentId, tenantId])
+  @@index([tenantId, createdAt])
+  @@index([action, tenantId])
+}
+
+model ApprovalWorkflow {
+  id           String               @id @default(cuid())
+  name         String
+  description  String?
+  workflowType ApprovalWorkflowType
+  currentStep  Int                  @default(0)
+  status       ApprovalStatus       @default(PENDING)
+  context      Json                 @default("{}")
+  result       Json?
+  requesterId  String
+  tenantId     String
+  workspaceId  String?
+  routineRunId String?
+
+  steps ApprovalWorkflowStep[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([tenantId])
+  @@index([status, tenantId])
+  @@index([requesterId, tenantId])
+}
+
+model ApprovalWorkflowStep {
+  id                 String         @id @default(cuid())
+  approvalWorkflowId String
+  stepOrder          Int
+  approverRole       UserRole[]
+  approverId         String?
+  status             ApprovalStatus @default(PENDING)
+  decision           String?
+  comment            String?
+  decidedAt          DateTime?
+
+  approvalWorkflow ApprovalWorkflow @relation(fields: [approvalWorkflowId], references: [id], onDelete: Cascade)
+
+  @@unique([approvalWorkflowId, stepOrder])
+  @@index([approvalWorkflowId])
 }

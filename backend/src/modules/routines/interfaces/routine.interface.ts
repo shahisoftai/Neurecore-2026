@@ -181,6 +181,14 @@ export interface NodeConfig {
   outputMapping?: Record<string, string>;
   timeoutMs?: number;
   retryPolicy?: RetryPolicy;
+  approval?: ApprovalConfig;
+}
+
+export interface ApprovalConfig {
+  name?: string;
+  workflowType?: string;
+  approverRoles?: string[];
+  steps?: Array<{ stepOrder: number; approverRole: string[]; approverId?: string }>;
 }
 
 export interface RoutineEdge {

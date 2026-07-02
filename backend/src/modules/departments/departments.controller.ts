@@ -27,6 +27,8 @@ import { ApiOkResponse } from '@nestjs/swagger';
 import { DepartmentResponseDto } from './dto/department-response.dto';
 import type { JwtPayload } from '../auth/interfaces/token.interface';
 import { UserRole } from '@prisma/client';
+import { ContextProvider } from '../context/controllers/context.controller';
+import type { ContextResponse } from '@/shared/types/context.types';
 
 @Controller({ path: 'departments', version: '1' })
 @ApiCommon('departments')
@@ -34,7 +36,8 @@ import { UserRole } from '@prisma/client';
 export class DepartmentsController {
   constructor(
     private readonly departmentsService: DepartmentsService,
-  ) {}
+    private readonly contextProvider: ContextProvider,
+  ) { }
 
   @Get()
   @ApiOkResponse({ type: PaginatedResponse<DepartmentResponseDto> })
@@ -110,5 +113,30 @@ export class DepartmentsController {
       throw new Error('Tenant ID is required to delete a department');
     }
     return this.departmentsService.remove(id, user.tenantId);
+  }
+
+  /**
+   * Get cross-functional context for a department
+   *
+   * SOLID: SRP - Delegates to ContextProvider service
+   * Returns initiatives, blockers, and dependencies
+   *
+   * @param departmentId - Department ID
+   * @param user - Current user (from JWT)
+   * @returns ContextResponse with initiatives and dependencies
+   */
+  @Get(':departmentId/context')
+  @ApiOkResponse({ description: 'Context data successfully retrieved' })
+  async getContext(
+    @Param('departmentId') departmentId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ContextResponse> {
+    if (!user.tenantId) {
+      throw new Error('Tenant ID is required to get context');
+    }
+    return this.contextProvider.getContextForDepartment(
+      user.tenantId,
+      departmentId,
+    );
   }
 }

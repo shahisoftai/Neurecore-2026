@@ -1,0 +1,291 @@
+// Hermes Layer — Prisma Schema Additions
+// Add these to the existing schema.prisma file
+
+// ─── Enums (add to existing enum block) ───────────────────────────────────────
+
+// HermesAgentType — already covered by existing AgentType enum
+// HermesAgentStatus — uses existing AgentStatus enum
+// ToolPermissionLevel — NEW
+// HermesMemoryType — NEW
+// SessionStatus — NEW (uses MessageRole from existing)
+// ApprovalWorkflowType — NEW
+// ApprovalStatus — already exists in schema
+
+// ─── HermesAgent ─────────────────────────────────────────────────────────────
+
+model HermesAgent {
+  id           String   @id @default(cuid())
+  name         String
+  type         HermesAgentType
+  status       HermesAgentStatus @default(IDLE)
+  description  String?
+  model        String?
+
+  // System prompt + config
+  systemPrompt String?  @db.Text
+  config       Json     @default("{}")
+
+  // Permissions
+  permissions  String[] @default([])
+  allowedPaths String[] @default([])
+  blockedPaths String[] @default([])
+  maxFileSize  Int      @default(10485760) // 10MB
+
+  // Identity
+  isActive     Boolean  @default(true)
+  tenantId     String
+  workspaceId   String?
+
+  // Relations
+  capabilities HermesCapability[]
+  toolPermissions HermesToolPermission[]
+  memory       HermesMemoryEntry[]
+  sessions     HermesSession[]
+  auditLogs    HermesAuditLog[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([type, tenantId])
+  @@index([status, tenantId])
+  @@index([workspaceId])
+}
+
+enum HermesAgentType {
+  HR
+  FINANCE
+  SALES
+  MARKETING
+  LEGAL
+  RESEARCH
+  ENGINEERING
+  QA
+  SECURITY
+  OPERATIONS
+  CUSTOMER_SUPPORT
+  CUSTOM
+}
+
+enum HermesAgentStatus {
+  IDLE
+  RUNNING
+  SUSPENDED
+}
+
+// ─── HermesCapability ─────────────────────────────────────────────────────────
+
+model HermesCapability {
+  id            String   @id @default(cuid())
+  hermesAgentId String
+  name          String
+  description   String?
+  inputSchema   Json?
+  outputSchema  Json?
+  costEstimate  Float?
+  avgDuration   Int?
+  usageCount    Int      @default(0)
+
+  hermesAgent   HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
+  @@unique([hermesAgentId, name])
+  @@index([hermesAgentId])
+}
+
+// ─── HermesToolPermission ─────────────────────────────────────────────────────
+
+model HermesToolPermission {
+  id            String   @id @default(cuid())
+  hermesAgentId String
+  toolName      String
+  permission    ToolPermissionLevel @default(DENY)
+  conditions    Json?
+
+  hermesAgent   HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
+  @@unique([hermesAgentId, toolName])
+  @@index([hermesAgentId])
+}
+
+enum ToolPermissionLevel {
+  ALLOW
+  DENY
+  READ_ONLY
+  WRITE_ONLY
+  APPROVAL_REQUIRED
+}
+
+// ─── HermesSession ────────────────────────────────────────────────────────────
+
+model HermesSession {
+  id            String   @id @default(cuid())
+  hermesAgentId String
+  userId        String
+  tenantId      String
+  workspaceId   String?
+  threadId      String   @unique @default(cuid())
+  status        SessionStatus @default(ACTIVE)
+  context       Json     @default("{}")
+
+  messages      HermesMessage[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  expiresAt     DateTime?
+
+  @@index([hermesAgentId, tenantId])
+  @@index([userId, tenantId])
+  @@index([threadId])
+  @@index([status, tenantId])
+}
+
+enum SessionStatus {
+  ACTIVE
+  SUSPENDED
+  COMPLETED
+  EXPIRED
+}
+
+// ─── HermesMessage ───────────────────────────────────────────────────────────
+
+model HermesMessage {
+  id           String   @id @default(cuid())
+  sessionId    String
+  role         MessageRole
+  content      String   @db.Text
+  metadata     Json?
+  toolCalls    Json?
+  toolResults  Json?
+  error        String?
+
+  session      HermesSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+enum MessageRole {
+  USER
+  HERMES
+  SYSTEM
+}
+
+// ─── HermesMemoryEntry ────────────────────────────────────────────────────────
+
+model HermesMemoryEntry {
+  id            String   @id @default(cuid())
+  hermesAgentId String
+  tenantId      String
+  workspaceId   String?
+  type          HermesMemoryType
+  content       String   @db.Text
+  summary       String?  @db.Text
+  embedding     Float[]
+  importance    Float    @default(0.5)
+  source        String?
+  metadata      Json?
+  expiresAt     DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([hermesAgentId, tenantId])
+  @@index([hermesAgentId, type])
+  @@index([tenantId])
+}
+
+enum HermesMemoryType {
+  PERSONAL
+  EPISODIC
+  PROCEDURAL
+}
+
+// ─── HermesAuditLog ───────────────────────────────────────────────────────────
+
+model HermesAuditLog {
+  id             String   @id @default(cuid())
+  hermesAgentId  String
+  sessionId      String?
+  taskId         String?
+  tenantId       String
+  workspaceId     String?
+  action         String
+  resource       String?
+  resourceId     String?
+  request        Json?
+  response       Json?
+  decision       String?
+  reason         String?
+  governanceRule String?
+  durationMs     Int?
+  costUsd        Float?
+  tokensUsed     Int?
+  createdAt      DateTime @default(now())
+
+  @@index([hermesAgentId, tenantId])
+  @@index([tenantId, createdAt])
+  @@index([action, tenantId])
+}
+
+// ─── ApprovalWorkflow ─────────────────────────────────────────────────────────
+
+model ApprovalWorkflow {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  workflowType  ApprovalWorkflowType
+  currentStep   Int      @default(0)
+  status        ApprovalStatus @default(PENDING)
+  context       Json     @default("{}")
+  result        Json?
+  requesterId   String
+  tenantId      String
+  workspaceId   String?
+  routineRunId  String?
+
+  steps         ApprovalWorkflowStep[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  completedAt   DateTime?
+
+  @@index([tenantId])
+  @@index([status, tenantId])
+  @@index([requesterId, tenantId])
+}
+
+enum ApprovalWorkflowType {
+  HIRE
+  FIRE
+  REFUND
+  CONTRACT
+  BUDGET
+  VENDOR_PAYMENT
+  DATA_ACCESS
+  CUSTOM
+}
+
+model ApprovalWorkflowStep {
+  id                  String   @id @default(cuid())
+  approvalWorkflowId  String
+  stepOrder           Int
+  approverRole        UserRole[]
+  approverId          String?
+  status              ApprovalStatus @default(PENDING)
+  decision            String?
+  comment             String?
+  decidedAt           DateTime?
+
+  approvalWorkflow    ApprovalWorkflow @relation(fields: [approvalWorkflowId], references: [id], onDelete: Cascade)
+
+  @@unique([approvalWorkflowId, stepOrder])
+  @@index([approvalWorkflowId])
+}
+
+// ─── Updates to existing models ───────────────────────────────────────────────
+
+// Add to Agent model:
+// hermesAgentId  String?   @unique
+// workspaceId     String?
+
+// Add to MemoryEntry model:
+// workspaceId     String?

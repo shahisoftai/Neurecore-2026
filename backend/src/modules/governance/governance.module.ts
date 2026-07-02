@@ -7,6 +7,8 @@ import {
 } from './governance.controller';
 import { GovernanceRulesService } from './services/governance-rules.service';
 import { ApprovalsService } from './services/approvals.service';
+import { ApprovalScoringService } from './services/approval-scoring.service';
+import { ApprovalEnrichmentService } from './services/approval-enrichment.service';
 
 @Module({
   controllers: [
@@ -15,7 +17,17 @@ import { ApprovalsService } from './services/approvals.service';
     GovernanceAnomaliesController,
     ApprovalsController,
   ],
-  providers: [GovernanceRulesService, ApprovalsService],
-  exports: [GovernanceRulesService, ApprovalsService],
+  providers: [
+    GovernanceRulesService,
+    ApprovalsService,
+    ApprovalScoringService,
+    ApprovalEnrichmentService,
+  ],
+  exports: [
+    GovernanceRulesService,
+    ApprovalsService,
+    ApprovalScoringService,
+    ApprovalEnrichmentService,
+  ],
 })
-export class GovernanceModule {}
+export class GovernanceModule { }

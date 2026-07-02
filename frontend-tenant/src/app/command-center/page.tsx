@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 
 import { useTenantAuth } from '@/hooks/useTenantAuth';
+import { useTimeline } from '@/hooks/useTimeline';
 import TenantShell from '@/components/TenantShell';
 import { KpiCard } from '@/components/creatio/KpiCard';
 import { QuickAction } from '@/components/creatio/QuickAction';
@@ -58,6 +59,7 @@ import { StatusBadge } from '@/components/creatio/StatusBadge';
 import { AgentCard } from '@/components/agent-card/AgentCard';
 import { AreaChart } from '@/components/charts/AreaChart';
 import { DonutChart } from '@/components/charts/DonutChart';
+import { ImpactTimeline, TimelineFilter } from '@/components/timeline';
 import { useAgentStore } from '@/stores/agentStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useWorkflowStore } from '@/stores/workflowStore';
@@ -134,6 +136,26 @@ export default function CommandCenterPage() {
   const [pendingApprovals, setPendingApprovals] = useState(0);
   const [monthCost, setMonthCost] = useState<number | null>(null);
   const [agentInboxCount, setAgentInboxCount] = useState<number | null>(null);
+  const [showTimeline, setShowTimeline] = useState(true); // Toggle between grid and timeline view
+
+  // Timeline data (Phase 2: Impact Timeline)
+  const {
+    events: timelineEvents,
+    isLoading: timelineLoading,
+    filter: timelineFilter,
+    setFilter: setTimelineFilter,
+    sortBy: timelineSort,
+    setSortBy: setTimelineSort,
+    searchTerm: timelineSearch,
+    setSearchTerm: setTimelineSearch,
+    eventCounts: timelineEventCounts,
+    summary: timelineSummary,
+  } = useTimeline({
+    initialFilter: 'urgent',
+    initialSort: 'impact',
+    autoRefresh: true,
+    refreshInterval: 30000,
+  });
 
   // ── Data fetchers ────────────────────────────────────────────────────
   // Performance fix: a single /command-center/summary call replaces the
@@ -374,6 +396,56 @@ export default function CommandCenterPage() {
           />
         </motion.div>
 
+        {/* ── PHASE 2: IMPACT TIMELINE SECTION ─────────────────── */}
+        {showTimeline && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-accent-500" />
+                Impact Timeline
+              </h2>
+              <button
+                onClick={() => setShowTimeline(false)}
+                className="text-xs text-zinc-500 hover:text-zinc-300 transition"
+              >
+                Hide
+              </button>
+            </div>
+
+            <div className="card-surface p-4">
+              <TimelineFilter
+                activeFilter={timelineFilter}
+                onFilterChange={setTimelineFilter}
+                searchTerm={timelineSearch}
+                onSearchChange={setTimelineSearch}
+                eventCounts={timelineEventCounts}
+                className="mb-4"
+              />
+
+              <ImpactTimeline
+                events={timelineEvents}
+                isLoading={timelineLoading}
+                isEmpty={timelineEvents.length === 0}
+                onEventClick={(eventId) => {
+                  // Navigate to event detail or open inspector
+                  console.log('Event clicked:', eventId);
+                }}
+                onActionClick={(eventType, target) => {
+                  if (target) {
+                    router.push(target);
+                  }
+                }}
+                maxHeight="max-h-[500px]"
+              />
+            </div>
+          </motion.div>
+        )}
+
         {/* ── DEPARTMENT CARDS GRID + ACTIVITY ───────────────────── */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           {/* Department cards */}
@@ -425,13 +497,12 @@ export default function CommandCenterPage() {
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                            accent === 'accent' ? 'bg-accent-500/15 text-accent-500' :
-                            accent === 'success' ? 'bg-state-success/15 text-state-success' :
-                            accent === 'warning' ? 'bg-state-warning/15 text-state-warning' :
-                            accent === 'info' ? 'bg-state-info/15 text-state-info' :
-                            'bg-status-strategy/15 text-status-strategy'
-                          }`}>
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${accent === 'accent' ? 'bg-accent-500/15 text-accent-500' :
+                              accent === 'success' ? 'bg-state-success/15 text-state-success' :
+                                accent === 'warning' ? 'bg-state-warning/15 text-state-warning' :
+                                  accent === 'info' ? 'bg-state-info/15 text-state-info' :
+                                    'bg-status-strategy/15 text-status-strategy'
+                            }`}>
                             <Building2 className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
@@ -490,12 +561,11 @@ export default function CommandCenterPage() {
                       onClick={() => log.taskId && openInspector('task', log.taskId)}
                       className="flex items-center gap-2.5 p-2 rounded-md hover:bg-surface-overlay cursor-pointer transition"
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        log.status === 'COMPLETED' ? 'bg-state-success' :
-                        log.status === 'FAILED' ? 'bg-state-danger' :
-                        log.status === 'RUNNING' ? 'bg-state-info' :
-                        'bg-zinc-500'
-                      }`} />
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${log.status === 'COMPLETED' ? 'bg-state-success' :
+                          log.status === 'FAILED' ? 'bg-state-danger' :
+                            log.status === 'RUNNING' ? 'bg-state-info' :
+                              'bg-zinc-500'
+                        }`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-zinc-200 truncate">
                           {log.agent?.name ?? log.agentId.slice(0, 8)}
@@ -526,11 +596,10 @@ export default function CommandCenterPage() {
                   <button
                     key={opt.value}
                     onClick={() => setRange(opt.value)}
-                    className={`px-2.5 py-1 rounded-md text-xs transition ${
-                      range === opt.value
+                    className={`px-2.5 py-1 rounded-md text-xs transition ${range === opt.value
                         ? 'bg-accent-500 text-white'
                         : 'text-zinc-500 hover:text-zinc-300 hover:bg-surface-overlay'
-                    }`}
+                      }`}
                   >
                     {opt.label}
                   </button>

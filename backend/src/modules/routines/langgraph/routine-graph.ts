@@ -24,6 +24,7 @@ import {
   ValidationWarning,
 } from '../interfaces/routine.interface';
 import { AgentCheckpointService } from '../../agents/langgraph/checkpoint.service';
+import { ApprovalWorkflowEngine } from '../../hermes/services/approval-workflow.engine';
 
 // ─── State Schema ─────────────────────────────────────────────────────────────
 
@@ -113,12 +114,13 @@ export class RoutineGraph {
     ReturnType<ReturnType<typeof this.buildGraph>['compile']>
   > | null = null;
 
-  // Store current node being executed (set before calling node functions)
   private currentNode: RoutineNode | null = null;
+  private pendingApprovals: Map<string, string> = new Map();
 
   constructor(
     private readonly config: ConfigService,
     private readonly checkpointService: AgentCheckpointService,
+    private readonly approvalEngine: ApprovalWorkflowEngine,
   ) {
     this.initializeGraph();
   }
@@ -360,20 +362,46 @@ export class RoutineGraph {
     const execution: NodeExecution = {
       nodeId: node.id,
       nodeName: node.name,
-      status: 'pending', // Waiting for human
+      status: 'pending',
       startedAt: new Date(),
     };
 
-    // In production, this would:
-    // 1. Create approval request
-    // 2. Wait for approval (async via events)
-    // 3. Resume when approved
+    const approvalConfig = node.config?.approval;
+    if (!approvalConfig) {
+      this.logger.warn(`[approval] Node ${node.id} has no approval config, auto-approved`);
+      return {
+        nodeExecutions: [{ ...execution, status: 'completed', completedAt: new Date() }],
+        currentNodeId: node.id,
+        shouldContinue: true,
+      };
+    }
 
-    return {
-      nodeExecutions: [execution],
-      currentNodeId: node.id,
-      shouldContinue: false, // Pause until approved
-    };
+    try {
+      const workflow = await this.approvalEngine.create({
+        name: approvalConfig.name ?? `${node.name} Approval`,
+        workflowType: (approvalConfig.workflowType ?? 'CUSTOM') as any,
+        context: { ...state.input, nodeId: node.id, routineId: state.routineId },
+        steps: (approvalConfig.steps ?? [{ stepOrder: 0, approverRole: (approvalConfig.approverRoles ?? ['ADMIN']) }]) as any,
+        requesterId: state.runId,
+        tenantId: state.tenantId,
+        routineRunId: state.runId,
+      });
+
+      this.pendingApprovals.set(workflow.id, node.id);
+
+      return {
+        nodeExecutions: [execution],
+        currentNodeId: node.id,
+        shouldContinue: false,
+      };
+    } catch (err) {
+      this.logger.error(`[approval] Failed to create approval workflow: ${err}`);
+      return {
+        nodeExecutions: [{ ...execution, status: 'failed', error: String(err) }],
+        currentNodeId: node.id,
+        shouldContinue: false,
+      };
+    }
   };
 
   /**
@@ -606,6 +634,27 @@ export class RoutineGraph {
         },
       };
     }
+  }
+
+  /**
+   * Resume routine execution after approval is granted.
+   * Called by the approval webhook when a workflow is approved.
+   */
+  async resumeFromApproval(workflowId: string, decision: 'APPROVED' | 'REJECTED'): Promise<void> {
+    const nodeId = this.pendingApprovals.get(workflowId);
+    if (!nodeId) {
+      this.logger.warn(`[approval] No pending workflow found for ${workflowId}`);
+      return;
+    }
+
+    if (decision === 'REJECTED') {
+      this.logger.log(`[approval] Workflow ${workflowId} rejected, routine will be cancelled`);
+      this.pendingApprovals.delete(workflowId);
+      return;
+    }
+
+    this.pendingApprovals.delete(workflowId);
+    this.logger.log(`[approval] Workflow ${workflowId} approved, routine can continue`);
   }
 
   /**

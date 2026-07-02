@@ -20,6 +20,7 @@ import { ToolsModule } from './modules/tools/tools.module';
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
 // Phase 3
 import { GovernanceModule } from './modules/governance/governance.module';
+import { HermesModule } from './modules/hermes/hermes.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
@@ -40,6 +41,7 @@ import { InboxModule } from './modules/inbox/inbox.module';
 import { GoalsModule } from './modules/goals/goals.module';
 import { SecurityModule } from './modules/security/security.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { WorkflowsModule } from './modules/workflows/workflows.module';
 // Phase 3 — EAOS-1 entity workspace
 import { EntitiesModule } from './modules/entities/entities.module';
 import { MissionFeedModule } from './modules/mission-feed/mission-feed.module';
@@ -60,6 +62,12 @@ import { SolutionPacksModule } from './modules/solution-packs/solution-packs.mod
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 // Phase 8 — EAOS-6 First Vertical Pack (Retail)
 import { RetailModule } from './modules/retail/retail.module';
+// Phase 2 — Dashboard aggregation (Command Center)
+import { CommandCenterModule } from './modules/command-center/command-center.module';
+// Phase 3 — Cross-Department Context
+import { ContextModule } from './modules/context/context.module';
+// Phase 5 — Batch Approvals & Learning Loop
+import { ApprovalsModule } from './modules/approvals/approvals.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -107,6 +115,7 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
 
     // Phase 3 — Governance, Observability, Notifications, Departments, Models
     GovernanceModule,
+    HermesModule,
     ObservabilityModule,
     NotificationsModule,
     DepartmentsModule,
@@ -153,6 +162,9 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     // Phase 5 — Paperclip Projects
     ProjectsModule,
 
+    // Phase 5 — Workflows (EAOS-2 / Paperclip)
+    WorkflowsModule,
+
     // Phase 3 — EAOS-1 entity workspace
     EntitiesModule,
     MissionFeedModule,
@@ -174,6 +186,13 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
 
     // Phase 8 — EAOS-6 First Vertical Pack (Retail)
     RetailModule,
+
+    // Phase 2 — Dashboard Command Center aggregation
+    CommandCenterModule,
+    // Phase 3 — Cross-Department Context
+    ContextModule,
+    // Phase 5 — Batch Approvals & Learning Loop
+    ApprovalsModule,
   ],
   providers: [
     // Global rate-limit guard
