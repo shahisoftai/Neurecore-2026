@@ -4,7 +4,7 @@
 **Scope:** Complete, reproducible, error-tolerant deployment of:
 1. **Backend** (NestJS) on Contabo (port 3003)
 2. **Frontend-Admin** (Next.js) on Contabo (internal 3020 → `cc.neurecore.com` via CyberPanel)
-3. **Frontend-Tenant** (Next.js) — Vercel-only (`hq.neurecore.com`)
+  3. **Frontend-Tenant** (Next.js) on Contabo (internal port TBD → `hq.neurecore.com` via CyberPanel)
 4. **CORS sidecar proxy** (port 3004) — required
 5. **Observability stack** (Prometheus / Alertmanager / Grafana)
 
@@ -29,7 +29,7 @@ ssh contabo 'pm2 list | grep -E "neurecore-(backend|admin|eaos|cors-proxy)"'
 #   neurecore-admin     — id 24, online, uptime > 0
 #   neurecore-eaos      — id 35, online, uptime > 0  (this is NOT our app — see §6.2)
 #   neurecore-cors-proxy — id 7,  online, uptime > 0
-# NOTE: 'neurecore-tenant' will NOT appear — it was removed from Contabo (see §6.1)
+# NOTE: After first deploy, 'neurecore-tenant' PM2 process will appear on port 3005
 
 # 3. Backend health is green
 ssh contabo 'curl -s http://localhost:3003/api/v1/health'
@@ -81,7 +81,7 @@ If any check fails, **STOP and fix that first**. Do not proceed to deploy on top
         │                     │                     │
         ▼                     ▼                     ▼
   cc.neurecore.com      hq.neurecore.com      brain.neurecore.com
-  (CyberPanel cached)   (Vercel-served)       (CyberPanel reverse proxy)
+  (CyberPanel reverse)  (CyberPanel reverse)  (CyberPanel reverse proxy)
         │                                           │
         ▼                                           ▼
    localhost:3020                              localhost:3003
@@ -388,7 +388,7 @@ Admin runs on Contabo behind CyberPanel (OpenLiteSpeed 2.4.4). PM2 process `neur
 | `frontend-admin/next.config.js` | Uses `outputFileTracingRoot: path.join(__dirname, "..")`. Sets `basePath: "/admin"` and `assetPrefix: "/admin"` **only in production**. In dev: routes are unprefixed. |
 | `frontend-admin/package.json` | Next 15.0.0, React 19.0.0, no `output: 'standalone'` in config — but `next.config.js` is CommonJS and uses `outputFileTracingRoot` (Next 15+ standalone-style). |
 | `frontend-admin/.env.production` | `NEXT_PUBLIC_API_URL=https://brain.neurecore.com/api/v1`, `NEXT_PUBLIC_ADMIN_URL=https://cc.neurecore.com` |
-| `frontend-admin/.env.local` | Contains a Vercel OIDC token (do NOT copy to production) |
+| `frontend-admin/.env.local` | Local dev secrets only — do NOT copy to production |
 | Admin `pm2` args | `bash -c npx next start --hostname 127.0.0.1 --port 3020` |
 | Admin cwd | `/opt/neurecore/frontend-admin` |
 
@@ -476,7 +476,6 @@ ssh contabo "pm2 start neurecore-admin"
 ### 4.5 Why Build On Contabo, Not Locally
 
 - Local builds use local `node_modules/`. Contabo's `node_modules/` is older and resolves packages differently. Building locally and rsyncing `.next/` can cause runtime errors only in production.
-- The `.env.local` on local has Vercel OIDC tokens that must NOT be deployed.
 - The next.config.js sets `outputFileTracingRoot` relative to the project root, which works correctly on Contabo only.
 
 If you absolutely must build locally and rsync `.next/`:
@@ -507,129 +506,112 @@ Common causes and fixes:
 
 ---
 
-## 5. Frontend-Tenant Deploy (Next.js → Vercel Only → hq.neurecore.com)
+## 5. Frontend-Tenant Deploy (Next.js → Contabo Port 3005 → hq.neurecore.com)
 
-**Critical: Frontend-tenant does NOT run on Contabo.** It is deployed exclusively to Vercel via `git push origin main`. CyberPanel serves cached HTML responses for `hq.neurecore.com`, but the origin is Vercel.
+Tenant runs on Contabo behind CyberPanel, same pattern as admin. PM2 process `neurecore-tenant` (port **3005**, internal). External: `https://hq.neurecore.com` via CyberPanel reverse proxy.
+
+**Note:** The tenant source was previously Vercel-only. It has been migrated to Contabo. All three NeureCore frontends (backend, admin, tenant) now run on Contabo.
 
 ### 5.1 Critical Architecture Facts (Audited From Code)
 
 | File | Finding |
 |---|---|
-| `frontend-tenant/next.config.js` | Next 15.5.12, React 19.0.0, no `output: 'standalone'` set. Has `compress: true`, security headers, route rewrites for backward-compat migration. |
-| `frontend-tenant/package.json` | `dev`/`build`/`start`/`lint`/`type-check` scripts; `start: "next start -p 3001"` (local dev port only). |
+| `frontend-tenant/next.config.js` | Next 15.5.12, React 19.0.0, no `output: 'standalone'`. Has `compress: true`, security headers, route rewrites. |
+| `frontend-tenant/package.json` | `dev`/`build`/`start`/`lint`/`type-check` scripts; `start: "next start -p 3001"` (local dev port). |
 | `frontend-tenant/.env.production` | `NEXT_PUBLIC_API_URL=https://brain.neurecore.com/api/v1`, `NEXT_PUBLIC_TENANT_URL=https://hq.neurecore.com` |
 | `frontend-tenant/.env.example` | Template — copy to `.env.local` for local dev. |
-| Vercel project | Token in `frontend-admin/.env.local` (admin project, but tenant likely uses same Vercel account). Project IDs: `prj_PnHNvyq8699ohZrmUAwGtLkmKzH`. |
-| Local port | `3001` for `next dev` (no port conflicts since tenant doesn't run on Contabo) |
+| Internal port | **3005** (chosen to avoid conflict with GUV on 3001 and admin on 3020) |
+| Local dev port | `3001` (`next dev` — safe since port 3001 on Contabo is GUV's, not tenant's) |
 
-### 5.2 Safe Tenant Deploy — `git push` to Vercel
+### 5.2 Tenant Port Selection Rationale
+
+| Port | Status on Contabo | Reason |
+|---|---|---|
+| 3001 | **TAKEN** by GUV `app-frontend` | PM2 id 2, `next-server (v1`, pid 92443 |
+| 3002 | **VACANT** | Was admin port, now moved to 3020 |
+| 3003 | **TAKEN** by neurecore-backend | NestJS |
+| 3004 | **TAKEN** by neurecore-cors-proxy | CORS sidecar |
+| **3005** | **VACANT → assigned to tenant** | Chosen to minimize renumbering |
+| 3011 | **TAKEN** by neurecore-eaos | EAOS |
+| 3020 | **TAKEN** by neurecore-admin | Admin |
+
+### 5.3 Safe Tenant Deploy — Step by Step
 
 ```bash
-cd /home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant
+LOCAL="/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant"
+REMOTE="/opt/neurecore/frontend-tenant"
 
 # ─── Phase A: Pre-flight ───────────────────────────────────────────────────
 
-git status                              # local working tree clean?
-git log --oneline -5                    # recent commits
-git fetch origin && git status -uno     # in sync with origin/main?
-
-# Verify local dev works (sanity):
-npm run type-check                      # should pass with 0 errors
-npm run lint                            # should pass
-
-# ─── Phase B: Build locally to catch errors early ──────────────────────────
-
-NODE_ENV=production npm run build 2>&1 | tail -30
-# Expect: "Compiled successfully" — fixes 90% of deploy failures
-
-# ─── Phase C: Push to origin (auto-deploys to Vercel) ──────────────────────
-
-git push origin main
-# Vercel watches origin/main on the linked repo and auto-deploys.
-# Monitor: https://vercel.com/dashboard → select tenant project → Deployments tab
-
-# ─── Phase D: Verify Vercel deploy ────────────────────────────────────────
-
-# Wait ~60s for build, then:
+ssh contabo "pm2 show neurecore-tenant 2>&1 | grep status"   # should fail (not yet deployed)
+ssh contabo "curl -s -o /dev/null -w '3005 HTTP %{http_code}\n' http://localhost:3005/"
+# Expect: connection refused (not yet deployed)
 curl -s -o /dev/null -w "hq.neurecore.com HTTP %{http_code}\n" https://hq.neurecore.com/
-curl -s -o /dev/null -w "hq.neurecore.com/login HTTP %{http_code}\n" https://hq.neurecore.com/login
+# Expect: 200 or 524 (CyberPanel cached or origin timeout)
 
-# Smoke test the API connection from the deployed frontend:
-# (manual: open browser → network tab → confirm requests go to brain.neurecore.com/api/v1)
+# ─── Phase B: Stop (avoid crash-loop during rebuild) ──────────────────────
+
+ssh contabo "pm2 stop neurecore-tenant 2>/dev/null || echo 'not running yet'"
+
+# ─── Phase C: Sync source (preserves node_modules + .env) ─────────────────
+
+rsync -avz -e ssh \
+  --exclude='node_modules' \
+  --exclude='.next' \
+  --exclude='.env.local' \
+  --exclude='.git' \
+  --exclude='../*' \
+  "$LOCAL/" "contabo:$REMOTE/"
+
+# ─── Phase D: Install deps if package.json changed ─────────────────────────
+
+ssh contabo "cd $REMOTE && diff -q package.json <(ssh contabo cat $REMOTE/package.json 2>/dev/null) || echo 'changed'"
+# If changed:
+ssh contabo "cd $REMOTE && npm ci --omit=dev --no-audit --no-fund 2>&1 | tail -20"
+
+# ─── Phase E: Build on Contabo ───────────────────────────────────────────
+
+ssh contabo "cd $REMOTE && NODE_ENV=production npm run build 2>&1 | tail -30"
+# Expect: "Compiled successfully"
+ssh contabo "ls -la $REMOTE/.next/BUILD_ID 2>&1"
+
+# ─── Phase F: Start PM2 ──────────────────────────────────────────────────
+
+ssh contabo "pm2 start $REMOTE ecosystem.config.js 2>/dev/null || \
+  pm2 start neurecore-tenant --interpreter bash -- \
+    'npx next start --hostname 127.0.0.1 --port 3005'"
+ssh contabo "sleep 8"
+
+# Verify PM2 config was saved:
+ssh contabo "pm2 show neurecore-tenant | grep -E 'port|hostname|script'"
+
+# ─── Phase G: Verify live ────────────────────────────────────────────────
+
+ssh contabo "pm2 list | grep neurecore-tenant"
+ssh contabo "curl -s -o /dev/null -w '3005 HTTP %{http_code}\n' http://localhost:3005/"
+curl -s -o /dev/null -w "hq.neurecore.com HTTP %{http_code}\n" https://hq.neurecore.com/
 ```
 
-### 5.3 Vercel Project Settings (Verify Before Deploy)
+### 5.4 Tenant Rollback
 
-The Vercel project **must** have:
-- **Root Directory**: `frontend-tenant` (NOT the repo root)
-- **Framework Preset**: Next.js (auto-detected)
-- **Build Command**: `next build` (default; do not customize unless needed)
-- **Output Directory**: `.next` (default)
-- **Install Command**: `npm install` (default)
-- **Node Version**: 20.x (matching local dev / backend runtime)
-- **Environment Variables** (set in Vercel project settings):
-  ```
-  NEXT_PUBLIC_API_URL=https://brain.neurecore.com/api/v1
-  NEXT_PUBLIC_API_TIMEOUT=30000
-  NEXT_PUBLIC_TENANT_URL=https://hq.neurecore.com
-  NEXT_PUBLIC_ADMIN_URL=https://cc.neurecore.com
-  NEXT_PUBLIC_APP_NAME=NeureCore
-  NEXT_PUBLIC_APP_VERSION=1.0.0
-  NEXT_PUBLIC_GOOGLE_CLIENT_ID=584510836530-pi64n9866hcuv5kuip2fnagsmhtjp3h0.apps.googleusercontent.com
-  NEXT_PUBLIC_WS_URL=wss://brain.neurecore.com
-  NEXT_PUBLIC_ALLOW_SIGNUP=true
-  NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION=true
-  NEXT_PUBLIC_DEFAULT_TIER=free
-  NEXT_PUBLIC_ENABLE_ANALYTICS=true
-  NEXT_PUBLIC_ENABLE_DEBUG=false
-  NEXT_PUBLIC_ENABLE_MAINTENANCE=false
-  NEXT_PUBLIC_ENABLE_VOICE_COMMANDS=false
-  NEXT_PUBLIC_ENABLE_WORKFLOW_AUTOMATION=false
-  NEXT_PUBLIC_DEFAULT_THEME=system
-  NEXT_PUBLIC_ENABLE_ANIMATIONS=true
-  NEXT_PUBLIC_ENABLE_SOUND=false
-  NEXT_PUBLIC_DEFAULT_LANGUAGE=en
-  NEXT_PUBLIC_SUPPORTED_LANGUAGES=en,es,fr,de,zh
-  NEXT_PUBLIC_SENTRY_DSN=
-  NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
-  NEXT_PUBLIC_STORAGE_PROVIDER=local
-  NEXT_PUBLIC_S3_BUCKET=
-  ```
-
-**To verify these are set correctly:**
-1. Vercel Dashboard → select `neurecorebase` (or whichever project) → Settings → Environment Variables
-2. Confirm every key above exists for the `production` environment
-3. After a deploy, in the deployment output → check the "Environment Variables" section to confirm they're injected
-
-### 5.4 Vercel Deploy Rule
-
-**Always use `git push origin main` — NEVER use `vercel deploy --prod` from CLI.** The CLI has a known duplicate-path bug when the dashboard `rootDirectory` is set (which it is). `git push` triggers the dashboard's auto-deploy which respects all settings correctly.
-
-### 5.5 Tenant Rollback
-
-Vercel keeps every deployment. Rollback via:
-1. Vercel Dashboard → Deployments tab → find the last good deploy → click ⋯ → "Promote to Production"
-
-Or via CLI (NOT recommended for the bug above, but for rollback specifically):
 ```bash
-npx vercel rollback --token <token>  # uses the last successful deploy
+# Fast: restore .next from git
+ssh contabo "pm2 stop neurecore-tenant"
+ssh contabo "cd /opt/neurecore/frontend-tenant && rm -rf .next"
+ssh contabo "cd /opt/neurecore/frontend-tenant && git stash list | head"
+# Apply most recent stash if available, or:
+ssh contabo "cd /opt/neurecore/frontend-tenant && NODE_ENV=production npm run build"
+ssh contabo "pm2 start neurecore-tenant"
 ```
 
-If a deploy is in progress and stuck, cancel it from the dashboard and trigger a new deploy from the previous commit:
-```bash
-git revert HEAD --no-edit
-git push origin main
-```
-
-### 5.6 If `git push` Fails
+### 5.5 If Tenant Build Fails on Contabo
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Permission denied (publickey)` | GitHub SSH key not configured | `ssh -T git@github.com` — should print "Hi <user>!" |
-| `! [rejected] main -> main (non-fast-forward)` | Remote has commits you don't have locally | `git fetch origin && git rebase origin/main && git push origin main` |
-| Vercel build fails: `Module not found` | Missing dependency in `package.json` | `npm install <pkg>` locally, commit, push |
-| Vercel build fails: `EADDRINUSE` during local dev | You have `next dev` running on 3001 | `pkill -f "next dev"` then retry |
-| Vercel deploy succeeds but site shows 500 | Missing env var in Vercel project settings | Add the missing var, redeploy from Vercel dashboard |
+| `EACCES` writing to `.next/` | Wrong file ownership | `ssh contabo 'chown -R cyberpanel:cyberpanel /opt/neurecore/frontend-tenant/.next /opt/neurecore/frontend-tenant/node_modules'` |
+| `ELIFECYCLE` during `npm ci` | Disk full or partial install | `ssh contabo 'df -h /opt/neurecore'`, then retry |
+| Build OOMs | 11 GiB shared with 10 other apps | Build during low-traffic hours |
+| `Module not found` | `node_modules` stale | `ssh contabo 'cd $REMOTE && rm -rf node_modules && npm install --omit=dev'` |
 
 ---
 
@@ -743,7 +725,7 @@ curl -s https://brain.neurecore.com/api/v1/health | python3 -c 'import json,sys;
 curl -s -o /dev/null -w "✓ cc.neurecore.com/admin/ HTTP %{http_code}\n" https://cc.neurecore.com/admin/
 curl -s -o /dev/null -w "✓ cc.neurecore.com/      HTTP %{http_code}\n" https://cc.neurecore.com/
 
-# ─── Frontend-Tenant (via Vercel) ──────────────────────────────────────────
+# ─── Frontend-Tenant ──────────────────────────────────────────────────────
 
 curl -s -o /dev/null -w "✓ hq.neurecore.com/      HTTP %{http_code}\n" https://hq.neurecore.com/
 curl -s -o /dev/null -w "✓ hq.neurecore.com/login HTTP %{http_code}\n" https://hq.neurecore.com/login
@@ -809,17 +791,26 @@ ssh contabo "rm -rf dist/ && tar -xzf /tmp/dist-backup-<TIMESTAMP>.tar.gz"
 ssh contabo "pm2 start neurecore-backend"
 ```
 
-### 10.2 "I Pushed to Vercel and the Site Is Down"
+### 10.2 "Tenant Is Down"
 
 ```bash
-# 1. Vercel dashboard → Deployments → click the failed deploy → View logs
-# 2. Most common: missing env var → add it → redeploy from dashboard
-# 3. If you can't figure it out in 5 min:
-#    - Go to Deployments → find last green deploy → ⋯ → Promote to Production
-# 4. If the codebase has a bug, revert locally and push:
-cd /home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant
-git revert HEAD --no-edit
-git push origin main
+# 1. Check PM2 status
+ssh contabo "pm2 list | grep neurecore-tenant"
+
+# 2. Check the last 50 error log lines
+ssh contabo "tail -50 /root/.pm2/logs/neurecore-tenant-error.log"
+
+# 3. Common fixes:
+ssh contabo "pm2 restart neurecore-tenant"
+ssh contabo "sleep 8"
+ssh contabo "curl -s -o /dev/null -w '3005 HTTP %{http_code}\n' http://localhost:3005/"
+
+# 4. If port 3005 is taken by something else:
+ssh contabo "ss -tlnp | grep 3005"
+
+# 5. If the build is broken, rebuild:
+ssh contabo "cd /opt/neurecore/frontend-tenant && NODE_ENV=production npm run build"
+ssh contabo "pm2 restart neurecore-tenant"
 ```
 
 ### 10.3 "Admin Shows a Blank Page After Deploy"
@@ -887,7 +878,7 @@ ssh contabo "cd /opt/neurecore/backend/backend && \
 |---|---|---|---|
 | Backend | Low-traffic hours (off-peak) | Frontend teams (API contract) | 5 min (dist restore) |
 | Frontend-Admin | Any | Backend team (if API changes) | 5 min (revert + rebuild) |
-| Frontend-Tenant | Any | Backend team (if API changes) | 1 min (Vercel dashboard revert) |
+| Frontend-Tenant | Any | Backend team (if API changes) | 5 min (pm2 restart + rebuild) |
 | CORS proxy | Backend deploy | Backend team | 30 sec (pm2 restart) |
 | Observability | Any | Ops only | 2 min (docker compose restart) |
 | DB migrations | Low-traffic hours | All consumers | 10 min (forward-fix or restore snapshot) |
@@ -921,8 +912,8 @@ ssh contabo "cd /opt/neurecore/backend/backend && \
 │  Admin rebuild:        ssh contabo 'cd /opt/neurecore/frontend-admin &&  │
 │                            NODE_ENV=production npm run build &&          │
 │                            pm2 restart neurecore-admin'                  │
-│  Tenant deploy:        cd frontend-tenant && git push origin main       │
-│  Tenant rollback:      Vercel dashboard → Deployments → Promote prev    │
+│  Tenant deploy:        cd frontend-tenant && rsync → build → pm2 start │
+│  Tenant rollback:      pm2 stop → rm .next → rebuild → pm2 start        │
 ├──────────────────────────────────────────────────────────────────────────┤
 │  NEVER: git pull on Contabo · pnpm on Contabo · reset --hard · upload    │
 │         node_modules · skip migrate status check · port 3000/3001/3002   │
@@ -945,7 +936,7 @@ ssh contabo "cd /opt/neurecore/backend/backend && \
 | `neurecore/backend/.env.production` | `/opt/neurecore/backend/backend/.env` | Production env (DO NOT overwrite) |
 | `neurecore/frontend-admin/` | `/opt/neurecore/frontend-admin/` | Admin Next.js source (synced + rebuilt) |
 | `neurecore/frontend-admin/.env.production` | `/opt/neurecore/frontend-admin/.env.production` | Production env |
-| `neurecore/frontend-tenant/` | (Vercel only — NOT on Contabo) | Tenant source |
+| `neurecore/frontend-tenant/` | `/opt/neurecore/frontend-tenant/` | Tenant source (synced + built on Contabo) |
 | (none) | `/opt/neurecore/cors-proxy.js` | CORS sidecar |
 | (none) | `/opt/neurecore/observability/` | Prom/AM/Grafana stack |
 | `neurecore/scripts/` | (run from local) | Setup scripts: SSH key, tunnel, dev-start |
@@ -968,16 +959,16 @@ ssh contabo "cd /opt/neurecore/backend/backend && \
 | `backend/scripts/start-local-prod.sh` | Start local Postgres + Redis via Docker | Local dev |
 | `neurecore/rebuild.sh` | Rebuild tenant + admin on Contabo (LEGACY — references removed `/var/www/` paths) | Contabo (broken) |
 
-**⚠️ `neurecore/rebuild.sh` is broken** — it references `/var/www/neurecore-tenant` and `/var/www/neurecore-admin` which no longer exist. Use the manual steps in §4.3 (admin) and §5.2 (tenant → Vercel).
+**⚠️ `neurecore/rebuild.sh` is broken** — it references `/var/www/neurecore-tenant` and `/var/www/neurecore-admin` which no longer exist. Use the manual steps in §4.3 (admin) and §5.3 (tenant).
 
 ---
 
 ## Appendix C: Why This Guide Differs From Prior Versions
 
 This guide reflects 2026-07-02 reality:
-1. **Frontend-tenant removed from Contabo** — Vercel only.
-2. **Port 3001 is GUV `app-frontend`, not neurecore-tenant.**
-3. **Port 3002 is vacant** — admin moved to internal 3020.
+1. **All three NeureCore frontends now on Contabo** — backend (3003), admin (3020), tenant (3005).
+2. **Port 3001 is GUV `app-frontend`** — NOT neurecore-tenant.
+3. **Port 3005 is the designated tenant frontend port** — chosen to avoid conflict with GUV (3001), EAOS (3011), and admin (3020).
 4. **CORS is in a sidecar proxy** — `/opt/neurecore/cors-proxy.js` on port 3004.
 5. **Admin has `basePath: '/admin'` in production** — URLs are `/admin/login`, not `/login`.
 6. **Backend tool count is 79** (was 81); 22 migration dirs on disk, 21 applied.

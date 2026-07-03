@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 const STEPS: { id: OnboardingStep; label: string; description: string }[] = [
   { id: 'company', label: 'Company', description: 'Tell us about your company' },
   { id: 'plan', label: 'Plan', description: 'Pick the right tier for you' },
+  { id: 'package', label: 'Package', description: 'Recommended setup' },
   { id: 'template', label: 'Template', description: 'Start with a department setup' },
   { id: 'review', label: 'Review', description: 'Customize what was deployed' },
   { id: 'team', label: 'Team', description: 'Invite your teammates' },
@@ -49,6 +50,9 @@ export default function OnboardingSetupPage() {
   const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('');
+  const [industryList, setIndustryList] = useState<{ value: string; label: string }[]>([]);
+  const [packagePreview, setPackagePreview] = useState<Record<string, unknown> | null>(null);
+  const [packageLoading, setPackageLoading] = useState(false);
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [selectedTemplateSlug, setSelectedTemplateSlug] = useState<string | null>(null);
   const [deploymentSummary, setDeploymentSummary] = useState<{
@@ -110,6 +114,12 @@ export default function OnboardingSetupPage() {
       .finally(() => {
         if (!cancelled) setTemplatesLoading(false);
       });
+    void onboardingService
+      .listIndustries()
+      .then((list) => {
+        if (!cancelled) setIndustryList(list ?? []);
+      })
+      .catch(() => {});
 
     return () => {
       cancelled = true;
@@ -166,6 +176,22 @@ export default function OnboardingSetupPage() {
     setError(null);
     try {
       await onboardingService.selectTier(selectedTierId);
+      // If industry is selected, try recommending a package
+      if (industry && selectedTierId) {
+        setPackageLoading(true);
+        try {
+          const pkg = await onboardingService.recommendPackage(industry, selectedTierId);
+          if (pkg) {
+            setPackagePreview(pkg);
+            setStep('package');
+            return;
+          }
+        } catch {
+          // fall through to template step
+        } finally {
+          setPackageLoading(false);
+        }
+      }
       setStep('template');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to select tier.');
@@ -328,13 +354,18 @@ export default function OnboardingSetupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="industry">Industry (optional)</Label>
-                <Input
+                <Label htmlFor="industry">Industry</Label>
+                <select
                   id="industry"
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
-                  placeholder="SaaS, e-commerce, consulting..."
-                />
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Select industry (optional)</option>
+                  {industryList.map((ind) => (
+                    <option key={ind.value} value={ind.value}>{ind.label}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex justify-end">
                 <Button onClick={() => goTo('plan')} disabled={!companyName.trim()}>
@@ -420,6 +451,71 @@ export default function OnboardingSetupPage() {
                 >
                   {submitting && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
                   Continue <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {step === 'package' && packagePreview && (
+            <Card className="p-6 space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold">Recommended package</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Based on your industry and tier, we recommend the following setup.
+                </p>
+              </div>
+              {packageLoading ? (
+                <Skeleton className="h-32 w-full" />
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-zinc-200">
+                      Industry: {(packagePreview.degraded as boolean) && <Badge variant="secondary" className="mr-1 text-xs">Fallback</Badge>}
+                      {String(packagePreview.industry)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {(packagePreview.divisions as Array<{ name: string; agents: Array<unknown> }>)?.map((d) => (
+                        <span key={d.name} className="mr-3">
+                          {d.name} ({d.agents.length})
+                        </span>
+                      )) ?? 'Loading...'}
+                    </p>
+                    {(packagePreview.tierCapacity as Record<string, boolean>)?.overAgentLimit && (
+                      <p className="text-xs text-destructive">Agent count exceeds tier limit. Upgrade or deselect some agents.</p>
+                    )}
+                  </div>
+                </>
+              )}
+              <div className="flex justify-between pt-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setStep('plan')}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" /> Back
+                </Button>
+                <Button
+                  onClick={async () => {
+                    setSubmitting(true);
+                    setError(null);
+                    try {
+                      const result = await onboardingService.deployPackage(
+                        (packagePreview as Record<string, string>).packageId,
+                      );
+                      setDeploymentSummary({
+                        departmentsCreated: (result as { departmentsCreated: number }).departmentsCreated,
+                        agentsCreated: (result as { agentsCreated: number }).agentsCreated,
+                      });
+                      setStep('review');
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : 'Deploy failed.');
+                    } finally {
+                      setSubmitting(false);
+                    }
+                  }}
+                  disabled={submitting}
+                >
+                  {submitting && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                  Deploy Package <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
             </Card>

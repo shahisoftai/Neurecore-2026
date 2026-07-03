@@ -47,23 +47,24 @@ interface RailItem {
 
 const RAIL: RailItem[] = [
   { label: 'Command Center', href: '/command-center', icon: LayoutDashboard },
-  { label: 'Agents',         href: '/marketplace?tab=agents', icon: Users },
-  { label: 'Departments',    href: '/departments', icon: Building2 },
-  { label: 'Tasks',          href: '/departments?tab=tasks', icon: ListTodo },
-  { label: 'Workflows',      href: '/departments?tab=workflows', icon: GitBranch },
-  { label: 'Routines',       href: '/departments?tab=routines', icon: Repeat },
-  { label: 'Goals',          href: '/departments?tab=goals', icon: Target },
-  { label: 'Projects',       href: '/departments?tab=projects', icon: Briefcase },
-  { label: 'Finance',        href: '/finance', icon: DollarSign },
-  { label: 'Intelligence',   href: '/intelligence', icon: BarChart3 },
-  { label: 'Marketplace',    href: '/marketplace', icon: Store },
-  { label: 'Service Desk',   href: '/service-desk?tab=inbox', icon: Headphones },
-  { label: 'Inbox',          href: '/service-desk?tab=inbox', icon: Inbox },
-  { label: 'Approvals',      href: '/service-desk?tab=approvals', icon: CheckSquare },
-  { label: 'Activity',       href: '/service-desk?tab=activity', icon: Activity },
-  { label: 'Connectors',     href: '/marketplace?tab=connectors', icon: Plug },
-  { label: 'Settings',       href: '/intelligence?tab=settings', icon: Cog },
-  { label: 'AI Skills',      href: '/marketplace?tab=spawn', icon: Lightbulb },
+  { label: 'Command Cockpit', href: '/command-cockpit', icon: Activity },
+  { label: 'Agents', href: '/marketplace?tab=agents', icon: Users },
+  { label: 'Departments', href: '/departments', icon: Building2 },
+  { label: 'Tasks', href: '/departments?tab=tasks', icon: ListTodo },
+  { label: 'Workflows', href: '/departments?tab=workflows', icon: GitBranch },
+  { label: 'Routines', href: '/departments?tab=routines', icon: Repeat },
+  { label: 'Goals', href: '/departments?tab=goals', icon: Target },
+  { label: 'Projects', href: '/departments?tab=projects', icon: Briefcase },
+  { label: 'Finance', href: '/finance', icon: DollarSign },
+  { label: 'Intelligence', href: '/intelligence', icon: BarChart3 },
+  { label: 'Marketplace', href: '/marketplace', icon: Store },
+  { label: 'Service Desk', href: '/service-desk?tab=inbox', icon: Headphones },
+  { label: 'Inbox', href: '/service-desk?tab=inbox', icon: Inbox },
+  { label: 'Approvals', href: '/service-desk?tab=approvals', icon: CheckSquare },
+  { label: 'Activity', href: '/service-desk?tab=activity', icon: Activity },
+  { label: 'Connectors', href: '/marketplace?tab=connectors', icon: Plug },
+  { label: 'Settings', href: '/intelligence?tab=settings', icon: Cog },
+  { label: 'AI Skills', href: '/marketplace?tab=spawn', icon: Lightbulb },
 ];
 
 interface IconRailProps {
@@ -84,9 +85,8 @@ export function IconRail({ className = '' }: IconRailProps) {
     <aside
       onMouseEnter={() => setExpanded(true)}
       onMouseLeave={() => setExpanded(false)}
-      className={`shrink-0 border-r border-surface-border bg-surface-raised flex flex-col transition-[width] duration-200 ${
-        expanded ? 'w-56' : 'w-14'
-      } ${className}`}
+      className={`shrink-0 border-r border-surface-border bg-surface-raised flex flex-col transition-[width] duration-200 ${expanded ? 'w-56' : 'w-14'
+        } ${className}`}
       aria-label="Primary navigation"
     >
       {/* Brand */}
@@ -117,11 +117,10 @@ export function IconRail({ className = '' }: IconRailProps) {
               title={expanded ? undefined : item.label}
               aria-label={item.label}
               aria-current={active ? 'page' : undefined}
-              className={`relative flex items-center gap-3 rounded-lg px-2.5 py-2 my-0.5 transition-colors group ${
-                active
+              className={`relative flex items-center gap-3 rounded-lg px-2.5 py-2 my-0.5 transition-colors group ${active
                   ? 'bg-accent-500/15 text-accent-500'
                   : 'text-zinc-400 hover:bg-surface-overlay hover:text-zinc-100'
-              }`}
+                }`}
             >
               <Icon className="w-4 h-4 shrink-0" />
               {expanded ? (

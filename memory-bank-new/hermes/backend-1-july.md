@@ -60,7 +60,7 @@ The platform combines:
 2. `NestFactory.create(AppModule, { logger: ['error','warn','log','debug'] })`.
 3. Security middleware: `helmet()`, `cookie-parser()`.
 4. Global prefix `api` + URI versioning (`v1`).
-5. CORS — strict allow-list in production (Vercel frontends + localhost dev), permissive in dev.
+5. CORS — strict allow-list in production (Contabo frontends + localhost dev), permissive in dev.
 6. Global `ValidationPipe` — `whitelist: true`, `transform: true`, `enableImplicitConversion: true`.
 7. **OpenAPI generation** — `SwaggerModule.createDocument` writes `backend/openapi/openapi.json` and serves Swagger UI at `/api/docs`.
 8. Root handler `/api` returns API info; `/api/metrics` returns Prometheus exposition.
@@ -98,7 +98,7 @@ The platform combines:
 | **`agents`** | Agent definition CRUD + lifecycle (pause/resume/archive/deprecate/restore) + dispatch (`POST /:id/dispatch`, `/task`, `/:id/cancel/:taskId`) | `/agents/*` |
 | **`chat`** | "Ask AI" entry point (`POST /chat/messages`, `POST /ai/chat`); stub `/chat/history`, `/chat/suggestions` | `/chat/*`, `/ai/chat` |
 | **`memory`** | Agent memory entries (per-tenant vector + episodic) | `/memory/*` |
-| **`tools`** | Tool registry, structured tool execution, sandbox | `/tools/*` |
+| **`tools`** | Tool registry (~79 tools — dynamic, see `getCount()`), structured tool execution, sandbox |
 | **`orchestration`** | LangGraph-based multi-agent orchestration | `/orchestration/*` |
 | **`governance`** | Governance rules, approval requests, policies | `/governance/*` |
 | **`observability`** | OpenTelemetry config, trace inspection | `/observability/*` |
@@ -526,9 +526,8 @@ The full OpenAPI 3.1 spec is generated at boot and committed at `backend/openapi
 
 ### 18.1 Stats
 
-- `schema.prisma` — **2,274 lines**.
-- 22 migrations (see `prisma/migrations/`):
-  - Phase 1 Foundation → Phase 8 Retail, plus 9 "EAOS" migrations for entity/knowledge/marketplace layers, plus late-June gap-filling migrations (CSRF, Google Sign-in, integration credentials, agent email alias, onboarding signature, dept limits, Google Workspace IDs).
+- `schema.prisma` — **2,716 lines** (was 2,274 on July 1; +442 lines from admin-pool, CSRF, google sign-in, integration credentials, and entity model migrations).
+- 22 migrations on disk (`prisma/migrations/`), 21 applied — untracked: `20260626_add_google_signin/`, `20260626_integration_credentials/`.
 
 ### 18.2 Models (selected)
 
@@ -674,7 +673,7 @@ curl -s http://127.0.0.1:3003/api/v1/health
 4. **Upstash Redis REST** — `UPSTASH_REDIS_REST_URL` is unreachable from Contabo; `RedisService` degrades gracefully (WARN log, no crash). Token blacklist is therefore non-functional until the URL is fixed.
 5. **Nest v11 path-to-regexp** — middleware `.forRoutes({ path: '*path' })` avoids "Unsupported route path" warnings (uses named wildcard).
 6. **OpenClaw + clawhub** — vendored packages; `clawhub` requires `openclaw@2026.3.13` (pinned in `package.json`).
-7. **Vercel build** — `vercel-build` script does `prisma generate && nest build` to ensure the generated client is up-to-date before compilation.
+7. **Contabo build** — use `./node_modules/.bin/prisma generate && ./node_modules/.bin/nest build` to ensure the generated client is up-to-date before compilation.
 8. **`__Host-` cookie prefix** — requires HTTPS in production; in dev (HTTP), browsers reject the cookie so the SPA falls back to body tokens (intentional).
 9. **JWT secret** — must be ≥32 chars in production; `SecretProviderService` throws if shorter.
 10. **CSRF exempt list** — only `/auth/login` and `/auth/refresh`; everything else needs `X-CSRF-Token`.
@@ -777,6 +776,11 @@ The backend has evolved through these major waves (matching `memory-bank/`):
 - JWT revocation via `RefreshToken`/`Session` table + logout endpoint.
 - `ValidationPipe` strips unknown props (`whitelist: true`).
 - Per-tenant feature flags (kill-switch per capability).
+
+> **Caveats (2026-07-03):**
+> - `workspaceId` fields exist on Agent, MemoryEntry, and Hermes models, but no `Workspace` model is defined — reserved for future implementation.
+> - Hermes layer: 7 Prisma models + enums exist (schema lines 2511–2709), but `src/modules/hermes/` does not exist and `HermesModule` is commented out in `app.module.ts`. See `HERMES_LAYER_PLAN.md` for implementation roadmap.
+> - `HermesMemoryEntry.embedding` (Float[]) has no Gist vector index — requires raw SQL migration with `@pgvector/prisma`.
 
 ---
 

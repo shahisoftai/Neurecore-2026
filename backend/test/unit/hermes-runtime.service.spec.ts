@@ -1,61 +1,86 @@
 import { HermesRuntimeService } from '../../src/modules/hermes/services/hermes-runtime.service';
-import type {
-  HermesExecutionRequest,
-  HermesExecutionContext,
-  GovernanceContext,
-} from '../../src/modules/hermes/interfaces/hermes-runtime.interface';
+import { HermesAgentType } from '@prisma/client';
 
 function buildMocks() {
-  const mockRegistry = {
+  const prisma: any = {
+    hermesAgent: {
+      findFirst: jest.fn(),
+    },
+    hermesAuditLog: {
+      create: jest.fn(),
+    },
+  };
+
+  const mockLLM: any = {
+    invokeWithTools: jest.fn(),
+  };
+
+  const mockRegistry: any = {
     findById: jest.fn(),
-    updateStatus: jest.fn(),
+    setStatus: jest.fn(),
     recordUsage: jest.fn(),
   };
 
-  const mockSessions = {
+  const mockSessions: any = {
     create: jest.fn(),
-    findById: jest.fn(),
+    updateStatus: jest.fn(),
     addMessage: jest.fn(),
+    getConversationHistory: jest.fn(),
   };
 
-  const mockMemory = {
+  const mockContext: any = {
+    buildExecutionContext: jest.fn(),
+  };
+
+  const mockMemory: any = {
+    rememberEpisode: jest.fn(),
     store: jest.fn(),
     getContext: jest.fn(),
   };
 
-  const mockContextService = {
-    build: jest.fn(),
+  const mockEventBus: any = {
+    emit: jest.fn(),
+    subscribe: jest.fn(),
   };
 
-  const mockToolGateway = {
-    validate: jest.fn(),
+  const mockToolGateway: any = {
+    buildToolMenu: jest.fn(),
     execute: jest.fn(),
-    getAllowedTools: jest.fn(),
   };
 
-  const mockLlmFactory = {
-    invokeWithTools: jest.fn(),
-    selectModel: jest.fn(),
+  const mockEventsGateway: any = {
+    emitToTenant: jest.fn(),
+  };
+
+  const mockTenantContext: any = {
+    tenantId: 'tenant-1',
   };
 
   const svc = new HermesRuntimeService(
+    prisma as any,
+    mockLLM as any,
     mockRegistry as any,
     mockSessions as any,
+    mockContext as any,
     mockMemory as any,
-    mockContextService as any,
+    mockEventBus as any,
     mockToolGateway as any,
-    mockLlmFactory as any,
+    mockEventsGateway as any,
+    mockTenantContext as any,
   );
 
   return {
     svc,
     mocks: {
+      prisma,
+      llm: mockLLM,
       registry: mockRegistry,
       sessions: mockSessions,
+      context: mockContext,
       memory: mockMemory,
-      contextService: mockContextService,
+      eventBus: mockEventBus,
       toolGateway: mockToolGateway,
-      llmFactory: mockLlmFactory,
+      eventsGateway: mockEventsGateway,
     },
   };
 }
@@ -64,208 +89,137 @@ describe('HermesRuntimeService', () => {
   let svc: HermesRuntimeService;
   let mocks: ReturnType<typeof buildMocks>['mocks'];
 
-  const baseContext: HermesExecutionContext = {
-    sessionId: 'session-1',
-    hermesAgentId: 'agent-1',
-    tenantId: 'tenant-1',
-    workspaceId: 'ws-1',
-    userId: 'user-1',
-    threadId: 'thread-1',
-    task: 'Process invoice #123',
-    systemPrompt: 'You are a finance agent.',
-    memoryContext: '',
-    allowedTools: ['read_invoice', 'approve_invoice'],
-    governanceContext: {
-      requiresApproval: false,
-      blockedRules: [],
-      rateLimited: false,
-      alerts: [],
-    },
-    maxIterations: 5,
-    permissions: ['invoice:read', 'invoice:approve'],
-    metadata: {},
-  };
-
-  const baseRequest: HermesExecutionRequest = {
-    sessionId: 'session-1',
-    hermesAgentId: 'agent-1',
-    task: 'Process invoice #123',
-    context: {
-      tenantId: 'tenant-1',
-      workspaceId: 'ws-1',
-      userId: 'user-1',
-      threadId: 'thread-1',
-    },
-  };
-
   beforeEach(() => {
-    const { svc: service, mocks: m } = buildMocks();
-    svc = service;
-    mocks = m;
+    const built = buildMocks();
+    svc = built.svc;
+    mocks = built.mocks;
     jest.clearAllMocks();
   });
 
   describe('execute', () => {
-    it('should return governance block result when approval required', async () => {
-      mocks.contextService.build.mockResolvedValueOnce({
-        ...baseContext,
-        governanceContext: { requiresApproval: true, blockedRules: ['HIGH_VALUE_TX'], rateLimited: false, alerts: ['HIGH_VALUE_TX'] },
+    it('should execute a task via LLM and return result', async () => {
+      mocks.prisma.hermesAgent.findFirst.mockResolvedValueOnce({
+        id: 'agent-1',
+        name: 'Test Agent',
+        type: HermesAgentType.CUSTOM,
+        tenantId: 'tenant-1',
+        isActive: true,
       });
 
-      const result = await svc.execute(baseRequest);
+      mocks.registry.setStatus.mockResolvedValue(undefined);
+      mocks.sessions.updateStatus.mockResolvedValue(undefined);
+      mocks.sessions.getConversationHistory.mockResolvedValue([]);
+      mocks.context.buildExecutionContext.mockResolvedValueOnce({
+        systemPrompt: 'Test prompt',
+        tools: { allowedTools: ['query'], deniedTools: [], toolsRequiringApproval: [], toolDefinitions: [] },
+        memory: { personal: [], episodic: [], procedural: new Map() },
+        config: {},
+      });
+      mocks.toolGateway.buildToolMenu.mockResolvedValueOnce([]);
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('GOVERNANCE_APPROVAL_REQUIRED');
-      expect(mocks.llmFactory.invokeWithTools).not.toHaveBeenCalled();
-    });
-
-    it('should execute successfully with no tool calls', async () => {
-      mocks.contextService.build.mockResolvedValueOnce(baseContext);
-      mocks.sessions.addMessage.mockResolvedValueOnce(undefined);
-      mocks.memory.getContext.mockResolvedValueOnce('');
-      mocks.toolGateway.getAllowedTools.mockResolvedValueOnce(['read_invoice']);
-      mocks.llmFactory.invokeWithTools.mockResolvedValueOnce({
-        content: 'Invoice processed successfully',
-        toolCalls: undefined,
+      mocks.llm.invokeWithTools.mockResolvedValueOnce({
+        content: 'Task completed successfully.',
+        toolCalls: [],
         usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
-        finishReason: 'stop',
       });
-      mocks.memory.store.mockResolvedValueOnce({ id: 'mem-1' });
 
-      const result = await svc.execute(baseRequest);
+      const result = await svc.execute({
+        sessionId: 'session-1',
+        hermesAgentId: 'agent-1',
+        task: 'Test task',
+        context: {
+          tenantId: 'tenant-1',
+          userId: 'user-1',
+          threadId: 'thread-1',
+        },
+        maxIterations: 1,
+      });
 
       expect(result.success).toBe(true);
-      expect(result.output).toBe('Invoice processed successfully');
-      expect(mocks.sessions.addMessage).toHaveBeenCalled();
+      expect(result.content).toBe('Task completed successfully.');
+      expect(result.tokensUsed.total).toBe(150);
+      expect(mocks.eventBus.emit).toHaveBeenCalled();
+      expect(mocks.eventsGateway.emitToTenant).toHaveBeenCalled();
     });
 
-    it('should execute tool calls and return results', async () => {
-      mocks.contextService.build.mockResolvedValueOnce(baseContext);
-      mocks.sessions.addMessage.mockResolvedValue(undefined);
-      mocks.memory.getContext.mockResolvedValue('');
-      mocks.toolGateway.getAllowedTools.mockResolvedValue(['read_invoice']);
-      mocks.toolGateway.validate.mockResolvedValueOnce({ allowed: true, sanitizedInput: { invoiceId: '123' } });
-      mocks.toolGateway.execute.mockResolvedValueOnce({ output: { success: true }, error: undefined });
-      mocks.llmFactory.invokeWithTools
-        .mockResolvedValueOnce({
-          content: 'Found invoice, approving...',
-          toolCalls: [{ name: 'approve_invoice', arguments: { invoiceId: '123' } }],
-          usage: { totalTokens: 200 },
-        })
-        .mockResolvedValueOnce({
-          content: 'Invoice approved',
-          toolCalls: undefined,
-          usage: { totalTokens: 100 },
-        });
-      mocks.memory.store.mockResolvedValue({ id: 'mem-1' });
+    it('should throw when agent not found', async () => {
+      mocks.prisma.hermesAgent.findFirst.mockResolvedValueOnce(null);
 
-      const result = await svc.execute(baseRequest);
-
-      expect(result.success).toBe(true);
-      expect(result.toolCalls.length).toBeGreaterThan(0);
-      expect(result.toolCalls[0].tool).toBe('approve_invoice');
-      expect(result.toolCalls[0].allowed).toBe(true);
-    });
-
-    it('should deny tool calls that fail validation', async () => {
-      mocks.contextService.build.mockResolvedValueOnce(baseContext);
-      mocks.sessions.addMessage.mockResolvedValue(undefined);
-      mocks.memory.getContext.mockResolvedValue('');
-      mocks.toolGateway.getAllowedTools.mockResolvedValue(['read_invoice']);
-      mocks.toolGateway.validate.mockResolvedValueOnce({
-        allowed: false,
-        reason: 'Amount exceeds approval limit',
-      });
-      mocks.llmFactory.invokeWithTools
-        .mockResolvedValueOnce({
-          content: 'Attempting to approve...',
-          toolCalls: [{ name: 'approve_invoice', arguments: { invoiceId: '123', amount: 50000 } }],
-          usage: { totalTokens: 100 },
-        })
-        .mockResolvedValueOnce({
-          content: 'Cannot approve high-value invoice',
-          toolCalls: undefined,
-          usage: { totalTokens: 50 },
-        });
-      mocks.memory.store.mockResolvedValue({ id: 'mem-1' });
-
-      const result = await svc.execute(baseRequest);
-
-      expect(result.toolCalls[0].allowed).toBe(false);
-      expect(result.toolCalls[0].error).toBe('Amount exceeds approval limit');
-    });
-
-    it('should handle errors gracefully', async () => {
-      mocks.contextService.build.mockRejectedValueOnce(new Error('Context build failed'));
-
-      const result = await svc.execute(baseRequest);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Context build failed');
+      await expect(
+        svc.execute({
+          sessionId: 's1',
+          hermesAgentId: 'nonexistent',
+          task: 'test',
+          context: {
+            tenantId: 'tenant-1',
+            userId: 'user-1',
+            threadId: 't1',
+          },
+        }),
+      ).rejects.toThrow();
     });
   });
 
-  describe('stream', () => {
-    it('should yield governance error event when approval required', async () => {
-      mocks.contextService.build.mockResolvedValueOnce({
-        ...baseContext,
-        governanceContext: { requiresApproval: true, blockedRules: ['HIGH_VALUE'], rateLimited: false, alerts: [] },
+  describe('createSession', () => {
+    it('should create a session for active agent', async () => {
+      mocks.prisma.hermesAgent.findFirst.mockResolvedValueOnce({
+        id: 'agent-1',
+        tenantId: 'tenant-1',
+        isActive: true,
       });
 
-      const events: any[] = [];
-      for await (const event of svc.stream(baseRequest)) {
-        events.push(event);
-      }
+      mocks.sessions.create.mockResolvedValueOnce({
+        id: 'session-1',
+        hermesAgentId: 'agent-1',
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        threadId: 'thread-1',
+        status: 'ACTIVE',
+        context: {},
+        workspaceId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        expiresAt: null,
+      });
 
-      expect(events[0].type).toBe('error');
-      expect(events[0].data.code).toBe('GOVERNANCE_APPROVAL_REQUIRED');
+      const session = await svc.createSession('agent-1', 'user-1', 'tenant-1');
+      expect(session).toBeDefined();
+      expect(session.id).toBe('session-1');
+      expect(session.hermesAgentId).toBe('agent-1');
     });
   });
 
   describe('suspend / resume', () => {
-    it('should update agent status to SUSPENDED', async () => {
-      mocks.registry.updateStatus.mockResolvedValueOnce({});
+    it('should suspend an agent', async () => {
+      mocks.prisma.hermesAgent.findFirst.mockResolvedValueOnce({
+        id: 'agent-1',
+        tenantId: 'tenant-1',
+      });
+
       await svc.suspend('agent-1', 'tenant-1');
-      expect(mocks.registry.updateStatus).toHaveBeenCalledWith('agent-1', 'SUSPENDED', 'tenant-1');
+      expect(mocks.registry.setStatus).toHaveBeenCalledWith('agent-1', 'tenant-1', 'SUSPENDED');
     });
 
-    it('should update agent status to IDLE on resume', async () => {
-      mocks.registry.updateStatus.mockResolvedValueOnce({});
+    it('should resume an agent', async () => {
+      mocks.prisma.hermesAgent.findFirst.mockResolvedValueOnce({
+        id: 'agent-1',
+        tenantId: 'tenant-1',
+      });
+
       await svc.resume('agent-1', 'tenant-1');
-      expect(mocks.registry.updateStatus).toHaveBeenCalledWith('agent-1', 'IDLE', 'tenant-1');
+      expect(mocks.registry.setStatus).toHaveBeenCalledWith('agent-1', 'tenant-1', 'IDLE');
     });
   });
 
   describe('getStatus', () => {
     it('should return agent status', async () => {
-      mocks.registry.findById.mockResolvedValueOnce({ id: 'agent-1', status: 'RUNNING' });
+      mocks.prisma.hermesAgent.findFirst.mockResolvedValueOnce({
+        id: 'agent-1',
+        status: 'IDLE',
+      });
+
       const status = await svc.getStatus('agent-1', 'tenant-1');
-      expect(status).toBe('RUNNING');
-    });
-
-    it('should throw NotFoundException when agent not found', async () => {
-      mocks.registry.findById.mockResolvedValueOnce(null);
-      await expect(svc.getStatus('agent-1', 'tenant-1')).rejects.toThrow();
-    });
-  });
-
-  describe('createSession', () => {
-    it('should create session for active agent', async () => {
-      mocks.registry.findById.mockResolvedValueOnce({ id: 'agent-1', isActive: true, status: 'IDLE' });
-      mocks.sessions.create.mockResolvedValueOnce({ id: 'session-1', hermesAgentId: 'agent-1' });
-
-      const session = await svc.createSession('agent-1', 'user-1', 'tenant-1', 'ws-1');
-      expect(session.id).toBe('session-1');
-    });
-
-    it('should throw when agent not found', async () => {
-      mocks.registry.findById.mockResolvedValueOnce(null);
-      await expect(svc.createSession('agent-1', 'user-1', 'tenant-1')).rejects.toThrow();
-    });
-
-    it('should throw when agent is not active', async () => {
-      mocks.registry.findById.mockResolvedValueOnce({ id: 'agent-1', isActive: false });
-      await expect(svc.createSession('agent-1', 'user-1', 'tenant-1')).rejects.toThrow();
+      expect(status).toBe('IDLE');
     });
   });
 });

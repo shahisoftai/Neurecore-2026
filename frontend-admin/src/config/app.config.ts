@@ -52,7 +52,7 @@ export interface FrontendEnvConfig {
  */
 const defaultConfig: FrontendEnvConfig = {
   NODE_ENV: "development",
-  NEXT_PUBLIC_API_URL: "http://127.0.0.1:3000/api/v1",
+  NEXT_PUBLIC_API_URL: "http://127.0.0.1:3003/api/v1",
   NEXT_PUBLIC_API_TIMEOUT: 30000,
   NEXT_PUBLIC_TENANT_URL: "http://127.0.0.1:3001",
   NEXT_PUBLIC_ADMIN_URL: "http://127.0.0.1:3002",
@@ -66,7 +66,7 @@ const defaultConfig: FrontendEnvConfig = {
   NEXT_PUBLIC_ENABLE_SOUND: false,
   NEXT_PUBLIC_SENTRY_DSN: undefined,
   NEXT_PUBLIC_SENTRY_ENVIRONMENT: undefined,
-  NEXT_PUBLIC_WS_URL: "ws://127.0.0.1:3000",
+  NEXT_PUBLIC_WS_URL: "ws://127.0.0.1:3003",
   NEXT_PUBLIC_STORAGE_PROVIDER: "local",
   NEXT_PUBLIC_S3_BUCKET: undefined,
 };

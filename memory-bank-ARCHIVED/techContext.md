@@ -155,10 +155,10 @@
   - Networks: Default bridge network
 
 - **Production Hosting**
-  - Vercel (frontends & edge functions)
-  - Self-hosted VPS or AWS/Heroku (backend)
-  - Postgres: Managed (AWS RDS, Railway, etc.)
-  - Redis: Managed (Upstash, AWS ElastiCache, etc.)
+  - Contabo VPS (frontends & backend)
+  - Self-hosted VPS (backend on Contabo)
+  - Postgres: Neon (cloud) for production
+  - Redis: Contabo local Redis + Upstash for token blacklist
 
 ## Environment Variables
 

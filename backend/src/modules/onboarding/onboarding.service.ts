@@ -7,7 +7,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
-import { UserRole } from '@prisma/client';
+import { IndustryPackagesService } from '../admin-pool/services/industry-packages.service';
+import { UserRole, Industry } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import type {
@@ -28,7 +29,10 @@ const INVITE_EXPIRY_DAYS = 14;
 export class OnboardingService implements IOnboardingService {
   private readonly logger = new Logger(OnboardingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly packagesService: IndustryPackagesService,
+  ) {}
 
   async getState(tenantId: string): Promise<OnboardingStatePayload> {
     const [tenant, agentCount, deptCount] = await Promise.all([
@@ -71,9 +75,12 @@ export class OnboardingService implements IOnboardingService {
     const updateData: Record<string, unknown> = {};
     if (partial.step) updateData.onboardingStep = partial.step;
     if (partial.company) {
-      if (partial.company.name !== undefined) updateData.name = partial.company.name;
-      if (partial.company.logoUrl !== undefined) updateData.logoUrl = partial.company.logoUrl;
-      if (partial.company.industry !== undefined) updateData.industry = partial.company.industry;
+      if (partial.company.name !== undefined)
+        updateData.name = partial.company.name;
+      if (partial.company.logoUrl !== undefined)
+        updateData.logoUrl = partial.company.logoUrl;
+      if (partial.company.industry !== undefined)
+        updateData.industry = partial.company.industry;
     }
 
     await this.prisma.tenant.update({
@@ -90,7 +97,9 @@ export class OnboardingService implements IOnboardingService {
       throw new NotFoundException('Tier not found or inactive');
     }
 
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
     if (!tenant) throw new NotFoundException('Tenant not found');
 
     await this.prisma.tenant.update({
@@ -125,7 +134,8 @@ export class OnboardingService implements IOnboardingService {
     if (!tenant) throw new NotFoundException('Tenant not found');
 
     // ─── WS-7 guard: enforce maxDepartments before expansion ───────────────
-    const structure = (template.structure as unknown as DeptTemplateStructureItem[]) ?? [];
+    const structure =
+      (template.structure as unknown as DeptTemplateStructureItem[]) ?? [];
     const projectedDeptCount = structure.length;
     if (projectedDeptCount > tenant.tier.maxDepartments) {
       throw new ForbiddenException(
@@ -162,8 +172,7 @@ export class OnboardingService implements IOnboardingService {
     for (const pool of tenant.tier.tierAgentPools) {
       if (!pool.isDefaultSelected && !pool.isRequired) continue;
       const tmpl = pool.template;
-      const deptForAgent =
-        createdDepts[0]?.id ?? null;
+      const deptForAgent = createdDepts[0]?.id ?? null;
       const overrideName = overrides?.[tmpl.name]?.name;
       const isSelected = overrides?.[tmpl.name]?.isSelected ?? true;
 
@@ -204,11 +213,17 @@ export class OnboardingService implements IOnboardingService {
     invites: Array<{ email: string; role: UserRole }>,
   ) {
     if (!invites?.length) throw new BadRequestException('invites[] required');
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
     if (!tenant) throw new NotFoundException('Tenant not found');
 
-    const tenantUserCount = await this.prisma.user.count({ where: { tenantId } });
-    const tier = await this.prisma.tier.findUnique({ where: { id: tenant.tierId } });
+    const tenantUserCount = await this.prisma.user.count({
+      where: { tenantId },
+    });
+    const tier = await this.prisma.tier.findUnique({
+      where: { id: tenant.tierId },
+    });
     if (!tier) throw new NotFoundException('Tier missing');
     if (tenantUserCount + invites.length > tier.maxUsers) {
       throw new ForbiddenException(
@@ -217,7 +232,9 @@ export class OnboardingService implements IOnboardingService {
     }
 
     const tokens: string[] = [];
-    const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    );
 
     for (const inv of invites) {
       const existing = await this.prisma.onboardingInvitation.findFirst({
@@ -248,10 +265,14 @@ export class OnboardingService implements IOnboardingService {
     token: string,
     payload: { firstName: string; lastName: string; password: string },
   ) {
-    const invite = await this.prisma.onboardingInvitation.findUnique({ where: { token } });
+    const invite = await this.prisma.onboardingInvitation.findUnique({
+      where: { token },
+    });
     if (!invite) throw new NotFoundException('Invite not found');
-    if (invite.acceptedAt) throw new ConflictException('Invite already accepted');
-    if (invite.expiresAt < new Date()) throw new ForbiddenException('Invite expired');
+    if (invite.acceptedAt)
+      throw new ConflictException('Invite already accepted');
+    if (invite.expiresAt < new Date())
+      throw new ForbiddenException('Invite expired');
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email: invite.email },
@@ -283,7 +304,9 @@ export class OnboardingService implements IOnboardingService {
   }
 
   async complete(tenantId: string) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
     if (!tenant) throw new NotFoundException('Tenant not found');
 
     const completedAt = new Date();
@@ -296,5 +319,170 @@ export class OnboardingService implements IOnboardingService {
     });
     this.logger.log(`Onboarding completed for tenant ${tenantId}`);
     return { completedAt };
+  }
+
+  // ─── Admin-pool: recommend + deploy IndustryPackage ─────────────────
+
+  async recommendPackage(industry: string, tierId: string) {
+    // Cast free text to Industry enum. If not a valid enum value, return null.
+    const industryEnum = industry as Industry;
+    const valid: readonly Industry[] = [
+      'HEALTHCARE',
+      'LEGAL',
+      'REAL_ESTATE',
+      'ECOMMERCE',
+      'SAAS',
+      'EDUCATION',
+      'FINANCE',
+      'MARKETING_AGENCY',
+      'CONSULTING',
+      'MANUFACTURING',
+      'GENERAL',
+    ];
+    if (!valid.includes(industryEnum)) return null;
+
+    return this.packagesService.recommend(industryEnum, tierId);
+  }
+
+  async deployPackage(
+    tenantId: string,
+    packageId: string,
+    selections?: Record<string, { isSelected?: boolean; name?: string }>,
+  ) {
+    const pkg = await this.prisma.industryPackage.findUnique({
+      where: { id: packageId },
+      include: {
+        tier: {
+          select: {
+            id: true,
+            slug: true,
+            maxAgents: true,
+            maxDepartments: true,
+          },
+        },
+        entries: {
+          include: { poolAgent: true },
+          orderBy: [{ divisionSlug: 'asc' }, { slot: 'asc' }],
+        },
+      },
+    });
+    if (!pkg || !pkg.isActive) {
+      throw new NotFoundException('IndustryPackage not found or inactive');
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+    if (!tenant) throw new NotFoundException('Tenant not found');
+
+    if (pkg.tierId !== tenant.tierId) {
+      throw new ForbiddenException(
+        `Package tier (${pkg.tier.slug}) does not match tenant tier.`,
+      );
+    }
+
+    // Tier-limit pre-flight
+    const divisionSlugs = new Set(pkg.entries.map((e) => e.divisionSlug));
+    if (divisionSlugs.size > pkg.tier.maxDepartments) {
+      throw new ForbiddenException(
+        `Package requires ${divisionSlugs.size} departments but tier allows ${pkg.tier.maxDepartments}.`,
+      );
+    }
+    const existingSelected = await this.prisma.agent.count({
+      where: { tenantId, isSelected: true },
+    });
+    const filteredEntries = pkg.entries.filter(
+      (e) => selections?.[e.poolAgentId]?.isSelected !== false,
+    );
+    if (existingSelected + filteredEntries.length > pkg.tier.maxAgents) {
+      throw new ForbiddenException(
+        `Would exceed tier agent limit (${pkg.tier.maxAgents}). Deselect some agents or upgrade.`,
+      );
+    }
+
+    // Upsert Departments per division
+    const divisionLabels: Record<string, string> = {};
+    const poolDepts = await this.prisma.poolDepartment.findMany({
+      where: { slug: { in: Array.from(divisionSlugs) } },
+    });
+    for (const d of poolDepts) divisionLabels[d.slug] = d.name;
+
+    const deptById = new Map<string, { id: string; name: string }>();
+    for (const slug of divisionSlugs) {
+      const name = divisionLabels[slug] ?? slug;
+      // Find or create
+      let dept = await this.prisma.department.findFirst({
+        where: { tenantId, name },
+      });
+      if (!dept) {
+        dept = await this.prisma.department.create({
+          data: { tenantId, name, status: 'ACTIVE' },
+        });
+      }
+      deptById.set(slug, dept);
+    }
+
+    // Upsert Agents (idempotent on `tenantId + poolSourceId`)
+    let agentsCreated = 0;
+    for (const entry of pkg.entries) {
+      const sel =
+        selections?.[entry.poolAgent.slug] ?? selections?.[entry.poolAgentId];
+      if (sel?.isSelected === false && !entry.isRequired) continue;
+
+      const dept = deptById.get(entry.divisionSlug);
+      if (!dept) continue;
+
+      await this.prisma.agent.upsert({
+        where: {
+          tenantId_poolSourceId: {
+            tenantId,
+            poolSourceId: entry.poolAgentId,
+          },
+        },
+        update: {
+          isSelected: sel?.isSelected ?? entry.isDefaultSelected,
+        },
+        create: {
+          tenantId,
+          name: sel?.name ?? entry.poolAgent.name,
+          description: entry.poolAgent.description,
+          type: 'FUNCTIONAL',
+          status: 'IDLE',
+          model: entry.defaultModel ?? 'gpt-4o-mini',
+          systemPrompt: entry.poolAgent.systemPrompt,
+          instructions: null,
+          budgetPerDay: entry.defaultBudgetPerDay ?? 5,
+          permissions: [],
+          config: {},
+          metadata: {
+            source: 'industry-package',
+            poolAgentId: entry.poolAgent.id,
+            poolDepartmentSlug: entry.divisionSlug,
+            industry: pkg.industry,
+            packageId: pkg.id,
+          },
+          departmentId: dept.id,
+          poolSourceId: entry.poolAgentId,
+          createdById: null,
+          isSelected: sel?.isSelected ?? entry.isDefaultSelected,
+        },
+      });
+      agentsCreated++;
+    }
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { onboardingStep: 'review' },
+    });
+
+    this.logger.log(
+      `Deployed IndustryPackage ${pkg.id} to tenant ${tenantId}: ${deptById.size} depts, ${agentsCreated} agents`,
+    );
+
+    return {
+      departmentsCreated: deptById.size,
+      agentsCreated,
+      packageName: pkg.name,
+    };
   }
 }

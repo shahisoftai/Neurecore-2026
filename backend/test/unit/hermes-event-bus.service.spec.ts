@@ -1,184 +1,128 @@
 import { HermesEventBusService } from '../../src/modules/hermes/services/hermes-event-bus.service';
 
-function buildMocks() {
-  const mockEvents = {
-    emitToTenant: jest.fn(),
-  };
-
-  const svc = new HermesEventBusService(mockEvents as any);
-  return { svc, events: mockEvents };
-}
-
 describe('HermesEventBusService', () => {
   let svc: HermesEventBusService;
-  let events: ReturnType<typeof buildMocks>['events'];
 
   beforeEach(() => {
-    const { svc: service, events: ev } = buildMocks();
-    svc = service;
-    events = ev;
-    jest.clearAllMocks();
+    svc = new HermesEventBusService();
   });
 
   describe('emit', () => {
-    it('should emit event to EventsGateway and call handlers', async () => {
+    it('should emit events to subscribers', () => {
       const handler = jest.fn();
-      svc.on('hermes.task.completed', handler);
+      svc.subscribe(handler);
 
-      await svc.emit({
-        type: 'hermes.task.completed',
-        tenantId: 'tenant-1',
-        agentId: 'agent-1',
+      svc.emit({
+        type: 'hermes:start',
+        hermesAgentId: 'agent-1',
         sessionId: 'session-1',
-        data: { output: 'result', durationMs: 1000 },
-        timestamp: new Date(),
-      });
-
-      expect(events.emitToTenant).toHaveBeenCalledWith(
-        'tenant-1',
-        'hermes:hermes.task.completed',
-        expect.objectContaining({ type: 'hermes.task.completed' }),
-      );
-      expect(handler).toHaveBeenCalled();
-    });
-
-    it('should catch handler errors without failing emit', async () => {
-      const badHandler = jest.fn().mockRejectedValue(new Error('Handler error'));
-      const goodHandler = jest.fn();
-      svc.on('hermes.task.completed', badHandler);
-      svc.on('hermes.task.completed', goodHandler);
-
-      await svc.emit({
-        type: 'hermes.task.completed',
         tenantId: 'tenant-1',
-        agentId: 'agent-1',
-        data: {},
+        payload: { task: 'test' },
         timestamp: new Date(),
+        traceId: 'trace-1',
       });
 
-      expect(goodHandler).toHaveBeenCalled();
-      expect(badHandler).toHaveBeenCalled();
+      expect(handler).toHaveBeenCalled();
+      const event = handler.mock.calls[0][0];
+      expect(event.type).toBe('hermes:start');
+      expect(event.hermesAgentId).toBe('agent-1');
     });
   });
 
-  describe('on/off', () => {
-    it('should register and call handler', async () => {
+  describe('subscribe', () => {
+    it('should return unsubscribe function', () => {
       const handler = jest.fn();
-      svc.on('hermes.session.created', handler);
+      const unsub = svc.subscribe(handler);
 
-      await svc.emit({
-        type: 'hermes.session.created',
-        tenantId: 'tenant-1',
-        agentId: 'agent-1',
-        sessionId: 'session-1',
-        data: {},
+      svc.emit({
+        type: 'hermes:start',
+        hermesAgentId: 'a1',
+        sessionId: 's1',
+        tenantId: 't1',
+        payload: {},
         timestamp: new Date(),
+        traceId: 't',
+      });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      unsub();
+
+      svc.emit({
+        type: 'hermes:start',
+        hermesAgentId: 'a2',
+        sessionId: 's2',
+        tenantId: 't1',
+        payload: {},
+        timestamp: new Date(),
+        traceId: 't2',
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
     });
+  });
 
-    it('should remove handler with off()', async () => {
-      const handler = jest.fn();
-      svc.on('hermes.session.created', handler);
-      svc.off('hermes.session.created', handler);
+  describe('subscribeToType', () => {
+    it('should only fire for matching event type', () => {
+      const startHandler = jest.fn();
+      const errorHandler = jest.fn();
 
-      await svc.emit({
-        type: 'hermes.session.created',
-        tenantId: 'tenant-1',
-        agentId: 'agent-1',
-        data: {},
+      svc.subscribeToType('hermes:start', startHandler);
+      svc.subscribeToType('hermes:error', errorHandler);
+
+      svc.emit({
+        type: 'hermes:start',
+        hermesAgentId: 'a1',
+        sessionId: 's1',
+        tenantId: 't1',
+        payload: {},
         timestamp: new Date(),
+        traceId: 't',
       });
 
-      expect(handler).not.toHaveBeenCalled();
+      expect(startHandler).toHaveBeenCalledTimes(1);
+      expect(errorHandler).not.toHaveBeenCalled();
     });
   });
 
-  describe('LangGraph callbacks', () => {
-    it('should register and call LangGraph resume callback', async () => {
-      const callback = jest.fn();
-      svc.registerLangGraphResumeCallback('wf-1', callback);
+  describe('getEventsForSession', () => {
+    it('should return event history for a session', () => {
+      svc.emit({
+        type: 'hermes:start',
+        hermesAgentId: 'a1',
+        sessionId: 'session-1',
+        tenantId: 't1',
+        payload: { step: 1 },
+        timestamp: new Date(),
+        traceId: 't1',
+      });
 
-      await svc.notifyLangGraphResume('wf-1', 'APPROVED');
+      svc.emit({
+        type: 'hermes:end',
+        hermesAgentId: 'a1',
+        sessionId: 'session-1',
+        tenantId: 't1',
+        payload: { step: 2 },
+        timestamp: new Date(),
+        traceId: 't2',
+      });
 
-      expect(callback).toHaveBeenCalledWith('APPROVED');
+      const events = svc.getEventsForSession('session-1');
+      expect(events).toHaveLength(2);
+      expect(events[0].type).toBe('hermes:start');
+      expect(events[1].type).toBe('hermes:end');
     });
 
-    it('should unregister callback after notify', async () => {
-      const callback = jest.fn();
-      svc.registerLangGraphResumeCallback('wf-1', callback);
-
-      await svc.notifyLangGraphResume('wf-1', 'APPROVED');
-      await svc.notifyLangGraphResume('wf-1', 'REJECTED');
-
-      expect(callback).toHaveBeenCalledTimes(1);
-    });
-
-    it('should silently ignore unknown workflowId', () => {
-      expect(() => svc.notifyLangGraphResume('unknown-wf', 'APPROVED')).not.toThrow();
+    it('should return empty array for unknown session', () => {
+      const events = svc.getEventsForSession('nonexistent');
+      expect(events).toEqual([]);
     });
   });
 
-  describe('convenience methods', () => {
-    it('should emitSessionCreated', async () => {
-      await svc.emitSessionCreated('tenant-1', 'agent-1', 'session-1', 'thread-1');
-
-      expect(events.emitToTenant).toHaveBeenCalledWith(
-        'tenant-1',
-        'hermes:hermes.session.created',
-        expect.objectContaining({ type: 'hermes.session.created' }),
-      );
-    });
-
-    it('should emitTaskStarted', async () => {
-      await svc.emitTaskStarted('tenant-1', 'agent-1', 'session-1', 'Process invoice');
-
-      expect(events.emitToTenant).toHaveBeenCalledWith(
-        'tenant-1',
-        'hermes:hermes.task.started',
-        expect.objectContaining({ type: 'hermes.task.started' }),
-      );
-    });
-
-    it('should emitTaskCompleted', async () => {
-      await svc.emitTaskCompleted('tenant-1', 'agent-1', 'session-1', 'Done', 1500);
-
-      expect(events.emitToTenant).toHaveBeenCalledWith(
-        'tenant-1',
-        'hermes:hermes.task.completed',
-        expect.objectContaining({ type: 'hermes.task.completed' }),
-      );
-    });
-
-    it('should emitTaskFailed', async () => {
-      await svc.emitTaskFailed('tenant-1', 'agent-1', 'session-1', 'Connection timeout');
-
-      expect(events.emitToTenant).toHaveBeenCalledWith(
-        'tenant-1',
-        'hermes:hermes.task.failed',
-        expect.objectContaining({ type: 'hermes.task.failed' }),
-      );
-    });
-
-    it('should emitApprovalRequested', async () => {
-      await svc.emitApprovalRequested('tenant-1', 'agent-1', 'wf-123', { invoiceId: 'inv-1' });
-
-      expect(events.emitToTenant).toHaveBeenCalledWith(
-        'tenant-1',
-        'hermes:hermes.approval.requested',
-        expect.objectContaining({ type: 'hermes.approval.requested' }),
-      );
-    });
-
-    it('should emitApprovalDecided', async () => {
-      await svc.emitApprovalDecided('tenant-1', 'agent-1', 'wf-123', 'APPROVED', 'manager-1');
-
-      expect(events.emitToTenant).toHaveBeenCalledWith(
-        'tenant-1',
-        'hermes:hermes.approval.decided',
-        expect.objectContaining({ type: 'hermes.approval.decided' }),
-      );
+  describe('linkToLangGraph', () => {
+    it('should track linked threads', () => {
+      svc.linkToLangGraph('thread-1');
+      svc.linkToLangGraph('thread-2');
     });
   });
 });

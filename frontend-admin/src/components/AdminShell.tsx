@@ -36,6 +36,18 @@ const NAV = [
     icon: "⬡",
     group: "library",
   },
+  {
+    label: "Pool Catalog",
+    href: "/pool",
+    icon: "◇",
+    group: "library",
+  },
+  {
+    label: "Industry Packages",
+    href: "/pool/packages",
+    icon: "▣",
+    group: "library",
+  },
   // ── Live Fleet ───────────────────────────────────────
   { label: "Agent Fleet", href: "/agents", icon: "◈", group: "fleet" },
   // ── Intelligence ─────────────────────────────────────

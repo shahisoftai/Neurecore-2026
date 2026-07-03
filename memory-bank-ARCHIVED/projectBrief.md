@@ -109,7 +109,7 @@ NeureCore/
 │       └── services/                 # API clients
 │
 ├── docs/                             # Architecture & planning docs
-├── deployment/                       # Deployment guides (Vercel, Docker)
+├── deployment/                       # Deployment guides (Contabo, Docker)
 └── memory-bank/                      # Project knowledge base (this)
 ```
 

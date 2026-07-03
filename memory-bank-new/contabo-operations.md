@@ -2,13 +2,13 @@
 
 **Last verified:** 2026-07-02 (post Phase 6 / Tier-Agent + dashboard perf deploy, commit `c5c05ec`)
 **Audience:** Any engineer tasked with backend, frontend, EAOS, or observability work on Contabo
-**Scope:** Backend (NestJS) + observability stack on Contabo. Frontends primarily on Vercel, but EAOS and Admin also run on Contabo behind CyberPanel (OLS).
+**Scope:** Backend (NestJS) + all three frontends on Contabo behind CyberPanel (OLS). EAOS and observability also on Contabo.
 
 > ⚠️ **Current-state deviation from prior version (2026-07-02):**
-> 1. The `neurecore-tenant` frontend **no longer runs on Contabo** — it only lives on Vercel (`https://hq.neurecore.com`). `/opt/neurecore/frontend-tenant/` was removed.
-> 2. The `neurecore-admin` frontend **is still on Contabo** but binds to port **3020** (internal) via PM2; CyberPanel (OLS) reverse-proxies `cc.neurecore.com` → 3020. There is **no listener on port 3002 anymore**.
-> 3. Port **3001 is now occupied by an unrelated project** (`app-frontend`, GUV at `/opt/guv/frontend-app`). Do not assume 3001 = tenant — it is not.
-> 4. A **new 3rd app** — `frontend-eaos` — runs on port **3011** via PM2 (`neurecore-eaos`).
+> 1. The `neurecore-tenant` frontend **is now on Contabo port 3005**. Source synced from local `frontend-tenant/` to `/opt/neurecore/frontend-tenant/`. PM2 process `neurecore-tenant` serves on port 3005.
+> 2. The `neurecore-admin` frontend is on Contabo, binds to port **3020** (internal) via PM2; CyberPanel (OLS) reverse-proxies `cc.neurecore.com` → 3020. There is **no listener on port 3002 anymore**.
+> 3. Port **3001 is occupied by an unrelated project** (`app-frontend`, GUV at `/opt/guv/frontend-app`). Do not assume 3001 = tenant — tenant is on **3005**.
+> 4. A **3rd app** — `frontend-eaos` — runs on port **3011** via PM2 (`neurecore-eaos`).
 > 5. The CORS proxy listens on **port 3004**, forwards to NestJS backend on **3003**.
 > 6. Backend startup command is **`node ./dist/src/main.js`** (unchanged) but PM2 id is now **37** (was `15`); NestJS module count is **45** modules.
 
@@ -58,8 +58,8 @@
 ### Frontends
 | Item | Value |
 |---|---|
-| Frontend-Tenant (hq) | **Vercel only** — `https://hq.neurecore.com` (CyberPanel-cached HTML, HTTP 200). NO Contabo copy. PM2 process `neurecore-tenant` does **NOT** exist. |
-| Frontend-Admin (cc) | **Contabo + Vercel** — PM2 `neurecore-admin` (id 24) runs Next.js on internal port **3020** (`npx next start --hostname 127.0.0.1 --port 3020`). External: `https://cc.neurecore.com` via CyberPanel (OLS, HTTP 200). |
+| Frontend-Tenant (hq) | **Contabo + CyberPanel** | Port **3005** — PM2 `neurecore-tenant`. Source at `/opt/neurecore/frontend-tenant/`. `https://hq.neurecore.com` |
+| Frontend-Admin (cc) | **Contabo + CyberPanel** | Port **3020** — PM2 `neurecore-admin` (id 24). `https://cc.neurecore.com` |
 | Frontend-EAOS (NEW) | **Contabo only** — PM2 `neurecore-eaos` (id 35) runs from `/opt/neurecore/frontend-eaos/start.sh` on internal port **3011**. Service uptime 22h, restarts 4. |
 | Port 3001 | **OCCUPIED** by GUV project `app-frontend` (`/opt/guv/frontend-app`, PM2 id 2, uptime 46h). NOT neurecore. |
 | Port 3002 | **NOT LISTENING** (admin was here historically; now bound to 3020 internally). |
@@ -120,13 +120,13 @@ Port 3000 is `nghttpx` (LiteSpeed proxy). The NestJS backend listens on **3003**
 
 Always test backend with `http://localhost:3003/...` (or via the public hostname `https://brain.neurecore.com/api/v1/`).
 
-### 1.4 Frontends Now Live Across Two Surfaces
+### 1.4 Frontends Now Live on Contabo
 
 | Frontend | Where | Port | URL |
 |---|---|---|---|
-| Tenant (hq) | **Vercel** | — | `https://hq.neurecore.com` |
-| Admin (cc) | **Contabo + CyberPanel** | internal 3020 | `https://cc.neurecore.com` |
-| EAOS | **Contabo + CyberPanel** | internal 3011 | (verify your hostname config) |
+| Tenant (hq) | **Contabo + CyberPanel** | 3005 | `https://hq.neurecore.com` |
+| Admin (cc) | **Contabo + CyberPanel** | 3020 | `https://cc.neurecore.com` |
+| EAOS | **Contabo + CyberPanel** | 3011 | (verify your hostname config) |
 
 To check frontend status:
 ```bash
@@ -289,7 +289,7 @@ curl -s https://brain.neurecore.com/api/v1/health | head -1
 
 # 3. Check the StructuredToolRegistry has the right tool count:
 ssh contabo 'grep "Registered .* tools via setTools" /root/.pm2/logs/neurecore-backend-out.log | tail -1'
-# Expect: e.g. "Registered 81 tools via setTools()"
+# Expect: e.g. "Registered 79 tools via setTools()"
 
 # 4. Confirm Prometheus is still scraping (won't break unless /api/metrics path changed):
 ssh contabo 'curl -s http://localhost:9090/api/v1/targets | grep -E "health|lastScrape" | head -3'
@@ -456,7 +456,7 @@ ssh contabo './node_modules/.bin/prisma migrate resolve --rolled-back "<MIGRATIO
 # Check frontend status:
 ssh contabo 'pm2 list | grep neurecore-admin'
 ssh contabo 'pm2 list | grep neurecore-eaos'
-# Note: there is NO neurecore-tenant process anymore (it's on Vercel)
+# Note: neurecore-tenant process is on port 3005 after first deploy
 
 # Restart admin:
 ssh contabo 'pm2 restart neurecore-admin'
@@ -480,10 +480,10 @@ ssh contabo 'pm2 restart neurecore-eaos'
 **Active Runtime:**
 - Admin: PM2 cwd = `/opt/neurecore/frontend-admin`, internal port 3020
 - EAOS: PM2 cwd = `/root` (but `start.sh` cds to `/opt/neurecore/frontend-eaos`), internal port 3011
-- Tenant: **No Contabo copy.** Vercel-only via `git push origin main`.
+- Tenant: `/opt/neurecore/frontend-tenant/` — PM2 `neurecore-tenant` on port 3005.
 
 **Ports (current):**
-- Frontend-Tenant (hq): **Vercel** — `https://hq.neurecore.com`
+- Frontend-Tenant (hq): **Contabo 3005** — `https://hq.neurecore.com`
 - Frontend-Admin (cc): Contabo internal **3020** — public `https://cc.neurecore.com` via CyberPanel/OLS
 - Frontend-EAOS: Contabo internal **3011** — public hostname TBD (check CyberPanel vhosts)
 
@@ -543,7 +543,7 @@ ssh contabo 'tail -30 /root/.pm2/logs/neurecore-eaos-out.log'
 ```bash
 ssh contabo 'grep "Registered tool:" /root/.pm2/logs/neurecore-backend-out.log | tail -20'
 ssh contabo 'grep "Registered .* tools via setTools" /root/.pm2/logs/neurecore-backend-out.log | tail -5'
-# Should show 81 tools registered
+# Should show 79 tools registered
 ssh contabo 'grep -E "Mapped \{" /root/.pm2/logs/neurecore-backend-out.log | wc -l'
 # Should be ~45 modules / route prefixes
 ssh contabo 'grep "NestApplication.*successfully started" /root/.pm2/logs/neurecore-backend-out.log | tail -3'
@@ -587,7 +587,7 @@ ssh contabo 'ps aux --sort=-%cpu | head -10'
 3. ❌ **Don't upload `node_modules/` from local** — package resolution differences will cause runtime crashes.
 4. ❌ **Don't use `pnpm` on Contabo** — it's broken (`ERR_UNKNOWN_BUILTIN_MODULE`).
 5. ❌ **Don't assume port 3000 is the backend** — it's `nghttpx`. Backend is on 3003.
-6. ❌ **Don't assume port 3001 is the tenant frontend** — it's `app-frontend` (GUV project). Tenant is on Vercel only now.
+6. ❌ **Don't assume port 3001 is the tenant frontend** — it's `app-frontend` (GUV project). Tenant is on Contabo port **3005**.
 7. ❌ **Don't expect port 3002 to serve admin** — admin is on internal 3020, public via `cc.neurecore.com`.
 8. ❌ **Don't skip the `prisma generate` step** — after `schema.prisma` changes, regenerate client before `nest build`.
 9. ❌ **Don't apply the code deploy before the migration** — if the new code reads a column that doesn't exist yet, you'll see 500s in the gap between code-deploy and migration-apply.
@@ -635,13 +635,14 @@ ssh contabo 'ps aux --sort=-%cpu | head -10'
 └── observability/                         # docker-compose stack (Prometheus / Alertmanager / Grafana)
 ```
 
-**Note on the absent frontend-tenant copy:**
-`/opt/neurecode/frontend-tenant/` no longer exists on Contabo. The tenant frontend is deployed exclusively to Vercel (`https://hq.neurecore.com`) via `git push origin main`. There is no PM2 process for it. CyberPanel still reverse-proxies `hq.neurecore.com`, but the upstream origin is Vercel — OLS just serves cached HTML responses.
+**Frontend-Tenant on Contabo:**
+`/opt/neurecore/frontend-tenant/` — tenant source synced from local repo. PM2 process `neurecore-tenant` serves on port **3005**. Public via CyberPanel at `https://hq.neurecore.com`.
 
 **Active 3 surface apps + observability summary:**
 - Backend: PM2 process `neurecore-backend` (id 37) on port 3003, source `/opt/neurecore/backend/backend/`
 - Frontend-Admin: PM2 process `neurecore-admin` (id 24, 627 restarts!) on internal 3020, source `/opt/neurecore/frontend-admin/` — high restart count signals history of instability; verify before relying on uptime
 - Frontend-EAOS: PM2 process `neurecore-eaos` (id 35) on internal 3011, source `/opt/neurecore/frontend-eaos/`
+- Frontend-Tenant: PM2 process `neurecore-tenant` on internal 3005, source `/opt/neurecore/frontend-tenant/`
 - CORS proxy: PM2 process `neurecore-cors-proxy` (id 7) on 3004
 - Observability: 3-host-network containers under `/opt/neurecore/observability/`
 
@@ -703,7 +704,7 @@ settings, solution-packs, tasks, tenants, tiers, tools, users, widgets, workflow
 | 2026-06-26 | Phase B: Google Workspace core | ✅ Live | First migration apply needed DB write access verified |
 | 2026-06-27 | Phase C–F + Onboarding + Tier limits | ✅ Live (PID 647920) | `EmailTool` injected unused `PrismaIntegrationCredentialStore` → DI error on first restart. Fixed by removing unused dep from constructor. |
 | 2026-06-28 | Phase 5 pre-req: Prometheus + Grafana + Alertmanager + `/api/metrics` | ✅ Live | Two issues: (a) `ChatModule` import referenced deleted module — removed from `app.module.ts`; (b) port collisions with `nghttpx` (3000) and `next-server` (3100) — Grafana moved to **3200** (host network). Smoke test passes 8/8. |
-| ~2026-06-30 | Frontend migration off Contabo | ✅ Partial — admin kept on Contabo (3020), tenant moved to Vercel only | Frontend-tenant removed from Contabo; CC admin continues on Contabo behind CyberPanel. |
+| ~2026-07-02 | Tenant migrated to Contabo | ✅ Contabo-only — all three NeureCore frontends on Contabo | Tenant moved from Vercel to Contabo port 3005; backend + admin + tenant all on Contabo. |
 | 2026-07-01 | `paperclip-master.zip` artifacts ended up polluting git status under `/opt/neurecore/backend/backend/` (via rsync of Temp/ dir) | ⚠️ Working tree noisy — git filter required | See §1.5 and §6 lesson #11. |
 | 2026-07-01 16:05Z | Last backend restart (PM2 id 37) | ✅ Live 22h uptime, 200/200 health | |
 | 2026-07-01 | Tier-Agent migrations, dashboard perf | ✅ Committed as `c5c05ec perf(backend): dashboard load 12-14s → 1.5-2s` | Some Neon pooler timeouts observed for `MissionFeedAiPrioritizer` (see §3.6). |
@@ -794,7 +795,7 @@ ssh contabo 'docker logs -f neurecore-grafana | tail -50'
 | `BackendMetricsScrapeFailing` | critical | Prometheus can't scrape `/api/metrics` for 5m |
 | `AIActionLatencyHigh` | warning | p95 latency > 30s for 10m |
 
-**Phase status:** ✅ Prometheus + Grafana + Alertmanager live; backend `/api/metrics` instrumented (45 modules wired, 81 tools). `MetricsService.recordAiAction()` API ready for the Phase 5/5.3 interceptor. `FeatureFlagService` with `DISABLE_AI_ACTIONS` support ready for the kill-switch guard. 6 alert rules loaded and being evaluated.
+**Phase status:** ✅ Prometheus + Grafana + Alertmanager live; backend `/api/metrics` instrumented (45 modules wired, 79 tools). `MetricsService.recordAiAction()` API ready for the Phase 5/5.3 interceptor. `FeatureFlagService` with `DISABLE_AI_ACTIONS` support ready for the kill-switch guard. 6 alert rules loaded and being evaluated.
 
 ---
 

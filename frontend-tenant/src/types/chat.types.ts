@@ -54,7 +54,7 @@ export interface ConversationMessage {
 
 // Request payload sent to backend
 export interface ChatRequest {
-  query: string;
+  message: string;
   context?: 'agent' | 'task' | 'workflow' | 'system';
   conversationId?: string;
 }

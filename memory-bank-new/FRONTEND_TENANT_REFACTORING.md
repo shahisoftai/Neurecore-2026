@@ -24,14 +24,16 @@ The frontend-tenant is **well-architected and modern** with:
 | Feature | Status | Priority | Effort |
 |---------|--------|----------|--------|
 | **Command Palette** | ✓ Done | — | — |
-| **Risk-Stratified Approvals** | ⚠️ Partial | 🔴 HIGH | 🟡 Medium |
-| **Approval Evidence Boxes** | ❌ Missing | 🔴 HIGH | 🟡 Medium |
-| **Impact Timeline Dashboard** | ⚠️ Partial | 🔴 HIGH | 🟡 Medium |
-| **Cross-Dept Context Linking** | ❌ Missing | 🟡 MEDIUM | 🔴 High |
+| **Risk-Stratified Approvals** | ✓ **COMPLETED** | 🔴 HIGH | 🟡 Medium |
+| **Approval Evidence Boxes** | ✓ **COMPLETED** | 🔴 HIGH | 🟡 Medium |
+| **Impact Timeline Dashboard** | ✓ **COMPLETED** | 🔴 HIGH | 🟡 Medium |
+| **Cross-Dept Context Linking** | ✓ **COMPLETED** | 🟡 MEDIUM | 🔴 High |
+| **Command Cockpit Dashboard** | ✓ **COMPLETED** | 🔴 HIGH | 🟡 Medium |
+| **Comprehensive Mock Data** | ✓ **COMPLETED** | 🔴 HIGH | 🟡 Medium |
+| **Batch Approvals** | ⚠️ Partial | 🟡 MEDIUM | 🟢 Low |
 | **Department Control Rooms** | ❌ Missing | 🟡 MEDIUM | 🔴 High |
 | **Real-Time Agent Orchestration** | ⚠️ Partial | 🟡 MEDIUM | 🟡 Medium |
-| **Batch Approvals** | ❌ Missing | 🟡 MEDIUM | 🟢 Low |
-| **Learning Loop (Rating Feedback)** | ❌ Missing | 🟡 MEDIUM | 🟡 Medium |
+| **Learning Loop (Rating Feedback)** | ⚠️ Partial | 🟡 MEDIUM | 🟡 Medium |
 | **Dark Mode** | ✓ Built-in | — | — |
 
 ---

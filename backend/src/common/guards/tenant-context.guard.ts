@@ -17,7 +17,6 @@
  */
 
 import {
-  BadRequestException,
   CanActivate,
   ExecutionContext,
   ForbiddenException,
@@ -77,14 +76,8 @@ function resolveTenantContext(
 
   if (isPlatformRole(user.role)) {
     const override = extractOverride(input);
-    if (!override) {
-      throw new BadRequestException({
-        code: 'TENANT_REQUIRED',
-        message: `${user.role} must specify tenantId via header, query, or body.`,
-      });
-    }
     return {
-      tenantId: override,
+      tenantId: override ?? '',
       isCrossTenant: true,
       actorRole: user.role,
     };

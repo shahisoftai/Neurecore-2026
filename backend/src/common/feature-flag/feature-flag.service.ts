@@ -42,6 +42,15 @@ export class FeatureFlagService implements OnModuleInit {
   refresh(): void {
     const knownFlags: Array<[string, boolean]> = [
       ['DISABLE_AI_ACTIONS', bool(this.config.get<string>('DISABLE_AI_ACTIONS'))],
+      ['FEATURE_ANALYTICS_ENABLED', bool(this.config.get<string>('FEATURE_ANALYTICS_ENABLED'))],
+      ['FEATURE_CONNECTORS_ENABLED', bool(this.config.get<string>('FEATURE_CONNECTORS_ENABLED'))],
+      ['FEATURE_NOTIFICATIONS_ENABLED', bool(this.config.get<string>('FEATURE_NOTIFICATIONS_ENABLED'))],
+      ['FEATURE_AUDIT_LOG_ENABLED', bool(this.config.get<string>('FEATURE_AUDIT_LOG_ENABLED'))],
+      ['FEATURE_VOICE_COMMANDS_ENABLED', bool(this.config.get<string>('FEATURE_VOICE_COMMANDS_ENABLED'))],
+      ['FEATURE_WORKFLOW_AUTOMATION_ENABLED', bool(this.config.get<string>('FEATURE_WORKFLOW_AUTOMATION_ENABLED'))],
+      ['FEATURE_ADVANCED_REPORTING_ENABLED', bool(this.config.get<string>('FEATURE_ADVANCED_REPORTING_ENABLED'))],
+      ['FEATURE_DEBUG_MODE', bool(this.config.get<string>('FEATURE_DEBUG_MODE'))],
+      ['FEATURE_MAINTENANCE_MODE', bool(this.config.get<string>('FEATURE_MAINTENANCE_MODE'))],
     ];
     for (const [key, value] of knownFlags) {
       const previous = this.cache.get(key);

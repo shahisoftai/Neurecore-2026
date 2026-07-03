@@ -142,7 +142,15 @@ class IntegrationsService {
     remaining: number;
   }> {
     const res = await api.get('/integrations/usage/brevo');
-    return unwrapItem(res) as never;
+    const data = unwrapItem(res) as Record<string, unknown> | null;
+    return {
+      sentToday: (data?.sentToday as number) ?? 0,
+      dailyLimit: (data?.dailyLimit as number) ?? 300,
+      warningThreshold: (data?.warningThreshold as number) ?? 240,
+      isAtWarning: (data?.isAtWarning as boolean) ?? false,
+      isAtLimit: (data?.isAtLimit as boolean) ?? false,
+      remaining: (data?.remaining as number) ?? 300,
+    };
   }
 
   async getGoogleDriveFolders(): Promise<{

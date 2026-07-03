@@ -31,6 +31,7 @@ export class ChatService {
   async send(
     dto: SendChatMessageDto,
     tenantIdFromJwt?: string,
+    userIdFromJwt?: string,
   ): Promise<{
     reply: string;
     conversationId: string;
@@ -77,7 +78,7 @@ export class ChatService {
           goal: dto.message,
           agentId: 'ai-assistant',
           tenantId,
-          userId: 'user',
+          userId: userIdFromJwt ?? 'anonymous',
           sessionId: conversationId,
         });
 
@@ -179,9 +180,10 @@ export class ChatService {
     const actionKeywords = [
       'create', 'add', 'new', 'make',
       'pause', 'stop', 'resume', 'start', 'activate',
-      'list', 'show', 'get', 'find',
-      'assign', 'delegate', 'set',
+      'assign', 'delegate',
       'delete', 'remove', 'archive',
+      'complete task', 'mark task', 'finish task',
+      'reopen', 'cancel',
     ];
     const lower = message.toLowerCase();
     return actionKeywords.some(k => lower.includes(k)) ? 'action' : 'query';

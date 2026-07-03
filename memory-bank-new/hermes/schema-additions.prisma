@@ -1,17 +1,41 @@
-// Hermes Layer — Prisma Schema Additions
-// Add these to the existing schema.prisma file
+// ═══════════════════════════════════════════════════════════════════════════════
+// Hermes Layer — Prisma Schema (HISTORICAL REFERENCE)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// IMPORTANT: This file is ARCHIVAL. All models, enums, and indexes defined here
+// already exist in the live schema at `backend/prisma/schema.prisma` (lines
+// 2511–2709). They were added via incremental migrations (2026-06-25 through
+// 2026-07-03), not a single "hermes_init" migration.
+//
+// This file is kept for documentation / planning reference only. Do NOT apply
+// these additions — they would duplicate existing models and cause Prisma
+// validation errors.
+//
+// Last validated against live schema: 2026-07-03 (schema v2,716 lines)
+// ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── Enums (add to existing enum block) ───────────────────────────────────────
+// ─── Enums (all already defined in live schema) ───────────────────────────────
 
-// HermesAgentType — already covered by existing AgentType enum
-// HermesAgentStatus — uses existing AgentStatus enum
-// ToolPermissionLevel — NEW
-// HermesMemoryType — NEW
-// SessionStatus — NEW (uses MessageRole from existing)
-// ApprovalWorkflowType — NEW
-// ApprovalStatus — already exists in schema
+// HermesAgentType   — live schema line 145
+// HermesAgentStatus — live schema line 160
+// ToolPermissionLevel — live schema line 166
+// HermesMemoryType  — live schema line 174
+// SessionStatus     — live schema line 180
+// MessageRole       — live schema line 187
+// ApprovalWorkflowType — live schema line 193
 
-// ─── HermesAgent ─────────────────────────────────────────────────────────────
+// ApprovalStatus — MISSING from this file; defined below for completeness.
+// Live schema: enum exists but location varies by Prisma generation.
+enum ApprovalStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+// ─── HermesAgent (live schema line 2513) ──────────────────────────────────────
 
 model HermesAgent {
   id           String   @id @default(cuid())
@@ -21,27 +45,24 @@ model HermesAgent {
   description  String?
   model        String?
 
-  // System prompt + config
   systemPrompt String?  @db.Text
   config       Json     @default("{}")
 
-  // Permissions
   permissions  String[] @default([])
   allowedPaths String[] @default([])
   blockedPaths String[] @default([])
-  maxFileSize  Int      @default(10485760) // 10MB
-
-  // Identity
+  maxFileSize  Int      @default(10485760)
   isActive     Boolean  @default(true)
   tenantId     String
-  workspaceId   String?
+  workspaceId   String?   // Reserved for future Workspace module (no Workspace model yet)
 
-  // Relations
   capabilities HermesCapability[]
   toolPermissions HermesToolPermission[]
   memory       HermesMemoryEntry[]
   sessions     HermesSession[]
   auditLogs    HermesAuditLog[]
+
+  agents       Agent[]  // Back-relation — live schema line 783 (Agent.hermesAgentId)
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -73,7 +94,7 @@ enum HermesAgentStatus {
   SUSPENDED
 }
 
-// ─── HermesCapability ─────────────────────────────────────────────────────────
+// ─── HermesCapability (live schema line 2548) ─────────────────────────────────
 
 model HermesCapability {
   id            String   @id @default(cuid())
@@ -92,7 +113,7 @@ model HermesCapability {
   @@index([hermesAgentId])
 }
 
-// ─── HermesToolPermission ─────────────────────────────────────────────────────
+// ─── HermesToolPermission (live schema line 2565) ─────────────────────────────
 
 model HermesToolPermission {
   id            String   @id @default(cuid())
@@ -115,7 +136,8 @@ enum ToolPermissionLevel {
   APPROVAL_REQUIRED
 }
 
-// ─── HermesSession ────────────────────────────────────────────────────────────
+// ─── HermesSession (live schema line 2578) ────────────────────────────────────
+// NOTE: Live schema has 4 indexes; this file had 3. Added @@index([status, tenantId]).
 
 model HermesSession {
   id            String   @id @default(cuid())
@@ -129,6 +151,8 @@ model HermesSession {
 
   messages      HermesMessage[]
 
+  hermesAgent   HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   expiresAt     DateTime?
@@ -136,7 +160,7 @@ model HermesSession {
   @@index([hermesAgentId, tenantId])
   @@index([userId, tenantId])
   @@index([threadId])
-  @@index([status, tenantId])
+  @@index([status, tenantId])   // Added — matches live schema
 }
 
 enum SessionStatus {
@@ -146,7 +170,7 @@ enum SessionStatus {
   EXPIRED
 }
 
-// ─── HermesMessage ───────────────────────────────────────────────────────────
+// ─── HermesMessage (live schema line 2602) ───────────────────────────────────
 
 model HermesMessage {
   id           String   @id @default(cuid())
@@ -157,6 +181,7 @@ model HermesMessage {
   toolCalls    Json?
   toolResults  Json?
   error        String?
+  createdAt    DateTime @default(now())
 
   session      HermesSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
@@ -169,7 +194,12 @@ enum MessageRole {
   SYSTEM
 }
 
-// ─── HermesMemoryEntry ────────────────────────────────────────────────────────
+// ─── HermesMemoryEntry (live schema line 2618) ────────────────────────────────
+// NOTE: Live schema is MISSING the Gist vector index. Apply via raw SQL:
+//   CREATE INDEX "HermesMemoryEntry_embedding_idx"
+//     ON "HermesMemoryEntry" USING Gist (embedding);
+// (Prisma 5.22 does not support `type: Gist` on Float[] — requires @pgvector/prisma
+//  or a manual migration.)
 
 model HermesMemoryEntry {
   id            String   @id @default(cuid())
@@ -185,12 +215,15 @@ model HermesMemoryEntry {
   metadata      Json?
   expiresAt     DateTime?
 
+  hermesAgent  HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@index([hermesAgentId, tenantId])
   @@index([hermesAgentId, type])
   @@index([tenantId])
+  // Gist index applied via raw SQL — see header comment above
 }
 
 enum HermesMemoryType {
@@ -199,7 +232,7 @@ enum HermesMemoryType {
   PROCEDURAL
 }
 
-// ─── HermesAuditLog ───────────────────────────────────────────────────────────
+// ─── HermesAuditLog (live schema line 2642) ───────────────────────────────────
 
 model HermesAuditLog {
   id             String   @id @default(cuid())
@@ -221,12 +254,14 @@ model HermesAuditLog {
   tokensUsed     Int?
   createdAt      DateTime @default(now())
 
+  hermesAgent    HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
   @@index([hermesAgentId, tenantId])
   @@index([tenantId, createdAt])
   @@index([action, tenantId])
 }
 
-// ─── ApprovalWorkflow ─────────────────────────────────────────────────────────
+// ─── ApprovalWorkflow (live schema line 2669) ─────────────────────────────────
 
 model ApprovalWorkflow {
   id            String   @id @default(cuid())
@@ -281,11 +316,12 @@ model ApprovalWorkflowStep {
   @@index([approvalWorkflowId])
 }
 
-// ─── Updates to existing models ───────────────────────────────────────────────
+// ─── Updates to existing models (already applied in live schema) ──────────────
 
-// Add to Agent model:
-// hermesAgentId  String?   @unique
-// workspaceId     String?
+// Agent model (live schema line 782):
+//   hermesAgentId  String?      @unique
+//   hermesAgent    HermesAgent? @relation(fields: [hermesAgentId], references: [id])
+//   workspaceId    String?      // Reserved — no Workspace model yet
 
-// Add to MemoryEntry model:
-// workspaceId     String?
+// MemoryEntry model:
+//   workspaceId    String?      // Reserved — no Workspace model yet

@@ -181,8 +181,8 @@ pnpm exec playwright test
 ### 2.5 Switch a new feature flag on for 10% tenants
 
 ```bash
-# Option A: Build-time (Vercel env var)
-vercel env add NEXT_PUBLIC_REDESIGN_<NAME> production  # value: "true"
+# Option A: Contabo — set in /opt/neurecore/frontend-tenant/.env (rebuild required)
+# Edit the .env file and rebuild the frontend on Contabo
 
 # Option B: Runtime per-tenant (no rebuild)
 # In TenantShell.tsx, read user.tenantId and check against allowlist:
@@ -314,12 +314,8 @@ pnpm lint
 # Tests
 pnpm exec playwright test
 
-# Production build via Vercel
-git push origin main  # Vercel auto-deploys
-
-# ⚠️ Don't run `vercel deploy --prod` directly — the CLI has a duplicate-path
-# bug when the dashboard sets rootDirectory. Git-push auto-deploy works correctly.
-# See memory-bank/vercel-operations.md for full procedure + pitfalls.
+# Production build on Contabo
+# See memory-bank/contabo-operations.md for full deploy procedure
 
 ### 4.2 Adding a new service file
 
@@ -405,9 +401,13 @@ Look for:
 - 4xx spikes on `/api/v1/agent-templates/platform` (Phase 1 Gap 2 regression)
 - 5xx rate above 1%
 
-### 5.2 Frontend logs (Vercel)
+### 5.2 Frontend logs (Contabo)
 
-Access via Vercel dashboard → Project → Logs.
+Access via PM2 logs on Contabo:
+```bash
+ssh contabo 'pm2 logs neurecore-tenant --lines 100 --nostream | tail -50'
+ssh contabo 'pm2 logs neurecore-admin --lines 100 --nostream | tail -50'
+```
 
 Look for:
 - Console errors on `/command-center`, `/marketplace`, etc.
@@ -484,11 +484,12 @@ If `SELECT 1` from Contabo to Neon consistently > 1s AND users complain about da
 When adoption metrics confirm ≥ 95% direct hits on each new route:
 
 ```bash
-# 1. Audit direct-hit % per route via Vercel analytics
+# 1. Audit direct-hit % per route via Contabo access logs
+#    grep 'GET /command-center' /var/log/litespeed/access.log | wc -l
 # 2. For routes meeting threshold, schedule old route removal
 # 3. Remove rewrites in next.config.js for that route
 # 4. Delete old route file (e.g. src/app/costs/page.tsx)
-# 5. Deploy as a minor release (no silent removal)
+# 5. Rebuild and redeploy on Contabo
 ```
 
 **Critical:** Always communicate old route removal 30 days in advance via in-app banner.
@@ -518,15 +519,20 @@ psql "$DATABASE_URL" -c "SELECT 1"  # test connection
 # Check pg_isready, check logs in /var/log/postgresql/
 ```
 
-### 7.2 Frontend down (Vercel)
+### 7.2 Frontend down (Contabo)
 
 ```bash
-# Vercel dashboard → Deployments → find last working → "Promote to Production"
-# Or revert env vars to disable new flags
-vercel env rm NEXT_PUBLIC_REDESIGN_COMMAND_CENTER production
-vercel env rm NEXT_PUBLIC_REDESIGN_WORKSPACE production
-# etc.
-# Then redeploy via git push or `vercel --prod`
+ssh contabo
+# Check if the frontend process is running
+pm2 list | grep neurecore-
+
+# If down, restart:
+pm2 restart neurecore-tenant  # tenant frontend
+pm2 restart neurecore-admin   # admin frontend
+
+# Check logs
+pm2 logs neurecore-tenant --lines 50
+pm2 logs neurecore-admin --lines 50
 ```
 
 ### 7.3 Database corruption
@@ -570,8 +576,7 @@ sudo systemctl restart redis
 - `memory-bank/deployment-guide.md` — full deployment guide
 - `memory-bank/verification-checklist.md` — pre-deploy QA
 - `memory-bank/phase1–12-implementation-summary.md` — phase details
-- `memory-bank/contabo-operations.md` — Contabo backend ops reference (READ before any Contabo work)
-- `memory-bank/vercel-operations.md` — Vercel frontend ops reference (READ before any Vercel work)
+- `memory-bank/contabo-operations.md` — Contabo backend + frontend ops reference (READ before any Contabo work)
 
 ### Backend reference
 - `backend/prisma/schema.prisma` — data model
@@ -586,7 +591,8 @@ sudo systemctl restart redis
 
 ### Contabo reference
 - `/opt/neurecore/backend/` — backend code
-- `/opt/neurecore/frontend-tenant/` (if deployed via Git on Contabo) or via Vercel
+- `/opt/neurecore/frontend-tenant/` — Contabo-hosted tenant frontend
+- `/opt/neurecore/frontend-admin/` — Contabo-hosted admin frontend
 - `/var/log/postgresql/` — DB logs
 - pm2 logs — backend logs
 

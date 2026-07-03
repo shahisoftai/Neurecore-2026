@@ -1,236 +1,150 @@
 import { HermesContextService } from '../../src/modules/hermes/services/hermes-context.service';
-import type {
-  HermesExecutionRequest,
-  HermesExecutionContext,
-} from '../../src/modules/hermes/interfaces/hermes-runtime.interface';
+import { HermesAgentType } from '@prisma/client';
 
 function buildMocks() {
+  const prisma: any = {
+    hermesAgent: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+    },
+  };
+
   const mockRegistry = {
     findById: jest.fn(),
   };
 
   const mockMemory = {
+    search: jest.fn(),
     getContext: jest.fn(),
   };
 
-  const mockGovernance = {
-    evaluate: jest.fn(),
-  };
-
   const mockToolGateway = {
-    getAllowedTools: jest.fn(),
+    buildToolMenu: jest.fn(),
   };
 
   const svc = new HermesContextService(
+    prisma as any,
     mockRegistry as any,
     mockMemory as any,
-    mockGovernance as any,
     mockToolGateway as any,
   );
 
-  return {
-    svc,
-    mocks: {
-      registry: mockRegistry,
-      memory: mockMemory,
-      governance: mockGovernance,
-      toolGateway: mockToolGateway,
-    },
-  };
+  return { svc, mocks: { prisma, registry: mockRegistry, memory: mockMemory, toolGateway: mockToolGateway } };
 }
 
 describe('HermesContextService', () => {
   let svc: HermesContextService;
   let mocks: ReturnType<typeof buildMocks>['mocks'];
 
-  const mockAgent = {
-    id: 'agent-1',
-    name: 'FinanceHermes',
-    type: 'FINANCE' as const,
-    status: 'IDLE' as const,
-    isActive: true,
-    tenantId: 'tenant-1',
-    workspaceId: 'ws-1',
-    permissions: ['invoice:read', 'invoice:approve'],
-    systemPrompt: 'You are a finance agent.',
-    model: 'mini-max',
-  };
-
-  const baseRequest: HermesExecutionRequest = {
-    sessionId: 'session-1',
-    hermesAgentId: 'agent-1',
-    task: 'Process invoice #123',
-    context: {
-      tenantId: 'tenant-1',
-      workspaceId: 'ws-1',
-      userId: 'user-1',
-      threadId: 'thread-1',
-    },
-  };
-
   beforeEach(() => {
-    const { svc: service, mocks: m } = buildMocks();
-    svc = service;
-    mocks = m;
+    const built = buildMocks();
+    svc = built.svc;
+    mocks = built.mocks;
     jest.clearAllMocks();
   });
 
-  describe('build', () => {
-    it('should build execution context from request', async () => {
-      mocks.registry.findById.mockResolvedValue(mockAgent);
-      mocks.memory.getContext.mockResolvedValueOnce('Recent: processed invoice #100');
-      mocks.governance.evaluate.mockResolvedValueOnce({
-        requiresApproval: false,
-        triggeredRules: [],
-        actions: [],
+  describe('getAgentContext', () => {
+    it('should return agent context from Prisma', async () => {
+      mocks.prisma.hermesAgent.findFirst.mockResolvedValueOnce({
+        id: 'agent-1',
+        name: 'Test Agent',
+        type: HermesAgentType.CUSTOM,
+        status: 'IDLE',
+        model: 'gpt-4o-mini',
+        systemPrompt: 'Test prompt',
+        tenantId: 'tenant-1',
+        workspaceId: null,
+        config: {},
       });
-      mocks.toolGateway.getAllowedTools.mockResolvedValueOnce(['read_invoice', 'approve_invoice']);
 
-      const ctx = await svc.build(baseRequest);
-
-      expect(ctx.hermesAgentId).toBe('agent-1');
-      expect(ctx.tenantId).toBe('tenant-1');
-      expect(ctx.task).toBe('Process invoice #123');
-      expect(ctx.systemPrompt).toContain('You are a finance agent.');
-      expect(ctx.allowedTools).toEqual(['read_invoice', 'approve_invoice']);
+      const ctx = await svc.getAgentContext('agent-1', 'tenant-1');
+      expect(ctx.agentId).toBe('agent-1');
+      expect(ctx.name).toBe('Test Agent');
+      expect(ctx.type).toBe(HermesAgentType.CUSTOM);
+      expect(ctx.model).toBe('gpt-4o-mini');
     });
 
     it('should throw when agent not found', async () => {
-      mocks.registry.findById.mockResolvedValueOnce(null);
+      mocks.prisma.hermesAgent.findFirst.mockResolvedValueOnce(null);
 
-      await expect(svc.build(baseRequest)).rejects.toThrow('HermesAgent agent-1 not found');
-    });
-
-    it('should use provided tools over allowed tools', async () => {
-      mocks.registry.findById.mockResolvedValueOnce(mockAgent);
-      mocks.memory.getContext.mockResolvedValue('');
-      mocks.governance.evaluate.mockResolvedValue({ requiresApproval: false, triggeredRules: [], actions: [] });
-      mocks.toolGateway.getAllowedTools.mockResolvedValue(['read_invoice', 'approve_invoice']);
-
-      const requestWithTools = {
-        ...baseRequest,
-        tools: ['custom_tool'],
-      };
-
-      const ctx = await svc.build(requestWithTools);
-      expect(ctx.allowedTools).toEqual(['custom_tool']);
+      await expect(
+        svc.getAgentContext('nonexistent', 'tenant-1'),
+      ).rejects.toThrow('Hermes agent nonexistent not found');
     });
   });
 
   describe('buildSystemPrompt', () => {
-    it('should return agent system prompt with memory', async () => {
-      mocks.registry.findById.mockResolvedValue(mockAgent);
-      mocks.memory.getContext.mockResolvedValueOnce('Memory: previously approved invoices from Acme Corp');
+    it('should build prompt with agent info and memory', () => {
+      const agent = {
+        agentId: 'a1',
+        name: 'TestBot',
+        type: HermesAgentType.CUSTOM,
+        status: 'IDLE' as any,
+        model: 'gpt-4o-mini',
+        systemPrompt: 'You are a test agent.',
+        tenantId: 't1',
+      };
 
-      const prompt = await svc.buildSystemPrompt('agent-1', 'tenant-1');
+      const memoryCtx = {
+        personal: ['Learned: company policy X'],
+        episodic: ['Processed invoice #456'],
+        procedural: new Map([['process_invoice', 'Step 1: Verify, Step 2: Approve']]),
+      };
 
-      expect(prompt).toContain('You are a finance agent.');
-      expect(prompt).toContain('## Recent Memory');
-    });
-
-    it('should return empty string when agent not found', async () => {
-      mocks.registry.findById.mockResolvedValueOnce(null);
-      const prompt = await svc.buildSystemPrompt('agent-1', 'tenant-1');
-      expect(prompt).toBe('');
-    });
-
-    it('should use default prompt for FINANCE type', async () => {
-      mocks.registry.findById.mockResolvedValueOnce({ ...mockAgent, systemPrompt: undefined });
-      mocks.memory.getContext.mockResolvedValue('');
-
-      const prompt = await svc.buildSystemPrompt('agent-1', 'tenant-1');
-
-      expect(prompt).toContain('Finance Hermes agent');
-    });
-
-    it('should use default prompt for HR type', async () => {
-      mocks.registry.findById.mockResolvedValueOnce({ ...mockAgent, type: 'HR' as const, systemPrompt: undefined });
-      mocks.memory.getContext.mockResolvedValue('');
-
-      const prompt = await svc.buildSystemPrompt('agent-1', 'tenant-1');
-      expect(prompt).toContain('HR Hermes agent');
+      const prompt = svc.buildSystemPrompt(agent, memoryCtx);
+      expect(prompt).toContain('You are a test agent.');
+      expect(prompt).toContain('STANDARD OPERATING PROCEDURES');
+      expect(prompt).toContain('Step 1: Verify');
+      expect(prompt).toContain('company policy X');
     });
   });
 
-  describe('injectMemory', () => {
-    it('should return memory context string', async () => {
-      mocks.memory.getContext.mockResolvedValueOnce('[PERSONAL] User prefers email notifications');
-
-      const ctx: HermesExecutionContext = {
-        sessionId: 'session-1',
-        hermesAgentId: 'agent-1',
+  describe('buildToolContext', () => {
+    it('should return tool context with permissions', async () => {
+      mocks.prisma.hermesAgent.findFirst.mockResolvedValueOnce({
+        id: 'agent-1',
+        type: HermesAgentType.CUSTOM,
         tenantId: 'tenant-1',
-        workspaceId: 'ws-1',
-        userId: 'user-1',
-        threadId: 'thread-1',
-        task: 'Test',
-        systemPrompt: '',
-        memoryContext: '',
-        allowedTools: [],
-        governanceContext: { requiresApproval: false, blockedRules: [], rateLimited: false, alerts: [] },
-        maxIterations: 5,
-        permissions: [],
-        metadata: {},
-      };
-
-      const result = await svc.injectMemory('agent-1', ctx, 200);
-      expect(result).toContain('[PERSONAL]');
-    });
-
-    it('should return empty string when no memory', async () => {
-      mocks.memory.getContext.mockResolvedValueOnce('');
-
-      const ctx: HermesExecutionContext = {
-        sessionId: 'session-1',
-        hermesAgentId: 'agent-1',
-        tenantId: 'tenant-1',
-        userId: 'user-1',
-        threadId: 'thread-1',
-        task: 'Test',
-        systemPrompt: '',
-        memoryContext: '',
-        allowedTools: [],
-        governanceContext: { requiresApproval: false, blockedRules: [], rateLimited: false, alerts: [] },
-        maxIterations: 5,
-        permissions: [],
-        metadata: {},
-      };
-
-      const result = await svc.injectMemory('agent-1', ctx);
-      expect(result).toBe('');
-    });
-  });
-
-  describe('enrichWithGovernance', () => {
-    it('should return governance context from governance service', async () => {
-      mocks.governance.evaluate.mockResolvedValueOnce({
-        requiresApproval: true,
-        triggeredRules: ['HIGH_VALUE_PAYMENT'],
-        actions: ['RATE_LIMIT'],
+        toolPermissions: [
+          { toolName: 'email', permission: 'ALLOW' },
+          { toolName: 'docs', permission: 'DENY' },
+        ],
       });
 
-      const ctx: HermesExecutionContext = {
-        sessionId: 'session-1',
-        hermesAgentId: 'agent-1',
+      mocks.toolGateway.buildToolMenu.mockResolvedValueOnce([
+        { name: 'email', description: 'Send email', permission: 'ALLOW' },
+        { name: 'docs', description: 'Documents', permission: 'DENY' },
+      ]);
+
+      const ctx = await svc.buildToolContext('agent-1', 'tenant-1');
+      expect(ctx.allowedTools).toContain('email');
+      expect(ctx.deniedTools).toContain('docs');
+    });
+  });
+
+  describe('buildExecutionContext', () => {
+    it('should build full execution context', async () => {
+      mocks.prisma.hermesAgent.findFirst.mockResolvedValueOnce({
+        id: 'agent-1',
+        name: 'Agent',
+        type: HermesAgentType.CUSTOM,
+        status: 'IDLE',
+        model: 'gpt-4o-mini',
+        systemPrompt: 'Test',
         tenantId: 'tenant-1',
-        workspaceId: 'ws-1',
-        userId: 'user-1',
-        threadId: 'thread-1',
-        task: 'Pay $50,000 to vendor',
-        systemPrompt: '',
-        memoryContext: '',
-        allowedTools: [],
-        governanceContext: { requiresApproval: false, blockedRules: [], rateLimited: false, alerts: [] },
-        maxIterations: 5,
-        permissions: [],
-        metadata: {},
-      };
+        workspaceId: null,
+        config: {},
+        toolPermissions: [],
+      });
 
-      const govCtx = await svc.enrichWithGovernance(ctx, 'tenant-1');
+      mocks.prisma.hermesAgent.findUnique.mockResolvedValueOnce({ config: {} });
+      mocks.toolGateway.buildToolMenu.mockResolvedValueOnce([]);
+      mocks.memory.search.mockResolvedValue([]);
 
-      expect(govCtx.requiresApproval).toBe(true);
-      expect(govCtx.blockedRules).toContain('HIGH_VALUE_PAYMENT');
-      expect(govCtx.rateLimited).toBe(true);
+      const ctx = await svc.buildExecutionContext('agent-1', 'tenant-1', 'session-1');
+      expect(ctx.systemPrompt).toBeDefined();
+      expect(ctx.tools).toBeDefined();
+      expect(ctx.memory).toBeDefined();
     });
   });
 });

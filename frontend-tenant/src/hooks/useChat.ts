@@ -42,7 +42,7 @@ export function useChat() {
 
       try {
         const response = await chatService.sendMessage({
-          query: query.trim(),
+          message: query.trim(),
           context,
           conversationId: conversationId ?? undefined,
         });

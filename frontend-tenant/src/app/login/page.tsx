@@ -186,7 +186,7 @@ function LoginForm() {
 
   return (
     <>
-    <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm border border-gray-200">
+    <div className="w-full max-w-md rounded-2xl bg-zinc-900 p-8 shadow-sm border border-zinc-800">
         <div className="flex justify-center mb-6">
           <img src="/logo.png" alt="NeureCore" className="h-10 w-auto object-contain" />
         </div>
@@ -195,50 +195,51 @@ function LoginForm() {
           <GoogleSignInButton onError={handleGoogleError} />
         </div>
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-lg bg-red-950/60 border border-red-700/50 p-3 text-sm text-red-300">
             {error}
           </div>
         )}
         <div className="relative my-4">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200" />
+            <div className="w-full border-t border-zinc-700" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-gray-400">Or continue with email</span>
+            <span className="bg-zinc-900 px-2 text-zinc-500">Or continue with email</span>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1 text-sm font-medium text-zinc-300">
             Email
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-base text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500 placeholder-zinc-500"
+              placeholder="you@company.com"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1 text-sm font-medium text-zinc-300">
             Password
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-base text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </label>
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition"
+            className="mt-2 rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition"
           >
             {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-gray-500">
+        <p className="mt-4 text-center text-sm text-zinc-500">
           No account?{" "}
-          <Link href="/register" className="text-blue-600 hover:underline">
+          <Link href="/register" className="text-indigo-400 hover:underline">
             Register
           </Link>
         </p>

@@ -94,6 +94,19 @@ export class CircuitBreakerService {
     this.circuits.set(key, this.fresh());
   }
 
+  getAllStatus(): Record<string, CircuitStatus> {
+    const result: Record<string, CircuitStatus> = {};
+    for (const [key, circ] of this.circuits) {
+      this.maybeTransitionToHalfOpen(key, circ);
+      result[key] = { ...circ };
+    }
+    return result;
+  }
+
+  resetAll(): void {
+    this.circuits.clear();
+  }
+
   // ─── Private ─────────────────────────────────────────────────────────────
 
   private getOrCreate(key: string): CircuitRecord {

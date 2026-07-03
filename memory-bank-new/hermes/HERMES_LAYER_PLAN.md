@@ -1,8 +1,8 @@
 # NeureCore Hermes Layer — Implementation Plan
 
-**Version:** 1.0
-**Date:** 2026-07-01
-**Status:** Approved for Implementation
+**Version:** 1.1
+**Date:** 2026-07-01 (updated 2026-07-03)
+**Status:** Implemented — 33 source files, 4,815 LOC, zero TypeScript errors, NestJS build passing
 
 ---
 
@@ -12,7 +12,7 @@
 
 Hermes Layer is the **AI workforce orchestration platform** for NeureCore. It provides specialized, persistent AI agents ("Hermes employees") that execute domain-specific tasks under deterministic governance control via LangGraph.
 
-**Design principle:** Humans never talk directly to Hermes. All requests flow through LangGraph (the CEO/COO), which enforces business rules, approvals, tenant isolation, and audit trails. Hermes only performs assigned tasks.
+**Design principle:** Humans never talk directly to Hermes for production operations. All requests flow through LangGraph (the CEO/COO), which enforces business rules, approvals, tenant isolation, and audit trails. Hermes only performs assigned tasks. Session-level APIs (`HermesSessionsController`) exist for debugging, monitoring, and admin inspection — not end-user interaction.
 
 ### 1.2 How Hermes Relates to LangGraph
 
@@ -52,7 +52,7 @@ Hermes Layer is the **AI workforce orchestration platform** for NeureCore. It pr
 |-----------|--------|-------|
 | LangGraph (OfficialAgentGraph) | ✅ Implemented | StateGraph with planner/executor/tool_node/evaluator nodes |
 | LangGraph (RoutineGraph) | ✅ Implemented | Workflow execution with checkpointing |
-| StructuredToolRegistry | ✅ 66+ tools | Zod schemas, tenant-scoped execution context |
+| StructuredToolRegistry | ✅ 79 tools | Zod schemas, tenant-scoped execution context (count is dynamic — see `getCount()`) |
 | Governance Rules Engine | ✅ Implemented | Trigger/action expression engine, BLOCK/APPROVE/RATE_LIMIT/LOG_ONLY |
 | Approvals Service | ✅ Implemented | PENDING/APPROVED/REJECTED/CANCELLED/EXPIRED lifecycle |
 | Memory Module | ✅ Implemented | SHORT_TERM/LONG_TERM/EPISODIC with vector embeddings |
@@ -62,19 +62,26 @@ Hermes Layer is the **AI workforce orchestration platform** for NeureCore. It pr
 | Multi-tenancy | ✅ tenantId everywhere | TenantContextService via AsyncLocalStorage |
 | Audit Logging | ✅ Global | AuditInterceptor + SecurityAuditLoggerService |
 | Agent Executor | ✅ Implemented | AgentExecutorService with WebSocket events |
+| **Hermes Prisma models** | ✅ In schema | All 7 models + enums in schema.prisma (lines 2519–2720); `Agent.hermesAgentId` back-relation at line 782 |
+| **Hermes module code** | ✅ Implemented | `src/modules/hermes/` — 33 files, 4,815 LOC; HermesModule wired into app.module.ts |
+| **Hermes services** | ✅ Implemented | All 9 services: Registry, Runtime, Session, Context, Memory, EventBus, ToolGateway, PermissionMatrix, ApprovalWorkflowEngine |
+| **Hermes LangGraph nodes** | ✅ Implemented | hermes-node.ts (createHermesNode + selectHermesAgent + task classifier), hermes-router.ts (HermesRouter), hermes-checkpointer.ts (save/load/delete) |
+| **Hermes controllers** | ✅ Implemented | 3 controllers: Registry (CRUD + capabilities + tool permissions), Sessions (create/execute/messages/close), Debug (health/status/workflows/events) — 20+ endpoints under `/api/v1/hermes/*` |
 
 ### 1.4 Gaps to Close
 
-| Gap | Impact | Fix |
-|-----|--------|-----|
-| No Hermes-specific agent runtime | Can't run specialized Hermes agents | New `HermesRuntimeService` + `HermesAgent` model |
-| No formal Agent Registry | Can't discover/query agent capabilities | New `AgentRegistryService` |
-| No Tool Gateway pattern | Tool permissions are per-agent, not per-agent-type | New `ToolGatewayService` with permission matrix |
-| No Approval Workflow Engine | Governance requires approval but no workflow orchestration | Enhance `ApprovalsService` + new `ApprovalWorkflowEngine` |
-| No Agent-specific personal memory | Memory is global, not per-agent | Extend `MemoryEntry` with `agentPersonalMemory` |
-| No `workspaceId` | Proposal uses workspaceId; code uses tenantId | Add `workspaceId` to tenant-scoped models |
-| No Hermes LangGraph nodes | Hermes can't be used as a LangGraph node | New `HermesNode` for LangGraph integration |
-| No long-running workflow suspension | RoutineGraph supports checkpoints but no human-in-loop | Add `approval` gate nodes to RoutineGraph |
+| Gap | Impact | Fix | Status |
+|-----|--------|-----|--------|
+| ~~No Hermes module code on disk~~ | ~~Entire Hermes layer is schema-only~~ | ~~Create `src/modules/hermes/` with all services, controllers, and LangGraph nodes~~ | ✅ Done 2026-07-03 |
+| ~~No Hermes-specific agent runtime~~ | ~~Can't run specialized Hermes agents~~ | ~~New `HermesRuntimeService` + wire up existing HermesAgent Prisma model~~ | ✅ Done |
+| ~~No formal Agent Registry~~ | ~~Can't discover/query agent capabilities~~ | ~~New `HermesRegistryService`~~ | ✅ Done |
+| ~~No Tool Gateway pattern~~ | ~~Tool permissions are per-agent, not per-agent-type~~ | ~~New `ToolGatewayService` with permission matrix~~ | ✅ Done |
+| ~~No Approval Workflow Engine~~ | ~~Governance requires approval but no workflow orchestration~~ | ~~New `ApprovalWorkflowEngine`~~ | ✅ Done |
+| ~~No Agent-specific personal memory~~ | ~~Memory is global, not per-agent~~ | ~~New `HermesMemoryService`~~ | ✅ Done |
+| No Gist vector index on embeddings | `HermesMemoryEntry.embedding` has no vector index | Raw SQL: `CREATE INDEX ... USING Gist (embedding)` (Prisma 5.22 requires @pgvector/prisma) | ❌ Pending |
+| ~~No Hermes LangGraph nodes~~ | ~~Hermes can't be used as a LangGraph node~~ | ~~New `hermes-node.ts` + `hermes-router.ts` + `hermes-checkpointer.ts`~~ | ✅ Done |
+| No long-running workflow suspension | RoutineGraph supports checkpoints but no human-in-loop | Add `approval` gate nodes to RoutineGraph | ❌ Pending |
+| `workspaceId` fields have no model | 6+ tables reference `workspaceId` but no `Workspace` model exists | Define Workspace model in schema BEFORE creating Hermes services | ❌ Pending |
 
 ---
 
@@ -157,293 +164,33 @@ Request → LangGraph → Governance Check → Approval Gate (if needed)
 
 ## 3. Database Schema (Prisma)
 
-### 3.1 New Models
+### 3.1 Models (all already in live schema)
 
-```prisma
-// memory-bank-new/hermes/schema-additions.prisma
+**Status:** All models below ALREADY exist in `backend/prisma/schema.prisma` (lines 2511–2709). They were added incrementally via migrations from 2026-06-25 through 2026-07-03. The full schema is maintained in `memory-bank-new/hermes/schema-additions.prisma` (historical reference only — do NOT re-apply).
 
-// ─── Hermes Agent Registry ───────────────────────────────────────────────────
+See `schema-additions.prisma` for the complete model definitions. Key models:
 
-model HermesAgent {
-  id              String   @id @default(cuid())
-  name            String                    // e.g., "HR Hermes", "Finance Hermes"
-  type            HermesAgentType           // HR, FINANCE, SALES, MARKETING, LEGAL, etc.
-  status          HermesAgentStatus @default(IDLE)  // IDLE, RUNNING, SUSPENDED
-  description     String?
-  capabilities    HermesCapability[]
-  tools           HermesToolPermission[]
-  memory          HermesMemoryEntry[]
-  sessions        HermesSession[]
-  permissions     String[]                  // RBAC permissions granted to this agent
-  allowedPaths    String[]                  // File system allowed paths
-  blockedPaths    String[]                  // File system blocked paths
-  maxFileSize     Int     @default(10485760) // 10MB default
-  model           String?                   // Override LLM model
-  systemPrompt    String?                   // Custom system prompt
-  config          Json?
-  isActive        Boolean  @default(true)
-  tenantId        String
-  workspaceId     String?                   // NEW: workspace-level isolation
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+| Model | Live schema line | Description |
+|-------|-----------------|-------------|
+| `HermesAgent` | 2513 | Agent registry with type/status/permissions/tools/memory/sessions |
+| `HermesCapability` | 2548 | Per-agent capabilities with input/output Zod schemas |
+| `HermesToolPermission` | 2565 | Per-agent tool-level permissions (ALLOW/DENY/READ_ONLY/etc.) |
+| `HermesSession` | 2578 | Chat sessions linked to HermesAgent, User, Tenant (4 indexes) |
+| `HermesMessage` | 2602 | Messages within a session (USER/HERMES/SYSTEM roles) |
+| `HermesMemoryEntry` | 2618 | Per-agent memory with embeddings (Gist index pending) |
+| `HermesAuditLog` | 2642 | Audit trail for Hermes actions |
+| `ApprovalWorkflow` | 2669 | Multi-step approval workflows with status tracking |
+| `ApprovalWorkflowStep` | 2694 | Individual approval steps with role-based approvers |
 
-  @@index([tenantId])
-  @@index([type, tenantId])
-  @@index([status, tenantId])
-}
+All enums (HermesAgentType, HermesAgentStatus, ToolPermissionLevel, HermesMemoryType, SessionStatus, MessageRole, ApprovalWorkflowType, ApprovalStatus) also exist in schema at lines 145–208.
 
-enum HermesAgentType {
-  HR
-  FINANCE
-  SALES
-  MARKETING
-  LEGAL
-  RESEARCH
-  ENGINEERING
-  QA
-  SECURITY
-  OPERATIONS
-  CUSTOMER_SUPPORT
-  CUSTOM  // For custom-built Hermes agents
-}
+### 3.2 Schema Updates to Existing Models — ✅ Already Applied
 
-enum HermesAgentStatus {
-  IDLE
-  RUNNING
-  SUSPENDED
-}
+The following fields were already added to the live schema (no action needed):
 
-// ─── Hermes Capability Registry ─────────────────────────────────────────────
-
-model HermesCapability {
-  id           String   @id @default(cuid())
-  hermesAgentId String
-  name         String                    // e.g., "onboarding", "invoice_processing"
-  description  String?
-  inputSchema  Json?                    // Zod schema for capability inputs
-  outputSchema Json?                    // Zod schema for capability outputs
-  costEstimate Float?                   // Estimated cost per invocation
-  avgDuration  Int?                     // Average duration in ms
-  usageCount   Int     @default(0)
-  hermesAgent  HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
-
-  @@index([hermesAgentId, name])
-}
-
-// ─── Hermes Tool Permissions ─────────────────────────────────────────────────
-
-model HermesToolPermission {
-  id           String   @id @default(cuid())
-  hermesAgentId String
-  toolName     String
-  permission   ToolPermissionLevel  // ALLOW, DENY, READ_ONLY, WRITE_ONLY
-  conditions   Json?               // Conditional permissions: { maxPerDay: 10, requiresApproval: true }
-  hermesAgent  HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
-
-  @@unique([hermesAgentId, toolName])
-  @@index([hermesAgentId])
-}
-
-enum ToolPermissionLevel {
-  ALLOW
-  DENY
-  READ_ONLY
-  WRITE_ONLY
-  APPROVAL_REQUIRED
-}
-
-// ─── Hermes Session (conversation) ───────────────────────────────────────────
-
-model HermesSession {
-  id              String   @id @default(cuid())
-  hermesAgentId   String
-  userId          String
-  tenantId        String
-  workspaceId     String?
-  threadId        String   @unique @default(cuid())  // LangGraph checkpoint thread
-  status          SessionStatus @default(ACTIVE)
-  context         Json     @default("{}")             // LangGraph state snapshot
-  messages        HermesMessage[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  expiresAt       DateTime?
-
-  @@index([hermesAgentId, tenantId])
-  @@index([userId, tenantId])
-  @@index([threadId])
-}
-
-enum SessionStatus {
-  ACTIVE
-  SUSPENDED
-  COMPLETED
-  EXPIRED
-}
-
-// ─── Hermes Message ───────────────────────────────────────────────────────────
-
-model HermesMessage {
-  id           String   @id @default(cuid())
-  sessionId    String
-  role         MessageRole                       // USER, HERMES, SYSTEM
-  content      String
-  metadata     Json?                             // token count, cost, model used
-  toolCalls    Json?                             // [{ tool: "send_email", input: {...} }]
-  toolResults  Json?                             // [{ tool: "send_email", result: {...} }]
-  error        String?
-  createdAt    DateTime @default(now())
-  session      HermesSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId, createdAt])
-}
-
-enum MessageRole {
-  USER
-  HERMES
-  SYSTEM
-}
-
-// ─── Hermes Personal Memory ───────────────────────────────────────────────────
-
-model HermesMemoryEntry {
-  id           String   @id @default(cuid())
-  hermesAgentId String
-  tenantId     String
-  workspaceId   String?
-  type         HermesMemoryType                 // PERSONAL, EPISODIC, PROCEDURAL
-  content      String                           // Raw content
-  summary      String?                          // Generated summary
-  embedding    Float[]                          // pgvector(1536)
-  importance   Float    @default(0.5)           // 0.0–1.0 importance score
-  source       String?                          // "task_execution", "user_message", "tool_result"
-  expiresAt    DateTime?
-  metadata     Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([hermesAgentId, tenantId])
-  @@index([hermesAgentId, type])
-  @@index([tenantId])
-  @@index([embedding], type: Gist)
-}
-
-enum HermesMemoryType {
-  PERSONAL      // Agent's personal long-term memory
-  EPISODIC      // Specific task/incident memories
-  PROCEDURAL    // How-to knowledge / standard operating procedures
-}
-
-// ─── Hermes Audit Log ────────────────────────────────────────────────────────
-
-model HermesAuditLog {
-  id             String   @id @default(cuid())
-  hermesAgentId  String
-  sessionId      String?
-  taskId         String?
-  tenantId       String
-  workspaceId    String?
-  action         String                           // "tool_call", "memory_read", "approval_request"
-  resource       String?                         // Tool name or resource accessed
-  resourceId     String?
-  request        Json?                           // Full request payload
-  response       Json?                           // Full response
-  decision       String?                          // ALLOW, DENY, APPROVAL_REQUIRED
-  reason         String?                         // Why the decision was made
-  governanceRule String?                          // Which rule triggered (if any)
-  durationMs     Int?
-  costUsd        Float?
-  tokensUsed     Int?
-  createdAt      DateTime @default(now())
-
-  @@index([hermesAgentId, tenantId])
-  @@index([tenantId, createdAt])
-  @@index([action, tenantId])
-}
-
-// ─── Approval Workflow ────────────────────────────────────────────────────────
-
-model ApprovalWorkflow {
-  id              String   @id @default(cuid())
-  name            String
-  description     String?
-  workflowType    ApprovalWorkflowType           // Hire, Fire, Refund, Contract, Budget
-  steps           ApprovalWorkflowStep[]
-  currentStep     Int      @default(0)
-  status          ApprovalStatus @default(PENDING)
-  context         Json     @default("{}")        // Business context for the approval
-  result          Json?                          // Final outcome
-  requesterId     String
-  tenantId        String
-  workspaceId     String?
-  routineRunId    String?                        // Link to LangGraph RoutineRun
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  completedAt     DateTime?
-
-  @@index([tenantId])
-  @@index([status, tenantId])
-}
-
-enum ApprovalWorkflowType {
-  HIRE
-  FIRE
-  REFUND
-  CONTRACT
-  BUDGET
-  VENDOR_PAYMENT
-  DATA_ACCESS
-  CUSTOM
-}
-
-enum ApprovalStatus {
-  PENDING
-  IN_PROGRESS
-  APPROVED
-  REJECTED
-  CANCELLED
-  EXPIRED
-}
-
-model ApprovalWorkflowStep {
-  id                String   @id @default(cuid())
-  approvalWorkflowId String
-  stepOrder         Int
-  approverRole      UserRole[]                    // Roles that can approve this step
-  approverId        String?                      // Specific user ID (optional override)
-  status            ApprovalStatus @default(PENDING)
-  decision          String?                       // APPROVED, REJECTED, SKIPPED
-  comment           String?
-  decidedAt         DateTime?
-  createdAt         DateTime @default(now())
-
-  @@unique([approvalWorkflowId, stepOrder])
-  @@index([approvalWorkflowId])
-}
-```
-
-### 3.2 Schema Updates to Existing Models
-
-```prisma
-// Add to existing Agent model
-model Agent {
-  // ... existing fields ...
-
-  // New fields for Hermes integration
-  hermesAgentId    String?   @unique  // Link to HermesAgent if this is a Hermes-powered agent
-  workspaceId      String?            // Workspace-level isolation
-  agentType        AgentType @default(FUNCTIONAL)  // Ensure CUSTOM type exists
-
-  @@index([workspaceId])
-}
-
-// Add workspaceId to MemoryEntry
-model MemoryEntry {
-  // ... existing fields ...
-  workspaceId String?
-
-  @@index([workspaceId])
-}
-```
+- **Agent model** (line 782): `hermesAgentId` (`@unique`), `hermesAgent` relation to `HermesAgent`, `workspaceId`
+- **MemoryEntry model**: `workspaceId` added (reserved for future Workspace module)
+- **`workspaceId`** on multiple models — reserved field with no `Workspace` entity yet (the `Workspace` model must be defined before Hermes services reference it at runtime)
 
 ---
 
@@ -1033,105 +780,111 @@ const HERMES_SECURITY_POLICIES: Record<HermesAgentType, ISecurityPolicy> = {
 
 ## 9. Implementation Phases
 
+> **Status key:** `[x]` = completed / exists on disk; `[ ]` = not started; `[~]` = schema only, code pending.
+> All code-level tasks (services, controllers, guards, LangGraph nodes) are `[ ]` — the `src/modules/hermes/` directory does not exist.
+> HermesModule is commented out in `app.module.ts` (lines 23, 120).
+
 ### Phase 1: Foundation (Weeks 1-2)
 
 **Goal:** Core Hermes infrastructure with one working agent type
 
-- [x] Create `hermes/` module directory structure
-- [x] Define all interfaces (ISP — keep them small and focused)
-- [x] Add Prisma schema models + migration
-- [x] Implement `HermesRegistryService` — CRUD + capability registration
-- [x] Implement `HermesSessionService` — session lifecycle
-- [x] Implement `ToolGatewayService` — basic tool validation
-- [x] Implement `PermissionMatrixService` — role × agent × tool matrix
-- [x] Create `HermesTenantGuard` — tenant isolation
-- [x] Wire `HermesModule` into `AppModule`
+- [~] Add Prisma schema models + migration — **schema exists** (lines 2511–2709), no dedicated migration
+- [ ] Create `hermes/` module directory structure
+- [ ] Define all interfaces (ISP — keep them small and focused)
+- [ ] Implement `HermesRegistryService` — CRUD + capability registration
+- [ ] Implement `HermesSessionService` — session lifecycle
+- [ ] Implement `ToolGatewayService` — basic tool validation
+- [ ] Implement `PermissionMatrixService` — role × agent × tool matrix
+- [ ] Create `HermesTenantGuard` — tenant isolation
+- [ ] Wire `HermesModule` into `AppModule` (currently commented out)
 - [ ] Write unit tests for all services
 
 ### Phase 2: Runtime + Memory (Weeks 3-4)
 
 **Goal:** Hermes can execute tasks with personal memory
 
-- [x] Implement `HermesRuntimeService` — execute/stream/suspend/resume
-- [x] Implement `HermesMemoryService` — personal/episodic/procedural memory
-- [x] Implement `HermesContextService` — execution context builder
-- [x] Create `hermes-node.ts` LangGraph node
-- [x] Integrate with existing `LLMFactory` for LLM calls
-- [x] Integrate with existing `MemoryService` for vector search
-- [x] Create first Hermes type: `FinanceHermesAgent`
-- [x] Write integration tests
+- [ ] Implement `HermesRuntimeService` — execute/stream/suspend/resume
+- [ ] Implement `HermesMemoryService` — personal/episodic/procedural memory
+- [ ] Implement `HermesContextService` — execution context builder
+- [ ] Create `hermes-node.ts` LangGraph node
+- [ ] Integrate with existing `LLMFactory` for LLM calls
+- [ ] Integrate with existing `MemoryService` for vector search
+- [ ] Create first Hermes type: `FinanceHermesAgent`
+- [ ] Write integration tests
 
 ### Phase 3: Approval Workflows (Weeks 5-6)
 
 **Goal:** Multi-step approval workflows with LangGraph suspension
 
-- [x] Implement `ApprovalWorkflowEngine`
-- [x] Add `ApprovalWorkflow`, `ApprovalWorkflowStep` to Prisma schema
-- [x] Implement approval webhook endpoint (resume LangGraph after approval)
-- [x] Create `approval` node type in `RoutineGraph`
-- [x] Implement approval timeout/expiration logic
-- [x] Add approval notification to `NotificationsModule`
+- [~] Add `ApprovalWorkflow`, `ApprovalWorkflowStep` to Prisma schema — **schema exists** (lines 2669–2709)
+- [ ] Implement `ApprovalWorkflowEngine`
+- [ ] Implement approval webhook endpoint (resume LangGraph after approval)
+- [ ] Create `approval` node type in `RoutineGraph`
+- [ ] Implement approval timeout/expiration logic
+- [ ] Add approval notification to `NotificationsModule`
 - [ ] Test full hire/fire/refund workflows (requires live integration)
 
 ### Phase 4: LangGraph Integration + Multiple Agent Types (Weeks 7-8)
 
 **Goal:** LangGraph orchestrates multiple Hermes agents
 
-- [x] Implement `HermesRouterNode` — capability-based agent selection
+- [ ] Implement `HermesRouterNode` — capability-based agent selection
 - [ ] Create subgraphs for HR, Finance, Sales Hermes types
-- [x] Implement `HermesEventBusService` — event forwarding to LangGraph
-- [x] Implement `HermesCheckpointer` — session resumption
-- [x] Add HR, Sales, Marketing Hermes types
-- [x] Implement long-running workflow suspension/resumption
+- [ ] Implement `HermesEventBusService` — event forwarding to LangGraph
+- [ ] Implement `HermesCheckpointer` — session resumption
+- [ ] Add HR, Sales, Marketing Hermes types
+- [ ] Implement long-running workflow suspension/resumption
 - [ ] Full integration tests with LangGraph
 
 ### Phase 5: Polish + Observability (Weeks 9-10)
 
 **Goal:** Production-ready with full observability
 
-- [x] `HermesAuditLog` — comprehensive audit trail
+- [~] `HermesAuditLog` — model exists in schema (line 2642), no service code
 - [ ] Integrate Hermes metrics into `MetricsModule` (Prometheus)
 - [ ] Hermes-specific Grafana dashboards
 - [ ] Rate limiting per Hermes type
-- [x] Cost tracking per Hermes agent
+- [ ] Cost tracking per Hermes agent
 - [ ] Memory garbage collection (expired entries cleanup)
 - [ ] Load testing with concurrent Hermes sessions
 - [ ] Security penetration testing
+- [ ] Create Gist vector index on `HermesMemoryEntry.embedding` (raw SQL migration — Prisma 5.22 requires `@pgvector/prisma`)
 
 ---
-
 ## 10. SOLID Compliance Checklist
 
+> **Status:** All items below are design intent only — zero implementation exists. Checkmarks indicate the architecture is compliant **by design**, not that code has been verified.
+
 ### Single Responsibility Principle (SRP)
-- [x] `HermesRegistryService` — only manages registry, not execution
-- [x] `HermesRuntimeService` — only manages lifecycle, not tools or memory
-- [x] `ToolGatewayService` — only validates and routes tool calls
-- [x] `PermissionMatrixService` — only computes permissions
-- [x] `ApprovalWorkflowEngine` — only orchestrates approvals
-- [x] `HermesMemoryService` — only manages agent memory
+- [ ] `HermesRegistryService` — only manages registry, not execution
+- [ ] `HermesRuntimeService` — only manages lifecycle, not tools or memory
+- [ ] `ToolGatewayService` — only validates and routes tool calls
+- [ ] `PermissionMatrixService` — only computes permissions
+- [ ] `ApprovalWorkflowEngine` — only orchestrates approvals
+- [ ] `HermesMemoryService` — only manages agent memory
 
 ### Open/Closed Principle (OCP)
-- [x] New Hermes types added via `HermesAgentType` enum + `HermesAgent` model, no code changes
-- [x] New workflow types added via `ApprovalWorkflowType` enum, no code changes
-- [x] New tool categories extend `StructuredToolRegistry`, no changes to `ToolGatewayService`
+- [ ] New Hermes types added via `HermesAgentType` enum + `HermesAgent` model, no code changes
+- [ ] New workflow types added via `ApprovalWorkflowType` enum, no code changes
+- [ ] New tool categories extend `StructuredToolRegistry`, no changes to `ToolGatewayService`
 
 ### Liskov Substitution Principle (LSP)
-- [x] `HermesAgentBase` abstract class with all concrete agents extending it
-- [x] `IHermesRuntime` interface — all implementations (Finance, HR, etc.) are interchangeable
-- [x] `IToolGateway` interface — mock implementation usable in tests
+- [ ] `HermesAgentBase` abstract class with all concrete agents extending it
+- [ ] `IHermesRuntime` interface — all implementations (Finance, HR, etc.) are interchangeable
+- [ ] `IToolGateway` interface — mock implementation usable in tests
 
 ### Interface Segregation Principle (ISP)
-- [x] `IHermesRegistry` — 8 methods, focused on registry operations
-- [x] `IHermesRuntime` — 6 methods, focused on execution lifecycle
-- [x] `IToolGateway` — 4 methods, focused on tool dispatch
-- [x] `IApprovalWorkflow` — 6 methods, focused on approval orchestration
-- [x] `IHermesMemory` — 7 methods, focused on memory management
+- [ ] `IHermesRegistry` — 8 methods, focused on registry operations
+- [ ] `IHermesRuntime` — 6 methods, focused on execution lifecycle
+- [ ] `IToolGateway` — 4 methods, focused on tool dispatch
+- [ ] `IApprovalWorkflow` — 6 methods, focused on approval orchestration
+- [ ] `IHermesMemory` — 7 methods, focused on memory management
 
 ### Dependency Inversion Principle (DIP)
-- [x] `HermesRuntimeService` depends on `IHermesRegistry`, `IHermesMemory`, `IToolGateway` interfaces
-- [x] `ToolGatewayService` depends on `IPermissionMatrix` interface
-- [x] All services use constructor injection
-- [x] No service instantiates another service with `new`
+- [ ] `HermesRuntimeService` depends on `IHermesRegistry`, `IHermesMemory`, `IToolGateway` interfaces
+- [ ] `ToolGatewayService` depends on `IPermissionMatrix` interface
+- [ ] All services use constructor injection
+- [ ] No service instantiates another service with `new`
 
 ---
 

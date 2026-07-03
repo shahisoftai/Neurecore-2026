@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Header } from '@nestjs/common';
 import { ApiCommon } from '../../common/decorators/api-common.decorator';
 import { Public } from '../../common/decorators/roles.decorator';
+import { CircuitBreakerService } from '../reliability/services/circuit-breaker.service';
 import * as os from 'os';
 
 /**
@@ -21,6 +22,10 @@ import * as os from 'os';
 @Public()
 export class HealthController {
   private readonly startTime = Date.now();
+
+  constructor(
+    private readonly circuitBreakerService: CircuitBreakerService,
+  ) {}
 
   /**
    * GET /health — Main health check endpoint
@@ -206,10 +211,8 @@ export class HealthController {
    */
   @Get('circuit-breakers')
   getCircuitBreakers() {
-    // CircuitBreakerService stores circuits in a private Map
-    // Return empty object for now - can be extended later
     return {
-      circuitBreakers: {},
+      circuitBreakers: this.circuitBreakerService.getAllStatus(),
       timestamp: new Date().toISOString(),
     };
   }
@@ -220,8 +223,7 @@ export class HealthController {
    */
   @Post('circuit-breakers/reset')
   resetCircuitBreakers() {
-    // The CircuitBreakerService doesn't have a resetAll method,
-    // so we return a success message
+    this.circuitBreakerService.resetAll();
     return {
       message: 'Circuit breakers reset successfully',
       timestamp: new Date().toISOString(),

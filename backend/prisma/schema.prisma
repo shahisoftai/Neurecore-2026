@@ -270,8 +270,9 @@ model Tier {
   allowAuditExport    Boolean @default(false)
 
   // Relations
-  tierAgentPools TierAgentPool[]
-  tenants        Tenant[]
+  tierAgentPools   TierAgentPool[]
+  industryPackages IndustryPackage[]
+  tenants          Tenant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -307,6 +308,141 @@ model TierAgentPool {
   @@unique([tierId, templateId])
   @@index([tierId])
   @@map("tier_agent_pools")
+}
+
+// ─── Industry (admin-pool: tenanted free string → typed enum) ─────────────
+
+enum Industry {
+  HEALTHCARE
+  LEGAL
+  REAL_ESTATE
+  ECOMMERCE
+  SAAS
+  EDUCATION
+  FINANCE
+  MARKETING_AGENCY
+  CONSULTING
+  MANUFACTURING
+  GENERAL
+  ACCOUNTING
+  AUDIT
+  HOSPITALITY
+  LOGISTICS
+  INSURANCE
+  NONPROFIT
+  RETAIL
+  PROFESSIONAL_SERVICES
+}
+
+// ─── PoolDepartment (admin-pool: platform-wide catalog row) ────────────────
+// One row per division (Engineering, Marketing, …). Used both to drive
+// FA `/pool` left pane and as the FK target for IndustryPackageEntry.
+
+model PoolDepartment {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  icon        String?
+  color       String?
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries IndustryPackageEntry[]
+
+  @@index([sortOrder])
+  @@index([isActive])
+  @@map("pool_departments")
+}
+
+// ─── PoolAgent (admin-pool: platform-wide agent blueprint) ─────────────────
+// One row per agency-agents .md file. Platform-scoped (no tenantId).
+// `templateId` on the per-tenant Agent snapshot keeps provenance so
+// redeploy is idempotent.
+
+model PoolAgent {
+  id           String  @id @default(uuid())
+  slug         String  @unique
+  name         String
+  division     String
+  divisionSlug String
+  description  String?
+  category     String?
+  emoji        String?
+  color        String?
+  isActive     Boolean @default(true)
+  systemPrompt String  @db.Text
+  metadata     Json    @default("{}")
+  version      String  @default("1.0.0")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  packageEntries IndustryPackageEntry[]
+  tenantAgents   Agent[]
+
+  @@index([division])
+  @@index([divisionSlug])
+  @@index([isActive])
+  @@map("pool_agents")
+}
+
+// ─── IndustryPackage (admin-pool: industry × tier binding) ─────────────────
+// The matrix cell that the onboarding wizard reads. A package is uniquely
+// identified by (industry, tierId).
+
+model IndustryPackage {
+  id            String   @id @default(uuid())
+  industry      Industry
+  tierId        String
+  tier          Tier     @relation(fields: [tierId], references: [id], onDelete: Cascade)
+
+  name          String
+  description   String?
+  isActive      Boolean  @default(true)
+  isRecommended Boolean  @default(false)
+
+  entries IndustryPackageEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([industry, tierId])
+  @@index([industry])
+  @@index([tierId])
+  @@map("industry_packages")
+}
+
+// ─── IndustryPackageEntry (admin-pool: which PoolAgents in this package) ──
+// Holds per-entry overrides (slot, isRequired, default selected flag,
+// default budget, default model). FK to PoolDepartment via `divisionSlug`
+// (string FK to keep migration additive — slug is unique on PoolDepartment).
+
+model IndustryPackageEntry {
+  id           String  @id @default(uuid())
+  packageId    String
+  package      IndustryPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  poolAgentId  String
+  poolAgent    PoolAgent @relation(fields: [poolAgentId], references: [id], onDelete: Restrict)
+
+  divisionSlug      String
+  poolDepartment    PoolDepartment @relation(fields: [divisionSlug], references: [slug], onDelete: Restrict)
+
+  slot                Int     @default(1)
+  isRequired          Boolean @default(true)
+  isDefaultSelected   Boolean @default(true)
+  defaultBudgetPerDay Decimal? @db.Decimal(10, 4)
+  defaultModel        String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([packageId, poolAgentId])
+  @@index([packageId])
+  @@map("industry_package_entries")
 }
 
 // ─── Tenant ────────────────────────────────────────────────────────────────
@@ -641,6 +777,12 @@ model Agent {
   // Tenant can toggle selected agents within their tier allocation
   isSelected Boolean @default(true)
 
+  // Admin-pool: optional back-reference to the PoolAgent this row was
+  // spawned from. Combined with tenantId forms the idempotency key
+  // `tenantId_poolSourceId` used by IndustryPackage deploy.
+  poolSourceId String?
+  poolSource   PoolAgent? @relation(fields: [poolSourceId], references: [id], onDelete: SetNull)
+
   departmentId String?
   department   Department? @relation("DepartmentAgents", fields: [departmentId], references: [id])
 
@@ -678,6 +820,8 @@ model Agent {
   @@index([departmentId])
   @@index([tierAgentPoolId])
   @@index([workspaceId])
+  // Idempotency: one PoolAgent → at most one Agent per tenant.
+  @@unique([tenantId, poolSourceId])
   @@map("agents")
 }
 
@@ -2372,7 +2516,13 @@ model PackInstallation {
   @@map("pack_installations")
 }
 
-// ─── Hermes Layer ───────────────────────────────────────────────────────────────
+// ─── Hermes Layer — AI Workforce Orchestration Platform ────────────────────────
+// HermesModule is enabled in app.module.ts. These models power specialized,
+// persistent AI agents (HR, Finance, Sales, etc.) that execute domain tasks
+// under deterministic governance control via LangGraph.
+//
+// See src/modules/hermes/ for the module implementation.
+// See memory-bank-new/hermes/HERMES_LAYER_PLAN.md for the architecture.
 
 model HermesAgent {
   id           String            @id @default(cuid())
@@ -2501,6 +2651,11 @@ model HermesMemoryEntry {
   @@index([hermesAgentId, tenantId])
   @@index([hermesAgentId, type])
   @@index([tenantId])
+  // Gist vector index on embedding must be created via raw SQL migration:
+  //   CREATE INDEX "HermesMemoryEntry_embedding_idx"
+  //     ON "HermesMemoryEntry"
+  //     USING Gist (embedding);
+  // (Prisma 5.22 does not support type: Gist on Float[] — requires @pgvector/prisma)
 }
 
 model HermesAuditLog {

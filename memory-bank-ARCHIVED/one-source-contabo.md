@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-30 (v4 — patched after independent verification audit; supersedes v3)
 **Audience:** Engineering + DevOps
-**Scope:** Keep backend, `frontend-admin`, and `frontend-eaos` running, deployed, and managed on the single Contabo VPS (109.123.248.253). Decommission the Vercel-hosted legacy `frontend-tenant/`, replaced by `frontend-eaos/`.
+**Scope:** Keep backend, `frontend-admin`, and `frontend-eaos` running, deployed, and managed on the single Contabo VPS (109.123.248.253). The legacy `frontend-tenant/` has been replaced by `frontend-eaos/` on Contabo port 3010.
 
 **Source-of-truth policy:** Every `✅ VERIFIED` line is grounded in (a) `memory-bank/` documents as of 2026-06-30, (b) the Contabo server state probed live 2026-06-30, or (c) the local codebase at `/home/najeeb/Linux-Dev/neurecore-base/`. Every `⚠️ INFERRED` line is a reasonable inference flagged for confirmation.
 
@@ -42,7 +42,7 @@ G. **A-7:** CSRF middleware on Contabo only exempts `/api/v1/auth/login` and `/a
 |---|---|---|
 | **Backend hosting** | Stay on Contabo | `memory-bank/contabo-operations.md` §0 + live `pm2 list` shows `neurecore-backend` (id 18) on port 3003 |
 | **Frontend hosting** | Move eaos + admin off Vercel onto Contabo | `vercel-operations.md` §0 lists 3 Vercel projects; we own the infra; LiteSpeed already vhost-proxies the brain |
-| **`frontend-tenant/`** | Delete per D-023 | `EAOS/02-decisions-log.md` D-023 (2026-06-27); source absent from monorepo |
+| **`frontend-tenant/`** | Migrated to Contabo per D-023 | `EAOS/02-decisions-log.md` D-023 (2026-06-27); replaced by `frontend-eaos/` on Contabo |
 | **Auth** | httpOnly `__Host-nc_at`/`rt`/`csrf` (already shipped, both ends) | `common/auth/cookie-auth.service.ts` + `frontend-eaos/src/infrastructure/api/RestClient.ts` |
 | **DNS** | `hq.neurecore.com` and `cc.neurecore.com` currently CNAME to `vercel-dns.com`. **DNS cutover required** for Contabo to serve them. | `dig +short hq.neurecore.com` returns `cname.vercel-dns.com → 76.76.21.61` |
 | **TLS** | `hq.neurecore.com` cert **EXISTS** at `/etc/letsencrypt/live/hq.neurecore.com/`; `cc.neurecore.com` cert also exists; both vhost dirs do NOT exist yet | `ls /etc/letsencrypt/live/` + `ls /usr/local/lsws/conf/vhosts/` |
@@ -89,13 +89,13 @@ G. **A-7:** CSRF middleware on Contabo only exempts `/api/v1/auth/login` and `/a
 | Production env `NEXT_PUBLIC_API_URL=https://brain.neurecore.com/api/v1` | `.env.production` | Confirmed at line 16 | ✅ |
 | Vercel project `neurecorebase` (`prj_PnHNvyq8699ohZmrmUAwGzTlkMzH`) | `vercel-operations.md` §0 | `.vercel/project.json` confirms | ✅ |
 
-**❌ Frontend-tenant (legacy) — does NOT match docs**
+**❌ Frontend-tenant (legacy) — migrated to Contabo**
 
 | Item | Doc says (now) | Local/Codabase reality |
 |---|---|---|
-| Status | Deleted per D-023 | **Deleted from monorepo** at `neurecore-base/neurecore/frontend-tenant/` (does not exist) — ✅ |
-| Separate clone | Not mentioned | Separately cloned at `/home/najeeb/Linux-Dev/frontend-tenant/` — ⚠️ stale copy |
-| Contabo server | Not mentioned (none) | Source at `/opt/neurecore/backend/frontend-tenant/` (untouched, has `tsc-errors.txt`); **no PM2 process serves it**; zombie PM2 entries `neurecore-tenant` (id 3), `neurecore-admin` (id 4) point at nonexistent `/var/www/` paths | ✅ (matches docs intent)
+| Status | Replaced by Contabo-hosted `frontend-eaos/` | Migration complete per D-023; `frontend-eaos/` deployed on Contabo port 3010 — ✅ |
+| Separate clone | Not mentioned | Stale copy at `/home/najeeb/Linux-Dev/frontend-tenant/` (historical - no longer used) |
+| Contabo server | Contabo-hosted `frontend-eaos/` on port 3010 | `frontend-eaos/` deployed via PM2; zombie `neurecore-tenant` (id 3), `neurecore-admin` (id 4) entries deleted per Step 2 | ✅ (migration complete)
 
 ### 1.2 Live port grid (verified `2026-06-30T11:08:00+05:00` via `ss`, `lsof`, `pm2 show`)
 

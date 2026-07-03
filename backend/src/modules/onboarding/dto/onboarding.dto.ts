@@ -1,4 +1,14 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsBoolean,
+  IsObject,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 export class UpdateOnboardingStateDto {
@@ -76,4 +86,13 @@ export class AcceptInviteDto {
   @IsString()
   @MinLength(8)
   password!: string;
+}
+
+export class DeployPackageDto {
+  @IsUUID()
+  packageId!: string;
+
+  @IsOptional()
+  @IsObject()
+  selections?: Record<string, { isSelected?: boolean; name?: string }>;
 }

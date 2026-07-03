@@ -24,8 +24,8 @@
 | Pre-built artifacts | `/opt/neurecore/backend/backend/dist/` (compiled JS, no source) |
 | Source on Contabo | `/opt/neurecore/backend/backend/src/` (synced from local) |
 | `node_modules` | On Contabo — use Contabo's, do NOT upload from local |
-| Frontend (tenant) | Vercel (NOT Contabo) — `https://hq.neurecore.com` |
-| Frontend (admin) | Vercel (NOT Contabo) — `https://cc.neurecore.com` |
+| Frontend (tenant) | Contabo — `https://hq.neurecore.com` (port 3010) |
+| Frontend (admin) | Contabo — `https://cc.neurecore.com` (port 3020) |
 | **Observability stack** | `/opt/neurecore/observability/` (docker-compose) |
 | Prometheus | `http://127.0.0.1:9090` (host network) |
 | Alertmanager | `http://127.0.0.1:9093` (host network) |
@@ -331,18 +331,22 @@ ssh contabo './node_modules/.bin/prisma migrate resolve --rolled-back "<MIGRATIO
 # Reference: https://www.prisma.io/docs/guides/database/migrating-down
 ```
 
-### 4.4 Frontend Stuck (Vercel)
+### 4.4 Frontend Down (Contabo)
 
-The frontends are deployed to Vercel, not Contabo. For Vercel issues:
+The frontends run on Contabo PM2, not Vercel:
 ```bash
-cd /home/najeeb/Linux-Dev/neurecore-base/neurecore/frontend-tenant
-npx vercel --prod        # production
-npx vercel               # preview
+ssh contabo
+pm2 list | grep neurecore-
+pm2 restart neurecore-tenant   # tenant frontend (port 3010)
+pm2 restart neurecore-admin   # admin frontend (port 3020)
+pm2 logs neurecore-tenant --lines 50
+pm2 logs neurecore-admin --lines 50
 ```
 
-Common Vercel issues:
-- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` not set in Vercel project settings (manual step)
-- `rootDirectory` setting — must be `frontend-tenant` for tenant, `frontend-admin` for admin (set in Vercel project config)
+Common Contabo frontend issues:
+- Port conflict: ensure ports 3010/3020 are free
+- Build failures: check `npm run build` output on Contabo
+- Env vars: ensure NEXT_PUBLIC_API_URL points to `https://brain.neurecore.com/api/v1`
 
 ---
 
@@ -442,8 +446,8 @@ ssh contabo 'ps aux --sort=-%cpu | head -10'
 │   ├── deploy-frontends.sh               # frontend deploy (used for next.js rebuilds)
 │   └── rebuild.sh                        # next.js rebuild + pm2 restart
 ├── deployment/                           # shared deploy scripts (READ-ONLY)
-├── frontend-tenant/                      # git checkout (NOT served from here — Vercel)
-├── frontend-admin/                       # git checkout (NOT served from here — Vercel)
+├── frontend-tenant/                      # Contabo-hosted tenant frontend (port 3010)
+├── frontend-admin/                       # Contabo-hosted admin frontend (port 3020)
 └── plans/                                # git checkout
 ```
 

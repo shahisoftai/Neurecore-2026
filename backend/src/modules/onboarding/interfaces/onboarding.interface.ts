@@ -42,7 +42,10 @@ export interface IOnboardingService {
     tenantId: string,
     partial: Partial<OnboardingStatePayload>,
   ): Promise<OnboardingStatePayload>;
-  selectTier(tenantId: string, tierId: string): Promise<{ tier: { id: string; name: string; slug: string } }>;
+  selectTier(
+    tenantId: string,
+    tierId: string,
+  ): Promise<{ tier: { id: string; name: string; slug: string } }>;
   selectTemplate(
     tenantId: string,
     templateSlug: string,

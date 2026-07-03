@@ -34,21 +34,20 @@ const chatService: IChatService = {
   async sendMessage(req: ChatRequest): Promise<ChatResponse> {
     try {
       const res = await api.post<{ data: ChatResponse }>('/chat/messages', req);
-      const backendData = (res as any).data?.data;
-      // Backend /api/v1/chat/messages returns
-      //   { status, data: { reply, conversationId, tokens, model, provider }, meta }
-      if (backendData && typeof backendData.reply === 'string') {
+      const responseData = res.data?.data;
+      if (responseData && typeof responseData === 'object' && 'reply' in responseData) {
         return {
           id: makeId(),
           type: 'info',
-          message: backendData.reply,
+          message: (responseData as Record<string, unknown>).reply as string,
           tokens: { input: 0, output: 0 },
           timestamp: new Date().toISOString(),
         };
       }
-      return fallbackResponse(req.query);
-    } catch {
-      return fallbackResponse(req.query);
+      return fallbackResponse(req.message);
+    } catch (error) {
+      console.warn('[chatService] sendMessage failed:', error instanceof Error ? error.message : error);
+      return fallbackResponse(req.message);
     }
   },
 
@@ -57,8 +56,9 @@ const chatService: IChatService = {
       const res = await api.get<{ data: { data: ConversationMessage[] } }>(
         `/chat/history?limit=${limit}`,
       );
-      return (res as any).data?.data?.data ?? [];
-    } catch {
+      return res.data?.data?.data ?? [];
+    } catch (error) {
+      console.warn('[chatService] getHistory failed:', error instanceof Error ? error.message : error);
       return [];
     }
   },
@@ -66,7 +66,9 @@ const chatService: IChatService = {
   async clearHistory(): Promise<void> {
     try {
       await api.delete('/chat/history');
-    } catch { /* no-op */ }
+    } catch (error) {
+      console.warn('[chatService] clearHistory failed:', error instanceof Error ? error.message : error);
+    }
   },
 
   async getSuggestions(query: string): Promise<string[]> {
@@ -79,8 +81,9 @@ const chatService: IChatService = {
         '/chat/suggestions',
         { query },
       );
-      return (res as any).data?.data?.suggestions ?? [];
-    } catch {
+      return res.data?.data?.suggestions ?? [];
+    } catch (error) {
+      console.warn('[chatService] getSuggestions failed:', error instanceof Error ? error.message : error);
       return [];
     }
   },

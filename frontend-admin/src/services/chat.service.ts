@@ -26,6 +26,10 @@ function makeId() {
   return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function warn(context: string, err: unknown): void {
+  console.warn(`[chatService] ${context}:`, err instanceof Error ? err.message : err);
+}
+
 interface IAdminChatService {
   sendMessage(req: ChatRequest): Promise<ChatResponse>;
   getHistory(limit?: number): Promise<ConversationMessage[]>;
@@ -38,7 +42,8 @@ const chatService: IAdminChatService = {
     try {
       const res = await api.post<{ data: ChatResponse }>('/chat/messages', req);
       return (unwrapItem(res) as ChatResponse) ?? fallbackResponse(req.query);
-    } catch {
+    } catch (err) {
+      warn('sendMessage', err);
       return fallbackResponse(req.query);
     }
   },
@@ -49,7 +54,8 @@ const chatService: IAdminChatService = {
         `/chat/history?limit=${limit}`,
       );
       return unwrapArrayOrEmpty(res) as ConversationMessage[];
-    } catch {
+    } catch (err) {
+      warn('getHistory', err);
       return [];
     }
   },
@@ -57,7 +63,9 @@ const chatService: IAdminChatService = {
   async clearHistory(): Promise<void> {
     try {
       await api.delete('/chat/history');
-    } catch { /* no-op */ }
+    } catch (err) {
+      warn('clearHistory', err);
+    }
   },
 
   async getSuggestions(query: string): Promise<string[]> {
@@ -67,8 +75,9 @@ const chatService: IAdminChatService = {
       const res = await api.post<{ data: { suggestions: string[] } }>(
         '/chat/suggestions', { query },
       );
-      return (res as any).data?.data?.suggestions ?? [];
-    } catch {
+      return res.data?.data?.suggestions ?? [];
+    } catch (err) {
+      warn('getSuggestions', err);
       return [];
     }
   },
@@ -80,8 +89,9 @@ export const strategyService = {
   async forecast(params: ScenarioParameters): Promise<ForecastResult> {
     try {
       const res = await api.post<{ data: ForecastResult }>('/strategy/forecast', { parameters: params });
-      return (res as any).data?.data ?? buildLocalForecast(params);
-    } catch {
+      return (unwrapItem(res) as ForecastResult) ?? buildLocalForecast(params);
+    } catch (err) {
+      warn('forecast', err);
       return buildLocalForecast(params);
     }
   },
@@ -95,8 +105,9 @@ export const strategyService = {
       const res = await api.post<{ data: { id: string; name: string; createdAt: string } }>('/strategy/scenarios', {
         name, description, parameters: params,
       });
-      return (res as any).data?.data;
-    } catch {
+      return unwrapItem(res) as { id: string; name: string; createdAt: string } ?? { id: makeId(), name, createdAt: new Date().toISOString() };
+    } catch (err) {
+      warn('saveScenario', err);
       return { id: makeId(), name, createdAt: new Date().toISOString() };
     }
   },
@@ -105,11 +116,18 @@ export const strategyService = {
     try {
       const res = await api.get<{ data: { data: unknown[] } }>('/strategy/scenarios');
       return unwrapArrayOrEmpty(res) as Array<{ id: string; name: string; createdAt: string }>;
-    } catch { return []; }
+    } catch (err) {
+      warn('listScenarios', err);
+      return [];
+    }
   },
 
   async deleteScenario(id: string): Promise<void> {
-    try { await api.delete(`/strategy/scenarios/${id}`); } catch { /* no-op */ }
+    try {
+      await api.delete(`/strategy/scenarios/${id}`);
+    } catch (err) {
+      warn('deleteScenario', err);
+    }
   },
 };
 
@@ -120,7 +138,7 @@ function buildLocalForecast(params: ScenarioParameters): ForecastResult {
   const baseRevPerTenant = 299;
   const baseCostPerAgent = 45;
   const baseAgents    = baseTenants * 3;
-  const growthRate    = params.tenantGrowth / 100;       // e.g. 10 → 0.10
+  const growthRate    = params.tenantGrowth / 100;
   const savingsFactor = 1 + params.automationSavings / 100;
 
   const points: ForecastPoint[] = Array.from({ length: months }, (_, i) => {

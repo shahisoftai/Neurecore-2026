@@ -12,8 +12,8 @@
 | Layer | Status | URL |
 |---|---|---|
 | Backend (Contabo + Neon DB) | ✅ Live | `https://brain.neurecore.com/api/v1/*` |
-| Tenant frontend (Vercel) | ✅ Live | `https://hq.neurecore.com` |
-| Admin frontend (Vercel) | ✅ Live | `https://cc.neurecore.com` |
+| Tenant frontend (Contabo) | ✅ Live | `https://hq.neurecore.com` |
+| Admin frontend (Contabo) | ✅ Live | `https://cc.neurecore.com` |
 | Tenant Demo account | ✅ Active | `demo@neurecore.ai` / `Tenant@123!` |
 | Admin account | ✅ Active | `admin@example.com` / `Admin123!` |
 | GitHub repo | ✅ Live | `https://github.com/Shahikhail01/Neurecorebase` |
@@ -308,12 +308,12 @@ After Fix 13 verified working, removed the `console.log('[DBG dept] ...')` lines
 |---|---|---|---|
 | neurecore-backend | pm2 id 6, pid ~917051 | online | 3003 (LiteSpeed → brain.neurecore.com) |
 
-### Frontends (Vercel)
+### Frontends (Contabo)
 
-| App | Project | URL | Alias |
+| App | Project | URL | Port |
 |---|---|---|---|
-| Admin | `neurecorebase` | `https://neurecorebase.vercel.app` | `cc.neurecore.com` |
-| Tenant | `neurecorebase-tenant` | `https://neurecorebase-tenant.vercel.app` | `hq.neurecore.com` |
+| Admin | `neurecore-cc` | `https://cc.neurecore.com` | 3020 |
+| Tenant | `neurecore-tenant` | `https://hq.neurecore.com` | 3010 |
 
 ### Database
 
@@ -360,7 +360,7 @@ Agents:     7 head agents (1 per department)
 
 ## Lessons Learned
 
-1. **Vercel LiteSpeed quirks**: `extraHeaders` is the ONLY way to add CORS headers; `proxyPassHeader` is nginx-only syntax. `wildcard *` invalid with `credentials: true`. `%{VAR}e` syntax not supported.
+1. **LiteSpeed CORS quirks**: `extraHeaders` is the ONLY way to add CORS headers; `proxyPassHeader` is nginx-only syntax. `wildcard *` invalid with `credentials: true`. `%{VAR}e` syntax not supported.
 
 2. **Next.js rewrites vs page.tsx**: Rewrites only apply when no matching `page.tsx` exists. To "redirect" legacy routes, convert the page.tsx itself to a `redirect()` call.
 
@@ -372,7 +372,7 @@ Agents:     7 head agents (1 per department)
 
 6. **Production filters can hide bugs**: `getUserFriendlyMessage` swallowed the real validation error message, making debugging 10x harder. Add "details" passthrough in production for visibility.
 
-7. **Vercel project config from monorepo**: When importing from monorepo, `rootDirectory` is set to the subdir. Need to PATCH it to null after import to support single-app builds.
+7. **Contabo frontend deploy**: Frontends run on Contabo PM2 with standalone Next.js builds on ports 3010/3020.
 
 8. **GitHub multi-account**: Local git user `shahisoftai` ≠ repo owner `Shahikhail01`. SSH key on disk authenticated as `Shahikhail01`. Created new public repo `Neurecorebase` with proper SSH remote.
 
@@ -399,9 +399,10 @@ pm2 restart neurecore-backend
 
 ### Frontend
 ```bash
-# Vercel: go to project → Deployments → click previous → Promote to Production
-# OR via CLI:
-vercel rollback
+# Contabo: use PM2 to restart the frontend
+ssh contabo
+pm2 restart neurecore-tenant
+pm2 restart neurecore-admin
 ```
 
 ### LiteSpeed
@@ -1025,11 +1026,11 @@ BREVO_API_KEY=your-brevo-api-key-here
 
 ---
 
-## Vercel Action Required
+## Contabo Env Var Required
 
-**Manual step:** Add `NEXT_PUBLIC_GOOGLE_CLIENT_ID=584510836530-pi64n9866hcuv5kuip2fnagsmhtjp3h0.apps.googleusercontent.com` to Vercel project env vars for the tenant frontend.
+**Manual step:** Add `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to Contabo frontend `.env` file for the tenant frontend.
 
-Currently in `frontend-tenant/.env.production` but Vercel does NOT auto-load `.env.production` for production builds. Must be set in Vercel dashboard.
+Currently in `frontend-tenant/.env.production` — ensure it is included in the Contabo build.
 
 ---
 

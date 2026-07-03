@@ -1884,6 +1884,33 @@
         ]
       }
     },
+    "/api/v1/agents/orchestration": {
+      "get": {
+        "operationId": "AgentsController_getOrchestration",
+        "summary": "",
+        "description": "Get agent orchestration data\nSOLID: SRP - Only routing\nReturns all agents with their status, current tasks, and performance metrics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
     "/api/v1/deploy/agents/from-template/{templateId}": {
       "post": {
         "operationId": "DeploymentController_spawnFromTemplate",
@@ -4035,6 +4062,39 @@
         ]
       }
     },
+    "/api/v1/approvals/stratified": {
+      "get": {
+        "operationId": "ApprovalsController_getStratified",
+        "summary": "Get stratified approvals",
+        "description": "Returns approvals stratified into critical and routine, with AI recommendations.",
+        "parameters": [
+          {
+            "name": "status",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stratified approvals successfully retrieved"
+          },
+          "403": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "Approvals"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/approvals/pending-count": {
       "get": {
         "operationId": "ApprovalsController_pendingCount",
@@ -4191,6 +4251,42 @@
     "/api/v1/approvals/{id}/cancel": {
       "patch": {
         "operationId": "ApprovalsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "approvals"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/approvals/{id}/feedback": {
+      "post": {
+        "operationId": "ApprovalsController_submitFeedback",
+        "summary": "",
+        "description": "POST /approvals/:id/feedback\n\nCollect user feedback on AI recommendations\nUsed for: learning loop, model retraining, accuracy tracking\n\nBody:\n{\n  userDecision: 'APPROVED' | 'REJECTED',\n  aiRecommendation: 'APPROVE' | 'REJECT' | 'ESCALATE' | 'REVIEW',\n  reason: 'wrong_fit' | 'bad_timing' | 'quality_issue' | 'other',\n  explanation?: string\n}\n\nSRP: Only stores feedback, doesn't modify approval status",
         "parameters": [
           {
             "name": "id",
@@ -4414,10 +4510,43 @@
     },
     "/api/v1/workflows": {
       "get": {
-        "operationId": "OrchestrationController_findAllWorkflows",
+        "operationId": "WorkflowsController_findAll",
         "parameters": [
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-indexed page number",
+            "example": 1,
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (max 100)",
+            "example": 20,
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
             "name": "status",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
             "required": true,
             "in": "query",
             "schema": {
@@ -4431,7 +4560,7 @@
           }
         },
         "tags": [
-          "orchestration"
+          "workflows"
         ],
         "security": [
           {
@@ -4446,7 +4575,7 @@
         ]
       },
       "post": {
-        "operationId": "OrchestrationController_createWorkflow",
+        "operationId": "WorkflowsController_create",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -4460,11 +4589,18 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
-          "orchestration"
+          "workflows"
         ],
         "security": [
           {
@@ -4481,7 +4617,7 @@
     },
     "/api/v1/workflows/{id}": {
       "get": {
-        "operationId": "OrchestrationController_findOneWorkflow",
+        "operationId": "WorkflowsController_findOne",
         "parameters": [
           {
             "name": "id",
@@ -4498,14 +4634,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/WorkflowResponseDto"
                 }
               }
             }
           }
         },
         "tags": [
-          "orchestration"
+          "workflows"
         ],
         "security": [
           {
@@ -4520,7 +4656,7 @@
         ]
       },
       "patch": {
-        "operationId": "OrchestrationController_updateWorkflow",
+        "operationId": "WorkflowsController_update",
         "parameters": [
           {
             "name": "id",
@@ -4543,11 +4679,18 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
-          "orchestration"
+          "workflows"
         ],
         "security": [
           {
@@ -4562,7 +4705,7 @@
         ]
       },
       "delete": {
-        "operationId": "OrchestrationController_removeWorkflow",
+        "operationId": "WorkflowsController_remove",
         "parameters": [
           {
             "name": "id",
@@ -4579,7 +4722,7 @@
           }
         },
         "tags": [
-          "orchestration"
+          "workflows"
         ],
         "security": [
           {
@@ -4626,45 +4769,9 @@
             "Idempotency-Key": []
           }
         ]
-      }
-    },
-    "/api/v1/workflows/{id}/execute": {
-      "post": {
-        "operationId": "OrchestrationController_execute",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "orchestration"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/workflows/{id}/status": {
-      "get": {
-        "operationId": "OrchestrationController_getStatus",
+      },
+      "patch": {
+        "operationId": "WorkflowsController_activate",
         "parameters": [
           {
             "name": "id",
@@ -4681,7 +4788,82 @@
           }
         },
         "tags": [
-          "orchestration"
+          "workflows"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/workflows/{id}/execute": {
+      "post": {
+        "operationId": "WorkflowsController_execute",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "workflows"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/workflows/{id}/status": {
+      "get": {
+        "operationId": "WorkflowsController_getStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowExecutionSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "workflows"
         ],
         "security": [
           {
@@ -4884,6 +5066,42 @@
         "responses": {
           "204": {
             "description": ""
+          }
+        },
+        "tags": [
+          "departments"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/departments/{departmentId}/context": {
+      "get": {
+        "operationId": "DepartmentsController_getContext",
+        "summary": "",
+        "description": "Get cross-functional context for a department\n\nSOLID: SRP - Delegates to ContextProvider service\nReturns initiatives, blockers, and dependencies",
+        "parameters": [
+          {
+            "name": "departmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Context data successfully retrieved"
           }
         },
         "tags": [
@@ -12392,11 +12610,62 @@
         ]
       }
     },
+    "/api/v1/workflows/{id}/pause": {
+      "patch": {
+        "operationId": "WorkflowsController_pause",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "workflows"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
     "/api/v1/entities/{type}/{id}/workspace/summary": {
       "get": {
         "operationId": "EntitiesController_workspaceSummary",
         "summary": "Composite workspace summary (Identity + Intelligence + Lifecycle + Health)",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Workspace summary"
@@ -12425,7 +12694,24 @@
       "get": {
         "operationId": "EntitiesController_getIdentity",
         "summary": "Identity panel data",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -12461,7 +12747,24 @@
       "get": {
         "operationId": "EntitiesController_getContext",
         "summary": "Context panel data",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -12497,7 +12800,24 @@
       "get": {
         "operationId": "EntitiesController_getIntelligence",
         "summary": "Intelligence panel data (AI summary, risks, recommendations)",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -12533,7 +12853,24 @@
       "get": {
         "operationId": "EntitiesController_getOperations",
         "summary": "Operations panel data",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -12569,7 +12906,24 @@
       "get": {
         "operationId": "EntitiesController_getResources",
         "summary": "Resources panel data",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -12605,7 +12959,24 @@
       "get": {
         "operationId": "EntitiesController_getCollaboration",
         "summary": "Collaboration panel data (write surface)",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -12641,7 +13012,24 @@
       "get": {
         "operationId": "EntitiesController_getInsights",
         "summary": "Insights panel data (KPIs)",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -12677,7 +13065,24 @@
       "get": {
         "operationId": "EntitiesController_getAutomation",
         "summary": "Automation panel data (contextual capability)",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -12714,6 +13119,22 @@
         "operationId": "EntitiesController_getActivity",
         "summary": "Activity panel data (audit-grade timeline)",
         "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "page",
             "required": true,
@@ -12767,7 +13188,24 @@
       "get": {
         "operationId": "EntitiesController_getLifecycle",
         "summary": "Lifecycle panel data",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -12803,7 +13241,24 @@
       "post": {
         "operationId": "EntitiesController_transitionLifecycle",
         "summary": "Execute a state transition",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -12849,7 +13304,24 @@
       "get": {
         "operationId": "EntitiesController_getLifecycleHistory",
         "summary": "State transition history with durations",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -12878,7 +13350,24 @@
       "get": {
         "operationId": "EntitiesController_getWhyNotActive",
         "summary": "AI explanation when state != ACTIVE",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -12907,7 +13396,24 @@
       "get": {
         "operationId": "EntitiesController_getGraph",
         "summary": "1-hop relationship graph (Mini-Graph)",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -12943,7 +13449,24 @@
       "post": {
         "operationId": "EntitiesController_addLabel",
         "summary": "Add a label to the entity",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -12982,7 +13505,32 @@
       "delete": {
         "operationId": "EntitiesController_deleteLabel",
         "summary": "Remove a label",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "labelId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "204": {
             "description": ""
@@ -13011,7 +13559,24 @@
       "post": {
         "operationId": "EntitiesController_favorite",
         "summary": "Pin the entity to the user's favorites",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -13040,7 +13605,24 @@
       "post": {
         "operationId": "EntitiesController_watch",
         "summary": "Watch the entity for changes",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -13368,7 +13950,7 @@
         ]
       }
     },
-    "/api/api/v1/widgets": {
+    "/api/v1/widgets": {
       "get": {
         "operationId": "WidgetsController_list",
         "summary": "List all available widget definitions",
@@ -13398,7 +13980,7 @@
         ]
       }
     },
-    "/api/api/v1/widgets/{id}": {
+    "/api/v1/widgets/{id}": {
       "get": {
         "operationId": "WidgetsController_getOne",
         "summary": "Get a single widget definition by id",
@@ -13430,7 +14012,7 @@
         ]
       }
     },
-    "/api/api/v1/widgets/{id}/compute": {
+    "/api/v1/widgets/{id}/compute": {
       "post": {
         "operationId": "WidgetsController_compute",
         "summary": "Compute a widget value for a given entity (type + id)",
@@ -13466,7 +14048,7 @@
         ]
       }
     },
-    "/api/api/v1/widgets/layout/{entityType}": {
+    "/api/v1/widgets/layout/{entityType}": {
       "get": {
         "operationId": "WidgetsController_getLayout",
         "summary": "Load the current user saved layout for an entity type",
@@ -14476,6 +15058,27 @@
         ]
       }
     },
+    "/api/v1/marketplace": {
+      "get": {
+        "operationId": "MarketplaceController_root",
+        "summary": "Marketplace landing — alias for /tabs",
+        "description": "GET /api/v1/marketplace — landing redirect (returns same as /tabs).\nPrevents 404 when the frontend hits the base marketplace URL.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "marketplace"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/marketplace/tabs": {
       "get": {
         "operationId": "MarketplaceController_tabs",
@@ -14948,6 +15551,906 @@
         "security": [
           {
             "JWT": []
+          }
+        ]
+      }
+    },
+    "/api/v1/command-center/summary": {
+      "get": {
+        "operationId": "CommandCenterController_getSummary",
+        "summary": "Get command center dashboard summary",
+        "description": "GET /command-center/summary\n\nReturns aggregated dashboard data:\n- Active agents count\n- Pending tasks/workflows\n- Approvals pending\n- Monthly costs\n- Recent activity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Command Center"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/command-center/timeline": {
+      "get": {
+        "operationId": "CommandCenterController_getTimeline",
+        "summary": "Get impact timeline for command center",
+        "description": "GET /command-center/timeline\n\nReturns impact-sorted timeline of events:\n- Approval requests needing action\n- Task completions/failures\n- Agent status changes\n- Critical alerts\n\nQuery Parameters:\n- sort: 'impact' | 'recent' | 'priority' (default: 'impact')\n- filter: 'all' | 'urgent' | 'my-action' | 'opportunities' | 'blockers'\n- search: search term for event title/description\n- limit: max results (default: 20)\n- page: pagination (default: 1)",
+        "parameters": [
+          {
+            "name": "sort",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Command Center"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/approvals/feedback": {
+      "post": {
+        "operationId": "ApprovalsController_submitFeedback",
+        "summary": "Submit approval feedback",
+        "description": "Records user feedback when their decision differs from AI recommendation. Used for model learning.",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Feedback successfully submitted"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "Approvals"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/approvals/{approvalId}/approve": {
+      "post": {
+        "operationId": "ApprovalsController_approve",
+        "summary": "Approve a request",
+        "description": "Marks an approval request as approved.",
+        "parameters": [
+          {
+            "name": "approvalId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successfully approved"
+          },
+          "201": {
+            "description": ""
+          },
+          "404": {
+            "description": "Request not found"
+          }
+        },
+        "tags": [
+          "Approvals"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/approvals/{approvalId}/reject": {
+      "post": {
+        "operationId": "ApprovalsController_reject",
+        "summary": "Reject a request",
+        "description": "Marks an approval request as rejected.",
+        "parameters": [
+          {
+            "name": "approvalId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successfully rejected"
+          },
+          "201": {
+            "description": ""
+          },
+          "404": {
+            "description": "Request not found"
+          }
+        },
+        "tags": [
+          "Approvals"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/industries": {
+      "get": {
+        "operationId": "IndustriesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin-industries"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/pool/departments": {
+      "get": {
+        "operationId": "PoolCategoriesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-pool-departments"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/pool/departments/{id}": {
+      "get": {
+        "operationId": "PoolCategoriesController_getOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-pool-departments"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "PoolCategoriesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePoolDepartmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-pool-departments"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/pool/agents": {
+      "get": {
+        "operationId": "PoolAgentsController_list",
+        "parameters": [
+          {
+            "name": "division",
+            "required": false,
+            "in": "query",
+            "description": "Filter by division label, e.g. \"Engineering\"",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "divisionSlug",
+            "required": false,
+            "in": "query",
+            "description": "Filter by division slug, e.g. \"engineering\"",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Free-text search across name + description",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 120,
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin-pool-agents"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "PoolAgentsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePoolAgentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-pool-agents"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/pool/agents/{id}": {
+      "get": {
+        "operationId": "PoolAgentsController_getOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-pool-agents"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "PoolAgentsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePoolAgentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-pool-agents"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "PoolAgentsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin-pool-agents"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/industry-packages": {
+      "get": {
+        "operationId": "IndustryPackagesController_list",
+        "parameters": [
+          {
+            "name": "industry",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "HEALTHCARE",
+                "LEGAL",
+                "REAL_ESTATE",
+                "ECOMMERCE",
+                "SAAS",
+                "EDUCATION",
+                "FINANCE",
+                "MARKETING_AGENCY",
+                "CONSULTING",
+                "MANUFACTURING",
+                "GENERAL"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "tierId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 60,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin-industry-packages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "IndustryPackagesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIndustryPackageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-industry-packages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/industry-packages/preview": {
+      "get": {
+        "operationId": "IndustryPackagesController_preview",
+        "parameters": [
+          {
+            "name": "industry",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "HEALTHCARE",
+                "LEGAL",
+                "REAL_ESTATE",
+                "ECOMMERCE",
+                "SAAS",
+                "EDUCATION",
+                "FINANCE",
+                "MARKETING_AGENCY",
+                "CONSULTING",
+                "MANUFACTURING",
+                "GENERAL"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "tierId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 60,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-industry-packages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/industry-packages/{id}": {
+      "get": {
+        "operationId": "IndustryPackagesController_getOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-industry-packages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "IndustryPackagesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIndustryPackageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-industry-packages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "IndustryPackagesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin-industry-packages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/industry-packages/{id}/entries": {
+      "put": {
+        "operationId": "IndustryPackagesController_replaceEntries",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceIndustryPackageEntriesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin-industry-packages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
           }
         ]
       }
@@ -15607,13 +17110,26 @@
             "maxLength": 200
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000
           },
           "definition": {
             "type": "object"
           },
           "config": {
             "type": "object"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
           },
           "isTemplate": {
             "type": "boolean"
@@ -15630,6 +17146,10 @@
             "type": "string",
             "maxLength": 200
           },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
           "status": {
             "type": "object"
           },
@@ -15638,6 +17158,18 @@
           },
           "config": {
             "type": "object"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
           }
         }
       },
@@ -16982,6 +18514,145 @@
           }
         }
       },
+      "WorkflowResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Daily Standup Report"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "PAUSED",
+              "COMPLETED",
+              "FAILED",
+              "ARCHIVED"
+            ]
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": false
+          },
+          "isTemplate": {
+            "type": "boolean",
+            "example": false
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "definition": {
+            "type": "object",
+            "description": "DAG definition — nodes + edges stored in Prisma `definition` JSON"
+          },
+          "nodes": {
+            "description": "Individual nodes array (extracted from definition for frontend convenience)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "edges": {
+            "description": "Individual edges array (extracted from definition for frontend convenience)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lastExecutedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "executionCount": {
+            "type": "number",
+            "example": 0
+          },
+          "successRate": {
+            "type": "number",
+            "example": 0,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "_count": {
+            "type": "object",
+            "description": "Virtual — not stored in DB, computed at service layer"
+          },
+          "metrics": {
+            "type": "object",
+            "description": "Virtual — maps Prisma `successRate` to frontend `metrics.successRate`"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "isActive",
+          "isTemplate",
+          "tenantId",
+          "executionCount",
+          "successRate",
+          "createdAt"
+        ]
+      },
+      "WorkflowExecutionSummaryDto": {
+        "type": "object",
+        "properties": {
+          "workflowId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalRuns": {
+            "type": "number",
+            "example": 0
+          },
+          "successRate": {
+            "type": "number",
+            "example": 0,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "avgDurationMs": {
+            "type": "number",
+            "nullable": true,
+            "example": 0
+          },
+          "lastRunAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "example": "DRAFT"
+          }
+        },
+        "required": [
+          "workflowId",
+          "totalRuns",
+          "successRate",
+          "status"
+        ]
+      },
       "Function": {
         "type": "object",
         "properties": {}
@@ -17955,6 +19626,222 @@
             "description": "Optional sync window start (ISO 8601)"
           }
         }
+      },
+      "UpdatePoolDepartmentDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "color": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 16,
+            "description": "Hex color e.g. #3B82F6"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 280
+          },
+          "sortOrder": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreatePoolAgentDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "division": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Division label (e.g. \"Engineering\")"
+          },
+          "divisionSlug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Division slug (must match a PoolDepartment.slug)"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 500
+          },
+          "category": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 60
+          },
+          "emoji": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 8
+          },
+          "color": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 16,
+            "description": "Hex color e.g. #3B82F6"
+          },
+          "systemPrompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000,
+            "description": "Full system prompt (markdown body)"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "name",
+          "division",
+          "divisionSlug",
+          "systemPrompt"
+        ]
+      },
+      "UpdatePoolAgentDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "division": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "divisionSlug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "description": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 500
+          },
+          "category": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 60
+          },
+          "emoji": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 8
+          },
+          "color": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 16
+          },
+          "systemPrompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateIndustryPackageDto": {
+        "type": "object",
+        "properties": {
+          "industry": {
+            "type": "string",
+            "enum": [
+              "HEALTHCARE",
+              "LEGAL",
+              "REAL_ESTATE",
+              "ECOMMERCE",
+              "SAAS",
+              "EDUCATION",
+              "FINANCE",
+              "MARKETING_AGENCY",
+              "CONSULTING",
+              "MANUFACTURING",
+              "GENERAL"
+            ]
+          },
+          "tierId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "Tier.id (UUID in fresh systems, \"tier_pro\"/\"tier_enterprise\" in this seed)"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "industry",
+          "tierId",
+          "name"
+        ]
+      },
+      "UpdateIndustryPackageDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 500
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isRecommended": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReplaceIndustryPackageEntriesDto": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ]
       }
     }
   }

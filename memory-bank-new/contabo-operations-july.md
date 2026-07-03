@@ -5,10 +5,10 @@
 **Last backend restart:** 2026-07-01 18:05 PKT (PM2 PID 917600, uptime 22h)
 **Last git commit on Contabo:** `c5c05ec perf(backend): dashboard load 12-14s → 1.5-2s` (HEAD of `main`)
 **Audience:** Any engineer tasked with backend, frontend, EAOS, or observability work on Contabo
-**Scope:** Backend (NestJS) + observability stack on Contabo. Frontends primarily on Vercel, but EAOS and Admin also run on Contabo behind CyberPanel (OLS).
+**Scope:** Backend (NestJS) + all three frontends on Contabo behind CyberPanel (OLS). EAOS and observability also on Contabo.
 
 > ⚠️ **The configuration has diverged materially from earlier 2026-Q2 documentation.**
-> Read the **Top 10 Findings (§0.1)** before doing anything. The single biggest surprise is that **the tenant frontend no longer exists on Contabo at all** — only Vercel hosts it — and **port 3001 is now owned by an unrelated project**. If you assume the old layout, you will break the wrong thing.
+> Read the **Top 10 Findings (§0.1)** before doing anything. All three NeureCore frontends (backend, admin, tenant) now run on Contabo. **Port 3005 is the designated tenant frontend port.** Port 3001 is owned by an unrelated GUV project. If you assume the old layout, you will break the wrong thing.
 
 ---
 
@@ -16,7 +16,7 @@
 
 | # | Finding | Why it matters |
 |---|---|---|
-| 1 | **Tenant frontend has been removed from Contabo.** No `/opt/neurecode/frontend-tenant/` directory. No PM2 process `neurecore-tenant`. | Documenting the old "Contabo hosts all three apps" model is now wrong. Tenant is **Vercel only**. |
+| 1 | **Tenant frontend is on Contabo (port 3005).** PM2 process `neurecore-tenant`. Source synced from local `frontend-tenant/` to `/opt/neurecore/frontend-tenant/`. | All three NeureCore frontends now on Contabo. Port 3005 is designated for tenant. |
 | 2 | **Port 3001 is NOT the tenant frontend.** It is bound by GUV `app-frontend` (PM2 id 2, `/opt/guv/frontend-app`). | Any health check or curl to `localhost:3001` returns the GUV app, not NeureCore. |
 | 3 | **Port 3002 has no listener.** Admin frontend was moved off it. | `curl localhost:3002` → connection refused. Admin now binds to **internal port 3020**, public via CyberPanel on `cc.neurecore.com`. |
 | 4 | **A new app `neurecore-eaos` runs on internal port 3011.** | EAOS (Enterprise Agent Orchestration Studio?) — see `/opt/neurecore/frontend-eaos/start.sh`. |
@@ -75,7 +75,7 @@
 ### Frontends
 | App | Where | Internal port | PM2 process | Public URL |
 |---|---|---|---|---|
-| Frontend-Tenant (hq) | **Vercel only** | — | **(does not exist)** | `https://hq.neurecore.com` (CyberPanel-cached HTML) |
+| Frontend-Tenant (hq) | Contabo + CyberPanel | **3005** | `neurecore-tenant` (PM2, port 3005) | `https://hq.neurecore.com` |
 | Frontend-Admin (cc) | Contabo + CyberPanel | **3020** | `neurecore-admin` (id 24, 627 restarts, 46h uptime) | `https://cc.neurecore.com` |
 | Frontend-EAOS | Contabo + CyberPanel | **3011** | `neurecore-eaos` (id 35, 4 restarts, 22h uptime) | (verify CyberPanel vhost mapping) |
 
@@ -150,7 +150,7 @@ Always test backend with `http://localhost:3003/...` (or via the public hostname
 
 | Frontend | Where | Internal port | URL |
 |---|---|---|---|
-| Tenant (hq) | **Vercel** | — | `https://hq.neurecore.com` |
+| Tenant (hq) | **Contabo** | **3005** | `https://hq.neurecore.com` |
 | Admin (cc) | **Contabo + CyberPanel** | 3020 | `https://cc.neurecore.com` |
 | EAOS | **Contabo + CyberPanel** | 3011 | (verify vhost) |
 
@@ -546,7 +546,7 @@ ssh contabo './node_modules/.bin/prisma migrate resolve --rolled-back "<MIGRATIO
 # Check frontend status:
 ssh contabo 'pm2 list | grep neurecore-admin'
 ssh contabo 'pm2 list | grep neurecore-eaos'
-# Note: there is NO neurecore-tenant process anymore (it's on Vercel)
+# Note: neurecore-tenant process runs on port 3005 after first deploy
 
 # Restart admin:
 ssh contabo 'pm2 restart neurecore-admin'
@@ -569,7 +569,7 @@ ssh contabo 'pm2 restart neurecore-admin'
 **Frontend Code Paths on Contabo:**
 - Admin: `/opt/neurecore/frontend-admin/` (git checkout) — built in `.next/`, served from PM2 cwd
 - EAOS: `/opt/neurecore/frontend-eaos/` (git checkout + `start.sh`) — built in `.next/`, served via `start.sh` (which runs `next start --hostname 127.0.0.1 --port 3011`)
-- Tenant: **No Contabo copy.** Vercel-only via `git push origin main`.
+- Tenant: `/opt/neurecore/frontend-tenant/` — synced from local, built + PM2 on port 3005.
 
 **Active Runtime:**
 - Admin: PM2 cwd = `/opt/neurecore/frontend-admin`, internal port 3020
@@ -676,7 +676,7 @@ ssh contabo 'ps aux --sort=-%cpu | head -10'
 4. ❌ **Don't upload `node_modules/` from local** — package resolution differences will cause runtime crashes.
 5. ❌ **Don't use `pnpm` on Contabo** — it's broken (`ERR_UNKNOWN_BUILTIN_MODULE`).
 6. ❌ **Don't assume port 3000 is the backend** — it's `nghttpx`. Backend is on 3003.
-7. ❌ **Don't assume port 3001 is the tenant frontend** — it's `app-frontend` (GUV project). Tenant is on Vercel only now.
+7. ❌ **Don't assume port 3001 is the tenant frontend** — it's `app-frontend` (GUV project). Tenant is on Contabo port **3005**.
 8. ❌ **Don't expect port 3002 to serve admin** — admin is on internal 3020, public via `cc.neurecore.com`.
 9. ❌ **Don't skip the `prisma generate` step** — after `schema.prisma` changes, regenerate client before `nest build`.
 10. ❌ **Don't apply the code deploy before the migration** — if the new code reads a column that doesn't exist yet, you'll see 500s in the gap between code-deploy and migration-apply.
@@ -735,8 +735,8 @@ ssh contabo 'ps aux --sort=-%cpu | head -10'
 └── observability/                         # docker-compose stack (Prometheus / Alertmanager / Grafana)
 ```
 
-**Note on the absent frontend-tenant copy:**
-`/opt/neurecore/frontend-tenant/` no longer exists on Contabo. The tenant frontend is deployed exclusively to Vercel (`https://hq.neurecore.com`) via `git push origin main`. There is no PM2 process for it. CyberPanel still serves cached HTML responses for `hq.neurecore.com`, but the origin is Vercel.
+**Frontend-Tenant on Contabo:**
+`/opt/neurecore/frontend-tenant/` — tenant source synced from local repo. PM2 process `neurecore-tenant` serves on port **3005**. Public via CyberPanel at `https://hq.neurecore.com`.
 
 **Active 3 surface apps + observability summary:**
 - Backend: PM2 process `neurecore-backend` (id 37) on port 3003, source `/opt/neurecore/backend/backend/`
@@ -808,7 +808,7 @@ ssh contabo 'grep -c "Mapped {" /root/.pm2/logs/neurecore-backend-out.log'
 | 2026-06-26 | Phase B: Google Workspace core | ✅ Live | First migration apply needed DB write access verified |
 | 2026-06-27 | Phase C–F + Onboarding + Tier limits | ✅ Live (PID 647920) | `EmailTool` injected unused `PrismaIntegrationCredentialStore` → DI error on first restart. Fixed by removing unused dep from constructor. |
 | 2026-06-28 | Phase 5 pre-req: Prometheus + Grafana + Alertmanager + `/api/metrics` | ✅ Live | Two issues: (a) `ChatModule` import referenced deleted module — removed from `app.module.ts`; (b) port collisions with `nghttpx` (3000) and `next-server` (3100) — Grafana moved to **3200** (host network). Smoke test passes 8/8. |
-| ~2026-06-30 | Frontend migration off Contabo | ✅ Partial — admin kept on Contabo (3020), tenant moved to Vercel only | Frontend-tenant removed from Contabo; admin continues on Contabo behind CyberPanel. |
+| ~2026-07-02 | Tenant migrated to Contabo | ✅ Contabo-only — backend + admin + tenant all on Contabo | Tenant moved from Vercel to Contabo port 3005; all three NeureCore apps now on Contabo. |
 | 2026-06-28..2026-07-01 | Tier-Agent migrations, dashboard perf, EAOS foundation | ✅ Committed as `c5c05ec perf(backend): dashboard load 12-14s → 1.5-2s` | Some Neon pooler timeouts observed for `MissionFeedAiPrioritizer` (see §3.6). |
 | 2026-07-01 17:53 | `.env` backup created (latest) | n/a | Routine pre-edit snapshot. |
 | 2026-07-01 18:05 | Last backend restart (PM2 id 37, OS PID 917600) | ✅ Live 22h uptime, 200/200 health, 79 tools, 45 modules | Working tree had begun accumulating large in-flight changes. |

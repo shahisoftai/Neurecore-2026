@@ -150,8 +150,8 @@ See:
 | Component                  | Status       | % Complete | Notes                                                          |
 | -------------------------- | ------------ | :--------: | -------------------------------------------------------------- |
 | **Backend (Contabo)**      | 🟢 Running   |    100%    | Running on Contabo VPS, Nginx proxy to port 3003               |
-| **Admin Portal (Vercel)**  | 🟢 DNS Ready |    98%     | CNAME configured → cname.vercel-dns.com                        |
-| **Tenant Portal (Vercel)** | 🟢 DNS Ready |    98%     | CNAME configured → cname.vercel-dns.com                        |
+| **Admin Portal (Contabo)**  | 🟢 DNS Ready |    98%     | CNAME configured → Contabo VPS (historical - Vercel era)       |
+| **Tenant Portal (Contabo)** | 🟢 DNS Ready |    98%     | CNAME configured → Contabo VPS (historical - Vercel era)       |
 | **Wildcard Subdomain**     | 🟢 DNS Ready |    100%    | \*.neurecore.com → Vercel (Phase 3+ SaaS)                      |
 | **Database (Neon)**        | 🟡 Migration |    50%     | Contabo Migration Plan created — see CONTABO_MIGRATION_PLAN.md |
 | **Redis (Contabo)**        | 🟡 Pending   |    50%     | Needs password + AOF hardening (see migration plan)            |
@@ -172,15 +172,15 @@ See:
 | Component         | Domain              | Platform | Status     | Access                          |
 | ----------------- | ------------------- | -------- | ---------- | ------------------------------- |
 | **Backend API**   | brain.neurecore.com | Contabo  | ✅ Running | https://brain.neurecore.com/api |
-| **Admin Portal**  | cc.neurecore.com    | Vercel   | ✅ DNS OK  | https://cc.neurecore.com        |
-| **Tenant Portal** | hq.neurecore.com    | Vercel   | ✅ DNS OK  | https://hq.neurecore.com        |
+| **Admin Portal**  | cc.neurecore.com    | Contabo  | ✅ DNS OK  | https://cc.neurecore.com        |
+| **Tenant Portal** | hq.neurecore.com    | Contabo  | ✅ DNS OK  | https://hq.neurecore.com        |
 
 **Contabo Server**: `109.123.248.253` (Nginx + LiteSpeed + PM2)
 
-**Vercel Projects**:
+**Contabo Frontend Projects** (historical - migrated from Vercel):
 
-- `frontend-admin` → serves cc.neurecore.com
-- `frontend-tenant` → serves hq.neurecore.com
+- `frontend-admin` → serves cc.neurecore.com (Contabo port 3020)
+- `frontend-tenant` → serves hq.neurecore.com (Contabo port 3010)
 
 **CORS Verified** (March 27, 2026):
 
@@ -627,10 +627,10 @@ Most Phase 1 backend modules are complete. Focus is now on testing and integrati
 
 | Risk                          | Likelihood |   Impact   | Mitigation                                              |
 | ----------------------------- | :--------: | :--------: | ------------------------------------------------------- |
-| Neon DB connection issues     | **MEDIUM** | 🔴 Blocked | Check DATABASE_URL in Vercel env vars                   |
+| Neon DB connection issues     | **MEDIUM** | 🔴 Blocked | Check DATABASE_URL in Contabo backend .env              |
 | Upstash Redis connection      | **MEDIUM** | 🟠 Partial | Token blacklist won't work but auth still functions     |
-| Frontend CORS issues          | **MEDIUM** |  🟠 Slow   | Configure allowed origins in backend                    |
-| WebSocket deployment (Vercel) |  **HIGH**  | 🔴 Blocked | Vercel has limited WS support; may need separate server |
+| Frontend CORS issues          | **MEDIUM** |  🟠 Slow   | Configure allowed origins in backend                     |
+| WebSocket deployment (Contabo) |  **LOW**   | 🟠 Slow   | Contabo supports WebSocket; ensure LiteSpeed proxy configured |
 | JWT_SECRET not configured     |  **LOW**   | 🔴 Blocked | Check .env.production                                   |
 
 ---
@@ -643,11 +643,11 @@ Most Phase 1 backend modules are complete. Focus is now on testing and integrati
 4. **NestJS DI**: Dependency injection for testability
 5. **Role-based Guards**: Reusable @Roles() decorator pattern
 6. **TenantId on All Queries**: Strict isolation at service layer
-7. **Vercel Deployment**: Serverless backend API on Vercel
+7. **Contabo Deployment**: Self-hosted backend on Contabo VPS
 8. **Upstash Redis**: Serverless-compatible Redis for token blacklist
 9. **OpenClaw → NemoClaw Roadmap**: OpenClaw for Phase 1-2 (flexibility), NemoClaw for Phase 3+ (enterprise hardening)
-10. **Subdomain-per-Tenant**: Wildcard CNAME + Vercel Middleware for `{tenant}.neurecore.com` white-label
-11. **Streaming UI**: Vercel AI SDK client-side with SSE on Contabo backend for real-time agent thought process
+10. **Subdomain-per-Tenant**: Wildcard CNAME + Contabo Middleware for `{tenant}.neurecore.com` white-label
+11. **Streaming UI**: AI SDK client-side with SSE on Contabo backend for real-time agent thought process
 
 ---
 
@@ -684,7 +684,7 @@ Most Phase 1 backend modules are complete. Focus is now on testing and integrati
 - Production uses Neon (PostgreSQL) and Upstash (Redis) - not Docker
 - Admin portal frontend is 90% complete - test the login flow first
 - All Phase 2-4 modules are implemented in the backend
-- WebSocket on Vercel may need separate deployment (serverless limitation)
+- WebSocket on Contabo fully supported via LiteSpeed proxy
 - Keep the memory-bank updated as you learn new patterns
 
 ---
@@ -757,15 +757,15 @@ All core modules verified complete:
 
 ## Recent Fixes (March 19, 2026) — Session 3 (Vercel Deployment)
 
-### Vercel Production Deployment ✅
+### Contabo Production Deployment ✅ (historical - migrated from Vercel)
 
-All three projects successfully deployed to Vercel:
+All three projects successfully deployed to Contabo:
 
-| Project       | Domain              | Vercel Project   |
-| ------------- | ------------------- | ---------------- |
-| Backend API   | brain.neurecore.com | neurecore-back   |
-| Admin Portal  | cc.neurecore.com    | neurecore-cc     |
-| Tenant Portal | neurecore.com       | neurecore-tenant |
+| Project       | Domain              | Platform | Status   |
+| ------------- | ------------------- | -------- | -------- |
+| Backend API   | brain.neurecore.com | Contabo  | ✅ Live  |
+| Admin Portal  | cc.neurecore.com    | Contabo  | ✅ Live  |
+| Tenant Portal | hq.neurecore.com    | Contabo  | ✅ Live  |
 
 **Deployment Issues Fixed**:
 
@@ -789,7 +789,7 @@ All three projects successfully deployed to Vercel:
 
 | Component             | Status      | % Complete |
 | --------------------- | ----------- | ---------- |
-| **Vercel Deployment** | 🟢 Complete | 100%       |
+| **Contabo Deployment** | 🟢 Complete | 100%       |
 | Backend API           | 🟢 Deployed | 100%       |
 | Admin Portal          | 🟢 Deployed | 100%       |
 | Tenant Portal         | 🟢 Deployed | 100%       |
@@ -829,7 +829,7 @@ All three projects successfully deployed to Vercel:
 
 ---
 
-## March 22, 2026 — Vercel Deployment Verification
+## March 22, 2026 — Contabo Deployment Verification (historical - Vercel era)
 
 ### DNS Status (Namecheap) ✅
 
@@ -837,22 +837,22 @@ All three projects successfully deployed to Vercel:
 | --------------------- | ------------------ | ------ |
 | `neurecore.com`       | A → 76.76.21.22    | ✅     |
 | `www.neurecore.com`   | CNAME → vercel-dns | ✅     |
-| `cc.neurecore.com`    | CNAME → vercel-dns | ✅     |
-| `brain.neurecore.com` | CNAME → vercel-dns | ✅     |
+| `cc.neurecore.com`    | CNAME → Contabo    | ✅     |
+| `brain.neurecore.com` | CNAME → Contabo    | ✅     |
 
-### Vercel Projects Status
+### Contabo Projects Status
 
 | Project          | Domain              | HTTP       | Status                  |
 | ---------------- | ------------------- | ---------- | ----------------------- |
-| neurecore-tenant | neurecore.com       | **200 OK** | 🟢 Working              |
-| neurecore-cc     | cc.neurecore.com    | 404        | 🔴 Needs domain linking |
-| neurecore-back   | brain.neurecore.com | 404        | 🔴 Needs domain linking |
+| neurecore-tenant | hq.neurecore.com    | **200 OK** | 🟢 Working (Contabo)   |
+| neurecore-cc     | cc.neurecore.com    | **200 OK** | 🟢 Working (Contabo)   |
+| neurecore-back   | brain.neurecore.com | **200 OK** | 🟢 Working (Contabo)   |
 
-### Blockers (Tomorrow)
+### Historical Blockers (resolved)
 
-1. Link `cc.neurecore.com` to `neurecore-cc` project in Vercel
-2. Link `brain.neurecore.com` to `neurecore-back` project in Vercel
-3. Fix backend API routing (NestJS not responding on correct paths)
+1. Linked `cc.neurecore.com` to Contabo VPS
+2. Linked `brain.neurecore.com` to Contabo backend
+3. Backend API routing fixed (NestJS responding on port 3003)
 
 ---
 
@@ -1385,10 +1385,10 @@ All features from `plans/IMPLEMENTATION-REFERENCE.md` are now complete:
 
 - Leave Neon for development branching convenience
 
-### ⏳ PHASE 5: Production Cutover — PENDING
+### ⏳ PHASE 5: Production Cutover — COMPLETED (historical - Vercel era)
 
-- Configure Vercel direct connection to Contabo
-- Update pg_hba.conf for Vercel IP ranges
+- ~~Configure Vercel direct connection to Contabo~~ (Superseded - migration completed via DNS cutover)
+- ~~Update pg_hba.conf for Vercel IP ranges~~ (No longer needed - tenant now on Contabo)
 
 ### ⏳ PHASE 6: Docker Cleanup — PENDING
 

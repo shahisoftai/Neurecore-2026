@@ -444,6 +444,7 @@ export class CreateTaskTool extends BaseStructuredTool {
           priority: input.priority ?? 'MEDIUM',
           tenantId: context.tenantId as string,
           agentId: input.agentId ?? null,
+          createdById: (context.userId as string) ?? null,
           status: 'PENDING',
           input: {},
         },
@@ -1304,7 +1305,7 @@ export class AddSubtaskTool extends BaseStructuredTool {
     try {
       const parent = await this.prisma.task.findFirst({ where: { id: input.parentTaskId, tenantId: context.tenantId } });
       if (!parent) return { success: false, error: 'Parent task not found' };
-      const subtask = await this.prisma.task.create({ data: { title: input.title, tenantId: context.tenantId as string, agentId: input.agentId ?? null, priority: input.priority ?? 'MEDIUM', status: 'PENDING', input: { parentTaskId: input.parentTaskId } } });
+      const subtask = await this.prisma.task.create({ data: { title: input.title, tenantId: context.tenantId as string, agentId: input.agentId ?? null, createdById: (context.userId as string) ?? null, priority: input.priority ?? 'MEDIUM', status: 'PENDING', input: { parentTaskId: input.parentTaskId } } });
       return { success: true, data: { subtaskId: subtask.id, title: subtask.title, parentTaskId: input.parentTaskId, priority: subtask.priority, status: subtask.status }, metadata: { model: 'neurecore-task-v1' } };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to add subtask' };
@@ -1440,7 +1441,7 @@ export class CloneTaskTool extends BaseStructuredTool {
     try {
       const original = await this.prisma.task.findFirst({ where: { id: input.taskId, tenantId: context.tenantId } });
       if (!original) return { success: false, error: 'Task not found' };
-      const cloned = await this.prisma.task.create({ data: { title: `${original.title} (copy)`, description: original.description, priority: original.priority, tenantId: context.tenantId as string, agentId: input.newAssigneeId ?? null, status: 'PENDING', input: original.input as any } });
+      const cloned = await this.prisma.task.create({ data: { title: `${original.title} (copy)`, description: original.description, priority: original.priority, tenantId: context.tenantId as string, agentId: input.newAssigneeId ?? null, createdById: (context.userId as string) ?? null, status: 'PENDING', input: original.input as any } });
       return { success: true, data: { originalTaskId: input.taskId, newTaskId: cloned.id, newTaskTitle: cloned.title, newAssigneeId: cloned.agentId }, metadata: { model: 'neurecore-task-v1' } };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to clone task' };

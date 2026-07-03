@@ -20,7 +20,7 @@ import { ToolsModule } from './modules/tools/tools.module';
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
 // Phase 3
 import { GovernanceModule } from './modules/governance/governance.module';
-// import { HermesModule } from './modules/hermes/hermes.module'; // disabled pre-deploy: module not production-ready
+import { HermesModule } from './modules/hermes/hermes.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
@@ -68,6 +68,8 @@ import { CommandCenterModule } from './modules/command-center/command-center.mod
 import { ContextModule } from './modules/context/context.module';
 // Phase 5 — Batch Approvals & Learning Loop
 import { ApprovalsModule } from './modules/approvals/approvals.module';
+// Admin Pool — platform catalog + Industry × Tier packages (per memory-bank-new/admin-pool.md)
+import { AdminPoolModule } from './modules/admin-pool/admin-pool.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -115,7 +117,7 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
 
     // Phase 3 — Governance, Observability, Notifications, Departments, Models
     GovernanceModule,
-    // HermesModule, // disabled pre-deploy
+    HermesModule,
     ObservabilityModule,
     NotificationsModule,
     DepartmentsModule,
@@ -193,6 +195,9 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     ContextModule,
     // Phase 5 — Batch Approvals & Learning Loop
     ApprovalsModule,
+
+    // Admin Pool — platform catalog + Industry × Tier packages
+    AdminPoolModule,
   ],
   providers: [
     // Global rate-limit guard
