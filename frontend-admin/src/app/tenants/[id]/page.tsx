@@ -212,8 +212,8 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
               <div className="text-sm text-zinc-500 mt-0.5 font-mono">{tenant.slug}</div>
             </div>
             <div className="flex flex-wrap gap-3 items-center ml-auto">
-              <Stat label="Plan" value={tenant.plan} />
-              <Stat label="Agent Limit" value={String(tenant.agentLimit)} />
+              <Stat label="Plan" value={tenant.tier?.name ?? tenant.tier?.slug ?? tenant.plan ?? '—'} />
+              <Stat label="Agent Limit" value={String(tenant.tier?.maxAgents ?? tenant.agentLimit ?? '—')} />
               <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_BADGE[tenant.status] ?? 'bg-zinc-800 text-zinc-400'}`}>
                 {tenant.status}
               </span>
@@ -247,8 +247,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
               {tenant && (
                 <>
                   <StatCard label="ID" value={tenant.id.slice(0, 8) + '…'} />
-                  <StatCard label="Plan" value={tenant.plan} />
-                  <StatCard label="Agent Limit" value={String(tenant.agentLimit)} />
+                  <StatCard label="Plan" value={tenant.tier?.name ?? tenant.tier?.slug ?? tenant.plan ?? '—'} />
+                  <StatCard label="Agent Limit" value={String(tenant.tier?.maxAgents ?? tenant.agentLimit ?? '—')} />
+                  <StatCard label="Departments" value={String(tenant.tier?.maxDepartments ?? '—')} />
                   <StatCard label="Created" value={new Date(tenant.createdAt).toLocaleDateString()} />
                 </>
               )}

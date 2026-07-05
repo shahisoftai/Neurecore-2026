@@ -33,9 +33,11 @@ import { InspectorPanel } from '@/components/layout/InspectorPanel';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { OrgTree } from '@/components/sidebar/OrgTree';
 import { ConversationPanel } from '@/components/chat/ConversationPanel';
+import { ThingsToDoPanel } from '@/components/checklist/ThingsToDoPanel';
 import { useActivityStream } from '@/hooks/useActivityStream';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { registerTenantCommands } from '@/services/register-commands';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export default function TenantShell({
   user,
@@ -63,11 +65,15 @@ export default function TenantShell({
     router.push('/login');
   }
 
-  if (newShellEnabled) {
-    return <NewShell user={user} pathname={pathname} onLogout={handleLogout}>{children}</NewShell>;
-  }
-
-  return <LegacyShell user={user} pathname={pathname} onLogout={handleLogout}>{children}</LegacyShell>;
+  return (
+    <ErrorBoundary>
+      {newShellEnabled ? (
+        <NewShell user={user} pathname={pathname} onLogout={handleLogout}>{children}</NewShell>
+      ) : (
+        <LegacyShell user={user} pathname={pathname} onLogout={handleLogout}>{children}</LegacyShell>
+      )}
+    </ErrorBoundary>
+  );
 }
 
 // ─── New shell (Phase 3) ─────────────────────────────────────────────────────
@@ -99,6 +105,13 @@ function NewShell({
         <main className="flex-1 overflow-auto p-6">{children}</main>
 
         <ActivityStream />
+      </div>
+
+      {/* WS-2.1: Progressive onboarding — Things to do panel (PR-1: floating top-right). */}
+      <div className="fixed top-20 right-6 z-30 w-full max-w-md pointer-events-none">
+        <div className="pointer-events-auto">
+          <ThingsToDoPanel />
+        </div>
       </div>
 
       <InspectorPanel />
@@ -194,6 +207,13 @@ function LegacyShell({
         <TopBar title={pageTitle} />
         <main className="flex-1 overflow-auto p-6">{children}</main>
         <ActivityStream />
+      </div>
+
+      {/* WS-2.1: Progressive onboarding — Things to do panel. */}
+      <div className="fixed top-20 right-6 z-30 w-full max-w-md pointer-events-none">
+        <div className="pointer-events-auto">
+          <ThingsToDoPanel />
+        </div>
       </div>
       <InspectorPanel />
       <CommandPalette />

@@ -14,6 +14,8 @@
 
 import { UserRole } from '@prisma/client';
 
+export { UserRole };
+
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * Security Event Types

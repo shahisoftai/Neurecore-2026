@@ -44,6 +44,9 @@ export class OnboardingController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateOnboardingStateDto,
   ) {
+    // WS-2.1: pass through ALL fields the DTO accepts, not just company.
+    // Bug fix: timezone / currency were accepted by the DTO but silently
+    // dropped by the controller (and never persisted by the service).
     const partial = {
       step: dto.step as never,
       company: {
@@ -51,6 +54,8 @@ export class OnboardingController {
         logoUrl: dto.logoUrl,
         industry: dto.industry,
       },
+      timezone: dto.timezone,
+      currency: dto.currency,
     };
     return this.onboarding.updateState(this.requireTenant(user), partial);
   }
@@ -79,10 +84,7 @@ export class OnboardingController {
 
   @Post('invite')
   @HttpCode(HttpStatus.OK)
-  async invite(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: InviteMembersDto,
-  ) {
+  async invite(@CurrentUser() user: JwtPayload, @Body() dto: InviteMembersDto) {
     const invites = (dto.invites ?? []).map((i) => ({
       email: i.email,
       role: i.role ?? ('USER' as never),

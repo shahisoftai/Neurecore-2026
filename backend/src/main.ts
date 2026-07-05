@@ -1,11 +1,13 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import { json, urlencoded } from 'express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { AppModule } from './app.module';
 import { initTracing } from './infrastructure/tracing/tracing';
 import { MetricsService } from './modules/metrics/metrics.service';
@@ -14,8 +16,14 @@ import { MetricsService } from './modules/metrics/metrics.service';
 void initTracing();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
+    // FIX D12.2 — disable Nest's auto body-parser so we can mount our own
+    // FIRST in the middleware chain. Observed: with Nest defaults, controllers
+    // imported via `forwardRef(AgentsModule)` could receive `req.body = undefined`,
+    // breaking @Body() binding in PackagesModule routes
+    // (`POST /api/v1/packages/deploy`, `POST /api/v1/departments`).
+    bodyParser: false,
   });
 
   const config = app.get(ConfigService);
@@ -26,6 +34,28 @@ async function bootstrap() {
   // Phase 9: cookie-parser (parses Cookie header into req.cookies)
   // Required by CookieAuthService + JwtStrategy cookie-first extraction.
   app.use(cookieParser());
+
+  // FIX D12.2 — mount JSON + urlencoded body parsers BEFORE any Nest guards or
+  // interceptors run, guaranteeing `req.body` is populated when controllers
+  // read `@Body()`. Both parsers populate `req.rawBody` via the `verify` hook
+  // for downstream code (webhook signatures, etc.).
+  app.use(
+    json({
+      limit: '2mb',
+      verify: (req, _res, buf) => {
+        (req as { rawBody?: Buffer }).rawBody = buf;
+      },
+    }),
+  );
+  app.use(
+    urlencoded({
+      extended: true,
+      limit: '2mb',
+      verify: (req, _res, buf) => {
+        (req as { rawBody?: Buffer }).rawBody = buf;
+      },
+    }),
+  );
 
   // Global prefix & versioning
   app.setGlobalPrefix('api');
@@ -54,24 +84,33 @@ async function bootstrap() {
   const isProd =
     config.get<string>('NODE_ENV') === 'production' ||
     process.env.NODE_ENV === 'production';
-  if (isProd) {
-    app.enableCors({
-      origin: Array.from(new Set(origins)),
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'X-Correlation-ID',
-        'X-CSRF-Token',
-        'X-Tenant-ID',
-        'Idempotency-Key',
-      ],
-    });
-  } else {
-    // In local dev allow all origins to avoid CORS friction
-    app.enableCors({ origin: true, credentials: true });
-  }
+
+  // Cookie-only auth requires the Access-Control-Allow-Origin response
+  // header to ECHO the calling Origin (it cannot be "*" when
+  // credentials are involved). NestJS' built-in CORS handler does this
+  // correctly when `origin: true` is passed — it mirrors whatever the
+  // browser sent. We also validate the origin against an allow-list so
+  // misbehaving clients cannot trick us into "Access-Control-Allow-Origin:
+  // https://attacker.example".
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Same-origin / no-origin (curl, server-to-server) — allow.
+      if (!origin) return callback(null, true);
+      const allowed = new Set(origins);
+      if (allowed.has(origin)) return callback(null, true);
+      return callback(new Error(`Origin not allowed: ${origin}`), false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Correlation-ID',
+      'X-CSRF-Token',
+      'X-Tenant-ID',
+      'Idempotency-Key',
+    ],
+  });
 
   // Global validation pipe
   app.useGlobalPipes(
@@ -84,6 +123,13 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+
+  // WS-2.1: Static asset serving for tenant logos (and future uploads).
+  // Mounted at `/cdn` → `apps/cdn/uploads/`. Public read; uploads go through
+  // the authenticated POST /uploads/logo endpoint which validates type + size.
+  app.useStaticAssets(resolve(process.cwd(), 'apps', 'cdn', 'uploads'), {
+    prefix: '/cdn/',
+  });
 
   // ─── Phase 1, Task 1.7: OpenAPI generation ───────────────────────
   // Per `EAOS-api-contract.md` §11, we generate the OpenAPI 3.1 spec
@@ -123,7 +169,6 @@ async function bootstrap() {
       `[OpenAPI] Wrote backend/openapi/openapi.json (${Object.keys((document as { paths?: Record<string, unknown> }).paths ?? {}).length} paths)`,
     );
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[OpenAPI] Failed to write openapi.json (request flow NOT blocked): ${String(err)}`,
     );

@@ -14,7 +14,7 @@ export class WorkflowsService {
     const { status, page = 1, limit = 20 } = options ?? {};
     const skip = (page - 1) * limit;
 
-    const where = { tenantId, ...(status && { status }) };
+    const where: Record<string, unknown> = { ...(tenantId && tenantId !== '*' ? { tenantId } : {}), ...(status && { status }) };
     const [data, total] = await this.prisma.$transaction([
       this.prisma.workflow.findMany({
         where,

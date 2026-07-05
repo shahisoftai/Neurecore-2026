@@ -1,5 +1,5 @@
 # NeureCore: Human-AI Collaboration Framework
-## Making Humans and AI Agents True Partners
+## Making Humans and AI Employees True Partners
 
 ---
 

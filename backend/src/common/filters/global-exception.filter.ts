@@ -263,6 +263,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     if (code === ErrorCode.INVALID_REQUEST) {
       const message = this.extractValidationMessage(exception);
       if (message) return message;
+
+      // Fallback: class-transformer / class-validator sometimes produce a
+      // BadRequestException whose .response.message is a STRING (e.g. the
+      // generic "Bad Request Exception" literal). In that case we still want
+      // to give the user a useful hint instead of the opaque
+      // "An unexpected error occurred" message — their request was malformed,
+      // and we can describe what was wrong in client-friendly terms.
+      const fallback = this.extractGenericBadRequestHint(exception, originalMessage);
+      if (fallback) return fallback;
+
+      return 'The request was invalid. Please check your input and try again.';
     }
 
     // If not in production, include original message for debugging
@@ -309,6 +320,42 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   }
 
   /**
+   * Extract a hint from a BadRequestException whose .response.message is a
+   * string (not the class-validator array shape). Many upstream sources emit
+   * a non-descript message like "Bad Request Exception" — in those cases we
+   * surface the underlying transport-level reason when available (e.g. an
+   * empty body), but never the opaque literal.
+   */
+  private extractGenericBadRequestHint(
+    exception: unknown,
+    originalMessage: string,
+  ): string | null {
+    if (!exception || typeof exception !== 'object') return null;
+    const response = (exception as { response?: unknown }).response;
+    if (!response || typeof response !== 'object') return null;
+
+    const message = (response as { message?: unknown }).message;
+    if (Array.isArray(message)) return null;
+    if (typeof message !== 'string') return null;
+
+    // Ignore the default NestJS literal — it's meaningless to end users.
+    if (/^bad request/i.test(message.trim())) {
+      // If we have a non-literal originalMessage, prefer it.
+      if (
+        originalMessage &&
+        !/^bad request/i.test(originalMessage.trim()) &&
+        originalMessage !== message
+      ) {
+        return originalMessage;
+      }
+      return null;
+    }
+
+    // Any other meaningful string message is OK to surface.
+    return message;
+  }
+
+  /**
    * Check if running in production
    */
   private isProduction(): boolean {
@@ -324,10 +371,36 @@ export class GlobalExceptionFilter implements ExceptionFilter {
    */
   private extractValidationMessage(exception: unknown): string | null {
     if (!exception || typeof exception !== 'object') return null;
+
+    // 1. Canonical NestJS BadRequestException shape:
+    //    exception.response === { statusCode, message: string[], error }
     const response = (exception as { response?: unknown }).response;
-    if (!response || typeof response !== 'object') return null;
-    const message = (response as { message?: unknown }).message;
-    if (!Array.isArray(message)) return null;
-    return message.join('; ');
+    if (response && typeof response === 'object') {
+      const responseMessage = (response as { message?: unknown }).message;
+      if (Array.isArray(responseMessage) && responseMessage.length > 0) {
+        return responseMessage.join('; ');
+      }
+    }
+
+    // 2. Fallback: some Nest versions / class-transformer store the array on
+    //    exception.message itself (a stringified JSON or a joined string).
+    //    Handle the joined-string case.
+    const exceptionMessage = (exception as { message?: unknown }).message;
+    if (typeof exceptionMessage === 'string') {
+      // If it looks like a JSON array, parse it.
+      const trimmed = exceptionMessage.trim();
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed) && parsed.every((v) => typeof v === 'string')) {
+            return parsed.join('; ');
+          }
+        } catch {
+          /* not JSON */
+        }
+      }
+    }
+
+    return null;
   }
 }

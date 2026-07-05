@@ -14,6 +14,7 @@ import { RolesGuard } from './guards/roles.guard';
 import { SecretProviderService } from '../security/providers/secret.provider';
 import { ObservabilityModule } from '../observability/observability.module';
 import { CookieAuthModule } from '../../common/auth/cookie-auth.module';
+import { AccountLockoutService } from '../security/services/account-lockout.service';
 import { jwtExpiresIn } from '../../common/utils/config-getter';
 
 @Module({
@@ -28,7 +29,11 @@ import { jwtExpiresIn } from '../../common/utils/config-getter';
       ): JwtModuleOptions => ({
         secret: secrets.getJwtSecret(),
         signOptions: {
+          algorithm: 'HS256',
           expiresIn: jwtExpiresIn(config, 'JWT_ACCESS_EXPIRES', '15m'),
+        },
+        verifyOptions: {
+          algorithms: ['HS256'],
         },
       }),
     }),
@@ -45,7 +50,8 @@ import { jwtExpiresIn } from '../../common/utils/config-getter';
     LocalStrategy,
     JwtAuthGuard,
     RolesGuard,
+    AccountLockoutService,
   ],
-  exports: [AuthService, JwtAuthGuard, RolesGuard],
+  exports: [AuthService, JwtAuthGuard, RolesGuard, AccountLockoutService],
 })
 export class AuthModule {}

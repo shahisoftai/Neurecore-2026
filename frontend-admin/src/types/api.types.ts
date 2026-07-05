@@ -12,12 +12,25 @@ export interface PaginatedData<T> {
   limit: number;
 }
 
+export interface TenantTier {
+  id: string;
+  slug: string;
+  name: string;
+  maxAgents: number;
+  maxDepartments: number;
+  monthlyPrice?: number;
+}
+
 export interface Tenant {
   id: string;
   name: string;
   slug: string;
-  plan: string;
+  /** @deprecated use `tier.slug` (Phase 6) — kept for legacy admin UI. */
+  plan?: string;
+  /** @deprecated use `tier.maxAgents` (Phase 6) — kept for legacy admin UI. */
+  agentLimit?: number;
   status: string;
-  agentLimit: number;
+  /** Phase 6 billing-tier rollup; preferred over `plan` / `agentLimit`. */
+  tier?: TenantTier;
   createdAt: string;
 }

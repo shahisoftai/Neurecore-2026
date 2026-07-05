@@ -1,16 +1,15 @@
 # NeureCore — Contabo Operations Reference
 
-**Last verified:** 2026-07-02 (post Phase 6 / Tier-Agent + dashboard perf deploy, commit `c5c05ec`)
+**Last verified:** 2026-07-04 (post FTS retirement + Vercel-removal decision)
 **Audience:** Any engineer tasked with backend, frontend, EAOS, or observability work on Contabo
-**Scope:** Backend (NestJS) + observability stack on Contabo. Frontends primarily on Vercel, but EAOS and Admin also run on Contabo behind CyberPanel (OLS).
+**Scope:** **ALL THREE NeureCore apps now run on Contabo**: Backend (NestJS) + Frontend-Admin + Frontend-Tenant. EAOS is a 4th app. Everything terminates at CyberPanel (OpenLiteSpeed) over HTTPS and reverse-proxies to internal ports.
 
-> ⚠️ **Current-state deviation from prior version (2026-07-02):**
-> 1. The `neurecore-tenant` frontend **no longer runs on Contabo** — it only lives on Vercel (`https://hq.neurecore.com`). `/opt/neurecore/frontend-tenant/` was removed.
-> 2. The `neurecore-admin` frontend **is still on Contabo** but binds to port **3020** (internal) via PM2; CyberPanel (OLS) reverse-proxies `cc.neurecore.com` → 3020. There is **no listener on port 3002 anymore**.
-> 3. Port **3001 is now occupied by an unrelated project** (`app-frontend`, GUV at `/opt/guv/frontend-app`). Do not assume 3001 = tenant — it is not.
-> 4. A **new 3rd app** — `frontend-eaos` — runs on port **3011** via PM2 (`neurecore-eaos`).
-> 5. The CORS proxy listens on **port 3004**, forwards to NestJS backend on **3003**.
-> 6. Backend startup command is **`node ./dist/src/main.js`** (unchanged) but PM2 id is now **37** (was `15`); NestJS module count is **45** modules.
+> ⚠️ **Architecture change 2026-07-04 — Vercel dropped, everything on Contabo:**
+> 1. **No more Vercel.** Frontend-Tenant (`hq.neurecore.com`) is now served from Contabo, identical pattern to Frontend-Admin (`cc.neurecore.com`). See `memory-bank-new/contabo-3-service-architecture.md` for the full plan.
+> 2. PM2 `neurecore-tenant` (id 40) **is online** on Contabo since 2026-07-04, listening on internal port **3005**. CyberPanel vhost `hq.neurecore.com` proxies 80/443 → 127.0.0.1:3005 via extprocessor `neurecore_tenant`.
+> 3. The previous note that "tenant is Vercel only" is **obsolete** — see the Contabo audit below for evidence.
+> 4. **2026-07-04**: FTS canary (`neurecore-fts` PM2 id 41, port 3021) **retired**. PM2 process stopped+deleted; `/opt/neurecore/frontend-tenant-simplified/` and the local `frontend-tenant-simplified/` folder removed. Port 3021 is now free. See `Temp/FTS-CANARY-DEPLOYMENT-PLAN.md` (header) for cancellation note.
+> 5. Backend startup command remains **`node ./dist/src/main.js`**, PM2 id **37**, NestJS module count **45**.
 
 ---
 
@@ -58,11 +57,15 @@
 ### Frontends
 | Item | Value |
 |---|---|
-| Frontend-Tenant (hq) | **Vercel only** — `https://hq.neurecore.com` (CyberPanel-cached HTML, HTTP 200). NO Contabo copy. PM2 process `neurecore-tenant` does **NOT** exist. |
-| Frontend-Admin (cc) | **Contabo + Vercel** — PM2 `neurecore-admin` (id 24) runs Next.js on internal port **3020** (`npx next start --hostname 127.0.0.1 --port 3020`). External: `https://cc.neurecore.com` via CyberPanel (OLS, HTTP 200). |
-| Frontend-EAOS (NEW) | **Contabo only** — PM2 `neurecore-eaos` (id 35) runs from `/opt/neurecore/frontend-eaos/start.sh` on internal port **3011**. Service uptime 22h, restarts 4. |
+| Frontend-Tenant (hq) | **Contabo + CyberPanel** — PM2 `neurecore-tenant` (id 40, online, cwd `/opt/neurecore/frontend-tenant`) runs `next start --hostname 127.0.0.1 --port 3005` via `/opt/neurecore/frontend-tenant/start.sh`. External: `https://hq.neurecore.com` via CyberPanel vhost `hq.neurecore.com` → extprocessor `neurecore_tenant` → 127.0.0.1:3005. HTTP 200 verified 2026-07-04. **NO LONGER ON VERCEL** (Vercel dropped 2026-07-04). |
+| Frontend-Admin (cc) | **Contabo + CyberPanel** — PM2 `neurecore-admin` (id 24) runs Next.js on internal port **3020** (`npx next start --hostname 127.0.0.1 --port 3020`). External: `https://cc.neurecore.com` via CyberPanel (OLS, HTTP 200). |
+| Frontend-EAOS | **Contabo only** — PM2 `neurecore-eaos` (id 35) runs from `/opt/neurecore/frontend-eaos/start.sh` on internal port **3011**. Service uptime 22h, restarts 4. |
 | Port 3001 | **OCCUPIED** by GUV project `app-frontend` (`/opt/guv/frontend-app`, PM2 id 2, uptime 46h). NOT neurecore. |
 | Port 3002 | **NOT LISTENING** (admin was here historically; now bound to 3020 internally). |
+| Port 3005 | **neurecore-tenant** (Next.js, bound 127.0.0.1). |
+| Port 3011 | **neurecore-eaos** (bound 127.0.0.1). |
+| Port 3020 | **neurecore-admin** (bound 127.0.0.1). |
+| Port 3021 | **FREE** (2026-07-04: FTS canary retired; PM2 `neurecore-fts` deleted). |
 | Port 3100 | GUV Next.js runtime (`next-server` for `app-frontend`). |
 
 ### Observability stack (`/opt/neurecore/observability/`)
@@ -76,7 +79,7 @@
 ### Auxiliary services
 | Item | Value |
 |---|---|
-| CORS proxy | `/opt/neurecore/cors-proxy.js`, PM2 `neurecore-cors-proxy` (id 7), listens on `127.0.0.1:3004`, upstream → `127.0.0.1:3003`. Allows origins: `localhost:3001/3002`, `127.0.0.1:3001/3002`, `hq.neurecore.com`, `cc.neurecore.com`. |
+| CORS proxy | `/opt/neurecore/cors-proxy.js`, PM2 `neurecore-cors-proxy` (id 7), listens on `127.0.0.1:3004`, upstream → `127.0.0.1:3003`. Allows origins: `localhost:3001/3002`, `127.0.0.1:3001/3002`, `hq.neurecore.com`, `cc.neurecore.com`. **⚠️ Out of date — see §1.7**, needs to add `localhost:3005` and `127.0.0.1:3005`. |
 | `cookie-refresher` | PM2 id 9, uptime 16D — auxiliary scheduler |
 | Other PM2 apps on box (not neurecore) | `gfcportal`, `shahisoft-nextjs`, `lifeosa-backend`, `ecoearthshop-backend` (cluster), `app-frontend` (GUV on 3001/3100) |
 
@@ -114,25 +117,29 @@ Port 3000 is `nghttpx` (LiteSpeed proxy). The NestJS backend listens on **3003**
 - **`localhost:3001`** → GUV `app-frontend` (NOT neurecore-tenant)
 - **`localhost:3002`** → **NOTHING LISTENING** (admin moved to 3020 internally)
 - **`localhost:3003`** → NestJS Backend ✅
-- **`localhost:3011`** → EAOS frontend
-- **`localhost:3020`** → admin frontend (internal)
 - **`localhost:3004`** → CORS proxy → forwards to backend 3003
+- **`localhost:3005`** → Frontend-Tenant (Next.js) ✅ — `hq.neurecore.com`
+- **`localhost:3011`** → EAOS frontend
+- **`localhost:3020`** → admin frontend (internal) ✅ — `cc.neurecore.com`
+- **`localhost:3021`** → **FREE** (FTS retired 2026-07-04)
+- **`localhost:7080`** → CyberPanel admin UI
+- **`localhost:80 / 443`** → OpenLiteSpeed → reverse-proxies all 3 vhosts
 
 Always test backend with `http://localhost:3003/...` (or via the public hostname `https://brain.neurecore.com/api/v1/`).
 
-### 1.4 Frontends Now Live Across Two Surfaces
+### 1.4 Frontends Now Live Across One Surface (Contabo) — Vercel Dropped 2026-07-04
 
-| Frontend | Where | Port | URL |
-|---|---|---|---|
-| Tenant (hq) | **Vercel** | — | `https://hq.neurecore.com` |
-| Admin (cc) | **Contabo + CyberPanel** | internal 3020 | `https://cc.neurecore.com` |
-| EAOS | **Contabo + CyberPanel** | internal 3011 | (verify your hostname config) |
+| Frontend | Where | Internal port | PM2 process | URL |
+|---|---|---|---|---|
+| Tenant (hq) | **Contabo + CyberPanel** | **3005** | `neurecore-tenant` (id 40) | `https://hq.neurecore.com` |
+| Admin (cc) | **Contabo + CyberPanel** | 3020 | `neurecore-admin` (id 24) | `https://cc.neurecore.com` |
+| EAOS | **Contabo + CyberPanel** | 3011 | `neurecore-eaos` (id 35) | (verify hostname config) |
+| Backend (brain) | **Contabo (direct + CyberPanel proxy)** | 3003 | `neurecore-backend` (id 37) | `https://brain.neurecore.com/api/v1/` |
 
 To check frontend status:
 ```bash
 ssh contabo 'pm2 list | grep neurecore'
-# Currently: neurecore-backend, neurecore-admin, neurecore-eaos, neurecore-cors-proxy
-# Note: neurecore-tenant is GONE
+# Currently: neurecore-backend, neurecore-tenant, neurecore-admin, neurecore-eaos, neurecore-cors-proxy
 ```
 
 ### 1.5 Working Tree on Contabo Is Dirty (get a baseline first)
@@ -168,7 +175,7 @@ export $(grep -v "^#" .env | grep -E "DATABASE_URL|DIRECT_URL" | head -2 | xargs
 
 ### 1.7 CORS Is NOT Done by NestJS — A Sidecar Proxy Handles It
 
-`/opt/neurecore/cors-proxy.js` (PM2 id 7) runs on port 3004 and strips/regenerates CORS headers before forwarding to NestJS on 3003. ALLOWED_ORIGINS is hard-coded: `localhost:3001/3002`, `127.0.0.1:3001/3002`, `hq.neurecore.com`, `cc.neurecore.com`. **If you add a new frontend hostname**, update `cors-proxy.js` and restart `neurecore-cors-proxy`.
+`/opt/neurecore/cors-proxy.js` (PM2 id 7) runs on port 3004 and strips/regenerates CORS headers before forwarding to NestJS on 3003. ALLOWED_ORIGINS is hard-coded in the file. **⚠️ As of 2026-07-04, the file still lists `localhost:3001/3002` only — it does NOT yet include `localhost:3005` (the new tenant port) or `127.0.0.1:3005`.** This needs fixing if any browser request to `https://hq.neurecore.com/api/v1/...` is being routed through port 3004 instead of directly to 3003 via the CyberPanel vhost. Verify whether the CyberPanel vhost `brain.neurecore.com` already proxies `/api/v1/` straight to 127.0.0.1:3003 (then CORS proxy is only needed for dev) before editing. **If you add a new frontend hostname**, update `cors-proxy.js` and restart `neurecore-cors-proxy`.
 
 ---
 

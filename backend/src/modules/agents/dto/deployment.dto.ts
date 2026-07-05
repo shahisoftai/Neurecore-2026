@@ -6,6 +6,7 @@ import {
   IsArray,
   ValidateNested,
   IsEnum,
+  IsBoolean,
   Min,
   Max,
 } from 'class-validator';
@@ -89,4 +90,27 @@ export class DeployDeptTemplateDto {
   /** When true, also creates agents for each dept item using matching platform agent templates */
   @IsOptional()
   withAgents?: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Deploy a SINGLE department from a DepartmentTemplate item (not the whole template)
+// POST /api/v1/deploy/tenants/:tenantId/departments
+// ─────────────────────────────────────────────────────────────────────────────
+
+export class DeploySingleDepartmentDto {
+  @IsUUID()
+  templateId!: string;
+
+  /** Index into the template's `structure` JSON array (0-based) */
+  @IsNumber()
+  @Min(0)
+  itemIndex!: number;
+
+  @IsOptional()
+  @IsUUID()
+  parentDepartmentId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  withHeadAgent?: boolean;
 }

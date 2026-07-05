@@ -5,6 +5,7 @@ import {
   SpawnAgentFromTemplateDto,
   BulkDeployAgentsDto,
   DeployDeptTemplateDto,
+  DeploySingleDepartmentDto,
 } from './dto/deployment.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -76,5 +77,25 @@ export class DeploymentController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.deploymentService.deployDeptTemplate(tenantId, dto, user.sub);
+  }
+
+  /**
+   * POST /api/v1/deploy/tenants/:tenantId/departments
+   * Deploy a SINGLE department from a DepartmentTemplate's `structure` array
+   * (by item index). Useful when tenants want to add one department without
+   * re-deploying the whole template. SUPER_ADMIN only.
+   */
+  @Post('tenants/:tenantId/departments')
+  @Roles(UserRole.SUPER_ADMIN)
+  deploySingleDepartment(
+    @Param('tenantId', ParseUUIDPipe) tenantId: string,
+    @Body() dto: DeploySingleDepartmentDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.deploymentService.deploySingleDepartment(
+      tenantId,
+      dto,
+      user.sub,
+    );
   }
 }

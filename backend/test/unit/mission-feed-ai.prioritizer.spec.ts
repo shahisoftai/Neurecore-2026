@@ -1,5 +1,6 @@
 import { MissionFeedAiPrioritizer } from '../../src/modules/mission-feed/services/mission-feed-ai.prioritizer';
 import type { MissionFeedItem } from '@prisma/client';
+import { MissionFeedCategory } from '@prisma/client';
 
 /**
  * Unit tests for MissionFeedAiPrioritizer.scoreItem — Phase 5, Task 5.11.
@@ -70,5 +71,65 @@ describe('MissionFeedAiPrioritizer.scoreItem', () => {
     );
     expect(s.total).toBeGreaterThanOrEqual(0);
     expect(s.total).toBeLessThanOrEqual(1);
+  });
+
+  it('handles unknown category gracefully (FIX-007 enum-drift defensive)', () => {
+    // Simulates a future enum value that the deployed Prisma client
+    // doesn't know about (e.g. ONBOARDING_TASK on a stale client).
+    // scoreItem must not throw — falls back to 0.5 weight.
+    const s = svc.scoreItem(
+      makeItem({
+        // Cast through unknown because the test fixture type narrows
+        // category to the client's known enum set.
+        category: 'UNKNOWN_CATEGORY' as unknown as MissionFeedItem['category'],
+      }),
+    );
+    expect(s.total).toBeGreaterThanOrEqual(0);
+    expect(s.total).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('MissionFeedAiPrioritizer.scoreTenant defensive (FIX-007)', () => {
+  it('findMany error does not crash tick(); returns 0 updates', async () => {
+    const prisma = {
+      missionFeedItem: {
+        findMany: jest.fn().mockRejectedValue(
+          new Error(
+            "Invalid `prisma.missionFeedItem.findMany()` invocation: Value 'ONBOARDING_TASK' not found in enum 'MissionFeedCategory'",
+          ),
+        ),
+      },
+      tenant: { findMany: jest.fn().mockResolvedValue([{ id: 't1' }]) },
+    } as never;
+    const events = { emitToTenant: jest.fn() } as never;
+    const config = { get: () => undefined } as never;
+    const svc = new MissionFeedAiPrioritizer(prisma, events, config);
+
+    const updated = await (svc as unknown as {
+      scoreTenant: (id: string) => Promise<number>;
+    }).scoreTenant('t1');
+    expect(updated).toBe(0);
+  });
+
+  it('filters by known categories to avoid enum-drift findMany failure', async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const prisma = {
+      missionFeedItem: { findMany },
+      tenant: { findMany: jest.fn().mockResolvedValue([{ id: 't1' }]) },
+    } as never;
+    const events = { emitToTenant: jest.fn() } as never;
+    const config = { get: () => undefined } as never;
+    const svc = new MissionFeedAiPrioritizer(prisma, events, config);
+    await (svc as unknown as {
+      scoreTenant: (id: string) => Promise<number>;
+    }).scoreTenant('t1');
+    expect(findMany).toHaveBeenCalledTimes(1);
+    const args = findMany.mock.calls[0][0];
+    expect(args.where.category).toBeDefined();
+    expect(args.where.category.in).toEqual(expect.arrayContaining(['COST_ALERT']));
+    // Sanity: ONBOARDING_TASK is in the deployed schema (local) and should be filtered.
+    expect(args.where.category.in).toEqual(
+      expect.arrayContaining([MissionFeedCategory.ONBOARDING_TASK]),
+    );
   });
 });

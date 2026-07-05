@@ -9,13 +9,15 @@ const ADMIN_ROLES = ['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SECURITY_OFFICER', 'SUPPO
 
 export function useAdminAuth(): AuthUser | null {
   const user = useAuthStore((s) => s.user);
+  const hasHydrated = useAuthStore((s) => s._hasHydrated);
   const router = useRouter();
 
   useEffect(() => {
-    if (!user || !ADMIN_ROLES.includes(user.role)) {
+    if (hasHydrated && (!user || !ADMIN_ROLES.includes(user.role))) {
       router.replace('/login');
     }
-  }, [user, router]);
+  }, [hasHydrated, user, router]);
 
+  if (!hasHydrated) return null;
   return user && ADMIN_ROLES.includes(user.role) ? user : null;
 }

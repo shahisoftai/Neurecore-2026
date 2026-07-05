@@ -20,7 +20,7 @@ import { ToolsModule } from './modules/tools/tools.module';
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
 // Phase 3
 import { GovernanceModule } from './modules/governance/governance.module';
-// import { HermesModule } from './modules/hermes/hermes.module'; // disabled pre-deploy: module not production-ready
+import { HermesModule } from './modules/hermes/hermes.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
@@ -54,8 +54,15 @@ import { FeatureFlagModule } from './common/feature-flag/feature-flag.module';
 import { WidgetsModule } from './modules/widgets/widgets.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TiersModule } from './modules/tiers/tiers.module';
+import { IndustriesModule } from './modules/industry/industries.module';
+import { TierTemplatesModule } from './modules/tier-templates/tier-templates.module';
+import { FeaturesModule } from './modules/features/features.module';
+import { DepartmentsPoolModule } from './modules/departments-pool/departments-pool.module';
+import { AgentsPoolModule } from './modules/agents-pool/agents-pool.module';
+import { PackagesModule } from './modules/packages/packages.module';
 import { HealthModule } from './modules/health/health.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 // Phase 7 — EAOS-5 Solution Packs (Marketplace + install lifecycle)
 import { SolutionPacksModule } from './modules/solution-packs/solution-packs.module';
@@ -115,7 +122,7 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
 
     // Phase 3 — Governance, Observability, Notifications, Departments, Models
     GovernanceModule,
-    // HermesModule, // disabled pre-deploy
+    HermesModule,
     ObservabilityModule,
     NotificationsModule,
     DepartmentsModule,
@@ -143,6 +150,9 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
 
     // Onboarding wizard (WS-2)
     OnboardingModule,
+
+    // WS-2.1 — Uploads (tenant logos, future avatars/documents)
+    UploadsModule,
 
     // Health monitoring
     HealthModule,
@@ -193,6 +203,14 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     ContextModule,
     // Phase 5 — Batch Approvals & Learning Loop
     ApprovalsModule,
+
+    // Phase 10 — Admin Business Composition (six pools)
+    AgentsPoolModule,       // Pool #1 — AI Employees
+    DepartmentsPoolModule,  // Pool #2 — Departments
+    IndustriesModule,       // Pool #3 — Industries
+    TierTemplatesModule,    // Pool #4 — Tier Templates (commercial offering)
+    FeaturesModule,         // Pool #5 — Features
+    PackagesModule,         // Pool #6 — Packages (composite root)
   ],
   providers: [
     // Global rate-limit guard

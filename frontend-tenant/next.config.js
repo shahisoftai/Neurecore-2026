@@ -1,12 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
   // ── Compression & minification ─────────────────────────────────────────────
   compress: true,
   poweredByHeader: false,
@@ -56,9 +49,20 @@ const nextConfig = {
   //
   // See memory-bank/new_neurecore.md §4.1 for full migration plan.
   async rewrites() {
+    const backend = process.env.NEXT_INTERNAL_API_URL || 'http://127.0.0.1:3003';
     return [
-      // Command center
-      { source: "/dashboard", destination: "/command-center" },
+      // Cookie-only auth (F1 + Batch 1 hardening): proxy /api/v1/* to the
+      // NestJS backend through Next.js so the browser sees same-origin
+      // requests and no CORS preflight is needed. `__Host-` cookies work
+      // because the backend sits in the same TLS host; cookies carry
+      // Secure + no Domain attributes as required by the prefix.
+      { source: '/api/v1/:path*', destination: `${backend}/api/v1/:path*` },
+
+      // Phase 5.5 — Tenant home (Creatio-style) is the default landing page.
+      // /dashboard and /command-center survive as legacy aliases so pinned
+      // links still resolve.
+      { source: "/dashboard", destination: "/home" },
+      { source: "/command-center", destination: "/home" },
 
       // Marketplace (covers agent listing + connector config)
       { source: "/agents", destination: "/marketplace?tab=agents" },
@@ -91,7 +95,7 @@ const nextConfig = {
       { source: "/settings", destination: "/intelligence?tab=settings" },
 
       // Strategy page deleted
-      { source: "/strategy", destination: "/command-center" },
+      { source: "/strategy", destination: "/home" },
     ];
   },
 };

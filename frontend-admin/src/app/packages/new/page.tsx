@@ -1,0 +1,485 @@
+"use client";
+
+/**
+ * /packages/new — Phase 10 Package Composer.
+ *
+ * 4-step wizard:
+ *   1. Identity      — slug, name, description
+ *   2. Categorize    — industry + tier
+ *   3. Compose       — departments + AI agents + features (pickers)
+ *   4. Review        — preview + submit
+ *
+ * Live preview on the right rail (PackagePreview) updates with each step.
+ */
+
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import AdminShell from '@/components/AdminShell';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { packagesService, type CreatePackagePayload, type PackageComposition } from '@/services/packages.service';
+import { industriesPoolService, type Industry } from '@/services/industriesPool.service';
+import { tiersPoolService, type TierTemplate } from '@/services/tiersPool.service';
+import { featuresPoolService, type Feature, type FeatureCategory } from '@/services/featuresPool.service';
+import { departmentsPoolService, type DepartmentPoolEntry } from '@/services/departmentsPool.service';
+import { agentsPoolService, type AgentsPoolEntry } from '@/services/agentsPool.service';
+import { PackagePreview } from '@/components/package/PackagePreview';
+
+const STEPS = ['Identity', 'Categorize', 'Compose', 'Review'] as const;
+type Step = (typeof STEPS)[number];
+
+export default function NewPackagePage() {
+  const user = useAdminAuth();
+  const router = useRouter();
+  const [step, setStep] = useState<Step>('Identity');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Step 1
+  const [slug, setSlug] = useState('');
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+
+  // Step 2
+  const [industries, setIndustries] = useState<Industry[]>([]);
+  const [tiers, setTiers] = useState<TierTemplate[]>([]);
+  const [industryId, setIndustryId] = useState<string>('');
+  const [tierTemplateId, setTierTemplateId] = useState<string>('');
+
+  // Step 3
+  const [allDepartments, setAllDepartments] = useState<DepartmentPoolEntry[]>([]);
+  const [allAgents, setAllAgents] = useState<AgentsPoolEntry[]>([]);
+  const [allFeatures, setAllFeatures] = useState<Feature[]>([]);
+  const [departmentIds, setDepartmentIds] = useState<string[]>([]);
+  const [aiAgentIds, setAiAgentIds] = useState<string[]>([]);
+  const [featureIds, setFeatureIds] = useState<string[]>([]);
+
+  // Preview (live totals)
+  const [preview, setPreview] = useState({
+    totals: { departments: 0, agents: 0, features: 0 },
+    missing: { departments: [] as string[], agents: [] as string[], features: [] as string[] },
+    categories: {} as Record<string, number>,
+  });
+
+  useEffect(() => {
+    void (async () => {
+      const [indPage, tierPage, deptPage, agPage, featPage] = await Promise.all([
+        industriesPoolService.list({ limit: 100 }),
+        tiersPoolService.list({ limit: 100 }),
+        departmentsPoolService.list({ limit: 200 }),
+        agentsPoolService.list({ limit: 200 }),
+        featuresPoolService.list({ limit: 200 }),
+      ]);
+      setIndustries(indPage.items);
+      setTiers(tierPage.items);
+      setAllDepartments(deptPage.items);
+      setAllAgents(agPage.items);
+      setAllFeatures(featPage.items);
+    })().catch(() => {
+      /* noop */
+    });
+  }, []);
+
+  // Refresh preview whenever composition changes.
+  useEffect(() => {
+    if (!industryId || !tierTemplateId) {
+      setPreview({
+        totals: { departments: 0, agents: 0, features: 0 },
+        missing: { departments: [], agents: [], features: [] },
+        categories: {},
+      });
+      return;
+    }
+    void packagesService
+      .preview(industryId, tierTemplateId, {
+        departmentIds,
+        aiAgentIds,
+        featureIds,
+      })
+      .then((p) => setPreview(p))
+      .catch(() => {
+        /* noop */
+      });
+  }, [industryId, tierTemplateId, departmentIds, aiAgentIds, featureIds]);
+
+  const selectedIndustry = useMemo(
+    () => industries.find((i) => i.id === industryId),
+    [industries, industryId],
+  );
+  const selectedTier = useMemo(
+    () => tiers.find((t) => t.id === tierTemplateId),
+    [tiers, tierTemplateId],
+  );
+
+  const featuresByCategory = useMemo(() => {
+    const map: Record<FeatureCategory, Feature[]> = {
+      INTEGRATION: [],
+      API: [],
+      COMMUNICATION: [],
+      BRANDING: [],
+      ANALYTICS: [],
+      AUTOMATION: [],
+      SECURITY: [],
+      PLATFORM: [],
+    };
+    for (const f of allFeatures) map[f.category].push(f);
+    return map;
+  }, [allFeatures]);
+
+  function toggle<T extends string>(setter: (v: T[]) => void, current: T[], id: T) {
+    setter(current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+  }
+
+  function nextStep() {
+    if (step === 'Identity') {
+      if (!slug.trim() || !name.trim()) {
+        setError('Slug and name are required');
+        return;
+      }
+      setError(null);
+      setStep('Categorize');
+    } else if (step === 'Categorize') {
+      if (!industryId || !tierTemplateId) {
+        setError('Industry and Tier are required');
+        return;
+      }
+      setError(null);
+      setStep('Compose');
+    } else if (step === 'Compose') {
+      setError(null);
+      setStep('Review');
+    }
+  }
+
+  async function submit() {
+    setBusy(true);
+    setError(null);
+    try {
+      const payload: CreatePackagePayload = {
+        slug: slug.trim().toLowerCase(),
+        name: name.trim(),
+        description: description.trim() || undefined,
+        status: 'DRAFT',
+        industryId,
+        tierTemplateId,
+      };
+      const created = await packagesService.create(payload);
+
+      const composition: PackageComposition = {
+        departmentIds,
+        aiAgentIds,
+        featureIds,
+      };
+      await packagesService.updateComposition(created.id, composition);
+
+      router.push(`/packages/${created.id}`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create package');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!user) return null;
+
+  const stepIdx = STEPS.indexOf(step);
+
+  return (
+    <AdminShell user={user}>
+      <div className="max-w-7xl mx-auto space-y-5">
+        <div>
+          <h1 className="text-xl font-semibold text-zinc-100">New Package</h1>
+          <p className="text-sm text-zinc-500 mt-0.5">
+            Compose an offering: pick an Industry and Tier, then choose which
+            Departments, AI Employees and Features this Package should include.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {STEPS.map((s, i) => (
+            <div key={s} className="flex items-center gap-2">
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                  i <= stepIdx ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-500'
+                }`}
+              >
+                {i + 1}
+              </div>
+              <span
+                className={`text-xs ${
+                  i === stepIdx ? 'text-zinc-100 font-medium' : 'text-zinc-500'
+                }`}
+              >
+                {s}
+              </span>
+              {i < STEPS.length - 1 && <span className="text-zinc-700 mx-2">→</span>}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+          <div className="rounded-xl border border-surface-border bg-surface-raised p-5 space-y-4">
+            {step === 'Identity' && (
+              <>
+                <h2 className="text-sm font-semibold text-zinc-100">Identity</h2>
+                <Field label="Slug *">
+                  <input
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value.toLowerCase())}
+                    placeholder="healthcare-hospital-ops"
+                    className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500"
+                  />
+                </Field>
+                <Field label="Name *">
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Hospital Operations Package"
+                    className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                  />
+                </Field>
+                <Field label="Description">
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm resize-none focus:outline-none focus:border-indigo-500"
+                  />
+                </Field>
+              </>
+            )}
+
+            {step === 'Categorize' && (
+              <>
+                <h2 className="text-sm font-semibold text-zinc-100">Categorize</h2>
+                <Field label="Industry *">
+                  <select
+                    value={industryId}
+                    onChange={(e) => setIndustryId(e.target.value)}
+                    className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">— choose industry —</option>
+                    {industries.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Tier *">
+                  <select
+                    value={tierTemplateId}
+                    onChange={(e) => setTierTemplateId(e.target.value)}
+                    className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">— choose tier —</option>
+                    {tiers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </>
+            )}
+
+            {step === 'Compose' && (
+              <>
+                <h2 className="text-sm font-semibold text-zinc-100">Compose</h2>
+                <p className="text-xs text-zinc-500">
+                  Select which building blocks belong to this package.
+                </p>
+
+                <PickerGroup
+                  title="Departments"
+                  items={allDepartments.map((d) => ({ id: d.id, label: d.name, sub: d.slug }))}
+                  selected={departmentIds}
+                  onToggle={(id) => toggle(setDepartmentIds, departmentIds, id)}
+                />
+
+                <PickerGroup
+                  title="AI Employees"
+                  items={allAgents.map((a) => ({ id: a.id, label: a.name, sub: `${a.type} · ${a.model}` }))}
+                  selected={aiAgentIds}
+                  onToggle={(id) => toggle(setAiAgentIds, aiAgentIds, id)}
+                />
+
+                <div>
+                  <div className="text-xs text-zinc-400 mb-2">Features (grouped by category)</div>
+                  <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
+                    {(Object.keys(featuresByCategory) as FeatureCategory[]).map((cat) => {
+                      const items = featuresByCategory[cat];
+                      if (items.length === 0) return null;
+                      return (
+                        <div key={cat} className="rounded-lg bg-surface-overlay border border-surface-border p-2">
+                          <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1">{cat}</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {items.map((f) => {
+                              const selected = featureIds.includes(f.id);
+                              return (
+                                <button
+                                  key={f.id}
+                                  type="button"
+                                  onClick={() => toggle(setFeatureIds, featureIds, f.id)}
+                                  className={`text-xs px-2 py-0.5 rounded-full border transition ${
+                                    selected
+                                      ? 'border-indigo-500 bg-indigo-600/20 text-indigo-200'
+                                      : 'border-surface-border text-zinc-400 hover:text-zinc-200'
+                                  }`}
+                                >
+                                  {f.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {step === 'Review' && (
+              <>
+                <h2 className="text-sm font-semibold text-zinc-100">Review</h2>
+                <ReviewRow label="Slug" value={slug} />
+                <ReviewRow label="Name" value={name} />
+                <ReviewRow label="Description" value={description || '—'} />
+                <ReviewRow label="Industry" value={selectedIndustry?.name ?? '—'} />
+                <ReviewRow label="Tier" value={selectedTier?.name ?? '—'} />
+                <ReviewRow label="Departments" value={`${departmentIds.length}`} />
+                <ReviewRow label="AI Employees" value={`${aiAgentIds.length}`} />
+                <ReviewRow label="Features" value={`${featureIds.length}`} />
+                <p className="text-xs text-zinc-500 pt-2">
+                  Submitting will create the package as DRAFT. You can publish it from the detail view.
+                </p>
+              </>
+            )}
+
+            {error && (
+              <div className="rounded-lg bg-red-950 border border-red-800 px-3 py-2 text-sm text-red-300">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (stepIdx > 0) setStep(STEPS[stepIdx - 1]);
+                  else router.push('/packages');
+                }}
+                className="flex-1 py-2 rounded-lg border border-surface-border text-sm text-zinc-400 hover:text-zinc-200 transition"
+              >
+                {stepIdx === 0 ? 'Cancel' : '← Back'}
+              </button>
+              {step !== 'Review' ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition"
+                >
+                  Next →
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={busy}
+                  className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition disabled:opacity-50"
+                >
+                  {busy ? 'Creating…' : 'Create Package'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <PackagePreview
+            industryName={selectedIndustry?.name}
+            tierName={selectedTier?.name}
+            totals={preview.totals}
+            missing={preview.missing}
+            categories={preview.categories}
+          />
+        </div>
+      </div>
+    </AdminShell>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function PickerGroup({
+  title,
+  items,
+  selected,
+  onToggle,
+}: {
+  title: string;
+  items: { id: string; label: string; sub?: string }[];
+  selected: string[];
+  onToggle: (id: string) => void;
+}) {
+  const [filter, setFilter] = useState('');
+  const visible = items.filter(
+    (i) => i.label.toLowerCase().includes(filter.toLowerCase()) || (i.sub ?? '').includes(filter),
+  );
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-1.5">
+        <label className="text-xs text-zinc-400">{title}</label>
+        <span className="text-[10px] text-zinc-600">{selected.length} selected</span>
+      </div>
+      <input
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder={`Filter ${title.toLowerCase()}…`}
+        className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition mb-2"
+      />
+      <div className="rounded-lg border border-surface-border bg-surface-overlay p-2 max-h-44 overflow-y-auto">
+        {visible.length === 0 ? (
+          <div className="text-xs text-zinc-500 text-center py-2">No matches</div>
+        ) : (
+          visible.map((i) => {
+            const isSelected = selected.includes(i.id);
+            return (
+              <label
+                key={i.id}
+                className="flex items-center gap-2 px-1 py-1 rounded hover:bg-surface transition cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onToggle(i.id)}
+                  className="rounded border-zinc-600 bg-surface-overlay accent-indigo-500"
+                />
+                <span className="text-xs text-zinc-200 truncate">{i.label}</span>
+                {i.sub && <span className="text-[10px] text-zinc-600 truncate">{i.sub}</span>}
+              </label>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-sm border-b border-surface-border/40 py-1.5">
+      <span className="text-zinc-500">{label}</span>
+      <span className="text-zinc-100 truncate max-w-md">{value}</span>
+    </div>
+  );
+}
+
+// Mark motion as used to keep tree-shaking friendly import warning happy.
+void motion;

@@ -1,10 +1,17 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ForbiddenException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { EventsGateway } from '../../events/events.gateway';
 import { AgentEvaluatorService } from './agent-evaluator.service';
 import { ToolsService } from '../../tools/tools.service';
 import { GovernanceRulesService } from '../../governance/services/governance-rules.service';
 import { OfficialAgentGraph } from '../langgraph/langgraph-official';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { HermesRuntimeService } from '../../hermes/services/hermes-runtime.service';
 import type {
   IAgentExecutor,
   ExecutionContext,
@@ -37,6 +44,8 @@ export class AgentExecutorService implements IAgentExecutor {
     private readonly tools: ToolsService,
     private readonly governance: GovernanceRulesService,
     private readonly officialGraph: OfficialAgentGraph,
+    private readonly featureFlag: FeatureFlagService,
+    @Optional() private readonly hermesRuntime?: HermesRuntimeService,
   ) {}
 
   async execute(context: ExecutionContext): Promise<StepResult> {
@@ -131,6 +140,19 @@ export class AgentExecutorService implements IAgentExecutor {
       );
     }
     // ─── End governance pre-check ───
+
+    // ─── Hermes routing (feature-flagged) ───
+    // Per-tenant override (`Tenant.settings.featureFlags.HERMES_ENABLED`)
+    // takes precedence over the global env default. Resolution is cached
+    // for ~30s on the FeatureFlagService.
+    const hermesEnabled = await this.featureFlag.isEnabled(
+      'HERMES_ENABLED',
+      tenantId,
+    );
+    if (hermesEnabled && this.hermesRuntime) {
+      return this.executeTaskViaHermes(taskId, agentId, tenantId, start);
+    }
+    // ─── End Hermes routing ───
 
     await this.prisma.task.update({
       where: { id: taskId },
@@ -344,6 +366,124 @@ export class AgentExecutorService implements IAgentExecutor {
       where: { id: taskId },
       data: { status: TaskStatus.CANCELLED },
     });
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // Hermes execution path (feature-flagged)
+  // ───────────────────────────────────────────────────────────
+
+  private async executeTaskViaHermes(
+    taskId: string,
+    agentId: string,
+    tenantId: string,
+    start: number,
+  ): Promise<ExecutionResult> {
+    this.logger.log(`[Hermes] Executing task ${taskId} via Hermes runtime`);
+
+    await this.prisma.task.update({
+      where: { id: taskId },
+      data: { status: TaskStatus.RUNNING, startedAt: new Date() },
+    });
+
+    await this.prisma.agent.update({
+      where: { id: agentId },
+      data: { status: AgentStatus.RUNNING },
+    });
+
+    this.events.emitToTenant(tenantId, 'task:started', { taskId, agentId });
+
+    try {
+      const agent = await this.prisma.agent.findUnique({
+        where: { id: agentId },
+        select: { hermesAgentId: true, name: true },
+      });
+
+      const autoLink = this.featureFlag.isEnabled('HERMES_AUTO_LINK');
+
+      const result = await this.hermesRuntime!.execute({
+        sessionId: taskId,
+        hermesAgentId: agent?.hermesAgentId ?? agentId,
+        task: `Execute task ${taskId}`,
+        context: {
+          tenantId,
+          agentId,
+          threadId: taskId,
+        },
+        autoLink,
+      });
+
+      const totalDurationMs = Date.now() - start;
+
+      await this.prisma.task.update({
+        where: { id: taskId },
+        data: {
+          status: result.success ? TaskStatus.COMPLETED : TaskStatus.FAILED,
+          completedAt: new Date(),
+          output: JSON.stringify({
+            steps: result.steps,
+            hermesResult: result.output,
+          }),
+          error: result.error ?? null,
+        },
+      });
+
+      await this.prisma.agent.update({
+        where: { id: agentId },
+        data: { status: AgentStatus.IDLE },
+      });
+
+      const event = result.success ? 'task:completed' : 'task:failed';
+      this.events.emitToTenant(tenantId, event, {
+        taskId,
+        agentId,
+        success: result.success,
+        error: result.error ?? null,
+      });
+
+      return {
+        taskId,
+        agentId,
+        success: result.success,
+        steps: result.steps,
+        finalOutput: result.output,
+        error: result.error,
+        totalDurationMs,
+        totalTokensUsed: result.tokensUsed ?? 0,
+        totalCostUsd: result.costUsd ?? 0,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`[Hermes] Task ${taskId} failed`, error);
+      const totalDurationMs = Date.now() - start;
+
+      await this.prisma.task.update({
+        where: { id: taskId },
+        data: {
+          status: TaskStatus.FAILED,
+          completedAt: new Date(),
+          error: errorMessage,
+        },
+      });
+
+      await this.prisma.agent.update({
+        where: { id: agentId },
+        data: { status: AgentStatus.IDLE },
+      });
+
+      this.events.emitAgentError(tenantId, agentId, taskId, errorMessage);
+
+      return {
+        taskId,
+        agentId,
+        success: false,
+        steps: [],
+        error: errorMessage,
+        totalDurationMs,
+        totalTokensUsed: 0,
+        totalCostUsd: 0,
+      };
+    }
   }
 
   // ───────────────────────────────────────────────────────────

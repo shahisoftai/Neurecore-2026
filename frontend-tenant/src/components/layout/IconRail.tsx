@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard,
+  Home,
   Users,
   Building2,
   GitBranch,
@@ -46,7 +46,7 @@ interface RailItem {
 }
 
 const RAIL: RailItem[] = [
-  { label: 'Command Center', href: '/command-center', icon: LayoutDashboard },
+  { label: 'Home page',       href: '/home', icon: Home },
   { label: 'Agents',         href: '/marketplace?tab=agents', icon: Users },
   { label: 'Departments',    href: '/departments', icon: Building2 },
   { label: 'Tasks',          href: '/departments?tab=tasks', icon: ListTodo },
@@ -91,7 +91,7 @@ export function IconRail({ className = '' }: IconRailProps) {
     >
       {/* Brand */}
       <div className="h-14 flex items-center px-3 border-b border-surface-border shrink-0">
-        <Link href="/command-center" className="flex items-center gap-2 min-w-0">
+        <Link href="/home" className="flex items-center gap-2 min-w-0">
           <img src="/logo.png" alt="NeureCore" className="w-7 h-7 rounded-md object-contain shrink-0" />
           {expanded && (
             <motion.span

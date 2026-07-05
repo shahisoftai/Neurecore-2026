@@ -17,10 +17,10 @@
  * TenantContextService.get() will throw if a service later tries to read
  * the context, which is the correct behavior.
  *
- * Phase 1E (Task 1.49): The standalone `resolveTenantContext` function
- * (formerly in `common/utils/resolve-tenant-context.ts`) has been inlined
- * here as a private helper. The standalone file is deleted — only the
- * service form (`TenantContextService`) is needed now.
+ * FIX-010 (2026-07-04): the platform-role path used to throw 400
+ * ('TENANT_REQUIRED') when no override was supplied. Mirrored the guard
+ * fix here for consistency: platform roles with no override now resolve
+ * to the `*` wildcard sentinel.
  */
 
 import {
@@ -34,14 +34,15 @@ import { UserRole } from '@prisma/client';
 import { TenantContextService } from './tenant-context.service';
 import type { JwtPayload } from '../../modules/auth/interfaces/token.interface';
 
-// ─── Inlined tenant resolution (was resolve-tenant-context.ts) ───────────────
-
 const PLATFORM_ROLES: ReadonlySet<UserRole> = new Set([
   UserRole.SUPER_ADMIN,
   UserRole.PLATFORM_ADMIN,
   UserRole.SECURITY_OFFICER,
   UserRole.SUPPORT,
 ]);
+
+/** Sentinel tenantId for platform-level (cross-tenant) requests. */
+export const PLATFORM_WILDCARD = '*';
 
 interface TenantContextInput {
   query?: Record<string, unknown>;
@@ -84,14 +85,10 @@ function resolveTenantContext(
 
   if (isPlatformRole(user.role)) {
     const override = extractOverride(input);
-    if (!override) {
-      throw new BadRequestException({
-        code: 'TENANT_REQUIRED',
-        message: `${user.role} must specify tenantId via header, query, or body.`,
-      });
-    }
+    // FIX-010: allow platform roles to omit the override; the wildcard
+    // sentinel lets downstream services recognise a cross-tenant query.
     return {
-      tenantId: override,
+      tenantId: override ?? PLATFORM_WILDCARD,
       isCrossTenant: true,
       actorRole: user.role,
     };

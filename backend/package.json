@@ -27,7 +27,8 @@
     "test:staged": "jest --config jest.config.js --staged",
     "test:ci": "jest --config jest.config.js --ci --coverage --reporters=default --reporters=jest-junit",
     "seed:templates": "node prisma/seed-platform-templates.cjs",
-    "seed:admin": "node scripts/make-superadmin.cjs"
+    "seed:admin": "node scripts/make-superadmin.cjs",
+    "seed:composition": "node prisma/seed-business-composition.cjs"
   },
   "dependencies": {
     "@langchain/core": "^1.1.16",
@@ -50,13 +51,11 @@
     "@opentelemetry/sdk-node": "^0.205.0",
     "@opentelemetry/semantic-conventions": "^1.37.0",
     "@prisma/client": "5.22.0",
-    "@types/ms": "^2.1.0",
-    "@upstash/redis": "^1.37.0",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "clawhub": "^0.9.0",
-    "cookie-parser": "^1.4.7",
+    "express": "^5.0.0",
     "helmet": "^8.1.0",
     "ioredis": "^5.9.3",
     "langchain": "^0.3.0",

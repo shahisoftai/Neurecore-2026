@@ -7,6 +7,11 @@ export interface JwtPayload {
   role: UserRole;
   tenantId: string | null;
   jti: string; // token ID for blacklisting
+  /**
+   * F15: UNIX seconds of the user's last password change.
+   * Tokens issued before this point are rejected.
+   */
+  pwd?: number;
   iat?: number;
   exp?: number;
 }

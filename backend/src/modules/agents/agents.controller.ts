@@ -27,6 +27,13 @@ import { ActionResult } from '../../common/responses/action-result.response';
 import type { AgentResponseDto } from './dto/agent-response.dto';
 import type { JwtPayload } from '../auth/interfaces/token.interface';
 import { AgentStatus, AgentType, UserRole } from '@prisma/client';
+
+const PLATFORM_ROLES_AGENTS: ReadonlySet<UserRole> = new Set([
+  UserRole.SUPER_ADMIN,
+  UserRole.PLATFORM_ADMIN,
+  UserRole.SECURITY_OFFICER,
+  UserRole.SUPPORT,
+]);
 import { ApiCommon } from '../../common/decorators/api-common.decorator';
 import { IsArray, IsOptional, IsString } from 'class-validator';
 
@@ -56,14 +63,20 @@ export class AgentsController {
     @Query('status') status?: AgentStatus,
     @Query('type') type?: AgentType,
   ): Promise<PaginatedResponse<AgentResponseDto>> {
-    if (!user.tenantId) throw new Error('Tenant ID required');
+    // FIX-010: platform roles get '*' wildcard → cross-tenant query.
+    // Non-platform roles use JWT tenantId. Services skip tenant filter for '*'.
+    const tenantId = user.tenantId
+      ? user.tenantId
+      : PLATFORM_ROLES_AGENTS.has(user.role as UserRole)
+        ? '*'
+        : undefined;
     const { data, total, page, limit } = await this.agentsService.findAll({
       departmentId,
       status,
       type,
       page: pagination.page,
       limit: pagination.limit,
-    }, user.tenantId);
+    }, tenantId);
 
     return {
       items: data as unknown as AgentResponseDto[],

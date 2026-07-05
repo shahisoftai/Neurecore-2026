@@ -1,7 +1,6 @@
 import api from './api';
 import type { AuthResult, LoginPayload, RegisterPayload, AuthUser } from '@/types/auth.types';
 import { unwrapItem } from '@/services/unwrap';
-import { tokenManager } from '@/core/infrastructure/auth/TokenManager';
 
 export type GoogleSignInResponse =
   | { status: 'ok'; user: AuthUser; tokens: { accessToken: string; refreshToken: string; expiresIn: number } }
@@ -12,9 +11,6 @@ export const authService = {
   async login(payload: LoginPayload): Promise<AuthResult> {
     const res = await api.post('/auth/login', payload);
     const result = unwrapItem(res) as AuthResult;
-    if (result?.tokens) {
-      tokenManager.setTokens(result.tokens.accessToken, result.tokens.refreshToken);
-    }
     return result;
   },
 
@@ -24,18 +20,12 @@ export const authService = {
   ): Promise<GoogleSignInResponse> {
     const res = await api.post('/auth/google', { idToken, intent });
     const result = unwrapItem(res) as GoogleSignInResponse;
-    if (result?.status === 'ok' && result.tokens) {
-      tokenManager.setTokens(result.tokens.accessToken, result.tokens.refreshToken);
-    }
     return result;
   },
 
   async register(payload: RegisterPayload): Promise<AuthResult> {
     const res = await api.post('/auth/register', payload);
     const result = unwrapItem(res) as AuthResult;
-    if (result?.tokens) {
-      tokenManager.setTokens(result.tokens.accessToken, result.tokens.refreshToken);
-    }
     return result;
   },
 
@@ -46,6 +36,5 @@ export const authService = {
 
   async logout(): Promise<void> {
     await api.post('/auth/logout').catch(() => {});
-    tokenManager.clearTokens();
   },
 };

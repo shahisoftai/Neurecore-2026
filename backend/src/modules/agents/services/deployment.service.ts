@@ -9,6 +9,7 @@ import { EventsGateway } from '../../events/events.gateway';
 import type {
   SpawnAgentFromTemplateDto,
   BulkDeployAgentsDto,
+  DeploySingleDepartmentDto,
 } from '../dto/deployment.dto';
 import type { DeployDeptTemplateDto } from '../dto/deployment.dto';
 
@@ -391,6 +392,145 @@ export class DeploymentService {
       departments: createdDepts.length,
       agents: agentCount,
       details: createdDepts,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 4. Deploy a SINGLE department from a DepartmentTemplate item
+  //    Useful when tenants want to add a single department without
+  //    re-deploying the whole template (which may have changed).
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async deploySingleDepartment(
+    tenantId: string,
+    dto: DeploySingleDepartmentDto,
+    actorId: string,
+  ) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        tier: { select: { maxDepartments: true, maxAgents: true } },
+        _count: { select: { departments: true, agents: true } },
+      },
+    });
+    if (!tenant) throw new NotFoundException(`Tenant ${tenantId} not found`);
+
+    if (tenant._count.departments >= tenant.tier.maxDepartments) {
+      throw new BadRequestException(
+        `Tenant has reached its department limit (${tenant.tier.maxDepartments}).`,
+      );
+    }
+
+    const tmpl = await this.prisma.departmentTemplate.findUnique({
+      where: { id: dto.templateId },
+    });
+    if (!tmpl)
+      throw new NotFoundException(
+        `Department template ${dto.templateId} not found`,
+      );
+
+    const structure = tmpl.structure as Array<{
+      name: string;
+      description?: string;
+      headAgentType?: string;
+      parentName?: string;
+      agentTemplateNames?: string[];
+    }>;
+
+    const item = structure[dto.itemIndex];
+    if (!item)
+      throw new BadRequestException(
+        `Item index ${dto.itemIndex} out of range (template has ${structure.length} items).`,
+      );
+
+    // Reject if a department with this name already exists for the tenant
+    // (idempotency — caller can DELETE the existing one first if they
+    // want a clean re-deploy).
+    const existing = await this.prisma.department.findFirst({
+      where: { tenantId, name: item.name },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        `Tenant already has a department named "${item.name}" (id=${existing.id}). Remove it first to re-deploy.`,
+      );
+    }
+
+    const created = await this.prisma.department.create({
+      data: {
+        name: item.name,
+        description: item.description ?? null,
+        status: 'ACTIVE',
+        tenantId,
+        parentId: dto.parentDepartmentId ?? null,
+        metadata: {
+          fromTemplate: tmpl.id,
+          fromTemplateItemIndex: dto.itemIndex,
+          headAgentType: item.headAgentType,
+          deployedBy: actorId,
+        } as never,
+      },
+    });
+
+    let agentCreated: { id: string; name: string } | null = null;
+    if (dto.withHeadAgent) {
+      const lead = item.headAgentType ?? 'FUNCTIONAL';
+      const agentTemplates = await this.prisma.agentTemplate.findMany({
+        where: { isPublic: true, tenantId: null, type: lead as never },
+      });
+      const matchTemplate =
+        agentTemplates.find((t) => /lead/i.test(t.name)) ??
+        agentTemplates[0] ??
+        null;
+      if (matchTemplate) {
+        const slotsAvailable = tenant.tier.maxAgents - tenant._count.agents;
+        if (slotsAvailable <= 0) {
+          throw new BadRequestException(
+            `Tenant has no agent slots remaining; cannot bootstrap lead.`,
+          );
+        }
+        const agent = await this.prisma.agent.create({
+          data: {
+            name: `${item.name} Lead`,
+            description: matchTemplate.description,
+            type: matchTemplate.type,
+            model: matchTemplate.model,
+            systemPrompt: matchTemplate.systemPrompt,
+            instructions: matchTemplate.instructions,
+            permissions: (matchTemplate.permissions ?? []) as never,
+            config: (matchTemplate.config ?? {}) as never,
+            isActive: true,
+            tenantId,
+            createdById: actorId,
+            templateId: matchTemplate.id,
+            templateVersion: matchTemplate.version,
+            departmentId: created.id,
+            metadata: {
+              spawnedByAdmin: true,
+              authorityLevel: 'RECOMMENDATION',
+              fromDeptTemplateId: tmpl.id,
+              departmentName: item.name,
+              roleTemplateName: matchTemplate.name,
+            } as never,
+          },
+        });
+        agentCreated = { id: agent.id, name: agent.name };
+      }
+    }
+
+    this.logger.log(
+      `Single dept deploy: ${item.name} → tenant ${tenantId}` +
+        (agentCreated ? ` with head agent ${agentCreated.id}` : ''),
+    );
+
+    return {
+      department: {
+        id: created.id,
+        name: created.name,
+        parentId: created.parentId,
+      },
+      headAgent: agentCreated,
     };
   }
 }

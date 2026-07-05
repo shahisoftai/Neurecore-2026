@@ -11,9 +11,14 @@ export interface DonutSlice {
 }
 
 const RADIAN = Math.PI / 180;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderLabel(props: any) {
-  const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props as Record<string, number>;
+function renderLabel(props: Record<string, unknown>) {
+  const cx = props.cx as number;
+  const cy = props.cy as number;
+  const midAngle = props.midAngle as number | undefined;
+  const innerRadius = props.innerRadius as number;
+  const outerRadius = props.outerRadius as number;
+  const percent = props.percent as number | undefined;
+  if (midAngle === undefined || percent === undefined) return null;
   const r = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = cx + r * Math.cos(-midAngle * RADIAN);
   const y = cy + r * Math.sin(-midAngle * RADIAN);
@@ -57,7 +62,7 @@ export function DonutChart({
             innerRadius={innerRadius}
             outerRadius={innerRadius + 45}
             labelLine={false}
-            label={renderLabel}
+            label={renderLabel as any}
           >
             {normalised.map((entry, i) => (
               <Cell key={i} fill={entry.color} />
@@ -68,8 +73,7 @@ export function DonutChart({
             itemStyle={{ color: '#f4f4f5' }}
           />
           <Legend
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formatter={(value: any) => <span style={{ color: '#a1a1aa', fontSize: 11 }}>{value}</span>}
+            formatter={(value) => <span style={{ color: '#a1a1aa', fontSize: 11 }}>{value as string}</span>}
           />
         </PieChart>
       </ResponsiveContainer>

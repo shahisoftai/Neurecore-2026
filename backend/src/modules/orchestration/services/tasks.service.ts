@@ -19,8 +19,8 @@ export class TasksService {
     const { status, agentId, page = 1, limit = 20 } = options ?? {};
     const skip = (page - 1) * limit;
 
-    const where = {
-      tenantId,
+    const where: Record<string, unknown> = {
+      ...(tenantId && tenantId !== '*' ? { tenantId } : {}),
       ...(status && { status }),
       ...(agentId && { agentId }),
     };

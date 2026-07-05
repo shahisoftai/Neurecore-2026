@@ -7,13 +7,25 @@
  * `TenantContextService.run()`.
  *
  * Registered as a global guard via APP_GUARD in app.module.ts, AFTER
- * JwtAuthGuard (line 181). This ensures req.user is populated when
- * this guard runs.
+ * JwtAuthGuard. This ensures req.user is populated when this guard runs.
  *
- * The TenantContextMiddleware (applied as global middleware) is now
- * a no-op that just calls next() - it cannot run after JwtAuthGuard
- * because NestJS middleware always runs before guards. The guard pattern
- * is the correct approach.
+ * FIX-010 (2026-07-04): Platform roles (SUPER_ADMIN, PLATFORM_ADMIN,
+ * SECURITY_OFFICER, SUPPORT) used to throw `BadRequestException
+ * ('TENANT_REQUIRED')` when no tenant override was provided in
+ * header/query/body. That broke the entire admin portal: every
+ * `/api/v1/*` call from `cc.neurecore.com` failed with 400 because
+ * the admin UI doesn't pass a tenant header.
+ *
+ * Fix: when a platform role omits the override, set a sentinel
+ * `tenantId = '*'` and mark `isCrossTenant = true`. Per-resource
+ * controllers continue to enforce their own role + ownership checks
+ * (e.g. `@Roles(SUPER_ADMIN)` on `/tenants`), so cross-tenant access
+ * is still gated by the controller, not by this guard.
+ *
+ * Services that read `tenantContext.tenantId` and expect a real tenant
+ * id must branch on `isCrossTenant` to decide whether to scope or not.
+ * Today only the AI-action & knowledge-rag guards consume the context,
+ * and both correctly no-op for `isCrossTenant = true`.
  */
 
 import {
@@ -35,6 +47,9 @@ const PLATFORM_ROLES: ReadonlySet<UserRole> = new Set([
   UserRole.SECURITY_OFFICER,
   UserRole.SUPPORT,
 ]);
+
+/** Sentinel tenantId for platform-level (cross-tenant) requests. */
+export const PLATFORM_WILDCARD = '*';
 
 interface TenantContextInput {
   query?: Record<string, unknown>;
@@ -78,10 +93,15 @@ function resolveTenantContext(
   if (isPlatformRole(user.role)) {
     const override = extractOverride(input);
     if (!override) {
-      throw new BadRequestException({
-        code: 'TENANT_REQUIRED',
-        message: `${user.role} must specify tenantId via header, query, or body.`,
-      });
+      // FIX-010: platform roles can omit the tenant override for platform-wide
+      // queries (e.g. /tenants list, /agents list across all tenants). The
+      // wildcard sentinel lets downstream services recognise and skip
+      // tenant scoping. Per-endpoint role checks still gate access.
+      return {
+        tenantId: PLATFORM_WILDCARD,
+        isCrossTenant: true,
+        actorRole: user.role,
+      };
     }
     return {
       tenantId: override,
@@ -128,7 +148,14 @@ export class TenantContextGuard implements CanActivate {
       body: request.body as { tenantId?: string },
     });
 
-    this.tenantContext.run({ ...ctx, actorUserId: user.sub }, () => true);
+    // FIX-010: store the resolved context on the request so controllers
+    // can read `request.tenantContext` without needing ALS. The original
+    // `tenantContext.run(ctx, () => true)` pattern releases the ALS
+    // scope before the controller method executes (the guard's `true`
+    // return happens outside the ALS run scope).
+    request.tenantContext = { ...ctx, actorUserId: user.sub };
+
+    this.tenantContext.run(request.tenantContext, () => true);
 
     return true;
   }

@@ -1,582 +1,193 @@
-# NeureCore Frontend-Tenant Refactoring: Master Index
+# NeureCore — Memory Bank (Single-Page Index)
 
-**Status**: Ready for Implementation | **Timeline**: 6 Weeks | **Start Date**: 2026-07-02
-
----
-
-## 🎯 Quick Navigation
-
-| Document | Purpose | Audience | Read Time |
-|----------|---------|----------|-----------|
-| **This File** | Master index & navigation | Everyone | 5 min |
-| [DESIGN_RECOMMENDATIONS.md](DESIGN_RECOMMENDATIONS.md) | Strategic vision & principles | PMs, Tech Leads | 20 min |
-| [VISUAL_GUIDE_COMPONENTS.md](VISUAL_GUIDE_COMPONENTS.md) | Wireframes & component specs | Designers, Frontend | 15 min |
-| [HUMAN_AI_COLLABORATION.md](HUMAN_AI_COLLABORATION.md) | Interaction patterns & trust | Product, UX | 10 min |
-| [FRONTEND_TENANT_REFACTORING.md](FRONTEND_TENANT_REFACTORING.md) | Detailed implementation audit | Frontend, Backend | 30 min |
-| [FRONTEND_QUICK_REFERENCE.md](FRONTEND_QUICK_REFERENCE.md) | Developer checklist & tasks | Developers, QA | 10 min |
+**Last updated:** 2026-07-05 (Phase 6 Complete: 3-column glassmorphic home page with dynamic icon sidebar, real-time widgets, background style selector, Zustand UI preferences store. Build passing. Ready for Contabo deploy.)
+**Audience:** Anyone (human or AI) needing the current state of the NeureCore platform.
+**TL;DR:** Three services on a single Contabo VPS, no Vercel, no other cloud. PM2 + OpenLiteSpeed + Neon Postgres. See `system-state.md` for the full inventory. **Master Package Pool:** 68 `Package` rows seeded 2026-07-05; **15 with full composition** (Accounting & Audit Services, 2026-07-05) — see [`pools-taxonomy.md`](pools-taxonomy.md). **Auth:** cookie-only via `__Host-nc_at/_rt/csrf`; refresh-families with reuse detection; per-account lockout (5/10min); same-origin via Next.js rewrites — see [`auth.md`](auth.md). **UI (Phase 6):** New home page (`/home`) with 3-column layout, glossy left sidebar (dynamic icons), glassmorphic glasspanels, 5 real-time widgets (live feed, stats, tasks, approvals, quick actions), background/widget preferences modal — see [`frontend-tenant.md §13A`](frontend-tenant.md#13a-phase-6--3-column-home-page-architecture).
 
 ---
 
-## 📍 Where to Start
+## 🚦 Quick health check (30 seconds)
 
-### 👔 **If You're a Product/Tech Lead**
-1. Read: [DESIGN_RECOMMENDATIONS.md](DESIGN_RECOMMENDATIONS.md) — Strategic context
-2. Skim: [VISUAL_GUIDE_COMPONENTS.md](VISUAL_GUIDE_COMPONENTS.md) — What it looks like
-3. Reference: This file for timeline
-
-### 👨‍💻 **If You're a Developer**
-1. Start: [FRONTEND_QUICK_REFERENCE.md](FRONTEND_QUICK_REFERENCE.md) — Current state + tasks
-2. Detail: [FRONTEND_TENANT_REFACTORING.md](FRONTEND_TENANT_REFACTORING.md) — Implementation specs
-3. Components: Jump to Phase X section below
-
-### 🎨 **If You're a Designer**
-1. Read: [VISUAL_GUIDE_COMPONENTS.md](VISUAL_GUIDE_COMPONENTS.md) — Wireframes & tokens
-2. Reference: [DESIGN_RECOMMENDATIONS.md](DESIGN_RECOMMENDATIONS.md#section-4-dashboard-redesign) — Design principles
-
-### 🧪 **If You're in QA**
-1. Reference: [FRONTEND_QUICK_REFERENCE.md](FRONTEND_QUICK_REFERENCE.md#-success-metrics) — Metrics to track
-2. Check: [FRONTEND_TENANT_REFACTORING.md](FRONTEND_TENANT_REFACTORING.md#testing-strategy) — Test scenarios
-
----
-
-## 🗺️ Implementation Roadmap
-
-```
-WEEK 1-2: PHASE 1 – Approval Intelligence
-├─ Backend: Risk-stratified approvals + confidence scoring
-├─ Frontend: ApprovalCard, ApprovalHub, Evidence boxes
-├─ Deploy: Feature flag APPROVALS_V2 (10% canary)
-└─ KPI: Approval time 5m → 1-2m
-
-WEEK 2-3: PHASE 2 – Impact Timeline
-├─ Backend: /command-center/timeline endpoint
-├─ Frontend: TimelineEvent, ImpactTimeline components
-├─ Deploy: Feature flag DASHBOARD_V2
-└─ KPI: Intelligence-driven prioritization ✓
-
-WEEK 3-4: PHASE 3 – Cross-Department Context
-├─ Backend: Context & dependency endpoints
-├─ Frontend: ContextCard, DependencyGraph
-├─ Deploy: Feature flag CROSS_DEPT_CONTEXT
-└─ KPI: 40% less context-switching
-
-WEEK 4-5: PHASE 4 – Agent Orchestration
-├─ Backend: /agents/orchestration + WebSocket
-├─ Frontend: AgentOrchestrationBoard + TopBar widget
-├─ Deploy: Feature flag AGENT_ORCHESTRATION
-└─ KPI: Real-time transparency ✓
-
-WEEK 5-6: PHASE 5 – Batch Approvals & Learning
-├─ Backend: Batch-approve + feedback loop ✅
-├─ Frontend: BatchApprovalUI, LearningFeedbackModal ✅
-├─ Deploy: Feature flags BATCH_APPROVALS + LEARNING_LOOP
-└─ KPI: Routine approvals 10 clicks → 1 click ✅
+```bash
+ssh contabo 'pm2 jlist | grep neurecore'   # 4 processes online
+curl -sk https://brain.neurecore.com/api/v1/health   # 200
+curl -sk https://hq.neurecore.com/                  # 200
+curl -sk https://cc.neurecore.com/                  # 200
 ```
 
----
-
-## 📊 Current State Assessment
-
-### ✅ What's Already Done
-- Command Palette (Cmd+K navigation)
-- Command Center landing page
-- Icon Rail sidebar navigation
-- Service Desk hub (Inbox/Approvals/Audit)
-- Department roster + org chart
-- Real-time activity stream
-- Zustand state management
-- Socket.IO integration
-- Dark mode support
-
-**See**: [FRONTEND_QUICK_REFERENCE.md#-current-state-snapshot](FRONTEND_QUICK_REFERENCE.md#-current-state-snapshot)
-
-### ❌ What's Missing
-- Batch approval system ✅ (Phase 5 COMPLETE)
-- Learning loop from user feedback ✅ (Phase 5 COMPLETE)
-- Department control rooms
-
-**See**: [FRONTEND_QUICK_REFERENCE.md#-phase-1-approvals-intelligence-week-1-2](FRONTEND_QUICK_REFERENCE.md#-phase-1-approvals-intelligence-week-1-2)
+If any fails, jump to [runbook.md §3](runbook.md).
 
 ---
 
-## 🚀 Getting Started: Week 1 Checklist
+## 📑 Document index (with summaries — open only what you need)
 
-### Backend Team
-- [ ] Read: [FRONTEND_TENANT_REFACTORING.md - Backend Requirements](FRONTEND_TENANT_REFACTORING.md#backend-requirements)
-- [ ] Task: Add `risk_level` + `ai_recommendation` JSON to ApprovalRequest entity
-- [ ] Task: Create `GET /approvals/stratified?status=PENDING&sort=impact` endpoint
-- [ ] Task: Create `GET /command-center/timeline?sort=impact` endpoint
+This is the **master index**. Every doc below has a one-paragraph summary so you can decide whether to open it.
 
-### Frontend Team
-- [ ] Read: [FRONTEND_QUICK_REFERENCE.md - Phase 1](FRONTEND_QUICK_REFERENCE.md#-phase-1-approvals-intelligence-week-1-2)
-- [ ] Task: Create `src/components/approvals/ApprovalCard.tsx`
-- [ ] Task: Create `src/components/approvals/ApprovalHub.tsx`
-- [ ] Task: Create `src/app/service-desk/approvals-hub/page.tsx`
-- [ ] Task: Add feature flag checks to components
+### Core architecture & status
 
-### QA Team
-- [ ] Read: [FRONTEND_TENANT_REFACTORING.md - Testing Strategy](FRONTEND_TENANT_REFACTORING.md#testing-strategy)
-- [ ] Prepare: E2E test for approval workflow
-- [ ] Prepare: Performance test with 100+ approvals
+| Doc | One-line summary | When to read |
+|---|---|---|
+| [README.md](README.md) | This file — single-page index | Always start here |
+| **[system-state.md](system-state.md)** | Live inventory: 4 PM2 processes, 3 hostnames, ports 3003/3005/3020/3004, Neon DB, Redis, observability stack, 37 backend modules, env keys, git state, disk usage | When you need a number (port, id, path, env key) |
+| **[backend.md](backend.md)** | NestJS API deep dive: 37 modules, 35 controllers, 67 services, 39 Prisma models, **18 migrations**, all REST routes, RBAC roles, JWT, env var groups | Working on the backend; need to know an endpoint, env var, or module structure |
+| **[frontend-admin.md](frontend-admin.md)** | Admin console: 18 routes, 5 stores, 11 hooks, 10 component groups, `.env.production` keys, OLS rewrite rules | Working on admin UI (`/admin/*`); need route/store/env info |
+| **[frontend-tenant.md](frontend-tenant.md)** | Tenant app: 18+ routes, 10 stores, 13 hooks, components, Phase 1-5 history, env keys | Working on tenant UI (`/command-center`, `/service-desk`, etc.) |
+| **[pools-taxonomy.md](pools-taxonomy.md)** | Source of truth for the **six business-composition pools** (AI Employees, Departments, Industries, Tiers, Features, Packages). Pool counts, seeders, migrations. *Includes the Master Package Pool* (68 packages: 15 with composition for Accounting, 53 empty). | Working on Industry/Tier/Package/Department/Agent/Feature data |
+| **[auth.md](auth.md)** | **Authoritative reference for the cookie-only auth system**: token model, refresh-token families with reuse detection, same-origin rewrites, account lockout, CSRF double-submit, password-change invalidation, env vars, schema, ops runbook, troubleshooting | Touching /auth/login, /api/v1/auth/*, cookies, JWT, OAuth, MFA, audit |
 
-### DevOps Team
-- [ ] Read: [FRONTEND_TENANT_REFACTORING.md - Deployment Strategy](FRONTEND_TENANT_REFACTORING.md#deployment-strategy)
-- [ ] Setup: Feature flag `APPROVALS_V2` in environment
-- [ ] Setup: Canary deployment rules (10% → 25% → 100%)
+### Operations
+
+| Doc | One-line summary | When to read |
+|---|---|---|
+| **[contabo-ops.md](contabo-ops.md)** | Contabo box status + **DOs and DON'Ts**: SSH access, PM2, OLS vhosts, CORS proxy, env files, common mistakes to avoid (npx, pnpm, git reset, etc.) | Any time you touch Contabo |
+| [operations.md](operations.md) | Detailed ops reference: PM2 usage, OLS vhost quirks, CORS proxy details, backend/frontend gotchas, 12 lessons learned | Mid-task debugging on Contabo |
+| [deployment.md](deployment.md) | Deploy procedure: local → Contabo rsync + rebuild, single-app vs all-app, adding new services/vhosts/env | When pushing code to production |
+| [runbook.md](runbook.md) | Copy-paste health checks per service, common-symptom table, panic button (restart everything), one-liners | First response when something is broken |
+| [disaster-recovery.md](disaster-recovery.md) | Snapshot locations, how to take/restore, code rollback, disk full, DB restore, full server rebuild | After a bad deploy, disk event, or for periodic DR drills |
+
+### Planning & history
+
+| Doc | One-line summary | When to read |
+|---|---|---|
+| **[ui-audit-refactor-guide.md](ui-audit-refactor-guide.md)** | Comprehensive audit of all 40+ frontend-tenant pages + components. Design analysis (Creatio reference patterns), current state (strengths/weaknesses), page-by-page findings, 12-phase refactor roadmap, specific recommendations for mobile responsiveness, form validation, button/table consolidation, loading states, search architecture | Planning Phase 7+ UI improvements; refactoring any page or component; ensuring design consistency |
+| **[future-plans.md](future-plans.md)** | Roadmap: Phase 6-10 tenant features, admin roadmap, platform engineering (CI/CD, Sentry, vector DB, i18n), security/compliance (SOC 2, GDPR), performance, deprecation plan, decision log | Scoping new work; quarterly planning |
+| **[fixes.md](fixes.md)** | Running changelog of every production fix with root cause + prevention: 11 entries so far (FIX-001 through FIX-010 — CORS, paperclip noise, FTS retirement, admin PM2, Vercel docs, memory-bank restructure, credential signup, wizard persistence, auth refresh 500s + MissionFeed enum crash, HermesNode import-type, admin 400 INVALID_REQUEST) | Before doing something similar to a past fix; after any production incident |
 
 ---
 
-## 📋 Phase Details & References
+## 🏗️ Architecture in one diagram
 
-### **Phase 1: Risk-Stratified Approvals** (W1-2)
-**Goal**: Make approval process 3-5x faster with intelligent prioritization
-
-**✅ COMPLETED** — All components built and integrated
-- Frontend: 8 components (ApprovalCard, RiskBadge, ConfidenceScore, EvidenceBox, SimilarDealsBox, ApprovalHub, FeedbackModal, ApprovalSignalDisplay)
-- Backend: GET /approvals/stratified, POST /approvals/{id}/feedback endpoints
-- Page: src/app/service-desk/approvals-hub/page.tsx fully functional
-- Status: Zero TypeScript errors, 100% SOLID compliant, production-ready
-
-| Aspect | Reference |
-|--------|-----------|
-| Strategic Vision | [DESIGN_RECOMMENDATIONS.md § 3.1](DESIGN_RECOMMENDATIONS.md) |
-| Components | [VISUAL_GUIDE_COMPONENTS.md § Approval Cards](VISUAL_GUIDE_COMPONENTS.md) |
-| Component Specs | [FRONTEND_TENANT_REFACTORING.md § Phase 1](FRONTEND_TENANT_REFACTORING.md#phase-1-approval-intelligence-week-1-2) |
-| Quick Tasks | [FRONTEND_QUICK_REFERENCE.md § Phase 1](FRONTEND_QUICK_REFERENCE.md#-phase-1-approvals-intelligence-week-1-2) |
-| Interaction Pattern | [HUMAN_AI_COLLABORATION.md § Approval Pattern](HUMAN_AI_COLLABORATION.md) |
-
-**New Components**:
 ```
-src/components/approvals/
-├── ApprovalCard.tsx           [Risk badge + confidence + evidence]
-├── RiskBadge.tsx              [Visual: 🔴🟠🟡🟢]
-├── ConfidenceScore.tsx        [87% with reasoning]
-├── EvidenceBox.tsx            [✓ Positive signals]
-├── SimilarDealsBox.tsx        [Historical comparison]
-├── ApprovalHub.tsx            [Stratified list view]
-└── FeedbackModal.tsx          [User feedback collection]
+                              Internet
+                                 │
+                                 ▼
+                       ┌─────────────────────────┐
+                       │  OpenLiteSpeed :80/443  │  CyberPanel vhosts:
+                       │  (CyberPanel)           │  • hq.neurecore.com
+                       └──────────┬──────────────┘  • cc.neurecore.com
+                                  │                 • brain.neurecore.com
+            ┌─────────────────────┼─────────────────────┐
+            ▼                     ▼                     ▼
+  hq.neurecore.com        cc.neurecore.com      brain.neurecore.com
+  extprocessor            extprocessor           extprocessor nodeapi
+  neurecore_tenant        neurecore_admin        → 127.0.0.1:3003
+  → 127.0.0.1:3005        → 127.0.0.1:3020
+            │                     │                     │
+            ▼                     ▼                     ▼
+   ┌────────────────┐    ┌────────────────┐    ┌─────────────────────┐
+   │ Next.js 15     │    │ Next.js 15     │    │ NestJS 11           │
+   │ frontend-      │    │ frontend-      │    │ 37 modules          │
+   │ tenant         │    │ admin          │    │ 71 services         │
+   │ PM2 id 40      │    │ PM2 id 42      │    │ PM2 id 43           │
+   │ port 3005      │    │ port 3020      │    │ port 3003           │
+   └────────┬───────┘    └────────┬───────┘    └──────────┬──────────┘
+            │ rewrites()            │ rewrites()            │
+            ▼                       ▼                       ▼
+   ┌────────────────┐    ┌────────────────┐    ┌─────────────────────┐
+   │ /api/v1/*      │    │ /api/v1/*      │    │ /api/v1/*           │
+   │ proxy to       │    │ proxy to       │    │ direct (NestJS)     │
+   │ 127.0.0.1:3003 │    │ 127.0.0.1:3003 │    │ port 3003           │
+   └────────────────┘    └────────────────┘    └──────────┬──────────┘
+            SAME-ORIGIN cookies (no preflight)
+            __Host-nc_at  (15min access)
+            __Host-nc_rt  (7d refresh, family-tracked)
+            __Host-nc_csrf (JS-readable, X-CSRF-Token header)
+                                                           ▼
+                                          Neon PostgreSQL (pooled)
+                                          + Redis (host-installed)
+                                          + Upstash Redis (prod cache)
 
-src/app/service-desk/approvals-hub/
-└── page.tsx                   [NEW page]
-
-src/stores/
-└── approvalStore.ts           [Zustand state]
-```
-
-**Backend Endpoints**:
-```
-GET /approvals/stratified?status=PENDING&sort=impact
-POST /approvals/{id}/feedback
+  Sidecar:  127.0.0.1:3004  (PM2 id 7) → cors-proxy.js → 127.0.0.1:3003
+            (dev-only CORS; production CORS by OLS vhost)
 ```
 
 ---
 
-### **Phase 2: Impact Timeline Dashboard** (W2-3)
-**Goal**: Replace static KPI cards with intelligence-driven event feed
+## 🔢 Key numbers (memorize)
 
-**✅ COMPLETED** — Full end-to-end implementation with zero Phase 2 errors
-- Frontend: 5 components (TimelineEvent, ImpactTimeline, TimelineFilter, types.ts, index.ts) + useTimeline hook
-- Backend: CommandCenterService aggregates 4 event sources; CommandCenterController with /command-center/timeline endpoint
-- Features: Auto-refresh (30s), filtering (urgent/my-action/opportunities/blockers), sorting (impact/recent/priority), pagination, search
-- Page: command-center/page.tsx integrated with timeline display below KPI cards
-- Status: Zero Phase 2 TypeScript errors, 100% SOLID principles (SRP/OCP/LSP/ISP/DIP), production-ready
+| What | Value |
+|---|---|
+| Contabo IP | `109.123.248.253` |
+| SSH alias | `ssh contabo` |
+| Backend URL | `https://brain.neurecore.com/api/v1/` |
+| Tenant URL | `https://hq.neurecore.com` |
+| Admin URL | `https://cc.neurecore.com` |
+| Backend port | 3003 |
+| Tenant port | 3005 |
+| Admin port | 3020 |
+| CORS proxy | 3004 |
+| PM2 ecosystem file | `/opt/neurecore/ecosystem.config.js` |
+| Rebuild script | `/opt/neurecore/rebuild.sh` |
+| Backend modules | 37 |
+| Backend Prisma models | 39 |
+| Backend env keys | 112 |
+| Tenant/Admin pages | 18+ each |
+| Disk free | 45 GB of 96 GB |
+| Backend git HEAD | `c5c05ec` |
 
-| Aspect | Reference |
-|--------|-----------|
-| Strategic Vision | [DESIGN_RECOMMENDATIONS.md § 4](DESIGN_RECOMMENDATIONS.md) |
-| Wireframes | [VISUAL_GUIDE_COMPONENTS.md § Timeline](VISUAL_GUIDE_COMPONENTS.md) |
-| Implementation | [FRONTEND_TENANT_REFACTORING.md § Phase 2](FRONTEND_TENANT_REFACTORING.md#phase-2-impact-timeline-week-2-3) |
-| Tasks | [FRONTEND_QUICK_REFERENCE.md § Phase 2](FRONTEND_QUICK_REFERENCE.md#-phase-2-impact-timeline-week-2-3) |
+---
 
-**New Components**:
+## 🗂️ File layout
+
 ```
-src/components/timeline/
-├── TimelineEvent.tsx          [Single event card]
-├── ImpactTimeline.tsx         [Scrollable timeline]
-└── TimelineFilter.tsx         [Filter controls]
-
-src/app/command-center/
-└── page.tsx                   [REFACTOR: KPI grid → timeline]
-```
-
-**Backend Endpoints**:
-```
-GET /command-center/timeline?sort=impact&filter=urgent&limit=20
+neurecore/
+├── backend/                          # NestJS API (see backend.md)
+├── frontend-tenant/                  # Next.js tenant app (see frontend-tenant.md)
+├── frontend-admin/                   # Next.js admin console (see frontend-admin.md)
+├── scripts/
+│   ├── deploy.sh                     # local → Contabo orchestrator
+│   └── contabo/
+│       └── ecosystem.config.js       # mirror of /opt/neurecore/ecosystem.config.js
+├── rebuild.sh                        # mirror of /opt/neurecore/rebuild.sh
+├── memory-bank-new/                  # ★ these 13 docs
+│   ├── README.md                     # (this file)
+│   ├── system-state.md
+│   ├── backend.md
+│   ├── frontend-admin.md
+│   ├── frontend-tenant.md
+│   ├── pools-taxonomy.md             # Master Package Pool + six-pool taxonomy
+│   ├── contabo-ops.md
+│   ├── operations.md
+│   ├── deployment.md
+│   ├── runbook.md
+│   ├── disaster-recovery.md
+│   ├── future-plans.md
+│   ├── fixes.md
+│   └── pending-tasks.md              # open questions / decisions / pending migrations
+├── memory-bank-ARCHIVED/             # older docs, retained for diff
+│   └── legacy-2026-07-04/            # 12 pre-cleanup docs
+└── Temp/                             # scratch (FTS plans marked CANCELLED)
 ```
 
 ---
 
-### **Phase 3: Cross-Department Context** (W3-4)
-**Goal**: Show how departments connect; reduce siloing
+## 🧭 Editing these docs
 
-**✅ COMPLETED** — Full end-to-end implementation with zero Phase 3 errors
-- Frontend: 3 components (ContextCard, DependencyGraph, ContextThread) + useContext hook
-- Backend: ContextService integrated with DepartmentsController; GET /departments/:id/context endpoint
-- Features: Initiative tracking, blocker/waiter visualization, real-time updates (30s auto-refresh)
-- Integration: DepartmentsModule imports ContextModule; ContextProvider injected into controller
-- Status: Zero Phase 3 TypeScript errors, 100% SOLID principles, production-ready
+These 13 files are the canonical source of truth. When something changes on Contabo:
+1. **Service added/removed/renamed** → update [system-state.md](system-state.md) and [contabo-ops.md](contabo-ops.md) on the same day.
+2. **Env var changed** → update [backend.md](backend.md), [frontend-admin.md](frontend-admin.md), or [frontend-tenant.md](frontend-tenant.md).
+3. **Deploy procedure changed** → update [deployment.md](deployment.md).
+4. **Production incident** → add entry to [fixes.md](fixes.md).
+5. **New feature planned** → add to [future-plans.md](future-plans.md).
+6. **Pool data / Industry or Tier or Package changed** → update [pools-taxonomy.md](pools-taxonomy.md).
+7. **Open question / decision pending / doc-drift item** → add to [pending-tasks.md](pending-tasks.md).
 
-| Aspect | Reference |
-|--------|-----------|
-| Strategic Vision | [DESIGN_RECOMMENDATIONS.md § 5](DESIGN_RECOMMENDATIONS.md) |
-| Implementation | [FRONTEND_TENANT_REFACTORING.md § Phase 3](FRONTEND_TENANT_REFACTORING.md#phase-3-cross-department-context-week-3-4) |
-| Tasks | [FRONTEND_QUICK_REFERENCE.md § Phase 3](FRONTEND_QUICK_REFERENCE.md#-phase-3-cross-dept-context-week-3-4) |
-
-**Components Implemented**:
-```
-Frontend:
-src/components/context/
-├── ContextCard.tsx            [Initiative cards with stats]
-├── DependencyGraph.tsx        [Blockers + waiters]
-├── ContextThread.tsx          [Initiative summary]
-├── types.ts                   [Interface definitions]
-└── index.ts                   [Export aggregation]
-
-src/hooks/
-└── useContext.ts              [Data fetching hook]
-
-src/types/
-└── context.types.ts           [Frontend types]
-
-Backend:
-src/modules/context/
-├── controllers/context.controller.ts  [ContextProvider service]
-├── services/context.service.ts        [Aggregation logic]
-├── context.module.ts                  [Module registration]
-└── types/context.types.ts (shared)    [Type definitions]
-
-src/modules/departments/
-├── departments.controller.ts  [GET /:id/context added]
-└── departments.module.ts      [ContextModule imported]
-```
-
-**Backend Endpoints**:
-```
-GET /departments/:departmentId/context
-  Returns: ContextResponse
-  - initiatives: Initiative[] (cross-functional projects)
-  - dependencies: {upstreamBlockers, downstreamWaiters, related}
-  - summary: {activeInitiatives, blockedCount, dependenciesCount}
-```
+After editing, run the quick health check above to confirm docs match reality.
 
 ---
 
-### **Phase 4: Agent Orchestration** (W4-5)
-**Goal**: Real-time transparency into AI agent work
+## 📚 Recently retired (do not revive)
 
-**✅ COMPLETED** — Full end-to-end implementation with zero Phase 4 errors
-- Frontend: 3 components (AgentCard, AgentOrchestrationBoard, AgentStatusWidget) + useAgents hook
-- Backend: AgentsService.getOrchestrationData() integrated with AgentsController; GET /agents/orchestration endpoint
-- Features: Agent status display (ACTIVE/IDLE/STANDBY/OFFLINE), current task progress tracking, performance metrics, filtering, auto-refresh
-- Integration: Existing AgentsModule used, new orchestration endpoint added
-- Status: Zero Phase 4 TypeScript errors, 100% SOLID principles, production-ready
-
-| Aspect | Reference |
-|--------|-----------|
-| Strategic Vision | [DESIGN_RECOMMENDATIONS.md § 6](DESIGN_RECOMMENDATIONS.md) |
-| Interaction Patterns | [HUMAN_AI_COLLABORATION.md § Transparency Pattern](HUMAN_AI_COLLABORATION.md) |
-| Implementation | [FRONTEND_QUICK_REFERENCE.md § Phase 4](FRONTEND_QUICK_REFERENCE.md#-phase-4-agent-orchestration-week-4-5) |
-
-**Components Implemented**:
-```
-Frontend:
-src/components/agents/
-├── AgentCard.tsx              [Individual agent with task progress]
-├── AgentOrchestrationBoard.tsx [Grid/list view with filtering]
-├── AgentStatusWidget.tsx      [TopBar summary widget]
-├── types.ts                   [Component props interfaces]
-└── index.ts                   [Export aggregation]
-
-src/hooks/
-└── useAgents.ts               [Data fetching hook with auto-refresh]
-
-src/types/
-└── agents.types.ts            [Frontend type definitions]
-
-Backend:
-src/modules/agents/
-├── services/agents.service.ts [getOrchestrationData() method added]
-├── agents.controller.ts       [getOrchestration() endpoint added]
-├── agents.module.ts           [Already configured]
-└── shared/types/agents.types.ts [Shared type definitions]
-```
-
-**Backend Endpoint**:
-```
-GET /agents/orchestration
-  Returns: AgentsOrchestrationResponse
-  - agents: Agent[] (status, current task, performance, queue)
-  - summary: {totalOnline, totalOffline, activelyWorking, idle, standby}
-  - timestamp: ISO 8601
-
-Agent Shape:
-  {
-    id: string
-    name: string
-    department: {id, name}
-    status: 'ACTIVE' | 'IDLE' | 'STANDBY' | 'OFFLINE'
-    currentTask?: {title, progress 0-100, eta seconds, reasoning}
-    queue: number
-    performance: {completedToday, accuracy 0-100, avgCompletionTime}
-  }
-```
-
-**Features Delivered**:
-- ✓ Real-time agent status visibility
-- ✓ Current task progress tracking with ETA
-- ✓ Performance metrics (accuracy, completion rate, avg time)
-- ✓ Status filtering (all/active/idle/offline)
-- ✓ Grid/list view modes
-- ✓ Summary cards (total online, working, idle, standby)
-- ✓ Auto-refresh every 30s
-- ✓ Pulsing indicator for active work
-- ✓ Queue length indicators
-- ✓ Department context for each agent
+| Item | Retired | Documented in |
+|---|---|---|
+| `frontend-tenant-simplified/` | 2026-07-04 | [fixes.md FIX-003](fixes.md), [future-plans.md §9](future-plans.md#9-deprecation-plan) |
+| PM2 `neurecore-fts` (port 3021) | 2026-07-04 | [fixes.md FIX-003](fixes.md) |
+| Vercel deployment | 2026-07-04 | [fixes.md FIX-005](fixes.md) |
+| `frontend-eaos/` (Contabo) | pre-2026-07-04 | [system-state.md §5](system-state.md) |
+| PM2 `neurecore-eaos` (port 3011) | pre-2026-07-04 | [system-state.md §5](system-state.md) |
+| Pre-2026-07-04 memory-bank docs | 2026-07-04 | archived to `../memory-bank-ARCHIVED/legacy-2026-07-04/` |
 
 ---
 
-### **Phase 5: Batch Approvals & Learning Loop** (W5-6)
-**Goal**: Enable batch operations and capture feedback for AI model improvement
-
-**✅ COMPLETED** — Full end-to-end implementation with zero Phase 5 errors
-- Frontend: 2 new components (BatchApprovalView, LearningFeedbackModal) + useApprovals hook
-- Backend: ApprovalsService + ApprovalsController with 4 endpoints; ApprovalsModule registered in AppModule
-- Features: Risk stratification (Critical/Routine), batch approval actions, feedback modal for AI learning, discrepancy detection
-- Integration: Phase 1 ApprovalCard reused; Phase 5 adds batch view and learning modal
-- Status: Zero Phase 5 TypeScript errors, 100% SOLID principles, production-ready
-
-| Aspect | Reference |
-|--------|-----------|
-| Strategic Vision | [DESIGN_RECOMMENDATIONS.md § 7](DESIGN_RECOMMENDATIONS.md) |
-| Learning Patterns | [HUMAN_AI_COLLABORATION.md § Learning Loop Pattern](HUMAN_AI_COLLABORATION.md) |
-| Implementation | [FRONTEND_TENANT_REFACTORING.md § Phase 5](FRONTEND_TENANT_REFACTORING.md#phase-5-batch-approvals--learning-loop-week-5-6) |
-
-**Components Implemented**:
-```
-Frontend:
-src/components/approvals/
-├── BatchApprovalView.tsx      [Stratified grid: Critical/Routine]
-├── LearningFeedbackModal.tsx  [Decision comparison + feedback]
-├── types.ts                   [Component props interfaces]
-└── index.ts                   [Export aggregation]
-
-src/hooks/
-└── useApprovals.ts           [Data fetching + submitFeedback]
-
-src/types/
-└── approvals.types.ts        [Frontend type definitions]
-
-Backend:
-src/modules/approvals/
-├── services/approvals.service.ts [Business logic]
-├── controllers/approvals.controller.ts [REST endpoints]
-├── approvals.module.ts       [Module registration]
-└── shared/types/approvals.types.ts [Shared type definitions]
-```
-
-**Backend Endpoints**:
-```
-GET /approvals/stratified?status=PENDING
-  Returns: StratifiedApprovalsResponse
-  - critical: ApprovalRequest[] (CRITICAL/HIGH risk)
-  - routine: ApprovalRequest[] (MEDIUM/LOW risk)
-  - timestamp: ISO 8601
-
-POST /approvals/feedback
-  Body: ApprovalFeedback
-  - approvalId, userDecision, aiRecommendation, reasoning, isDiscrepancy
-  Returns: {success: true, message: string}
-
-POST /approvals/:approvalId/approve
-POST /approvals/:approvalId/reject
-```
-
-**Features Delivered**:
-- ✓ Risk-stratified grid layout (Critical: 1-2 cols, Routine: 1-3 cols)
-- ✓ Summary banner with total counts
-- ✓ Section headers with counts
-- ✓ Skeleton loaders during loading
-- ✓ Empty state for no approvals
-- ✓ Learning feedback modal with decision comparison
-- ✓ Predefined reason buttons + textarea for details
-- ✓ Discrepancy detection (AI vs user decision)
-- ✓ Auto-refresh for approval data
-- ✓ Submit feedback for model improvement
-
----
-
-### **Phase 5: Batch Approvals & Learning Loop** (W5-6)
-**Goal**: Routine approvals 10 clicks → 1 click; AI improves from feedback
-
-| Aspect | Reference |
-|--------|-----------|
-| Strategic Vision | [DESIGN_RECOMMENDATIONS.md § 3.2](DESIGN_RECOMMENDATIONS.md) |
-| Learning Patterns | [HUMAN_AI_COLLABORATION.md § Learning Loop](HUMAN_AI_COLLABORATION.md) |
-| Implementation | [FRONTEND_TENANT_REFACTORING.md § Phase 5](FRONTEND_TENANT_REFACTORING.md#phase-5-batch-approvals--learning-week-5-6) |
-| Tasks | [FRONTEND_QUICK_REFERENCE.md § Phase 5](FRONTEND_QUICK_REFERENCE.md#-phase-5-batch-approvals--learning-week-5-6) |
-
-**New Components**:
-```
-src/components/approvals/
-├── BatchApprovalUI.tsx        [Checkboxes + batch actions]
-└── LearningChart.tsx          [Accuracy trends]
-```
-
-**Backend Endpoints**:
-```
-POST /approvals/batch-approve
-POST /approvals/{id}/feedback
-GET /approvals/accuracy-trends
-```
-
----
-
-## 💾 Tech Stack & Patterns
-
-**Frontend**:
-- Next.js 15 (App Router, RSC)
-- React 19 (Hooks)
-- Zustand v5 (State)
-- Radix UI (Components)
-- TailwindCSS (Styling)
-- Framer Motion (Animations)
-- Socket.IO (Real-time)
-- TypeScript (Strict)
-
-**Backend**:
-- NestJS (Framework)
-- Prisma (ORM)
-- PostgreSQL (Database)
-- Socket.IO (WebSocket)
-- OpenAI/DeepSeek APIs (LLM)
-
-**Patterns**:
-- Command Pattern (Navigation)
-- Store Pattern (State)
-- Feature Flags (Rollout)
-- Canary Deployment (Risk mitigation)
-- Signal-based recommendations (AI)
-
----
-
-## 📈 Success Metrics
-
-Track these before/after each phase release:
-
-```
-PHASE 1 (Approvals):
-├─ Approval time: 5m → 1-2m (60% reduction)
-├─ Batch efficiency: 0% → 40% routine approvals
-├─ User trust: 65% → 80%
-└─ Adoption: >80% by week 2
-
-PHASE 2 (Dashboard):
-├─ Command center visits: +30%
-├─ Decision time: -25%
-└─ KPI visibility: >95%
-
-PHASE 3 (Context):
-├─ Context-switching: -40%
-├─ Cross-dept collaboration: +50%
-└─ Blocker resolution: -20% time
-
-PHASE 4 (Agents):
-├─ Agent trust: 65% → 85%
-├─ Orchestration visibility: >90%
-└─ User interventions: <5%
-
-PHASE 5 (Learning):
-├─ AI accuracy: +2% per week
-├─ Feedback rate: >40% of rejections
-└─ Model retraining: Automatic
-```
-
-**See**: [FRONTEND_QUICK_REFERENCE.md § Success Metrics](FRONTEND_QUICK_REFERENCE.md#-success-metrics)
-
----
-
-## 🔑 Key Decisions & Trade-offs
-
-| Decision | Rationale | Reference |
-|----------|-----------|-----------|
-| **Risk-stratified first** | Highest ROI, enables other phases | [DESIGN_RECOMMENDATIONS.md § 3](DESIGN_RECOMMENDATIONS.md) |
-| **Timeline over KPIs** | Leads user attention to what matters | [VISUAL_GUIDE_COMPONENTS.md § Priority](VISUAL_GUIDE_COMPONENTS.md) |
-| **Zustand not Redux** | Lightweight, Creatio simplicity | [FRONTEND_TENANT_REFACTORING.md § Stack](FRONTEND_TENANT_REFACTORING.md) |
-| **Canary deployments** | De-risk new features | [FRONTEND_TENANT_REFACTORING.md § Deployment](FRONTEND_TENANT_REFACTORING.md#deployment-strategy) |
-| **Evidence-based UI** | Build user trust in AI | [HUMAN_AI_COLLABORATION.md § Transparency](HUMAN_AI_COLLABORATION.md) |
-
----
-
-## 📞 Team Responsibilities
-
-| Team | Role | Deliverables | Timeline |
-|------|------|--------------|----------|
-| **Backend** | API development | 6 new endpoints + models | W1-W6 |
-| **Frontend** | Component building | 15+ React components | W1-W6 |
-| **Designer** | UI/UX specs | Wireframes, tokens | W1 |
-| **QA** | Testing | E2E tests, performance | W1-W6 |
-| **DevOps** | Deployment | Feature flags, canary | W1-W6 |
-| **Tech Lead** | Coordination | Code reviews, decisions | W1-W6 |
-
----
-
-## 🚨 Common Questions
-
-**Q: Should we build all 5 phases at once?**
-A: No. Each phase builds on previous. Phase 1 must complete before Phase 2 starts. See [FRONTEND_TENANT_REFACTORING.md § Dependencies](FRONTEND_TENANT_REFACTORING.md).
-
-**Q: Can we customize the timeline?**
-A: Yes, but Phase 1 (approvals) is critical path. Other phases can be reordered. Discuss with tech lead.
-
-**Q: What if a backend endpoint isn't ready?**
-A: Use mock data via feature flag until real endpoint ready. See [FRONTEND_QUICK_REFERENCE.md § Backend Requirements](FRONTEND_QUICK_REFERENCE.md).
-
-**Q: How do we handle user feedback?**
-A: Through modal in Phase 1, automatically sent to backend. See [HUMAN_AI_COLLABORATION.md § Feedback Pattern](HUMAN_AI_COLLABORATION.md).
-
-**Q: What about mobile?**
-A: All components mobile-first via Tailwind. See [VISUAL_GUIDE_COMPONENTS.md § Responsive](VISUAL_GUIDE_COMPONENTS.md).
-
----
-
-## 📚 Document Inventory
-
-```
-/memory-bank-new/
-├── README.md                            [THIS FILE - Master index]
-├── DESIGN_RECOMMENDATIONS.md            [Strategic vision & principles]
-├── VISUAL_GUIDE_COMPONENTS.md           [Wireframes & component specs]
-├── HUMAN_AI_COLLABORATION.md            [Interaction patterns]
-├── FRONTEND_TENANT_REFACTORING.md       [Detailed implementation audit]
-└── FRONTEND_QUICK_REFERENCE.md          [Developer checklist]
-```
-
----
-
-## 🎬 Next Steps
-
-1. **Today**: Tech lead shares this README with team
-2. **Tomorrow**: Backend & Frontend teams read relevant sections
-3. **Week 1**: Kickoff meeting using [FRONTEND_QUICK_REFERENCE.md](FRONTEND_QUICK_REFERENCE.md) checklist
-4. **Week 1-2**: Phase 1 implementation starts
-5. **Week 2**: First canary release (10% of users)
-6. **Week 3**: Collect metrics, iterate based on feedback
-7. **Week 6**: Full Phase 5 rollout to 100%
-
----
-
-## ✅ Ready to Start?
-
-**Checklist**:
-- [ ] Tech lead: Assign backend/frontend owners to each phase
-- [ ] Backend: Review [FRONTEND_TENANT_REFACTORING.md § Backend Requirements](FRONTEND_TENANT_REFACTORING.md#backend-requirements)
-- [ ] Frontend: Review [FRONTEND_QUICK_REFERENCE.md § Phase 1](FRONTEND_QUICK_REFERENCE.md#-phase-1-approvals-intelligence-week-1-2)
-- [ ] QA: Review [FRONTEND_TENANT_REFACTORING.md § Testing Strategy](FRONTEND_TENANT_REFACTORING.md#testing-strategy)
-- [ ] DevOps: Setup feature flags and canary rules
-- [ ] All: Bookmark this README for reference
-
----
-
-**Questions?** Check the relevant document above or ask tech lead.
-
-**Last Updated**: 2026-07-02 | **Status**: Ready for Implementation ✓
+**Last verified live by:** automated audit on 2026-07-05 01:50 PKT (post-Master Package Pool + Accounting composition seed).
+**Next review:** quarterly, or after any production incident.

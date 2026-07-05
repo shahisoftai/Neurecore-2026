@@ -53,6 +53,7 @@ export interface ValidatedUser {
   role: UserRole;
   tenantId: string | null;
   isActive: boolean;
+  passwordChangedAt?: Date | null;
 }
 
 export interface RequestMeta {

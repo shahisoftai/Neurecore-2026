@@ -66,6 +66,7 @@ const CATEGORY_WEIGHTS: Record<MissionFeedCategory, number> = {
   COLLABORATION_REQUEST: 0.55,
   SYSTEM: 0.4,
   PACK_INSTALLED: 0.6,
+  ONBOARDING_TASK: 0.5,
 };
 
 const PRIORITY_THRESHOLDS: Array<{
@@ -150,18 +151,38 @@ export class MissionFeedAiPrioritizer implements OnModuleInit, OnModuleDestroy {
 
   private async scoreTenant(tenantId: string): Promise<number> {
     const cutoff = new Date(Date.now() - 60 * 60_000);
-    const items = await this.prisma.missionFeedItem.findMany({
-      where: {
-        tenantId,
-        dismissedAt: null,
-        OR: [
-          // Not yet scored OR detected recently.
-          { detectedAt: { gte: cutoff } },
-        ],
-      },
-      take: 200,
-      orderBy: [{ detectedAt: 'desc' }],
-    });
+    // FIX-007 (defensive): filter to only categories the *deployed* Prisma
+    // client knows about. If the prod Prisma client was regenerated before
+    // the WS-2.1 onboarding migration shipped to prod, the client enum will
+    // be missing ONBOARDING_TASK/PACK_INSTALLED and findMany() throws
+    // "Value 'ONBOARDING_TASK' not found in enum 'MissionFeedCategory'".
+    // We compute the intersection at runtime so this is forward-compatible.
+    const knownCategories = (
+      Object.keys(CATEGORY_WEIGHTS) as Array<MissionFeedCategory>
+    ).filter((c) => CATEGORY_WEIGHTS[c] !== undefined);
+
+    let items: MissionFeedItem[];
+    try {
+      items = await this.prisma.missionFeedItem.findMany({
+        where: {
+          tenantId,
+          dismissedAt: null,
+          category: { in: knownCategories },
+          OR: [
+            // Not yet scored OR detected recently.
+            { detectedAt: { gte: cutoff } },
+          ],
+        },
+        take: 200,
+        orderBy: [{ detectedAt: 'desc' }],
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `scoreTenant(${tenantId}): findMany failed (likely enum drift): ${msg}. Skipping this pass.`,
+      );
+      return 0;
+    }
 
     let updated = 0;
     for (const item of items) {
@@ -174,7 +195,6 @@ export class MissionFeedAiPrioritizer implements OnModuleInit, OnModuleDestroy {
       };
       const nextPriority = priorityFromScore(breakdown.total);
 
-      // Skip the DB write if nothing changed.
       const currentPayload =
         (item.actionPayload as Record<string, unknown>) ?? {};
       const currentScore =
@@ -185,13 +205,21 @@ export class MissionFeedAiPrioritizer implements OnModuleInit, OnModuleDestroy {
         continue;
       }
 
-      await this.prisma.missionFeedItem.update({
-        where: { id: item.id },
-        data: {
-          priority: nextPriority,
-          actionPayload: nextPayload as never,
-        },
-      });
+      try {
+        await this.prisma.missionFeedItem.update({
+          where: { id: item.id },
+          data: {
+            priority: nextPriority,
+            actionPayload: nextPayload as never,
+          },
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `scoreTenant(${tenantId}): update(${item.id}) failed: ${msg}`,
+        );
+        continue;
+      }
       updated++;
     }
 

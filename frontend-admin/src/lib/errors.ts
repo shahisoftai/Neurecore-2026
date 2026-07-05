@@ -12,6 +12,8 @@
  * - Error state management
  */
 
+import { cookieAuth } from '@/services/cookieAuth';
+
 // ============================================
 // ERROR TYPES
 // ============================================
@@ -331,8 +333,8 @@ export function useErrorHandler() {
     ) {
       // Redirect to login
       if (typeof window !== "undefined") {
-        localStorage.removeItem("admin_accessToken");
-        localStorage.removeItem("admin_refreshToken");
+        // F20: clear cookies BEFORE redirecting.
+        cookieAuth.clear();
         window.location.href = "/login";
       }
     }

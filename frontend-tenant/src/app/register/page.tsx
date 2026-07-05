@@ -4,6 +4,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/auth.service';
+import { routeAfterAuth } from '@/services/auth-redirect.service';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function RegisterPage() {
@@ -13,9 +14,9 @@ export default function RegisterPage() {
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
   const [form, setForm] = useState({ email: '', password: '', firstName: '', lastName: '' });
 
-  // Redirect to command-center if already authenticated
+  // Redirect to /home (via shared post-auth logic) if already authenticated
   useEffect(() => {
-    if (hasHydrated && user) router.replace('/command-center');
+    if (hasHydrated && user) void routeAfterAuth(router);
   }, [hasHydrated, user, router]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,9 @@ export default function RegisterPage() {
     try {
       const result = await authService.register(form);
       setUser(result.user);
-      router.push('/command-center');
+      // Route through the shared post-auth helper so new users land on
+      // /onboarding/setup if their tenant isn't yet complete.
+      await routeAfterAuth(router);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: { message?: string } } } })
         ?.response?.data?.error?.message ?? 'Registration failed';

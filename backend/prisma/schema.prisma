@@ -272,6 +272,7 @@ model Tier {
   // Relations
   tierAgentPools TierAgentPool[]
   tenants        Tenant[]
+  tierTemplates  TierTemplate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -330,6 +331,23 @@ model Tenant {
   onboardingCompletedAt DateTime?
   onboardingStep        String?
 
+  // WS-2.1: Progressive onboarding — local defaults & wizard-persisted fields
+  locale               String?           @default("en-US")
+  timezone             String?           @default("UTC")
+  currency             String?           @default("USD")
+  dateFormat           String?           @default("medium")
+  timeFormat           String?           @default("12h")
+  fiscalYearStart      String?           @default("01-01")
+  sizeBucket           TenantSizeBucket?
+  foundedYear          Int?
+  businessType         String?
+  phone                String?
+  supportEmail         String?
+  addressJson          Json?
+  billingProfileJson   Json?
+  defaultsJson         Json?
+  checklistDismissedAt DateTime?
+
   // WS-6: Drive cleanup retention (days). Auto-cleanup only deletes Drive folders for
   // TERMINATED agents older than this many days. ARCHIVED agents are preserved.
   retentionDays Int @default(90)
@@ -360,18 +378,19 @@ model Tenant {
   metrics          TenantMetric[]
 
   // Phase 4 back-relations
-  analyticsModels        AnalyticsModel[]
-  analyticsFeatures      AnalyticsFeature[]
-  crmConnectors          CrmConnector[]
-  tenantLimit            TenantLimit?
-  oauthTokens            OAuthToken[]
-  integrationCredentials IntegrationCredential[]
-  invoices               Invoice[]
-  expenses               Expense[]
-  billingEvents          BillingEvent[]
-  quotaUsages            QuotaUsage[]
-  onboardingInvitations  OnboardingInvitation[]
-  brevoUsageCounters     BrevoUsageCounter[]
+  analyticsModels            AnalyticsModel[]
+  analyticsFeatures          AnalyticsFeature[]
+  crmConnectors              CrmConnector[]
+  tenantLimit                TenantLimit?
+  oauthTokens                OAuthToken[]
+  integrationCredentials     IntegrationCredential[]
+  invoices                   Invoice[]
+  expenses                   Expense[]
+  billingEvents              BillingEvent[]
+  quotaUsages                QuotaUsage[]
+  onboardingInvitations      OnboardingInvitation[]
+  onboardingChecklistEntries OnboardingChecklistEntry[]
+  brevoUsageCounters         BrevoUsageCounter[]
 
   // Phase 5 back-relations - Routines
   routines    Routine[]
@@ -419,17 +438,19 @@ model Tenant {
 // ─── User ──────────────────────────────────────────────────────────────────
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String? // Optional: null for Google Sign-In users who have no password
-  firstName    String
-  lastName     String
-  role         UserRole  @default(USER)
-  avatarUrl    String?
-  isActive     Boolean   @default(true)
-  isVerified   Boolean   @default(false)
-  lastLoginAt  DateTime?
-  metadata     Json      @default("{}")
+  id                String    @id @default(uuid())
+  email             String    @unique
+  passwordHash      String? // Optional: null for Google Sign-In users who have no password
+  firstName         String
+  lastName          String
+  role              UserRole  @default(USER)
+  avatarUrl         String?
+  isActive          Boolean   @default(true)
+  isVerified        Boolean   @default(false)
+  lastLoginAt       DateTime?
+  metadata          Json      @default("{}")
+  passwordChangedAt DateTime?
+  lockedUntil       DateTime?
 
   // Google Sign-In identity (unique — one account per Google ID)
   googleId      String? @unique
@@ -442,6 +463,17 @@ model User {
   // Phase 2 — primary department assignment (nullable; user can belong to multiple via projects)
   departmentId String?
   department   Department? @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+
+  // WS-2.1: Progressive onboarding — user-level preferences & profile completeness
+  phone                 String?
+  jobTitle              String?
+  timezone              String?
+  locale                String?
+  language              String? @default("en")
+  theme                 String? @default("system")
+  defaultLanding        String? @default("/home")
+  railCollapsedDefault  Boolean @default(false)
+  notificationPrefsJson Json?
 
   // Relations
   sessions           Session[]
@@ -517,6 +549,9 @@ model RefreshToken {
   userId    String
   isRevoked Boolean  @default(false)
   expiresAt DateTime
+  familyId  String
+
+  replacedById String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -524,7 +559,23 @@ model RefreshToken {
 
   @@index([userId])
   @@index([tokenHash])
+  @@index([familyId])
   @@map("refresh_tokens")
+}
+
+model LoginAttempt {
+  id        String   @id @default(uuid())
+  email     String
+  ipAddress String?
+  userAgent String?
+  success   Boolean
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([ipAddress])
+  @@index([createdAt])
+  @@map("login_attempts")
 }
 
 // ─── Audit Log ─────────────────────────────────────────────────────────────
@@ -571,12 +622,16 @@ model AgentTemplate {
   config       Json      @default("{}")
   isPublic     Boolean   @default(false) // platform-wide template
   version      String    @default("1.0.0")
+  enabled      Boolean   @default(true) // Phase 10 — pool-level enable/disable
 
   tenantId String?
   tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Phase 6: Link to tier agent pools
   tierAgentPools TierAgentPool[]
+
+  // Phase 10 — Business composition
+  packages Package[] @relation("PackageAgents")
 
   // Phase 1 Gap 8 — template lifecycle / deprecation
   deprecatedAt           DateTime?
@@ -916,6 +971,9 @@ model DepartmentTemplate {
   isPublic    Boolean @default(true)
   category    String  @default("general") // "startup" | "enterprise" | "ecommerce" | etc.
   tags        Json    @default("[]")
+
+  // Phase 10 — Business composition
+  packages Package[] @relation("PackageDepartments")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1674,6 +1732,30 @@ model OnboardingInvitation {
   @@map("onboarding_invitations")
 }
 
+// ─── OnboardingChecklistEntry — WS-2.1 Progressive onboarding system of record
+//
+// One row per tenant per wizard slug. The MissionFeedItem is the user-facing
+// surface (dismiss, deep-link); this table is the canonical state machine.
+// Seeding is idempotent via @@unique([tenantId, slug]).
+model OnboardingChecklistEntry {
+  id          String                   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slug        String
+  state       OnboardingChecklistState @default(PENDING)
+  completedAt DateTime?
+  dismissedAt DateTime?
+  skippedAt   DateTime?
+  // Last saved payload (resume on re-entry)
+  payload     Json?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, state])
+  @@map("onboarding_checklist_entries")
+}
+
 // ─── Brevo Usage Counters (WS-5) ───────────────────────────────────────────
 
 model BrevoUsageCounter {
@@ -2081,8 +2163,40 @@ enum MissionFeedCategory {
   COLLABORATION_REQUEST
   SYSTEM
   PACK_INSTALLED
+  ONBOARDING_TASK
 
   @@map("mission_feed_category")
+}
+
+// WS-2.1: Progressive onboarding — checklist entry lifecycle state
+enum OnboardingChecklistState {
+  PENDING
+  DONE
+  DISMISSED
+  SKIPPED
+
+  @@map("onboarding_checklist_state")
+}
+
+// WS-2.1: Tenant size bucket — drives tier recommendations
+enum TenantSizeBucket {
+  SOLO
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+
+  @@map("tenant_size_bucket")
+}
+
+// WS-2.1: Billing payment method preference
+enum BillingPaymentMethod {
+  CARD
+  BANK_TRANSFER
+  INVOICE_ONLY
+  NONE
+
+  @@map("billing_payment_method")
 }
 
 // AI Action invocation status (the lifecycle in §13.2 of api-contract)
@@ -2570,4 +2684,159 @@ model ApprovalWorkflowStep {
 
   @@unique([approvalWorkflowId, stepOrder])
   @@index([approvalWorkflowId])
+}
+
+// ─── Business Composition: Six Pools (Phase 10) ─────────────────────────
+// Refactor of `templates` into six orthogonal pools that compose a Package.
+// Each pool owns one Prisma model and one CRUD surface. See
+// memory-bank-new/plans/admin-business-composition.md.
+
+// ─── Enums ──────────────────────────────────────────────────────────────
+
+enum IndustryStatus {
+  ACTIVE
+  ARCHIVED
+
+  @@map("industry_status")
+}
+
+enum TierTemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+
+  @@map("tier_template_status")
+}
+
+enum FeatureCategory {
+  INTEGRATION
+  API
+  COMMUNICATION
+  BRANDING
+  ANALYTICS
+  AUTOMATION
+  SECURITY
+  PLATFORM
+
+  @@map("feature_category")
+}
+
+enum PackageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+
+  @@map("package_status")
+}
+
+enum PackageScope {
+  FUNCTIONAL
+  VERTICAL
+  HYBRID
+
+  @@map("package_scope")
+}
+
+// ─── Pool #3: Industries ─────────────────────────────────────────────────
+
+model Industry {
+  id          String         @id @default(uuid())
+  slug        String         @unique
+  name        String
+  description String?        @db.Text
+  icon        String?
+  status      IndustryStatus @default(ACTIVE)
+  sortOrder   Int            @default(0)
+
+  packages Package[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, sortOrder])
+  @@map("industries")
+}
+
+// ─── Pool #4: Tier Templates (commercial offering) ───────────────────────
+// Distinct from the billing `Tier` model. A TierTemplate represents a
+// commercial offering (Starter / Professional / Enterprise / Government)
+// and may map to one or more billing `Tier` rows.
+
+model TierTemplate {
+  id          String             @id @default(uuid())
+  slug        String             @unique
+  name        String
+  tagline     String?
+  description String?            @db.Text
+  status      TierTemplateStatus @default(DRAFT)
+  sortOrder   Int                @default(0)
+
+  defaultBillingTierId String?
+  defaultBillingTier   Tier?   @relation(fields: [defaultBillingTierId], references: [id], onDelete: SetNull)
+
+  packages Package[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, sortOrder])
+  @@map("tier_templates")
+}
+
+// ─── Pool #5: Features ───────────────────────────────────────────────────
+
+model Feature {
+  id             String          @id @default(uuid())
+  key            String          @unique
+  name           String
+  description    String?         @db.Text
+  category       FeatureCategory
+  icon           String?
+  integrationKey String?
+  sortOrder      Int             @default(0)
+
+  packages Package[] @relation("PackageFeatures")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, sortOrder])
+  @@map("features")
+}
+
+// ─── Pool #6: Packages (composite root) ──────────────────────────────────
+
+model Package {
+  id          String        @id @default(uuid())
+  slug        String
+  name        String
+  description String?       @db.Text
+  status      PackageStatus @default(DRAFT)
+  sortOrder   Int           @default(0)
+
+  // Catalogue meta — supports package reuse across industries/tiers
+  scope   PackageScope @default(FUNCTIONAL)
+  version Int          @default(1)
+
+  industryId String
+  industry   Industry @relation(fields: [industryId], references: [id], onDelete: Restrict)
+
+  tierTemplateId String
+  tierTemplate   TierTemplate @relation(fields: [tierTemplateId], references: [id], onDelete: Restrict)
+
+  // M2M composition — pool entities only (no tenant-runtime rows)
+  departments DepartmentTemplate[] @relation("PackageDepartments")
+  aiAgents    AgentTemplate[]      @relation("PackageAgents")
+  features    Feature[]            @relation("PackageFeatures")
+
+  suggestedAgentCount      Int?
+  suggestedDepartmentCount Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([industryId, tierTemplateId, slug])
+  @@index([industryId, tierTemplateId])
+  @@index([status])
+  @@map("packages")
 }

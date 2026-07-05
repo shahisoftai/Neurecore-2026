@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/authStore";
+import { routeAfterAuth } from "@/services/auth-redirect.service";
 import { tokenManager } from "@/core/infrastructure/auth/TokenManager";
-import api from "@/services/api";
+import { errorHandler } from "@/core/infrastructure/ErrorHandler";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
@@ -51,10 +52,7 @@ function GoogleSignInButton({ onError }: { onError: (msg: string) => void }) {
         window.dispatchEvent(event);
       }
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message ?? "Google sign-in failed";
-      onError(msg);
+      onError(errorHandler.normalise(err).message ?? "Google sign-in failed");
     } finally {
       setLoading(false);
     }
@@ -117,21 +115,8 @@ function GoogleSignInButton({ onError }: { onError: (msg: string) => void }) {
   );
 }
 
-async function routeAfterAuth(router: ReturnType<typeof useRouter>) {
-  try {
-    const res = await api.get('/tenants/me/current');
-    const tenant = (res.data?.data ?? res.data) as
-      | { onboardingCompletedAt?: string | null }
-      | null;
-    if (tenant && !tenant.onboardingCompletedAt) {
-      router.push('/onboarding/setup');
-      return;
-    }
-  } catch {
-    // fall through to command-center
-  }
-  router.push('/command-center');
-}
+// Post-auth redirect logic moved to services/auth-redirect.service.ts so both
+// /login and /register use the same code path.
 
 function LoginForm() {
   const router = useRouter();
@@ -175,10 +160,7 @@ function LoginForm() {
       setUser(result.user);
       await routeAfterAuth(router);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message ?? "Login failed";
-      setError(msg);
+      setError(errorHandler.normalise(err).message ?? "Login failed");
     } finally {
       setLoading(false);
     }

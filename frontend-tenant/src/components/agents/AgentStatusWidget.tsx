@@ -31,7 +31,7 @@ export const AgentStatusWidgetComponent: React.FC<AgentStatusWidgetProps> = ({
             total > 0
                 ? Math.round((totalOnline / total) * 100)
                 : 0,
-        [totalOnline, totalOffline, total]
+        [totalOnline, total]
     );
 
     return (

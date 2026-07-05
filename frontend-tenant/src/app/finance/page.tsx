@@ -175,8 +175,8 @@ function OverviewTab() {
     setLoading(true);
     try {
       const [costRes, budgetRes] = await Promise.all([
-        fetch('/api/v1/costs/summary', { headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } }),
-        fetch('/api/v1/costs/budgets', { headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } }),
+        fetch('/api/v1/costs/summary', { credentials: 'include' }),
+        fetch('/api/v1/costs/budgets', { credentials: 'include' }),
       ]);
       if (costRes.ok) {
         const data = await costRes.json();
@@ -581,8 +581,8 @@ function BudgetsTab() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('accessToken');
-      const headers = { Authorization: `Bearer ${token ?? ''}` };
+      const token = null;
+      const headers: Record<string, string> = { 'X-Requested-With': 'fetch' };
 
       const [budgetRes, incidentRes] = await Promise.all([
         fetch('/api/v1/costs/budgets', { headers }),

@@ -105,13 +105,16 @@ const API_BASE = '/api/v1';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T | null> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(init?.headers as Record<string, string> | undefined),
   };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  // Cookie-only auth: __Host-nc_at travels with credentials: 'include'.
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers,
+    credentials: 'include',
+  });
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) return null;
     throw new Error(`HTTP ${res.status}`);

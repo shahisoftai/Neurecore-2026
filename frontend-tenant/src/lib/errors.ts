@@ -334,7 +334,7 @@ export function useErrorHandler() {
 // EXPORTS
 // ============================================
 
-export default {
+const errorModule = {
   ErrorCode,
   AppError,
   parseApiError,
@@ -342,3 +342,5 @@ export default {
   logError,
   useErrorHandler,
 };
+
+export default errorModule;

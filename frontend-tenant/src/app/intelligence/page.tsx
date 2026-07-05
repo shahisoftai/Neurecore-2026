@@ -298,9 +298,8 @@ function ObservabilityTab() {
   const fetchEvents = useCallback(async () => {
     setEventsLoading(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
       const res = await fetch('/api/v1/observability/logs?limit=30', {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: 'include',
       });
       if (!res.ok) { setEvents([]); return; }
       const json = await res.json();
@@ -406,12 +405,9 @@ function HealthTab() {
   const fetchHealth = useCallback(async () => {
     setLoading(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-
       const [healthRes, breakersRes] = await Promise.all([
-        fetch('/api/v1/health/system', { headers }),
-        fetch('/api/v1/health/circuit-breakers', { headers }),
+        fetch('/api/v1/health/system', { credentials: 'include' }),
+        fetch('/api/v1/health/circuit-breakers', { credentials: 'include' }),
       ]);
 
       if (healthRes.ok) {
@@ -531,12 +527,9 @@ function ReliabilityTab() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-
       const [quotaRes, capRes] = await Promise.all([
-        window.fetch('/api/v1/reliability/quota', { headers }),
-        window.fetch('/api/v1/reliability/spending-cap', { headers }),
+        window.fetch('/api/v1/reliability/quota', { credentials: 'include' }),
+        window.fetch('/api/v1/reliability/spending-cap', { credentials: 'include' }),
       ]);
 
       if (quotaRes.ok) {
@@ -644,9 +637,8 @@ function SecurityTab() {
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
       const res = await fetch('/api/v1/security/events?limit=100', {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: 'include',
       });
       if (!res.ok) { setEvents([]); return; }
       const json = await res.json();

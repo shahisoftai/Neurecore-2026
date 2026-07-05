@@ -18,6 +18,7 @@ import {
   UpdateTenantDto,
   ChangeTierDto,
 } from './dto/tenant.dto';
+import { UpdateMyTenantDto } from './dto/update-my-tenant.dto';
 import { PaginatedResponse } from '../../common/responses/paginated.response';
 import { ActionResult } from '../../common/responses/action-result.response';
 import type { TenantResponseDto } from './dto/tenant-response.dto';
@@ -45,10 +46,19 @@ export class TenantsController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
   ): Promise<PaginatedResponse<TenantResponseDto>> {
-    const { items, total } = await this.tenantsService.findAll(page, limit, search);
+    const { items, total } = await this.tenantsService.findAll(
+      page,
+      limit,
+      search,
+    );
     return {
       items: items as unknown as TenantResponseDto[],
-      pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
     };
   }
 
@@ -74,17 +84,29 @@ export class TenantsController {
   }
 
   @Get('me/current')
-  @Roles(
-    UserRole.OWNER,
-    UserRole.ADMIN,
-    UserRole.USER,
-    UserRole.AUDITOR,
-  )
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER, UserRole.AUDITOR)
   async getCurrent(@CurrentUser() user: { tenantId?: string | null }) {
     if (!user?.tenantId) {
       throw new ForbiddenException('No tenant context for current user');
     }
     return this.tenantsService.findOne(user.tenantId);
+  }
+
+  /**
+   * WS-2.1: Owner-scoped tenant update — restricted fields, no status / slug /
+   * tier (those require platform admin endpoints). Used by Tier-1 wizard and
+   * sub-wizards to persist tenant-level preferences.
+   */
+  @Patch('me')
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  async updateMine(
+    @CurrentUser() user: { tenantId?: string | null; sub: string },
+    @Body() dto: UpdateMyTenantDto,
+  ): Promise<unknown> {
+    if (!user?.tenantId) {
+      throw new ForbiddenException('No tenant context for current user');
+    }
+    return this.tenantsService.updateMine(user.tenantId, user.sub, dto);
   }
 
   @Post()
@@ -101,15 +123,28 @@ export class TenantsController {
 
   @Patch(':id/suspend')
   @Roles(UserRole.SUPER_ADMIN)
-  async suspend(@Param('id') id: string): Promise<ActionResult<TenantResponseDto | null>> {
+  async suspend(
+    @Param('id') id: string,
+  ): Promise<ActionResult<TenantResponseDto | null>> {
     const tenant = await this.tenantsService.suspend(id);
-    return { success: true, message: 'Tenant suspended', data: tenant as unknown as TenantResponseDto | null };
+    return {
+      success: true,
+      message: 'Tenant suspended',
+      data: tenant as unknown as TenantResponseDto | null,
+    };
   }
 
   @Patch(':id/change-tier')
   @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
-  async changeTier(@Param('id') id: string, @Body() dto: ChangeTierDto): Promise<ActionResult<TenantResponseDto | null>> {
+  async changeTier(
+    @Param('id') id: string,
+    @Body() dto: ChangeTierDto,
+  ): Promise<ActionResult<TenantResponseDto | null>> {
     const tenant = await this.tenantsService.changeTier(id, dto.tierId);
-    return { success: true, message: 'Tier changed', data: tenant as unknown as TenantResponseDto | null };
+    return {
+      success: true,
+      message: 'Tier changed',
+      data: tenant as unknown as TenantResponseDto | null,
+    };
   }
 }

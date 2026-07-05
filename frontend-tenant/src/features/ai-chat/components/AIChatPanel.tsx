@@ -3,7 +3,7 @@
 // SRP: Chat panel shell — layout + input + scroll management.
 // DIP: Data via useAIChat(); rendering via AIChatMessage.
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAIChat }          from '@/shared/hooks/useAIChat';
 import { AIChatMessage, TypingIndicator } from './AIChatMessage';
@@ -21,14 +21,27 @@ interface AIChatPanelProps {
   isOpen:      boolean;
   onClose:     () => void;
   pageContext?: string;
+  /**
+   * Optional pre-filled message (e.g. from the HomeHero prompt bar).
+   * Consumed once on mount — re-opening the panel does NOT re-fill the input.
+   */
+  initialMessage?: string;
 }
 
-export function AIChatPanel({ isOpen, onClose, pageContext }: AIChatPanelProps) {
+export function AIChatPanel({ isOpen, onClose, pageContext, initialMessage }: AIChatPanelProps) {
   const { messages, isTyping, error, send, applySuggestion, clear, bottomRef } =
     useAIChat(pageContext);
 
   const [input, setInput] = useState('');
   const [submittingPrompt, setSubmittingPrompt] = useState<string | null>(null);
+
+  // Hydrate the input from the home page's hero prompt exactly once.
+  useEffect(() => {
+    if (initialMessage && !input) {
+      setInput(initialMessage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMessage]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

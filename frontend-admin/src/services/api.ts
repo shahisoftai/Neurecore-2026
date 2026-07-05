@@ -2,148 +2,157 @@ import axios, {
   AxiosInstance,
   InternalAxiosRequestConfig,
   AxiosError,
-} from "axios";
-import { unwrapItem } from "./unwrap";
-import { parseApiError, logError, AppError } from "@/lib/errors";
+  AxiosResponse,
+} from 'axios';
+import { unwrapItem } from './unwrap';
+import { parseApiError, logError, AppError } from '@/lib/errors';
+import { cookieAuth, refreshCoordinator } from './cookieAuth';
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3000/api/v1";
+// Same-origin by default: Next.js's `rewrites()` proxies /api/v1/* to the
+// NestJS backend so the browser sees same-origin and no CORS preflight is
+// needed. `__Host-` cookies stay first-party.
+// Override with NEXT_PUBLIC_API_URL for fully-split deployments.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api/v1';
 
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
-  headers: { "Content-Type": "application/json" },
+  headers: { 'Content-Type': 'application/json' },
+  // withCredentials: false — cookies are sent automatically on same-origin
+  // requests regardless. Keeping it false avoids redundant CORS preflight
+  // when the backend and frontend share an origin.
+  withCredentials: false,
   timeout: 30000,
 });
 
-// Request interceptor for adding auth token
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  try {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("admin_accessToken");
-      if (token) {
-        config.headers = config.headers || {};
-        config.headers["Authorization"] = `Bearer ${token}`;
-      }
+// ─── Request interceptor ────────────────────────────────────────────────────
+//
+// F1: NO Bearer header — cookies travel automatically (same-origin). 
+// F6: CSRF double-submit — echo the __Host-nc_csrf cookie as X-CSRF-Token
+// on every state-changing method, except for auth endpoints where the CSRF
+// middleware is permissive (the browser has no token yet).
 
-      // Add correlation ID header if available
-      try {
-        const cid =
-          globalThis.crypto && (globalThis.crypto as any).randomUUID
-            ? (globalThis.crypto as any).randomUUID()
-            : undefined;
-        if (cid) {
-          config.headers = config.headers || {};
-          config.headers["X-Correlation-ID"] = cid;
-        }
-      } catch (e) {
-        // ignore correlation id failure
-      }
+const CSRF_EXEMPT_PATHS = ['/auth/login', '/auth/register', '/auth/google'];
+
+function shouldAttachCsrf(method: string | undefined, url: string | undefined): boolean {
+  if (!method || !url) return false;
+  const m = method.toUpperCase();
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(m)) return false;
+  const path = url.split('?')[0];
+  return !CSRF_EXEMPT_PATHS.some((p) => path.endsWith(p));
+}
+
+// Auth endpoints that must NEVER trigger a token refresh. A 401 on /auth/login
+// means bad credentials (not an expired session), and a 401 on /auth/refresh
+// means the refresh token is invalid. Retrying with a refresh would create
+// either a redirect loop or clear valid cookies that aren't the problem.
+const REFRESH_EXEMPT_PATHS = ['/auth/login', '/auth/register', '/auth/google', '/auth/refresh'];
+
+function shouldAttemptRefresh(url: string | undefined): boolean {
+  if (!url) return true;
+  const path = url.split('?')[0];
+  return !REFRESH_EXEMPT_PATHS.some((p) => path.endsWith(p));
+}
+
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  if (typeof window === 'undefined') return config;
+
+  try {
+    const csrf = cookieAuth.csrf();
+    if (csrf && shouldAttachCsrf(config.method, config.url)) {
+      config.headers = config.headers || {};
+      config.headers['X-CSRF-Token'] = csrf;
     }
-  } catch (e) {
-    // In unusual environments, don't break requests
+  } catch {
+    /* never break requests */
   }
 
   return config;
 });
 
-// Response interceptor for error handling
+// ─── Response interceptor ───────────────────────────────────────────────────
+
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
-    const original =
-      (error.config as InternalAxiosRequestConfig & {
-        _retry?: boolean;
-      }) || {};
+    const original = (error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    }) || {};
 
-    // Log all errors for debugging
     try {
       logError(error, {
         url: original?.url,
         method: original?.method,
         status: error.response?.status,
       });
-    } catch (e) {
+    } catch {
       /* noop */
     }
 
-    // Network / connectivity fallback
     if (!error.response) {
-      const netErr = new AppError(
-        "Network error or backend unreachable",
-        "NETWORK_ERROR",
-        503,
+      return Promise.reject(
+        new AppError('Network error or backend unreachable', 'NETWORK_ERROR', 503),
       );
-      return Promise.reject(netErr);
     }
 
-    // Handle 401 - Unauthorized with one retry using refresh token
-    if (error.response.status === 401 && !original._retry) {
+    if (error.response.status === 401 && !original._retry && shouldAttemptRefresh(original.url)) {
       original._retry = true;
-      try {
-        const refreshToken =
-          typeof window !== "undefined"
-            ? localStorage.getItem("admin_refreshToken")
-            : null;
-        if (!refreshToken) throw new Error("No refresh token");
 
-        const refreshRes = await axios.post(
-          `${API_URL}/auth/refresh`,
-          { refreshToken },
-          { timeout: 5000 },
-        );
-        const tokens = unwrapItem(refreshRes) as {
-          accessToken: string;
-          refreshToken: string;
-        } | null;
-
-        if (!tokens || !tokens.accessToken) throw new Error("Refresh failed");
-
-        if (typeof window !== "undefined") {
-          localStorage.setItem("admin_accessToken", tokens.accessToken);
-          if (tokens.refreshToken)
-            localStorage.setItem("admin_refreshToken", tokens.refreshToken);
-        }
-
-        // Attach new token and retry original request
-        original.headers = original.headers || {};
-        original.headers["Authorization"] = `Bearer ${tokens.accessToken}`;
-        return api(original);
-      } catch (refreshError) {
-        // Clear tokens and redirect to login safely
+      const newAccess = await refreshCoordinator.run(async () => {
         try {
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("admin_accessToken");
-            localStorage.removeItem("admin_refreshToken");
-            // Redirect to absolute login path to avoid basePath issues
-            const origin = window.location.origin || "";
-            window.location.href = origin + "/login";
-          }
-        } catch (e) {
-          /* noop */
+          const resp = await axios.post<AxiosResponse>(
+            `${API_URL}/auth/refresh`,
+            {},
+            {
+              withCredentials: false,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': cookieAuth.csrf() ?? '',
+              },
+              timeout: 5000,
+            },
+          );
+          const tokens = unwrapItem(resp);
+          return tokens?.accessToken ?? null;
+        } catch {
+          return null;
         }
+      });
 
-        return Promise.reject(refreshError);
+      if (!newAccess) {
+        if (typeof window !== 'undefined') {
+          cookieAuth.clear();
+          const origin = window.location.origin || '';
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = origin + '/login';
+          }
+        }
+        return Promise.reject(
+          new AppError('Session expired. Please log in again.', 'TOKEN_EXPIRED', 401),
+        );
       }
+
+      // Server has rotated __Host-nc_at via Set-Cookie. The browser picked
+      // it up automatically on the refresh response. Retry the original
+      // request — it will send the new cookie.
+      return api(original);
     }
 
-    // Convert to AppError for consistent handling
     const appError = parseApiError(error);
 
-    // If token-related, ensure we clear tokens and redirect
     if (
-      ["TOKEN_EXPIRED", "TOKEN_INVALID", "REFRESH_TOKEN_EXPIRED"].includes(
+      ['TOKEN_EXPIRED', 'TOKEN_INVALID', 'REFRESH_TOKEN_EXPIRED'].includes(
         appError.code,
       )
     ) {
       try {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("admin_accessToken");
-          localStorage.removeItem("admin_refreshToken");
-          const origin = window.location.origin || "";
-          if (!window.location.pathname.includes("/login"))
-            window.location.href = origin + "/login";
+        if (typeof window !== 'undefined') {
+          cookieAuth.clear();
+          const origin = window.location.origin || '';
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = origin + '/login';
+          }
         }
-      } catch (e) {
+      } catch {
         /* noop */
       }
     }
@@ -152,12 +161,6 @@ api.interceptors.response.use(
   },
 );
 
-/**
- * Type-safe API caller with error handling
- *
- * @example
- * const result = await apiCall(() => api.get('/users'));
- */
 export async function apiCall<T>(
   requestFn: () => Promise<{ data: T }>,
 ): Promise<T> {

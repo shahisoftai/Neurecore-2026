@@ -7,15 +7,20 @@ import { useAuthStore } from '@/stores/authStore';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
 /**
- * Root page — redirects authed users to /command-center.
+ * Root page — redirects authed users to /home (Phase 5.5 stub).
  * Unauthed users see the marketing landing page.
+ * Uses routeAfterAuth so we honour onboarding completion state.
  */
 export default function HomePage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
-    if (user) router.replace('/command-center');
+    if (user) {
+      void import('@/services/auth-redirect.service').then((m) =>
+        m.routeAfterAuth(router),
+      );
+    }
   }, [user, router]);
 
   return (

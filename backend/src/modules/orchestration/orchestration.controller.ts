@@ -19,7 +19,15 @@ import { CreateWorkflowDto, UpdateWorkflowDto } from './dto/workflow.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/token.interface';
 import type { TaskStatus, WorkflowStatus } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { TenantIsolated } from '../../common/guards/tenant-isolated.decorator';
+
+const PLATFORM_ROLES: ReadonlySet<UserRole> = new Set([
+  UserRole.SUPER_ADMIN,
+  UserRole.PLATFORM_ADMIN,
+  UserRole.SECURITY_OFFICER,
+  UserRole.SUPPORT,
+]);
 
 @ApiCommon('orchestration')
 @Controller({ version: '1' })
@@ -28,6 +36,19 @@ export class OrchestrationController {
     private readonly tasksService: TasksService,
     private readonly workflowsService: WorkflowsService,
   ) {}
+
+  /**
+   * FIX-010: resolve the effective tenantId. Platform roles (SUPER_ADMIN etc.)
+   * return '*' when they have no JWT tenantId — the services skip
+   * tenant scoping for cross-tenant queries. Non-platform roles throw if
+   * they lack a tenant context.
+   */
+  private resolveTenantId(user: JwtPayload): string {
+    const raw = user.tenantId;
+    if (raw) return raw;
+    if (PLATFORM_ROLES.has(user.role as UserRole)) return '*';
+    throw new Error('Tenant ID required');
+  }
 
   // ─── Tasks ────────────────────────────────────────────────
 
@@ -39,13 +60,13 @@ export class OrchestrationController {
     @Query('page') page = '1',
     @Query('limit') limit = '20',
   ) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
+    const tenantId = this.resolveTenantId(user);
     return this.tasksService.findAll({
       status,
       agentId,
       page: Number(page),
       limit: Number(limit),
-    }, user.tenantId);
+    }, tenantId);
   }
 
   @Get('tasks/:id')
@@ -54,17 +75,17 @@ export class OrchestrationController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.tasksService.findOne(id, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.tasksService.findOne(id, tenantId);
   }
 
   @Post('tasks')
   createTask(@Body() dto: CreateTaskDto, @CurrentUser() user: JwtPayload) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
+    const tenantId = this.resolveTenantId(user);
     return this.tasksService.create({
       ...dto,
       createdById: user.sub,
-    }, user.tenantId);
+    }, tenantId);
   }
 
   @Patch('tasks/:id')
@@ -73,8 +94,8 @@ export class OrchestrationController {
     @Body() dto: UpdateTaskDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.tasksService.update(id, dto, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.tasksService.update(id, dto, tenantId);
   }
 
   @Delete('tasks/:id')
@@ -83,8 +104,8 @@ export class OrchestrationController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.tasksService.remove(id, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.tasksService.remove(id, tenantId);
   }
 
   // ─── Workflows ────────────────────────────────────────────
@@ -96,25 +117,25 @@ export class OrchestrationController {
     @Query('page') page = '1',
     @Query('limit') limit = '20',
   ) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
+    const tenantId = this.resolveTenantId(user);
     return this.workflowsService.findAll({
       status,
       page: Number(page),
       limit: Number(limit),
-    }, user.tenantId);
+    }, tenantId);
   }
 
   @Get('workflows/:id')
   @TenantIsolated()
   findOneWorkflow(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.workflowsService.findOne(id, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.workflowsService.findOne(id, tenantId);
   }
 
   @Post('workflows')
   createWorkflow(@Body() dto: CreateWorkflowDto, @CurrentUser() user: JwtPayload) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.workflowsService.create(dto, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.workflowsService.create(dto, tenantId);
   }
 
   @Patch('workflows/:id')
@@ -123,33 +144,33 @@ export class OrchestrationController {
     @Body() dto: UpdateWorkflowDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.workflowsService.update(id, dto, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.workflowsService.update(id, dto, tenantId);
   }
 
   @Post('workflows/:id/activate')
   activate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.workflowsService.activate(id, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.workflowsService.activate(id, tenantId);
   }
 
   @Post('workflows/:id/execute')
   @HttpCode(HttpStatus.ACCEPTED)
   execute(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.workflowsService.execute(id, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.workflowsService.execute(id, tenantId);
   }
 
   @Get('workflows/:id/status')
   getStatus(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.workflowsService.getStatus(id, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.workflowsService.getStatus(id, tenantId);
   }
 
   @Delete('workflows/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   removeWorkflow(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.workflowsService.remove(id, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.workflowsService.remove(id, tenantId);
   }
 }

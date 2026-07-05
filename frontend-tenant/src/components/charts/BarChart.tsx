@@ -55,8 +55,7 @@ export function BarChart({
             contentStyle={{ background: '#18181b', border: '1px solid #27272a', borderRadius: 8, fontSize: 12 }}
             labelStyle={{ color: '#a1a1aa' }}
             itemStyle={{ color: color }}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formatter={(v: any) => formatValue ? formatValue(v) : String(v)}
+            formatter={(v: unknown) => (formatValue ? formatValue(v as number) : String(v))}
           />
           <Bar dataKey="value" radius={[0, 4, 4, 0]}>
             {data.map((entry, idx) => (

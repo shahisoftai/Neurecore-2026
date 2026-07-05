@@ -8,7 +8,7 @@
 .theme-light,
 .theme-high-contrast,
 .theme-colorblind {
-  --accent-50:  #f5f3ff;
+  --accent-50: #f5f3ff;
   --accent-100: #ede9fe;
   --accent-200: #ddd6fe;
   --accent-300: #c4b5fd;
@@ -28,79 +28,83 @@
 .theme-colorblind {
   --state-success: #10b981;
   --state-warning: #f59e0b;
-  --state-danger:  #ef4444;
-  --state-info:    #3b82f6;
+  --state-danger: #ef4444;
+  --state-info: #3b82f6;
   --state-neutral: #71717a;
 }
 
 .theme-high-contrast {
   --state-success: #00ff88;
   --state-warning: #ffcc00;
-  --state-danger:  #ff3300;
-  --state-info:    #00aaff;
+  --state-danger: #ff3300;
+  --state-info: #00aaff;
   --state-neutral: #aaaaaa;
 }
 
 .theme-colorblind {
-  --state-success: #0072B2;   /* blue */
-  --state-warning: #E69F00;   /* orange */
-  --state-danger:  #D55E00;   /* vermilion */
-  --state-info:    #009E73;   /* bluish-green */
+  --state-success: #0072B2;
+  /* blue */
+  --state-warning: #E69F00;
+  /* orange */
+  --state-danger: #D55E00;
+  /* vermilion */
+  --state-info: #009E73;
+  /* bluish-green */
   --state-neutral: #555555;
 }
 
 /* ─── Default (dark) theme ──────────────────────────────────── */
 :root,
 .theme-dark {
-  --surface:         #09090b;
-  --surface-raised:  #111113;
+  --surface: #09090b;
+  --surface-raised: #111113;
   --surface-overlay: #18181b;
-  --surface-border:  #27272a;
-  --surface-muted:   #3f3f46;
-  --status-profit:   #22c55e;
-  --status-risk:     #ef4444;
-  --status-ops:      #3b82f6;
+  --surface-border: #27272a;
+  --surface-muted: #3f3f46;
+  --status-profit: #22c55e;
+  --status-risk: #ef4444;
+  --status-ops: #3b82f6;
   --status-strategy: #a855f7;
-  --status-warn:     #f59e0b;
-  --status-neutral:  #71717a;
-  --text-primary:    #f4f4f5;
-  --text-secondary:  #a1a1aa;
+  --status-warn: #f59e0b;
+  --status-neutral: #71717a;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
   color-scheme: dark;
 }
 
 /* ─── Light theme (Phase 2 — Creatio polish: white panels + subtle shadow) ── */
 .theme-light {
-  --surface:         #ffffff;
-  --surface-raised:  #fafafa;
+  --surface: #ffffff;
+  --surface-raised: #fafafa;
   --surface-overlay: #f4f4f5;
-  --surface-border:  #e4e4e7;
-  --surface-muted:   #a1a1aa;
-  --status-profit:   #16a34a;
-  --status-risk:     #dc2626;
-  --status-ops:      #2563eb;
+  --surface-border: #e4e4e7;
+  --surface-muted: #a1a1aa;
+  --status-profit: #16a34a;
+  --status-risk: #dc2626;
+  --status-ops: #2563eb;
   --status-strategy: #7c3aed;
-  --status-warn:     #d97706;
-  --status-neutral:  #52525b;
-  --text-primary:    #09090b;
-  --text-secondary:  #52525b;
+  --status-warn: #d97706;
+  --status-neutral: #52525b;
+  --text-primary: #09090b;
+  --text-secondary: #52525b;
   color-scheme: light;
 }
 
 /* ─── High-contrast theme (WCAG AAA) ─────────────────────────── */
 .theme-high-contrast {
-  --surface:         #000000;
-  --surface-raised:  #0a0a0a;
+  --surface: #000000;
+  --surface-raised: #0a0a0a;
   --surface-overlay: #111111;
-  --surface-border:  #ffffff;
-  --surface-muted:   #888888;
-  --status-profit:   #00ff88;
-  --status-risk:     #ff3300;
-  --status-ops:      #00aaff;
+  --surface-border: #ffffff;
+  --surface-muted: #888888;
+  --status-profit: #00ff88;
+  --status-risk: #ff3300;
+  --status-ops: #00aaff;
   --status-strategy: #cc44ff;
-  --status-warn:     #ffcc00;
-  --status-neutral:  #aaaaaa;
-  --text-primary:    #ffffff;
-  --text-secondary:  #cccccc;
+  --status-warn: #ffcc00;
+  --status-neutral: #aaaaaa;
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
   color-scheme: dark;
 }
 
@@ -108,8 +112,8 @@
 .font-dyslexia-friendly {
   font-family: 'OpenDyslexic', 'Comic Sans MS', 'Verdana', sans-serif !important;
   letter-spacing: 0.03em;
-  word-spacing:   0.1em;
-  line-height:    1.8;
+  word-spacing: 0.1em;
+  line-height: 1.8;
 }
 
 .font-monospace {
@@ -117,21 +121,44 @@
 }
 
 /* ─── Text size tiers ─────────────────────────────────────────── */
-.text-size-sm   { font-size: 0.8125rem; }   /* 13px */
-.text-size-md   { font-size: 0.875rem;  }   /* 14px – default */
-.text-size-lg   { font-size: 1rem;      }   /* 16px */
-.text-size-xl   { font-size: 1.125rem;  }   /* 18px */
+.text-size-sm {
+  font-size: 0.8125rem;
+}
+
+/* 13px */
+.text-size-md {
+  font-size: 0.875rem;
+}
+
+/* 14px – default */
+.text-size-lg {
+  font-size: 1rem;
+}
+
+/* 16px */
+.text-size-xl {
+  font-size: 1.125rem;
+}
+
+/* 18px */
 
 /* ─── Colorblind-safe palette overlay ───────────────────────── */
 .colorblind-mode {
-  --status-profit:   #0072B2;   /* blue     – safe for all */
-  --status-risk:     #D55E00;   /* vermilion */
-  --status-ops:      #009E73;   /* bluish-green */
-  --status-strategy: #CC79A7;   /* reddish-purple */
-  --status-warn:     #E69F00;   /* orange   */
+  --status-profit: #0072B2;
+  /* blue     – safe for all */
+  --status-risk: #D55E00;
+  /* vermilion */
+  --status-ops: #009E73;
+  /* bluish-green */
+  --status-strategy: #CC79A7;
+  /* reddish-purple */
+  --status-warn: #E69F00;
+  /* orange   */
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   background: var(--surface);
@@ -140,7 +167,10 @@ body {
 
 /* Honour reduced-motion preference */
 @media (prefers-reduced-motion: reduce) {
-  *, ::before, ::after {
+
+  *,
+  ::before,
+  ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -157,15 +187,36 @@ body {
 }
 
 /* Scrollbar styling */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--surface-raised); }
-::-webkit-scrollbar-thumb { background: var(--surface-muted); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #52525b; }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-raised);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-muted);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
 
 /* ReactFlow dark theme */
-.react-flow__background { background: var(--surface-raised) !important; }
-.react-flow__edge-path { stroke: #3b82f6 !important; }
-.react-flow__node { border-radius: 8px !important; }
+.react-flow__background {
+  background: var(--surface-raised) !important;
+}
+
+.react-flow__edge-path {
+  stroke: #3b82f6 !important;
+}
+
+.react-flow__node {
+  border-radius: 8px !important;
+}
 
 /* ─── Phase 2 — Creatio-style component utility classes ───────── */
 
@@ -207,11 +258,30 @@ body {
 }
 
 /* Status badge color utilities — referenced by StatusBadge */
-.badge-success { background: var(--state-success); color: white; }
-.badge-warning { background: var(--state-warning); color: white; }
-.badge-danger  { background: var(--state-danger);  color: white; }
-.badge-info    { background: var(--state-info);    color: white; }
-.badge-neutral { background: var(--state-neutral); color: white; }
+.badge-success {
+  background: var(--state-success);
+  color: white;
+}
+
+.badge-warning {
+  background: var(--state-warning);
+  color: white;
+}
+
+.badge-danger {
+  background: var(--state-danger);
+  color: white;
+}
+
+.badge-info {
+  background: var(--state-info);
+  color: white;
+}
+
+.badge-neutral {
+  background: var(--state-neutral);
+  color: white;
+}
 
 /* Detail panel slide-in animation */
 .detail-panel {
@@ -222,8 +292,15 @@ body {
 }
 
 @keyframes slideInLeft {
-  0%   { transform: translateX(100%); opacity: 0; }
-  100% { transform: translateX(0);    opacity: 1; }
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* Top bar gradient backdrop (Phase 3 will use) */
@@ -236,8 +313,9 @@ body {
 /* Command center hero gradient (Phase 4 will use) */
 .hero-gradient {
   background:
-    radial-gradient(ellipse at top left, var(--accent-900) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom right, #1e1b4b 0%, transparent 60%),
+    radial-gradient(ellipse at top left, rgba(139, 92, 246, 0.18) 0%, transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(234, 88, 12, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse at 70% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 45%),
     var(--surface);
 }
 
@@ -247,4 +325,23 @@ body {
     radial-gradient(ellipse at top left, var(--accent-100) 0%, transparent 50%),
     radial-gradient(ellipse at bottom right, #ede9fe 0%, transparent 60%),
     #ffffff;
+}
+
+/* ─── Glassmorphic panels (Phase 6 – 3-column home layout) ───── */
+.glass-panel {
+  @apply backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl shadow-2xl;
+}
+
+.glass-panel:hover {
+  @apply bg-white/10 border-white/20 shadow-2xl transition-all duration-300;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .glass-panel {
+    backdrop-filter: blur(16px);
+  }
+}
+
+.glass-icon {
+  @apply rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 backdrop-blur-lg;
 }

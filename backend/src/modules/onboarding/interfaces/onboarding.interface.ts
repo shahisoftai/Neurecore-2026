@@ -30,6 +30,11 @@ export interface OnboardingCompanyInfo {
 export interface OnboardingStatePayload {
   step: OnboardingStep;
   company?: OnboardingCompanyInfo;
+  // WS-2.1: locale fields surfaced at top level so updateState() can persist
+  // them directly (controller passes them flat). Mirrors Tenant.timezone /
+  // Tenant.currency schema columns.
+  timezone?: string;
+  currency?: string;
   tierId?: string;
   templateSlug?: string;
   departmentOverrides?: Record<string, { name?: string }>;
@@ -42,7 +47,10 @@ export interface IOnboardingService {
     tenantId: string,
     partial: Partial<OnboardingStatePayload>,
   ): Promise<OnboardingStatePayload>;
-  selectTier(tenantId: string, tierId: string): Promise<{ tier: { id: string; name: string; slug: string } }>;
+  selectTier(
+    tenantId: string,
+    tierId: string,
+  ): Promise<{ tier: { id: string; name: string; slug: string } }>;
   selectTemplate(
     tenantId: string,
     templateSlug: string,

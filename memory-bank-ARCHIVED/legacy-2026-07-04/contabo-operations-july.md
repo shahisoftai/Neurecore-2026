@@ -7,8 +7,13 @@
 **Audience:** Any engineer tasked with backend, frontend, EAOS, or observability work on Contabo
 **Scope:** Backend (NestJS) + observability stack on Contabo. Frontends primarily on Vercel, but EAOS and Admin also run on Contabo behind CyberPanel (OLS).
 
-> ⚠️ **The configuration has diverged materially from earlier 2026-Q2 documentation.**
-> Read the **Top 10 Findings (§0.1)** before doing anything. The single biggest surprise is that **the tenant frontend no longer exists on Contabo at all** — only Vercel hosts it — and **port 3001 is now owned by an unrelated project**. If you assume the old layout, you will break the wrong thing.
+> ⚠️ **SUPERSEDED 2026-07-04.** This doc captured the 2026-07-02 snapshot in which tenant was Vercel-only. Since then:
+> 1. Tenant has been brought back to Contabo (`neurecore-tenant` PM2 id 40, port 3005, served via `hq.neurecore.com`).
+> 2. FTS canary (`neurecore-fts` PM2 id 41, port 3021) was retired and removed.
+> 3. The new canonical ops doc is `contabo-operations.md` (updated 2026-07-04).
+> 4. The full 3-service-on-Contabo plan lives in `contabo-3-service-architecture.md`.
+>
+> Keep this file for historical diff only.
 
 ---
 

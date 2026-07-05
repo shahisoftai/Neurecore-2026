@@ -46,7 +46,7 @@ export class AgentsService implements IAgentService {
     private readonly events: EventsGateway,
   ) { }
 
-  async findAll(filter: AgentFilter, tenantId: string): Promise<{
+  async findAll(filter: AgentFilter, tenantId?: string): Promise<{
     data: unknown[];
     total: number;
     page: number;
@@ -63,8 +63,11 @@ export class AgentsService implements IAgentService {
     } = filter;
     const skip = (page - 1) * limit;
 
-    const where = {
-      tenantId,
+    // FIX-010: tenantId is optional for platform-level cross-tenant queries
+    // (controlled by @Roles + TenantContextGuard upstream). When absent
+    // or set to the '*' wildcard, the tenant filter is skipped.
+    const where: Record<string, unknown> = {
+      ...(tenantId && tenantId !== '*' ? { tenantId } : {}),
       ...(departmentId ? { departmentId } : {}),
       ...(status && { status }),
       ...(type && { type }),

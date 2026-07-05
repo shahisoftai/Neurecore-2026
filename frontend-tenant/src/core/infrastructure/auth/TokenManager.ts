@@ -1,11 +1,36 @@
-// ─── TokenManager.ts ─────────────────────────────────────────────────────────
-// SRP: Single class owns all token lifecycle operations.
-// DIP: Depends on StorageManager abstraction, not localStorage directly.
+// ─── TokenManager.ts (cookie-backed, F1) ─────────────────────────────────────
+//
+// Single Responsibility: read tokens from the auth cookies set by the
+// backend. Tokens NEVER touch localStorage, so an XSS payload cannot
+// exfiltrate them. setTokens / clearTokens become no-ops because the
+// server is the source of truth.
+//
+// Dependency Inversion: this implementation reads only document.cookie.
+// The interface above (ITokenManager) is unchanged so callers don't have
+// to know about the storage switch.
 
-import type { ITokenManager } from '@/core/services/api/interfaces/ITokenManager';
+export const ACCESS_COOKIE = '__Host-nc_at';
+export const REFRESH_COOKIE = '__Host-nc_rt';
+export const CSRF_COOKIE = '__Host-nc_csrf';
 
-const ACCESS_KEY = 'hq_access_token';
-const REFRESH_KEY = 'hq_refresh_token';
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const cookies = document.cookie ? document.cookie.split('; ') : [];
+  for (const raw of cookies) {
+    const eq = raw.indexOf('=');
+    if (eq < 0) continue;
+    const key = raw.slice(0, eq);
+    if (key === name) {
+      const v = raw.slice(eq + 1);
+      try {
+        return decodeURIComponent(v);
+      } catch {
+        return v;
+      }
+    }
+  }
+  return null;
+}
 
 /** Decode the `exp` claim from a JWT without verifying the signature. */
 function decodeExpiry(token: string): number | null {
@@ -18,25 +43,32 @@ function decodeExpiry(token: string): number | null {
   }
 }
 
-export class TokenManager implements ITokenManager {
+export class TokenManager {
   getAccessToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(ACCESS_KEY);
+    return readCookie(ACCESS_COOKIE);
   }
 
   getRefreshToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(REFRESH_KEY);
+    return readCookie(REFRESH_COOKIE);
   }
 
-  setTokens(accessToken: string, refreshToken: string): void {
-    localStorage.setItem(ACCESS_KEY, accessToken);
-    localStorage.setItem(REFRESH_KEY, refreshToken);
+  /**
+   * No-op — the backend owns token persistence in HttpOnly cookies.
+   * Kept on the interface so call-sites don't need to know.
+   */
+  setTokens(_accessToken: string, _refreshToken: string): void {
+    /* server has already set cookies via Set-Cookie */
   }
 
+  /**
+   * Clear all auth cookies before redirecting (F20).
+   */
   clearTokens(): void {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
+    if (typeof document === 'undefined') return;
+    const past = 'Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = `${ACCESS_COOKIE}=; expires=${past}; path=/; Secure; SameSite=None`;
+    document.cookie = `${REFRESH_COOKIE}=; expires=${past}; path=/; Secure; SameSite=None`;
+    document.cookie = `${CSRF_COOKIE}=; expires=${past}; path=/; Secure; SameSite=None`;
   }
 
   isTokenExpired(token: string): boolean {

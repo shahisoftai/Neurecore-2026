@@ -48,7 +48,7 @@
 
 ---
 
-## Similar Multi-Tenant SaaS with AI Agents
+## Similar Multi-Tenant SaaS with AI Employees
 
 ### 6. **Builder.io / Vercel AI**
 
@@ -82,7 +82,7 @@
 - **Key Features**: Workflow automation, predictive AI, data analysis
 - **Comparison**: Domain-specific (CRM), not general business OS
 
-### 10. **ServiceNow AI Agents**
+### 10. **ServiceNow AI Employees**
 
 - **Website**: https://servicenow.com
 - **Focus**: IT/Enterprise service management with AI

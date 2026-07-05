@@ -44,11 +44,24 @@ export class DepartmentsController {
   async findAll(
     @CurrentUser() user: JwtPayload,
     @Query() pagination: PaginationDto,
+    // FIX D12.2 / D12.6 — accept an optional `tenantId` query param so the
+    // SUPER_ADMIN cross-tenant browse used by /admin/tenants/[id] works.
+    // Non-platform users continue to use their JWT tenant (FIX-010
+    // sentinel '*' or their own tenantId).
+    @Query('tenantId') queryTenantId?: string,
   ): Promise<PaginatedResponse<DepartmentResponseDto>> {
-    if (!user.tenantId) {
+    const PLATFORM_ROLES: readonly string[] = ['SUPER_ADMIN', 'PLATFORM_ADMIN'];
+    let targetTenantId: string | null;
+    if (queryTenantId && PLATFORM_ROLES.includes(user.role)) {
+      targetTenantId = queryTenantId;
+    } else if (user.tenantId && user.tenantId !== '*') {
+      targetTenantId = user.tenantId;
+    } else if (queryTenantId) {
+      targetTenantId = queryTenantId;
+    } else {
       throw new Error('Tenant ID is required to list departments');
     }
-    const all = await this.departmentsService.findAll(user.tenantId);
+    const all = await this.departmentsService.findAll(targetTenantId);
     const start = (pagination.page - 1) * pagination.limit;
     const items = all.slice(start, start + pagination.limit);
     return {

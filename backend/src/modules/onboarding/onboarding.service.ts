@@ -14,6 +14,7 @@ import type {
   IOnboardingService,
   OnboardingStatePayload,
 } from './interfaces/onboarding.interface';
+import { ChecklistService } from './checklist/checklist.service';
 
 interface DeptTemplateStructureItem {
   name: string;
@@ -28,7 +29,10 @@ const INVITE_EXPIRY_DAYS = 14;
 export class OnboardingService implements IOnboardingService {
   private readonly logger = new Logger(OnboardingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly checklist: ChecklistService,
+  ) {}
 
   async getState(tenantId: string): Promise<OnboardingStatePayload> {
     const [tenant, agentCount, deptCount] = await Promise.all([
@@ -46,13 +50,21 @@ export class OnboardingService implements IOnboardingService {
     if (!tenant) throw new NotFoundException('Tenant not found');
 
     return {
-      step: (tenant.onboardingStep as OnboardingStatePayload['step']) ?? 'plan',
+      // WS-2.1: default to 'company' when onboarding hasn't started so the
+      // wizard always begins at step 1 on fresh signups. 'plan' is only
+      // returned when the user explicitly transitioned past company/logo/
+      // localization (i.e. onboardingStep was set to 'plan' or later).
+      step:
+        (tenant.onboardingStep as OnboardingStatePayload['step']) ?? 'company',
       tierId: tenant.tierId,
       company: {
         name: tenant.name,
         logoUrl: tenant.logoUrl ?? undefined,
         industry: tenant.industry ?? undefined,
       },
+      // WS-2.1: expose timezone + currency so the wizard can resume correctly.
+      timezone: tenant.timezone ?? undefined,
+      currency: tenant.currency ?? undefined,
       templateSlug: undefined,
       departmentOverrides: {},
       agentOverrides: {},
@@ -71,10 +83,16 @@ export class OnboardingService implements IOnboardingService {
     const updateData: Record<string, unknown> = {};
     if (partial.step) updateData.onboardingStep = partial.step;
     if (partial.company) {
-      if (partial.company.name !== undefined) updateData.name = partial.company.name;
-      if (partial.company.logoUrl !== undefined) updateData.logoUrl = partial.company.logoUrl;
-      if (partial.company.industry !== undefined) updateData.industry = partial.company.industry;
+      if (partial.company.name !== undefined)
+        updateData.name = partial.company.name;
+      if (partial.company.logoUrl !== undefined)
+        updateData.logoUrl = partial.company.logoUrl;
+      if (partial.company.industry !== undefined)
+        updateData.industry = partial.company.industry;
     }
+    // WS-2.1: persist timezone + currency (was silently dropped pre-PR-2).
+    if (partial.timezone !== undefined) updateData.timezone = partial.timezone;
+    if (partial.currency !== undefined) updateData.currency = partial.currency;
 
     await this.prisma.tenant.update({
       where: { id: tenantId },
@@ -90,7 +108,9 @@ export class OnboardingService implements IOnboardingService {
       throw new NotFoundException('Tier not found or inactive');
     }
 
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
     if (!tenant) throw new NotFoundException('Tenant not found');
 
     await this.prisma.tenant.update({
@@ -125,7 +145,8 @@ export class OnboardingService implements IOnboardingService {
     if (!tenant) throw new NotFoundException('Tenant not found');
 
     // ─── WS-7 guard: enforce maxDepartments before expansion ───────────────
-    const structure = (template.structure as unknown as DeptTemplateStructureItem[]) ?? [];
+    const structure =
+      (template.structure as unknown as DeptTemplateStructureItem[]) ?? [];
     const projectedDeptCount = structure.length;
     if (projectedDeptCount > tenant.tier.maxDepartments) {
       throw new ForbiddenException(
@@ -162,8 +183,7 @@ export class OnboardingService implements IOnboardingService {
     for (const pool of tenant.tier.tierAgentPools) {
       if (!pool.isDefaultSelected && !pool.isRequired) continue;
       const tmpl = pool.template;
-      const deptForAgent =
-        createdDepts[0]?.id ?? null;
+      const deptForAgent = createdDepts[0]?.id ?? null;
       const overrideName = overrides?.[tmpl.name]?.name;
       const isSelected = overrides?.[tmpl.name]?.isSelected ?? true;
 
@@ -204,11 +224,17 @@ export class OnboardingService implements IOnboardingService {
     invites: Array<{ email: string; role: UserRole }>,
   ) {
     if (!invites?.length) throw new BadRequestException('invites[] required');
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
     if (!tenant) throw new NotFoundException('Tenant not found');
 
-    const tenantUserCount = await this.prisma.user.count({ where: { tenantId } });
-    const tier = await this.prisma.tier.findUnique({ where: { id: tenant.tierId } });
+    const tenantUserCount = await this.prisma.user.count({
+      where: { tenantId },
+    });
+    const tier = await this.prisma.tier.findUnique({
+      where: { id: tenant.tierId },
+    });
     if (!tier) throw new NotFoundException('Tier missing');
     if (tenantUserCount + invites.length > tier.maxUsers) {
       throw new ForbiddenException(
@@ -217,7 +243,9 @@ export class OnboardingService implements IOnboardingService {
     }
 
     const tokens: string[] = [];
-    const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    );
 
     for (const inv of invites) {
       const existing = await this.prisma.onboardingInvitation.findFirst({
@@ -248,10 +276,14 @@ export class OnboardingService implements IOnboardingService {
     token: string,
     payload: { firstName: string; lastName: string; password: string },
   ) {
-    const invite = await this.prisma.onboardingInvitation.findUnique({ where: { token } });
+    const invite = await this.prisma.onboardingInvitation.findUnique({
+      where: { token },
+    });
     if (!invite) throw new NotFoundException('Invite not found');
-    if (invite.acceptedAt) throw new ConflictException('Invite already accepted');
-    if (invite.expiresAt < new Date()) throw new ForbiddenException('Invite expired');
+    if (invite.acceptedAt)
+      throw new ConflictException('Invite already accepted');
+    if (invite.expiresAt < new Date())
+      throw new ForbiddenException('Invite expired');
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email: invite.email },
@@ -283,7 +315,9 @@ export class OnboardingService implements IOnboardingService {
   }
 
   async complete(tenantId: string) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
     if (!tenant) throw new NotFoundException('Tenant not found');
 
     const completedAt = new Date();
@@ -294,6 +328,21 @@ export class OnboardingService implements IOnboardingService {
         onboardingStep: 'complete',
       },
     });
+
+    // WS-2.1: Seed the progressive onboarding checklist. Idempotent — safe to
+    // call on tenants that already have checklist rows (e.g. re-running
+    // /onboarding/complete after a bug fix or a re-deploy).
+    try {
+      await this.checklist.seed(tenantId);
+    } catch (err) {
+      // Don't fail the whole complete() if seeding blows up — log loudly so
+      // ops can reconcile. The checklist can be re-seeded via a one-off
+      // script (see memory-bank-new/plans/onboarding-progressive-wizard.md §6).
+      this.logger.error(
+        `Checklist seed failed for tenant ${tenantId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
     this.logger.log(`Onboarding completed for tenant ${tenantId}`);
     return { completedAt };
   }

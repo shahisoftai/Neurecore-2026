@@ -20,7 +20,13 @@ export interface DepartmentTemplate {
 export const departmentTemplatesService = {
   async list(): Promise<DepartmentTemplate[]> {
     const res = await api.get('/department-templates');
-    const payload = res.data?.data ?? res.data;
-    return Array.isArray(payload) ? payload : (payload?.items ?? []);
+    // Backend returns PaginatedResponse<DepartmentTemplate>:
+    //   { status, data: { data: T[], total, page, limit, totalPages }, meta }
+    // Older unwrapped endpoints return T[] directly. Handle both.
+    const outer = res.data?.data ?? res.data;
+    if (Array.isArray(outer)) return outer;
+    if (Array.isArray(outer?.data)) return outer.data;
+    if (Array.isArray(outer?.items)) return outer.items;
+    return [];
   },
 };

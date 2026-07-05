@@ -88,7 +88,7 @@ frontend-tenant/src/app/settings/integrations/callback/google/page.tsx (Week 2)
 NeureCore (own it)
 ├── Authentication & Identity
 ├── RBAC (8 roles)
-├── AI Agents
+├── AI Employees
 ├── Workflows / Tasks / Routines
 ├── Marketplace
 ├── Service Desk

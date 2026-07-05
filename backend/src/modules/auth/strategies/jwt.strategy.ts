@@ -91,8 +91,20 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    // Note: request.user is the merged “principal + token context”.
-    // Controllers can use user.id OR user.sub interchangeably.
+    // F15: reject tokens issued before the user's most recent password
+    // change. Without this, a token stays valid until natural expiry even
+    // after the user resets their password.
+    if (user.passwordChangedAt) {
+      const tokenIssuedBeforePasswordChange =
+        payload.pwd === undefined ||
+        payload.pwd * 1000 < user.passwordChangedAt.getTime();
+      if (tokenIssuedBeforePasswordChange) {
+        throw new UnauthorizedException(
+          'Token invalidated by recent password change',
+        );
+      }
+    }
+
     return {
       sub: payload.sub,
       jti: payload.jti,
@@ -103,6 +115,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       role: user.role,
       tenantId: user.tenantId,
       isActive: user.isActive,
+      passwordChangedAt: user.passwordChangedAt ?? null,
     };
   }
 }

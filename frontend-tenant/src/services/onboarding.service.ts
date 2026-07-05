@@ -3,6 +3,8 @@ import api from './api';
 export type OnboardingStep =
   | 'account'
   | 'company'
+  | 'logo'
+  | 'localization'
   | 'plan'
   | 'template'
   | 'review'
@@ -17,6 +19,9 @@ export interface OnboardingState {
     logoUrl?: string;
     industry?: string;
   };
+  /** WS-2.1: PR-2 exposes these so the wizard can resume correctly. */
+  timezone?: string;
+  currency?: string;
   templateSlug?: string;
 }
 
@@ -43,6 +48,24 @@ export const onboardingService = {
   async updateState(partial: Partial<OnboardingState>): Promise<OnboardingState> {
     const res = await api.put('/onboarding/state', partial);
     return res.data?.data ?? res.data;
+  },
+
+  /**
+   * WS-2.1: Persist company + locale fields via the dedicated owner-scoped
+   * endpoint. Used by the Tier-1 wizard after collecting Tier-1-only fields.
+   */
+  async saveCompanyAndLocale(payload: {
+    name?: string;
+    logoUrl?: string | null;
+    industry?: string;
+    timezone?: string;
+    currency?: string;
+    locale?: string;
+    dateFormat?: string;
+    timeFormat?: string;
+    fiscalYearStart?: string;
+  }): Promise<void> {
+    await api.patch('/tenants/me', payload);
   },
 
   async selectTier(tierId: string): Promise<{ tier: { id: string; name: string; slug: string } }> {

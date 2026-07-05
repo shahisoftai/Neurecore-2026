@@ -4,11 +4,14 @@ import {
   UnauthorizedException,
   ForbiddenException,
   Logger,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
 import { TelemetryService } from '../../observability/services/telemetry.service';
+import { AccountLockoutService } from '../../security/services/account-lockout.service';
 import {
   IAuthService,
   RegisterInput,
@@ -22,8 +25,9 @@ import { TokenPair } from '../interfaces/token.interface';
 import { UserRole } from '@prisma/client';
 import { CookieAuthService } from '../../../common/auth/cookie-auth.service';
 
-// Single Responsibility: orchestrate registration, login and logout flows.
-// Dependency Inversion: depends on abstractions (PrismaService, PasswordService, TokenService).
+// Single Responsibility: orchestrate registration, login, refresh and logout flows.
+// Dependency Inversion: depends on abstractions (PrismaService, PasswordService,
+// TokenService, AccountLockoutService). All implementations injected.
 @Injectable()
 export class AuthService implements IAuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -34,23 +38,50 @@ export class AuthService implements IAuthService {
     private readonly tokenService: TokenService,
     private readonly telemetry: TelemetryService,
     private readonly cookieAuth: CookieAuthService,
+    private readonly lockout: AccountLockoutService,
   ) {}
 
+  /**
+   * F8 — constant-time user validation.
+   *
+   * Returns null for any authentication failure to keep the public surface
+   * unchanged, but always runs a bcrypt comparison so the response time is
+   * independent of whether the user exists, has a password, or is active.
+   */
   async validateUser(
     email: string,
     password: string,
   ): Promise<ValidatedUser | null> {
     const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user || !user.isActive) return null;
 
-    // Google Sign-In users have no password
-    if (!user.passwordHash) return null;
+    if (!user) {
+      // Run a dummy compare so timing matches the success path.
+      await this.passwordService.compare(password, DUMMY_BCRYPT_HASH);
+      return null;
+    }
 
-    const valid = await this.passwordService.compare(
-      password,
-      user.passwordHash ?? '',
-    );
+    if (!user.passwordHash) {
+      // Google-only user; do not let attackers enumerate those.
+      await this.passwordService.compare(password, DUMMY_BCRYPT_HASH);
+      return null;
+    }
+
+    if (!user.isActive) {
+      // Still run compare to keep timing parity.
+      const stillValid = await this.passwordService.compare(
+        password,
+        user.passwordHash,
+      );
+      void stillValid; // ignore; user is inactive
+      return null;
+    }
+
+    const valid = await this.passwordService.compare(password, user.passwordHash);
     if (!valid) return null;
+
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      return null;
+    }
 
     return this.toValidatedUser(user);
   }
@@ -63,14 +94,37 @@ export class AuthService implements IAuthService {
       throw new ConflictException('Email already registered');
     }
 
-    if (data.tenantId) {
+    let tenantId = data.tenantId ?? null;
+
+    if (tenantId) {
       const tenant = await this.prisma.tenant.findUnique({
-        where: { id: data.tenantId },
+        where: { id: tenantId },
       });
       if (!tenant) throw new ForbiddenException('Tenant not found');
       if (tenant.status === 'SUSPENDED' || tenant.status === 'CANCELLED') {
         throw new ForbiddenException('Tenant is not active');
       }
+    } else {
+      const defaultTier = await this.prisma.tier.findFirst({
+        where: { isDefault: true },
+      });
+      if (!defaultTier) {
+        throw new Error('No default tier found. Please contact support.');
+      }
+      const domainPart = data.email.split('@')[1] ?? 'personal';
+      const tenant = await this.prisma.tenant.create({
+        data: {
+          name:
+            domainPart.split('.')[0].replace(/^\w/, (c) => c.toUpperCase()) +
+            ' Workspace',
+          slug: `tenant-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          tierId: defaultTier.id,
+        },
+      });
+      tenantId = tenant.id;
+      this.logger.log(
+        `Auto-created tenant ${tenant.id} for credential signup ${data.email}`,
+      );
     }
 
     const passwordHash = await this.passwordService.hash(data.password);
@@ -81,8 +135,12 @@ export class AuthService implements IAuthService {
         passwordHash,
         firstName: data.firstName,
         lastName: data.lastName,
-        role: data.role ?? UserRole.USER,
-        tenantId: data.tenantId ?? null,
+        passwordChangedAt: new Date(),
+        role:
+          tenantId && !data.tenantId
+            ? UserRole.OWNER
+            : (data.role ?? UserRole.USER),
+        tenantId,
       },
     });
 
@@ -98,16 +156,48 @@ export class AuthService implements IAuthService {
     password: string,
     meta: RequestMeta,
   ): Promise<AuthResult> {
+    const normalisedEmail = email.trim().toLowerCase();
     const start = Date.now();
-    const validated = await this.validateUser(email, password);
+
+    // F3: pre-flight lockout check.
+    const lock = await this.lockout.check(normalisedEmail, meta.ipAddress);
+    if (!lock.allowed) {
+      await this.lockout.record(normalisedEmail, false, {
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        reason: lock.reason,
+      });
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          message: 'Too many login attempts. Please try again later.',
+          error: 'AUTH_LOCKOUT',
+          retryAfterSeconds: lock.retryAfterSeconds,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const validated = await this.validateUser(normalisedEmail, password);
     if (!validated) {
-      await this.telemetry.track('auth.login.failure', { labels: { reason: 'invalid_credentials' } });
+      await this.lockout.record(normalisedEmail, false, {
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        reason: 'invalid_credentials',
+      });
+      await this.telemetry.track('auth.login.failure', {
+        labels: { reason: 'invalid_credentials', email: normalisedEmail },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    await this.lockout.record(normalisedEmail, true, {
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent,
+    });
+
     const tokens = await this.tokenService.issueTokenPair(validated);
 
-    // Create session record
     await this.prisma.session.create({
       data: {
         userId: validated.id,
@@ -118,6 +208,11 @@ export class AuthService implements IAuthService {
       },
     });
 
+    await this.prisma.user.update({
+      where: { id: validated.id },
+      data: { lastLoginAt: new Date() },
+    });
+
     await this.telemetry.timing('auth.login.duration_ms', Date.now() - start, {
       tenantId: validated.tenantId ?? undefined,
     });
@@ -125,7 +220,7 @@ export class AuthService implements IAuthService {
       tenantId: validated.tenantId ?? undefined,
     });
 
-    this.logger.log(`User logged in: ${email}`);
+    this.logger.log(`User logged in: ${normalisedEmail}`);
     return { user: validated, tokens };
   }
 
@@ -133,7 +228,7 @@ export class AuthService implements IAuthService {
     if (!refreshToken || typeof refreshToken !== 'string') {
       throw new UnauthorizedException('Refresh token missing');
     }
-    let payload: { sub: string };
+    let payload: { sub: string; pwd?: number };
     try {
       payload = await this.tokenService.verifyRefreshToken(refreshToken);
     } catch {
@@ -147,14 +242,26 @@ export class AuthService implements IAuthService {
       throw new UnauthorizedException('User not found or inactive');
     }
 
+    // F15: refresh token issued before password change is invalid.
+    if (
+      user.passwordChangedAt &&
+      (payload.pwd === undefined ||
+        payload.pwd * 1000 < user.passwordChangedAt.getTime())
+    ) {
+      throw new UnauthorizedException('Token invalidated by password change');
+    }
+
     const validated = this.toValidatedUser(user);
     return this.tokenService.rotateRefreshToken(refreshToken, validated);
   }
 
   async logout(userId: string, jti: string): Promise<void> {
-    // Blacklist current access token JTI so it cannot be reused
-    await this.tokenService.revokeAccessToken(jti, 15 * 60); // 15 min safety window
+    await this.tokenService.revokeAccessToken(jti, 15 * 60);
     await this.tokenService.revokeAllRefreshTokens(userId);
+    await this.prisma.session.updateMany({
+      where: { userId, isActive: true },
+      data: { isActive: false },
+    });
     this.logger.log(`User logged out: ${userId}`);
   }
 
@@ -170,12 +277,10 @@ export class AuthService implements IAuthService {
     });
 
     if (existingByEmail) {
-      // WS-6.3: When user exists but Google not linked, return unlinked status
-      // unless caller explicitly chose intent='link' (the "Link this account" button).
       if (!existingByEmail.googleId && intent !== 'link') {
         this.logger.warn(
           `Google sign-in for ${data.email} blocked — account exists without Google link. ` +
-          'Returning "existing_unlinked" to prompt user.',
+            'Returning "existing_unlinked" to prompt user.',
         );
         await this.telemetry.track('auth.google_signin.existing_unlinked');
         return {
@@ -188,7 +293,6 @@ export class AuthService implements IAuthService {
         };
       }
 
-      // Link (if needed) and issue tokens
       if (!existingByEmail.googleId) {
         await this.prisma.user.update({
           where: { id: existingByEmail.id },
@@ -202,9 +306,13 @@ export class AuthService implements IAuthService {
       }
       const validated = this.toValidatedUser(existingByEmail);
       const tokens = await this.tokenService.issueTokenPair(validated);
-      await this.telemetry.timing('auth.google_signin.duration_ms', Date.now() - start, {
-        tenantId: validated.tenantId ?? undefined,
-      });
+      await this.telemetry.timing(
+        'auth.google_signin.duration_ms',
+        Date.now() - start,
+        {
+          tenantId: validated.tenantId ?? undefined,
+        },
+      );
       await this.telemetry.track('auth.google_signin.success', {
         tenantId: validated.tenantId ?? undefined,
       });
@@ -212,7 +320,6 @@ export class AuthService implements IAuthService {
       return { status: 'ok', user: validated, tokens };
     }
 
-    // New user — create account + tenant
     const defaultTier = await this.prisma.tier.findFirst({
       where: { isDefault: true },
     });
@@ -222,7 +329,11 @@ export class AuthService implements IAuthService {
 
     const tenant = await this.prisma.tenant.create({
       data: {
-        name: data.email.split('@')[1]?.replace('.', ' ').replace(/^\w/, c => c.toUpperCase()) ?? 'Personal',
+        name:
+          data.email
+            .split('@')[1]
+            ?.replace('.', ' ')
+            .replace(/^\w/, (c) => c.toUpperCase()) ?? 'Personal',
         slug: `tenant-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         tierId: defaultTier.id,
       },
@@ -244,11 +355,19 @@ export class AuthService implements IAuthService {
 
     const validated = this.toValidatedUser(user);
     const tokens = await this.tokenService.issueTokenPair(validated);
-    await this.telemetry.timing('auth.google_signin.duration_ms', Date.now() - start, {
+    await this.telemetry.timing(
+      'auth.google_signin.duration_ms',
+      Date.now() - start,
+      {
+        tenantId: tenant.id,
+      },
+    );
+    await this.telemetry.track('auth.google_signin.new_user', {
       tenantId: tenant.id,
     });
-    await this.telemetry.track('auth.google_signin.new_user', { tenantId: tenant.id });
-    this.logger.log(`User registered via Google: ${user.email} tenant=${tenant.id}`);
+    this.logger.log(
+      `User registered via Google: ${user.email} tenant=${tenant.id}`,
+    );
     return { status: 'ok', user: validated, tokens };
   }
 
@@ -260,6 +379,7 @@ export class AuthService implements IAuthService {
     role: UserRole;
     tenantId: string | null;
     isActive: boolean;
+    passwordChangedAt?: Date | null;
   }): ValidatedUser {
     return {
       id: user.id,
@@ -269,6 +389,21 @@ export class AuthService implements IAuthService {
       role: user.role,
       tenantId: user.tenantId,
       isActive: user.isActive,
+      passwordChangedAt: user.passwordChangedAt ?? null,
     };
   }
 }
+
+/**
+ * Pre-computed bcrypt hash used to equalise timing for non-existing users.
+ * Cost factor matches production password hashes (12). Anyone sending the
+ * plaintext "no-such-user-padding" would still be rejected; the value of
+ * this constant is irrelevant outside the timing channel.
+ */
+/**
+ * Pre-computed bcrypt hash used to equalise timing for non-existing users.
+ * Cost factor 12 matches production. Compared against a constant string so
+ * we never log or persist the plaintext. Verified at startup.
+ */
+const DUMMY_BCRYPT_HASH =
+  '$2a$12$WQd4.NUb0NwaKCTxS0hUeeyjjtyrPJLluNekuXo4aNDu1wGHLg0fq';

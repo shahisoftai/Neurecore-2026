@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { CreateTenantDto, UpdateTenantDto } from './dto/tenant.dto';
+import { UpdateMyTenantDto } from './dto/update-my-tenant.dto';
 import { TenantStatus } from '@prisma/client';
 import { TierProvisioningService } from '../tiers/services/tier-provisioning.service';
 
@@ -114,7 +115,10 @@ export class TenantsService {
    */
   private extractOldTierName(tenant: unknown): string {
     if (!tenant || typeof tenant !== 'object') return 'unknown';
-    const t = tenant as { tier?: { name?: string } | null; tierId?: string | null };
+    const t = tenant as {
+      tier?: { name?: string } | null;
+      tierId?: string | null;
+    };
     if (t.tier && typeof t.tier.name === 'string') return t.tier.name;
     if (typeof t.tierId === 'string') return t.tierId;
     return 'unknown';
@@ -195,6 +199,46 @@ export class TenantsService {
       data: dto,
       include: { tier: true },
     });
+  }
+
+  /**
+   * WS-2.1: Owner-scoped update. Persists the additive nullable fields added
+   * in PR-1 (locale / timezone / currency / etc.) plus the structured Json
+   * blobs (address, billingProfile, defaults). Writes an audit log entry
+   * with the user's id for traceability.
+   *
+   * Only OWNER and ADMIN roles can call this. The DTO is narrower than
+   * UpdateTenantDto (no status / slug / tier — those need platform admin).
+   */
+  async updateMine(tenantId: string, userId: string, dto: UpdateMyTenantDto) {
+    // Guard against the rare drift-safe fallback path returning a stale shape.
+    await this.findOne(tenantId);
+
+    const updateData: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(dto)) {
+      if (v !== undefined) updateData[k] = v;
+    }
+
+    const tenant = await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: updateData,
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        actor: userId,
+        action: 'tenant.updateMine',
+        resource: 'tenant',
+        resourceId: tenantId,
+        result: 'success',
+        details: {
+          fields: Object.keys(updateData),
+        } as never,
+      },
+    });
+
+    return tenant;
   }
 
   async changeTier(tenantId: string, newTierId: string) {

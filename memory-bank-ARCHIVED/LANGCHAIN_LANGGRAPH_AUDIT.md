@@ -23,7 +23,7 @@ This document audits the current state of LangChain ecosystem utilization and pr
 
 > ⚠️ **Note:** `@langchain/langgraph` requires `@langchain/core@^1.1.16` but project has `0.3.80`. Consider upgrading `@langchain/core` or use custom state machine for now.
 >
-> **OpenClaw:** Multi-channel AI gateway with extensible messaging integrations. Enables employees (AI Agents) to communicate and access resources.
+> **OpenClaw:** Multi-channel AI gateway with extensible messaging integrations. Enables employees (AI Employees) to communicate and access resources.
 
 ### ✅ Recently Completed
 

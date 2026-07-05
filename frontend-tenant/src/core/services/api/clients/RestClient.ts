@@ -1,6 +1,7 @@
-// ─── RestClient.ts ────────────────────────────────────────────────────────────
+// ─── RestClient.ts (cookie-only, F1) ─────────────────────────────────────────
+//
 // DIP: Implements IApiClient — all feature services depend on this interface.
-// SRP: Handles HTTP transport, auth injection, token refresh, error wrapping.
+// SRP: Handles HTTP transport, auth cookie injection, token refresh, error wrapping.
 // OCP: Interceptors are pluggable; new auth strategies extend without modifying.
 
 import axios, {
@@ -11,6 +12,39 @@ import axios, {
 import type { IApiClient, RequestConfig, ApiResponse } from '@/core/services/api/interfaces/IApiClient';
 import type { ITokenManager } from '@/core/services/api/interfaces/ITokenManager';
 import type { IErrorHandler } from '@/core/services/api/interfaces/IErrorHandler';
+
+const CSRF_COOKIE = '__Host-nc_csrf';
+const CSRF_EXEMPT_PATHS = ['/auth/login', '/auth/register', '/auth/google'];
+const REFRESH_EXEMPT_PATHS = ['/auth/login', '/auth/register', '/auth/google', '/auth/refresh'];
+
+function shouldAttemptRefresh(url: string | undefined): boolean {
+  if (!url) return true;
+  const path = url.split('?')[0];
+  return !REFRESH_EXEMPT_PATHS.some((p) => path.endsWith(p));
+}
+
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const cookies = document.cookie ? document.cookie.split('; ') : [];
+  for (const raw of cookies) {
+    const eq = raw.indexOf('=');
+    if (eq < 0) continue;
+    const key = raw.slice(0, eq);
+    if (key === name) {
+      const v = raw.slice(eq + 1);
+      try {
+        return decodeURIComponent(v);
+      } catch {
+        return v;
+      }
+    }
+  }
+  return null;
+}
+
+function csrfToken(): string | null {
+  return readCookie(CSRF_COOKIE);
+}
 
 export class RestClient implements IApiClient {
   private readonly axios: AxiosInstance;
@@ -24,6 +58,7 @@ export class RestClient implements IApiClient {
     this.axios = axios.create({
       baseURL: baseUrl,
       headers: { 'Content-Type': 'application/json' },
+      withCredentials: false,
       timeout: 30_000,
     });
 
@@ -70,10 +105,23 @@ export class RestClient implements IApiClient {
 
   private attachRequestInterceptor(): void {
     this.axios.interceptors.request.use((req: InternalAxiosRequestConfig) => {
-      const token = this.tokenManager.getAccessToken();
-      if (token && req.headers) {
-        req.headers['Authorization'] = `Bearer ${token}`;
+      if (typeof window === 'undefined') return req;
+
+      // F1: no Authorization header. Cookies travel via withCredentials.
+      // F6: echo __Host-nc_csrf as X-CSRF-Token on all state-changing
+      //     calls, except the explicitly exempted ones.
+      const method = (req.method ?? '').toUpperCase();
+      const url = req.url ?? '';
+      const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+      const isExempt = CSRF_EXEMPT_PATHS.some((p) => url.endsWith(p));
+      if (isStateChanging && !isExempt) {
+        const csrf = csrfToken();
+        if (csrf) {
+          req.headers = req.headers ?? {};
+          req.headers['X-CSRF-Token'] = csrf;
+        }
       }
+
       return req;
     });
   }
@@ -84,10 +132,10 @@ export class RestClient implements IApiClient {
       async (error: AxiosError<ApiResponse>) => {
         const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-        if (error.response?.status === 401 && !original._retry) {
+        if (error.response?.status === 401 && !original._retry && shouldAttemptRefresh(original.url)) {
           original._retry = true;
 
-          // Serialise parallel refresh attempts into a single request
+          // F21: serialise parallel refresh attempts into a single request.
           if (!this.refreshInFlight) {
             this.refreshInFlight = this.doRefresh().finally(() => {
               this.refreshInFlight = null;
@@ -96,13 +144,14 @@ export class RestClient implements IApiClient {
 
           try {
             await this.refreshInFlight;
-            // Retry original request with new token
-            const newToken = this.tokenManager.getAccessToken();
-            if (original.headers) original.headers['Authorization'] = `Bearer ${newToken}`;
+            // Retry — the browser picked up the new __Host-nc_at via Set-Cookie.
             return this.axios(original);
           } catch {
+            // F20: clear cookies BEFORE redirecting.
             this.tokenManager.clearTokens();
-            if (typeof window !== 'undefined') window.location.href = '/login';
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
           }
         }
 
@@ -117,19 +166,26 @@ export class RestClient implements IApiClient {
   }
 
   private async doRefresh(): Promise<void> {
-    const refreshToken = this.tokenManager.getRefreshToken();
-    if (!refreshToken) throw new Error('No refresh token available');
-
-    const res = await axios.post<ApiResponse<{ accessToken: string; refreshToken: string }>>(
+    // Cookie-only: no body. The server rotates __Host-nc_at + __Host-nc_rt
+    // via Set-Cookie on the response.
+    const res = await axios.post<ApiResponse<{ accessToken: string }>>(
       `${this.axios.defaults.baseURL}/auth/refresh`,
-      { refreshToken },
+      {},
+      {
+        withCredentials: false,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken() ?? '',
+        },
+        timeout: 5000,
+      },
     );
 
     if (res.data.status !== 'success' || !res.data.data) {
       throw new Error('Token refresh failed');
     }
-
-    this.tokenManager.setTokens(res.data.data.accessToken, res.data.data.refreshToken);
+    // Server has already rotated cookies via Set-Cookie. No client-side
+    // token storage needed — the browser jar is the source of truth.
   }
 }
 
@@ -137,6 +193,6 @@ export class RestClient implements IApiClient {
 import { tokenManager } from '@/core/infrastructure/auth/TokenManager';
 import { errorHandler } from '@/core/infrastructure/ErrorHandler';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api/v1';
 
 export const restClient = new RestClient(API_URL, tokenManager, errorHandler);

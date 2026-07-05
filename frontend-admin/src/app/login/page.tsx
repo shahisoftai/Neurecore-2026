@@ -4,6 +4,8 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
+import { getUserFriendlyMessage } from '@/lib/errors';
+import { routeAfterAdminAuth } from '@/services/auth-redirect.service';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -24,13 +26,9 @@ export default function AdminLoginPage() {
         throw new Error('Insufficient permissions for admin portal');
       }
       setUser(result.user);
-      router.push('/overview');
+      routeAfterAdminAuth(router);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ??
-        (err as Error).message ??
-        'Login failed';
-      setError(msg);
+      setError(getUserFriendlyMessage(err));
     } finally {
       setLoading(false);
     }
@@ -40,7 +38,7 @@ export default function AdminLoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-gray-950 p-4">
       <div className="w-full max-w-md rounded-2xl bg-gray-900 border border-gray-800 p-8 shadow-xl">
         <div className="flex justify-center mb-6">
-          <img src="/logo.png" alt="NeureCore" className="h-10 w-auto object-contain" />
+          <img src="/admin/logo.png" alt="NeureCore" className="h-10 w-auto object-contain" />
         </div>
         <h1 className="mb-2 text-2xl font-bold text-white text-center">Admin Portal</h1>
         <p className="mb-6 text-sm text-gray-400">Super Admin access only</p>

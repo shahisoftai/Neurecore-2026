@@ -116,15 +116,14 @@ export const useApprovals = (options?: {
             await restClient.post('/approvals/feedback', feedback);
             console.log('[useApprovals] Feedback submitted successfully');
         } catch (err) {
-            const message =
-                err instanceof Error ? err.message : 'Failed to submit feedback';
             console.error('[useApprovals] Feedback submission error:', err);
-            throw new Error(message);
+            throw err;
         }
     }, []);
 
     const total = useMemo(
-        () => critical.length + routine.length,
+        () => (Array.isArray(critical) ? critical.length : 0)
+              + (Array.isArray(routine) ? routine.length : 0),
         [critical, routine]
     );
 
