@@ -39,6 +39,18 @@ What the script does:
    - `prisma migrate deploy` (backend only)
    - `pm2 startOrReload /opt/neurecore/ecosystem.config.js --only neurecore-<app>`
 
+**If `npm ci` fails with peer dependency errors**, it means the deployed `package.json` has an incompatible dependency tree. Fall back to:
+```bash
+ssh contabo 'cd /opt/neurecore/<app> && npm install --legacy-peer-deps'
+```
+`npm install` tolerates peer dependency mismatches. After fixing the root cause (update `package.json` to resolve the conflict locally and redeploy), switch back to `npm ci` for faster, deterministic installs.
+
+**If build output is stale after source changes**, Next.js webpack persistent cache can survive `rm -rf .next`. Clear it:
+```bash
+ssh contabo 'cd /opt/neurecore/<app> && rm -rf .next node_modules/.cache && npm run build'
+```
+The persistent cache lives at `.next/cache/webpack/` — `node_modules/.cache` covers additional caching layers. After clearing, chunks will have new content hashes.
+
 After completion, smoke test:
 
 ```bash
@@ -281,3 +293,12 @@ ssh contabo 'mkdir -p /opt/neurecore/_archives/$(date +%Y%m%d-%H%M%S) && \
 ```
 
 If any check fails, **do not deploy**. Fix the issue first.
+
+## 11. Troubleshooting common deploy failures
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `npm ci` fails with `peer dep` error | Incompatible dependency tree in `package.json` | `npm install --legacy-peer-deps` (see §1) |
+| Build succeeds but frontend still shows old behaviour | Next.js webpack persistent cache | `rm -rf .next node_modules/.cache && npm run build` (see §1) |
+| Frontend requests go to `localhost:3000` on production | Source code has hardcoded `?? 'http://localhost:3000/api/v1'` fallback | Replace with `/api/v1` (same-origin). Check: `grep -r 'localhost:3000' src/` |
+| `pm2 restart` doesn't reflect changes | Build output cached, or `rsync --delete` removed `start.sh` | Check `ls /opt/neurecore/<app>/.next` exists; ensure `start.sh` is present |

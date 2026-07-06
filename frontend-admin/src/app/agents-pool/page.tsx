@@ -3,6 +3,7 @@
 /**
  * /agents-pool — Phase 10 AI Employees Pool page.
  * Reuses AgentTemplate data + adds pool-level enabled toggle + duplicate.
+ * Now includes "Deploy to Tenant" quick action per agent template.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -16,11 +17,18 @@ import { PoolStatusBadge } from '@/components/pool/PoolStatusBadge';
 import { PoolEmptyState } from '@/components/pool/PoolEmptyState';
 import { PoolConfirmDeleteDialog } from '@/components/pool/PoolConfirmDeleteDialog';
 import {
+  DeployToTenantModal,
+  type TenantOption,
+  type AgentDeployConfig,
+} from '@/components/pool/DeployToTenantModal';
+import {
   agentsPoolService,
   type AgentsPoolEntry,
   type CreateAgentsPoolPayload,
 } from '@/services/agentsPool.service';
 import { agentTemplatesService, type AgentTemplate } from '@/services/agentTemplates.service';
+import api from '@/services/api';
+import { unwrapList } from '@/services/unwrap';
 
 const FILTERS = [
   { label: 'All', value: 'ALL' },
@@ -62,7 +70,49 @@ export default function AgentsPoolPage() {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<AgentsPoolEntry | null>(null);
 
+  // Deploy modal
+  const [deployTarget, setDeployTarget] = useState<AgentsPoolEntry | null>(null);
+  const [deployTenants, setDeployTenants] = useState<TenantOption[]>([]);
+  const [deployBusy, setDeployBusy] = useState(false);
+  const [deployError, setDeployError] = useState<string | null>(null);
+  const [deployResult, setDeployResult] = useState<{ label: string } | null>(null);
+
   const canEdit = user?.role === 'SUPER_ADMIN';
+
+  // Pre-fetch tenant list when deploy modal opens
+  async function openDeployModal(item: AgentsPoolEntry) {
+    setDeployTarget(item);
+    setDeployError(null);
+    setDeployResult(null);
+    try {
+      const res = await api.get('/tenants', { params: { limit: 200 } });
+      const list = unwrapList(res);
+      setDeployTenants((list.items ?? []) as TenantOption[]);
+    } catch {
+      setDeployTenants([]);
+    }
+  }
+
+  async function handleDeployAgent(tenantId: string, config: AgentDeployConfig) {
+    if (!deployTarget) return;
+    setDeployBusy(true);
+    setDeployError(null);
+    try {
+      const payload = {
+        name: config.name,
+        tenantId,
+        budgetPerDay: config.budgetPerDay,
+        authorityLevel: config.authorityLevel,
+      };
+      const res = await api.post(`/deploy/agents/from-template/${deployTarget.id}`, payload);
+      const data = res.data?.data ?? res.data;
+      setDeployResult({ label: `Deployed "${config.name}" to tenant.` });
+    } catch (err: unknown) {
+      setDeployError(err instanceof Error ? err.message : 'Deploy failed');
+    } finally {
+      setDeployBusy(false);
+    }
+  }
 
   const filtered = useMemo(
     () =>
@@ -197,6 +247,12 @@ export default function AgentsPoolPage() {
                     {canEdit && (
                       <div className="flex gap-2 mt-auto pt-2 border-t border-surface-border/50">
                         <button
+                          onClick={() => openDeployModal(tpl)}
+                          className="flex-1 py-1.5 rounded-lg text-xs border border-indigo-500/40 text-indigo-300 hover:text-indigo-100 hover:border-indigo-400 transition"
+                        >
+                          Deploy
+                        </button>
+                        <button
                           onClick={() => toggleEnabled(tpl)}
                           className="flex-1 py-1.5 rounded-lg text-xs border border-surface-border text-zinc-400 hover:text-zinc-200 hover:border-indigo-500 transition"
                         >
@@ -274,6 +330,23 @@ export default function AgentsPoolPage() {
           }
           setDeleting(null);
           refresh();
+        }}
+      />
+
+      <DeployToTenantModal
+        open={Boolean(deployTarget)}
+        onClose={() => setDeployTarget(null)}
+        deployType="agent"
+        itemName={deployTarget?.name ?? ''}
+        itemDescription={deployTarget?.description}
+        tenants={deployTenants}
+        busy={deployBusy}
+        error={deployError}
+        result={deployResult}
+        onDeploy={(tenantId, config) => handleDeployAgent(tenantId, config as AgentDeployConfig)}
+        agentPrefill={{
+          type: deployTarget?.type,
+          defaultName: deployTarget?.name ?? '',
         }}
       />
     </AdminShell>

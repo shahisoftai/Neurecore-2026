@@ -18,6 +18,12 @@ import { departmentsPoolService, type DepartmentPoolEntry } from '@/services/dep
 import { agentsPoolService, type AgentsPoolEntry } from '@/services/agentsPool.service';
 import { PackagePreview } from '@/components/package/PackagePreview';
 
+const EMPTY_PREVIEW = {
+  totals: { departments: 0, agents: 0, features: 0 },
+  missing: { departments: [] as string[], agents: [] as string[], features: [] as string[] },
+  categories: {} as Record<string, number>,
+};
+
 export default function EditPackagePage() {
   const user = useAdminAuth();
   const router = useRouter();
@@ -37,11 +43,10 @@ export default function EditPackagePage() {
   const [aiAgentIds, setAiAgentIds] = useState<string[]>([]);
   const [featureIds, setFeatureIds] = useState<string[]>([]);
 
-  const [preview, setPreview] = useState({
-    totals: { departments: 0, agents: 0, features: 0 },
-    missing: { departments: [] as string[], agents: [] as string[], features: [] as string[] },
-    categories: {} as Record<string, number>,
-  });
+  const [industryId, setIndustryId] = useState('');
+  const [tierTemplateId, setTierTemplateId] = useState('');
+
+  const [preview, setPreview] = useState(EMPTY_PREVIEW);
 
   useEffect(() => {
     if (!id) return;
@@ -57,6 +62,8 @@ export default function EditPackagePage() {
         ]);
         if (cancelled) return;
         setPkg(pkgData);
+        setIndustryId(pkgData.industryId ?? '');
+        setTierTemplateId(pkgData.tierTemplateId ?? '');
         setAllDepartments(deptPage.items);
         setAllAgents(agPage.items);
         setAllFeatures(featPage.items);
@@ -77,19 +84,23 @@ export default function EditPackagePage() {
   }, [id]);
 
   useEffect(() => {
-    if (!pkg) return;
-    if (!pkg.industryId || !pkg.tierTemplateId) return;
+    if (!industryId || !tierTemplateId) {
+      setPreview(EMPTY_PREVIEW);
+      return;
+    }
     void packagesService
-      .preview(pkg.industryId, pkg.tierTemplateId, {
+      .preview(industryId, tierTemplateId, {
         departmentIds,
         aiAgentIds,
         featureIds,
       })
-      .then((p) => setPreview(p))
-      .catch(() => {
-        /* noop */
+      .then((p) => {
+        if (p) setPreview(p);
+      })
+      .catch((err: unknown) => {
+        console.error('Package preview failed:', err);
       });
-  }, [pkg, departmentIds, aiAgentIds, featureIds]);
+  }, [industryId, tierTemplateId, departmentIds, aiAgentIds, featureIds]);
 
   const featuresByCategory = useMemo(() => {
     const map: Record<FeatureCategory, Feature[]> = {

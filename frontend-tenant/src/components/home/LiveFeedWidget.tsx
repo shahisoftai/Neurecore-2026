@@ -1,72 +1,44 @@
 'use client';
 
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
 import { Activity, AlertCircle } from 'lucide-react';
 import { GlassPanel } from './GlassPanel';
+import { useActivityStore } from '@/stores/activityStore';
+import type { ActivityEvent } from '@/types/ui.types';
+
+type ActivityType = ActivityEvent['type'];
 
 interface ActivityItem {
     id: string;
-    type: 'task' | 'approval' | 'workflow' | 'agent';
+    type: ActivityType;
     title: string;
     description: string;
     timestamp: Date;
-    actor?: string;
+    actor: string;
 }
 
 export function LiveFeedWidget() {
-    const [activities, setActivities] = useState<ActivityItem[]>([]);
-    const [loading, setLoading] = useState(true);
+    const events = useActivityStore((s) => s.events);
 
-    useEffect(() => {
-        // Simulate loading activity feed
-        const mockActivities: ActivityItem[] = [
-            {
-                id: '1',
-                type: 'task',
-                title: 'New task assigned',
-                description: 'Q3 Planning Review',
-                timestamp: new Date(Date.now() - 5 * 60000),
-                actor: 'John Doe',
-            },
-            {
-                id: '2',
-                type: 'approval',
-                title: 'Approval requested',
-                description: 'Budget Increase Request',
-                timestamp: new Date(Date.now() - 15 * 60000),
-                actor: 'Sarah Smith',
-            },
-            {
-                id: '3',
-                type: 'workflow',
-                title: 'Workflow completed',
-                description: 'Data Sync Pipeline',
-                timestamp: new Date(Date.now() - 30 * 60000),
-                actor: 'System',
-            },
-            {
-                id: '4',
-                type: 'agent',
-                title: 'Agent action',
-                description: 'Sales Report Generated',
-                timestamp: new Date(Date.now() - 45 * 60000),
-                actor: 'AI Agent',
-            },
-        ];
+    const activities: ActivityItem[] = useMemo(() => {
+        if (events.length === 0) return [];
+        return events.slice(0, 20).map((e) => ({
+            id: e.id,
+            type: e.type,
+            title: e.message,
+            description: e.message,
+            timestamp: new Date(e.timestamp),
+            actor: e.severity === 'error' ? 'System Alert' : 'System',
+        }));
+    }, [events]);
 
-        setActivities(mockActivities);
-        setLoading(false);
-
-        // Real-time updates via WebSocket would go here
-    }, []);
-
-    if (loading) {
+    if (activities.length === 0) {
         return (
             <GlassPanel className="p-6">
                 <div className="flex items-center gap-2">
                     <Activity className="w-5 h-5 text-blue-400 animate-pulse" />
-                    <p className="text-zinc-400">Loading feed...</p>
+                    <p className="text-zinc-400">No recent activity</p>
                 </div>
             </GlassPanel>
         );

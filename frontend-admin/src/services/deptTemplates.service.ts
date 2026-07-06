@@ -115,4 +115,21 @@ export const deptTemplatesService = {
     const res = await api.post(`/deploy/agents/from-template/${templateId}`, payload);
     return unwrapItem(res) as { id: string; name: string; tenantId: string };
   },
+
+  /** Deploy a single department from a template structure (by index) */
+  async deploySingleDepartment(
+    tenantId: string,
+    templateId: string,
+    itemIndex: number,
+    parentDepartmentId?: string,
+    withHeadAgent?: boolean,
+  ) {
+    const res = await api.post(`/deploy/tenants/${tenantId}/departments`, {
+      templateId,
+      itemIndex,
+      ...(parentDepartmentId ? { parentDepartmentId } : {}),
+      ...(withHeadAgent !== undefined ? { withHeadAgent } : {}),
+    });
+    return unwrapItem(res) as { id: string; name: string; agents?: number };
+  },
 };

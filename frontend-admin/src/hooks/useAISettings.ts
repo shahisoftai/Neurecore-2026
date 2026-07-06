@@ -7,10 +7,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getAISettingsService } from "@/services/settings";
-import type { AIProviderConfig, AIModel } from "@/types/settings.types";
+import type { AIProviderConfig, AIModel, AIRoutingConfig } from "@/types/settings.types";
 
 interface UseAISettingsState {
   providers: AIProviderConfig[];
+  routing: AIRoutingConfig | null;
   loading: boolean;
   error: string | null;
 }
@@ -44,10 +45,14 @@ interface UseAISettingsActions {
     modelId: string,
     enabled: boolean,
   ) => Promise<void>;
+  // Routing actions
+  updateRouting: (config: Partial<AIRoutingConfig>) => Promise<AIRoutingConfig>;
+  resetRouting: () => Promise<AIRoutingConfig>;
 }
 
 export function useAISettings(): UseAISettingsState & UseAISettingsActions {
   const [providers, setProviders] = useState<AIProviderConfig[]>([]);
+  const [routing, setRouting] = useState<AIRoutingConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,8 +62,12 @@ export function useAISettings(): UseAISettingsState & UseAISettingsActions {
     setLoading(true);
     setError(null);
     try {
-      const data = await service.getProviders();
-      setProviders(data);
+      const [providersData, routingData] = await Promise.all([
+        service.getProviders(),
+        service.getAIRouting(),
+      ]);
+      setProviders(providersData);
+      setRouting(routingData);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load AI providers",
@@ -169,8 +178,25 @@ export function useAISettings(): UseAISettingsState & UseAISettingsActions {
     [service],
   );
 
+  // Routing actions
+  const updateRouting = useCallback(
+    async (config: Partial<AIRoutingConfig>): Promise<AIRoutingConfig> => {
+      const updated = await service.updateAIRouting(config);
+      setRouting(updated);
+      return updated;
+    },
+    [service],
+  );
+
+  const resetRouting = useCallback(async (): Promise<AIRoutingConfig> => {
+    const reset = await service.resetAIRouting();
+    setRouting(reset);
+    return reset;
+  }, [service]);
+
   return {
     providers,
+    routing,
     loading,
     error,
     refresh,
@@ -185,5 +211,7 @@ export function useAISettings(): UseAISettingsState & UseAISettingsActions {
     updateModel,
     deleteModel,
     toggleModel,
+    updateRouting,
+    resetRouting,
   };
 }

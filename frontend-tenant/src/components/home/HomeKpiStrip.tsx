@@ -18,11 +18,9 @@ import {
   CheckCircle2,
   Wallet,
   AlertCircle,
-  RefreshCw,
 } from 'lucide-react';
 import { useAgentStore } from '@/stores/agentStore';
 import { useTaskStore } from '@/stores/taskStore';
-import { useDashboardKpis } from '@/hooks/useDashboardKpis';
 import { useApprovals } from '@/hooks/useApprovals';
 
 function formatCurrency(amount: number | null | undefined): string {
@@ -43,7 +41,6 @@ export function HomeKpiStrip({ monthCost }: HomeKpiStripProps = {}) {
   const agents = useAgentStore((s) => s.agents);
   const tasks = useTaskStore((s) => s.tasks);
   const { critical = [], routine = [] } = useApprovals();
-  const { kpis, loading: kpisLoading, refresh: refreshKpis } = useDashboardKpis(60_000);
 
   // Defensive coercions — zustand persist hydration can briefly hand back
   // non-array values (legacy localStorage shape). Bail to [].
@@ -85,10 +82,7 @@ export function HomeKpiStrip({ monthCost }: HomeKpiStripProps = {}) {
     [critical, routine],
   );
 
-  // Cost MTD — fall back to /api/v1/analytics/cost/today if dashboard kpis
-  // aren't loaded yet. `kpis.costToday` is dollars for today; we treat that
-  // as a reasonable proxy when month-cost isn't available.
-  const costMtd = (kpis?.costToday as number | undefined) ?? null;
+  const costMtd = monthCost ?? null;
 
   return (
     <section aria-label="Workspace KPIs" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -98,29 +92,26 @@ export function HomeKpiStrip({ monthCost }: HomeKpiStripProps = {}) {
         badge={`${runningAgents} running`}
         badgeTone="ops"
         icon={<Users className="w-4 h-4" aria-hidden />}
-        loading={!safeAgents.length && kpisLoading}
+        loading={false}
         onClick={() => router.push('/marketplace?tab=agents')}
-        onRefresh={refreshKpis}
       />
       <KpiTile
         label="Tasks Today"
-        value={kpis?.completedToday ?? completedToday}
+        value={completedToday}
         badge={`${failedToday} failed`}
         badgeTone="profit"
         icon={<CheckCircle2 className="w-4 h-4" aria-hidden />}
-        loading={kpisLoading && !kpis}
+        loading={false}
         onClick={() => router.push('/departments?tab=tasks')}
-        onRefresh={refreshKpis}
       />
       <KpiTile
         label="Cost MTD"
         value={formatCurrency(costMtd)}
-        badge={costMtd != null ? 'this month' : 'loading…'}
+        badge={costMtd != null ? 'this month' : 'loading\u2026'}
         badgeTone="warn"
         icon={<Wallet className="w-4 h-4" aria-hidden />}
-        loading={kpisLoading && !kpis}
+        loading={false}
         onClick={() => router.push('/finance')}
-        onRefresh={refreshKpis}
       />
       <KpiTile
         label="Pending Approvals"
@@ -129,7 +120,6 @@ export function HomeKpiStrip({ monthCost }: HomeKpiStripProps = {}) {
         badgeTone="risk"
         icon={<AlertCircle className="w-4 h-4" aria-hidden />}
         onClick={() => router.push('/service-desk?tab=approvals')}
-        onRefresh={refreshKpis}
       />
     </section>
   );
@@ -145,7 +135,6 @@ interface KpiTileProps {
   icon: React.ReactNode;
   loading?: boolean;
   onClick: () => void;
-  onRefresh?: () => void;
 }
 
 const ACCENT_RING: Record<KpiTileProps['badgeTone'], string> = {
@@ -164,7 +153,6 @@ function KpiTile({
   icon,
   loading = false,
   onClick,
-  onRefresh,
 }: KpiTileProps) {
   return (
     <button
@@ -176,27 +164,6 @@ function KpiTile({
       <div className="flex items-center gap-2 text-zinc-500 text-xs mb-3 w-full">
         <span className={ACCENT_RING[badgeTone]} aria-hidden>{icon}</span>
         <span className="font-medium truncate">{label}</span>
-        {onRefresh && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onRefresh();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                onRefresh();
-              }
-            }}
-            aria-label="Refresh"
-            className="ml-auto text-zinc-500 hover:text-accent-500 transition"
-          >
-            <RefreshCw className="w-3 h-3" aria-hidden />
-          </span>
-        )}
       </div>
       {loading ? (
         <div className="h-9 w-20 bg-surface-overlay rounded animate-pulse mb-1" />

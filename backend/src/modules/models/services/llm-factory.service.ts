@@ -92,16 +92,16 @@ export class LLMFactory {
   ): { provider: LLMProvider; model: ModelSpec } {
     const provider = this.getDefaultProvider();
 
-    // Task-specific model routing
+    // Task-specific model routing — MiniMax-M2.7-highspeed preferred for all
     const taskModelMap: Record<
       string,
       { provider: LLMProvider; complexity: 'low' | 'medium' | 'high' }
     > = {
-      reasoning: { provider: 'deepseek', complexity: 'high' },
-      planning: { provider: 'deepseek', complexity: 'high' },
-      evaluation: { provider: 'deepseek', complexity: 'high' },
+      reasoning: { provider: 'minimax', complexity: 'high' },
+      planning: { provider: 'minimax', complexity: 'high' },
+      evaluation: { provider: 'minimax', complexity: 'high' },
       coding: { provider: 'minimax', complexity: 'high' },
-      execution: { provider: 'mimo', complexity: 'medium' },
+      execution: { provider: 'minimax', complexity: 'medium' },
       conversation: { provider: 'minimax', complexity: 'low' },
     };
 
@@ -111,12 +111,20 @@ export class LLMFactory {
     };
 
     // Get models for the target provider
-    const targetModels = this.modelRouting
+    let targetModels = this.modelRouting
       .getAvailableModels()
       .filter(
         (m) =>
           m.provider === routing.provider && m.capabilities.includes(taskType),
       );
+
+    // Prefer MiniMax-M2.7-highspeed if available
+    if (routing.provider === 'minimax') {
+      const highspeedIdx = targetModels.findIndex(m => m.id === 'MiniMax-M2.7-highspeed');
+      if (highspeedIdx > 0) {
+        targetModels = [targetModels[highspeedIdx], ...targetModels.slice(0, highspeedIdx), ...targetModels.slice(highspeedIdx + 1)];
+      }
+    }
 
     if (targetModels.length > 0) {
       const model = targetModels[0];
@@ -427,10 +435,14 @@ export class LLMFactory {
     }>,
     temperature = 0.3,
     maxTokens = 2048,
+    overrideModel?: string,
   ): Promise<LLMWithToolsResponse> {
     const provider = this.getDefaultProvider();
-    const selected = this.selectModel('execution');
-    const modelId = selected.model.id;
+    let modelId = overrideModel;
+    if (!modelId) {
+      const selected = this.selectModel('execution');
+      modelId = selected.model.id;
+    }
 
     const apiKey =
       provider === 'minimax'

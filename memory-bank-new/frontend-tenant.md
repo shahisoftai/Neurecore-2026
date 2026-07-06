@@ -1,6 +1,6 @@
 # Frontend-Tenant (NeureCore tenant app)
 
-**Last verified:** 2026-07-05 19:50 PKT (post-FIX-016 auth audit: Contabo stale build fixed — localhost:3000 → /api/v1 same-origin; tenant login verified via Playwright; cookie-only auth working; CSRF + refresh exempt guards added)
+**Last verified:** 2026-07-07 01:10 PKT (ISSUE 1-9 audit: all home-page mock widgets wired to real stores/APIs; department templates now fetched from backend; new Packages tab in marketplace with deploy flow; success rate fixed; redundant KPI fetching removed; spawn modal tenantId from auth store; backend packages/features GET opened to tenant OWNER/ADMIN)
 **Live URL:** `https://hq.neurecore.com`
 **Internal port:** 3005
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant/`
@@ -253,12 +253,14 @@ NEXT_PUBLIC_DEFAULT_TIER=free
 10. Google OAuth: `/auth/google` → backend; "account exists but unlinked" flow uses custom DOM events.
 11. **Post-login redirect (`login/page.tsx` `routeAfterAuth`)**: `GET /tenants/me/current` → if `onboardingCompletedAt` is null → `/onboarding/setup`; else `/home`.
 12. **Post-onboarding redirect**: `POST /onboarding/complete` seeds the checklist then `router.push('/home')`.
+13. **AppInitializer guard (FIX-018):** On `/login`, `/register`, and `/forgot-password`, `AppInitializer` skips both the `/me` session-restoration call and the socket lifecycle (connect/disconnect subscription). This prevents unnecessary API calls and WebSocket connection spam on public routes.
 
 ---
 
 ## 10. WebSocket / realtime
 
-- Connected on mount via `socket.io-client`
+- Connected on mount via `socket.io-client` (`autoConnect: false` — connection is explicitly triggered by `AppInitializer`)
+- **Route guard (FIX-018):** Socket lifecycle (connect/disconnect) and session restoration are **skipped** on unauthenticated routes (`/login`, `/register`, `/forgot-password`). `AppInitializer` checks `usePathname()` against `UNAUTHENTICATED_ROUTES` before attempting `/me` token validation or socket connect.
 - Subscribed events: `agent.execution.started/progress/completed`, `routine.triggered`, `notification.created`, `inbox.message`, `approvals.updated`
 - Used to live-update: command-center timeline, inbox badge, agent execution panel
 
@@ -315,6 +317,7 @@ Phases 1-5 of the original refactoring plan are delivered (see [future-plans.md 
 | 5 | Batch approvals + learning loop | `src/components/approvals/BatchApprovalView.tsx`, `LearningFeedbackModal.tsx` |
 | **5.5 (WS-2.1 PR-1+2)** | **Progressive onboarding wizard system** — Tier-1 wizard reduced to 6 steps (Company → Logo → Localization → Plan → Template → Complete); 11 sub-wizards scaffolded under `/settings/wizard/[slug]`; Things-to-do panel mounted in TenantShell; logo uploads via `POST /uploads/logo` + `GET /cdn/*`; `PATCH /tenants/me` owner-scoped endpoint; `OnboardingChecklistEntry` Prisma model + Zustand `onboardingChecklist.store.ts`. | `src/app/onboarding/setup/{page.tsx,steps/*.tsx}`, `src/app/settings/wizard/`, `src/components/{checklist,uploads,wizard}/`, `src/services/{checklist,tenants,uploads}.service.ts`, `src/stores/onboardingChecklist.store.ts`, `src/hooks/useOnboardingChecklist.ts`, `src/lib/wizard/types.ts` |
 | **6 (Phase 6 – 3-column home)** | **Glassmorphic 3-column home page** — Left panel: dynamic glossy gradient icons (selectable per user); Center: hero section (date/time/greeting + AI prompt), KPI strip, network status, departments + quick actions, tasks; Right panel: collapsible live feed, stats chart, quick actions, tasks, approvals widgets. Background style selector (4 gradients) in preferences modal. Real-time ready widget structure. Zustand `uiPreferencesStore` persists UI state. | `src/app/home/page.tsx`, `src/stores/uiPreferencesStore.ts`, `src/components/home/{LeftPanel,RightPanel,GlassPanel,PreferencesModal,*Widget}.tsx`, `src/app/globals.css` (.glass-panel, .glass-icon) |
+| **6.5 (Left-panel audit 2026-07-06)** | **Left-panel route audit + fixes (FIX-020)** — Pinned `lucide-react@0.460.0` (lockfile drift to `1.22.0` was crashing every page on `next dev` with `Cannot read properties of undefined (reading 'call')`). Fixed `IconRail` "AI Skills" dead link (`?tab=spawn` → `?tab=templates`). Extended `RosterTab` on `/departments` with `tasks|workflows|routines|goals|projects` plus a new `WorkItemsTab` placeholder component so the 5 work-item links from the rail actually resolve. All 23 left-panel routes now return `200`; production build clean (43 routes); type-check and lint clean. | `frontend-tenant/package.json:37` (lucide-react pin), `src/components/layout/IconRail.tsx:66`, `src/app/departments/page.tsx:49-57` + new `WorkItemsTab` |
 
 The original phase plans are archived in `../memory-bank-ARCHIVED/legacy-2026-07-04/` for diff. The Phase 5.5 plan is in [`plans/onboarding-progressive-wizard.md`](plans/onboarding-progressive-wizard.md).
 
@@ -437,6 +440,41 @@ Widgets structured for WebSocket / API integration:
 4. **Feature flags hard-coded** — `useFeatureFlag` reads from a backend endpoint that doesn't fully exist yet; many flags return default. See [future-plans.md §3.7](future-plans.md).
 5. **No offline / PWA** — entirely online.
 6. **OLS catch-all rewrite means `/api/v1/*` goes through Next.js** — extra hop compared to admin's direct-to-brain pattern. Considered acceptable for tenant's deeper proxy needs (token refresh, server-side fetches).
+7. **`/login` form hydration warning on `autoComplete`** — React 19 reports `autocomplete` attribute mismatch between SSR and client (dev-only). Cosmetic, does not affect production.
+8. **Recharts "width(-1) and height(-1)" warning on `/intelligence`** — fires when a chart container has no measured dimensions during initial mount. Non-blocking; recharts self-corrects after first layout. Tracked for refactor in [ui-audit-refactor-guide.md §7](ui-audit-refactor-guide.md).
+9. **Empty work-item tabs on `/departments`** — Tasks / Workflows / Routines / Goals / Projects are now routable (FIX-020) but show a placeholder pointing back to `?tab=departments`. Full implementations are pending (Phase 7+ scope).
+
+---
+
+## 16. Tenant consumption audit + fixes (2026-07-07)
+
+Full audit of how SuperAdmin-deployed entities (AI Employees, Departments, Features, Packages) are picked up by the tenant. Nine issues fixed:
+
+### ISSUE 1 — Home right-panel widgets used 100% mock data (HIGH)
+**Files:** `LiveFeedWidget.tsx`, `StatsWidget.tsx`, `TasksWidget.tsx`, `ApprovalsWidget.tsx`
+- `LiveFeedWidget` → wired to `useActivityStore` (populated by WebSocket `useActivityStream` in TenantShell)
+- `StatsWidget` → wired to `useAgentStore` / `useTaskStore` / `useDepartmentStore` (hydrated by command-center summary)
+- `TasksWidget` → wired to `useTaskStore` with fetch fallback
+- `ApprovalsWidget` → wired to `useApprovals()` hook (live `GET /approvals/stratified?status=PENDING`)
+
+### ISSUE 2 — Department templates hardcoded (HIGH)
+**File:** `departments/page.tsx` — replaced static `TEMPLATE_PACKS` array with live fetch from `departmentTemplatesService.list()` → `GET /department-templates`
+
+### ISSUE 3 — No package/feature visibility for tenants (HIGH)
+**Backend:** `packages.controller.ts` class-level `@Roles` expanded to `OWNER, ADMIN` (write methods kept admin-only). `features.controller.ts` same treatment.
+**Frontend:** New `src/services/packages.service.ts` + new `PackagesTab` in marketplace with deploy modal (capacity preview, configurable options).
+
+### ISSUE 4 — Success rate hardcoded to 0 (MEDIUM)
+**File:** `marketplace/page.tsx` — `successRate` now derived from task count ratio.
+
+### ISSUE 5 — Redundant KPI fetching (MEDIUM)
+**File:** `HomeKpiStrip.tsx` — removed `useDashboardKpis` hook; KPI strip now reads from stores hydrated by the single command-center summary call.
+
+### ISSUE 6 — Spawn modal extra API call for tenant ID (LOW)
+**File:** `marketplace/page.tsx` — reads `authUser.tenantId` from `useAuthStore` instead of `GET /tenants/me`.
+
+### New service
+**File:** `src/services/packages.service.ts` — `list()`, `getById()`, `deployPreview()`, `deploy()`, `listFeatures()`.
 
 ---
 

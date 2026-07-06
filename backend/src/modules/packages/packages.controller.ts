@@ -53,7 +53,7 @@ import { PackageDeploymentService } from './services/package-deployment.service'
 @ApiBearerAuth()
 @Controller({ path: 'packages', version: '1' })
 @UseGuards(RolesGuard)
-@Roles('SUPER_ADMIN', 'PLATFORM_ADMIN')
+@Roles('SUPER_ADMIN', 'PLATFORM_ADMIN', 'OWNER', 'ADMIN')
 export class PackagesController {
   constructor(
     private readonly packages: PackagesService,
@@ -80,18 +80,21 @@ export class PackagesController {
   }
 
   @Post()
+  @Roles('SUPER_ADMIN', 'PLATFORM_ADMIN')
   @ApiOperation({ summary: 'Create a new package (identity only)' })
   async create(@Body() body: CreatePackageDto) {
     return this.packages.create(body);
   }
 
   @Patch(':id')
+  @Roles('SUPER_ADMIN', 'PLATFORM_ADMIN')
   @ApiOperation({ summary: 'Update package metadata' })
   async update(@Param('id') id: string, @Body() body: UpdatePackageDto) {
     return this.packages.update(id, body);
   }
 
   @Patch(':id/composition')
+  @Roles('SUPER_ADMIN', 'PLATFORM_ADMIN')
   @ApiOperation({ summary: 'Replace composition M2M atomically' })
   async composition(
     @Param('id') id: string,
@@ -153,6 +156,7 @@ export class PackagesController {
   }
 
   @Delete(':id')
+  @Roles('SUPER_ADMIN', 'PLATFORM_ADMIN')
   @ApiOperation({ summary: 'Delete a package' })
   async remove(@Param('id') id: string) {
     await this.packages.remove(id);

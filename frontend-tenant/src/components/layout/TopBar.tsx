@@ -27,6 +27,7 @@ import {
   Palette,
   ChevronDown,
   LogOut,
+  Menu,
 } from 'lucide-react';
 import { useCommandStore } from '@/stores/commandStore';
 import { useActivityStore } from '@/stores/activityStore';
@@ -40,6 +41,8 @@ interface TopBarProps {
   title?: string;
   /** Optional current department name (shown as breadcrumb when on workspace). */
   departmentName?: string;
+  /** Phase 7: Mobile nav toggle callback */
+  onMobileNavToggle?: () => void;
 }
 
 type ThemeName = 'dark' | 'light' | 'high-contrast';
@@ -50,7 +53,7 @@ const THEME_ICON: Record<ThemeName, React.ComponentType<{ className?: string }>>
   'high-contrast': Contrast,
 };
 
-export function TopBar({ title, departmentName }: TopBarProps) {
+export function TopBar({ title, departmentName, onMobileNavToggle }: TopBarProps) {
   const { openPalette } = useCommandStore();
   const { events } = useActivityStore();
   const { theme, setTheme } = useUIPreferencesStore();
@@ -136,6 +139,17 @@ export function TopBar({ title, departmentName }: TopBarProps) {
 
       {/* ── Right: secondary icons ────────────────────────────── */}
       <nav className="flex items-center gap-1">
+        {/* Phase 7: Mobile hamburger menu toggle */}
+        {onMobileNavToggle && (
+          <button
+            onClick={onMobileNavToggle}
+            className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-surface-overlay transition"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+        )}
+
         <SecondaryIcon
           href="/service-desk?tab=inbox"
           icon={<Inbox className="w-4 h-4" />}
@@ -288,11 +302,10 @@ function SecondaryIcon({ href, icon, label, badge, active }: SecondaryIconProps)
       href={href}
       title={label}
       aria-label={label}
-      className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition ${
-        active
+      className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition ${active
           ? 'bg-accent-500/15 text-accent-500'
           : 'text-zinc-400 hover:text-zinc-100 hover:bg-surface-overlay'
-      }`}
+        }`}
     >
       {icon}
       {badge !== undefined && badge > 0 && (

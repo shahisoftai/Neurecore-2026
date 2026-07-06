@@ -2093,6 +2093,52 @@
         ]
       }
     },
+    "/api/v1/deploy/tenants/{tenantId}/departments": {
+      "post": {
+        "operationId": "DeploymentController_deploySingleDepartment",
+        "summary": "",
+        "description": "POST /api/v1/deploy/tenants/:tenantId/departments\nDeploy a SINGLE department from a DepartmentTemplate's `structure` array\n(by item index). Useful when tenants want to add one department without\nre-deploying the whole template. SUPER_ADMIN only.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeploySingleDepartmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
     "/api/v1/agents/streaming/sessions": {
       "post": {
         "operationId": "AgentStreamingController_createSession",
@@ -4922,6 +4968,502 @@
         ]
       }
     },
+    "/api/v1/knowledge": {
+      "get": {
+        "operationId": "KnowledgeController_list",
+        "summary": "List knowledge entries (paginated).",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "POLICY",
+                "SOP",
+                "PLAYBOOK",
+                "TEMPLATE",
+                "PROMPT",
+                "REGULATION",
+                "CONTRACT",
+                "REPORT",
+                "DOCUMENTATION",
+                "FAQ",
+                "GUIDE",
+                "BRIEFING"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "draft",
+                "published",
+                "archived"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "departmentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "tags",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated tag list; AND-match (every tag must match).",
+            "example": "sales,q3",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgePaginatedResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "knowledge"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "KnowledgeController_create",
+        "summary": "Create a knowledge entry.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKnowledgeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "knowledge"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/knowledge/search": {
+      "get": {
+        "operationId": "KnowledgeController_search",
+        "summary": "Hybrid vector + BM25 keyword search.",
+        "parameters": [
+          {
+            "name": "query",
+            "required": true,
+            "in": "query",
+            "example": "Q3 sales methodology",
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "POLICY",
+                "SOP",
+                "PLAYBOOK",
+                "TEMPLATE",
+                "PROMPT",
+                "REGULATION",
+                "CONTRACT",
+                "REPORT",
+                "DOCUMENTATION",
+                "FAQ",
+                "GUIDE",
+                "BRIEFING"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "tags",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "departmentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "vectorWeight",
+            "required": false,
+            "in": "query",
+            "description": "Weight for vector similarity. (1 - α) is BM25 keyword weight.",
+            "schema": {
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.7,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeSearchResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "knowledge"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/knowledge/rag-ask": {
+      "post": {
+        "operationId": "KnowledgeController_ragAsk",
+        "summary": "RAG Q&A — returns answer + structured citations for chips.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RagAskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RagAnswerResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "knowledge"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/knowledge/rag-ask/stream": {
+      "post": {
+        "operationId": "KnowledgeController_ragAskStream",
+        "summary": "Streaming RAG via SSE — emits answer deltas + final citations.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RagAskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "knowledge"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/knowledge/{id}/citations": {
+      "get": {
+        "operationId": "KnowledgeController_listCitations",
+        "summary": "Where this entry has been cited (last 50).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Resource UUID",
+            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "knowledge"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/knowledge/{id}": {
+      "get": {
+        "operationId": "KnowledgeController_findOne",
+        "summary": "Read a single knowledge entry.",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Resource UUID",
+            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeEntryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "knowledge"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "KnowledgeController_update",
+        "summary": "Update a knowledge entry.",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Resource UUID",
+            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateKnowledgeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "knowledge"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "KnowledgeController_remove",
+        "summary": "Delete a knowledge entry.",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Resource UUID",
+            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "knowledge"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
     "/api/v1/departments": {
       "get": {
         "operationId": "DepartmentsController_findAll",
@@ -4949,6 +5491,14 @@
               "maximum": 100,
               "default": 20,
               "type": "number"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -8970,6 +9520,100 @@
             }
           }
         ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/settings/ai/routing": {
+      "get": {
+        "operationId": "SettingsController_getAIRouting",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "SettingsController_updateAIRouting",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/settings/ai/routing/reset": {
+      "post": {
+        "operationId": "SettingsController_resetAIRouting",
+        "parameters": [],
         "responses": {
           "201": {
             "description": "",
@@ -14287,6 +14931,172 @@
         ]
       }
     },
+    "/api/v1/feature-flags": {
+      "get": {
+        "operationId": "FeatureFlagController_listKnown",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "feature-flags"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/feature-flags/me": {
+      "get": {
+        "operationId": "FeatureFlagController_myEffective",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "feature-flags"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "FeatureFlagController_updateMy",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyFeatureFlagsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "feature-flags"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/feature-flags/tenants/{tenantId}": {
+      "get": {
+        "operationId": "FeatureFlagController_getForTenant",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "feature-flags"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "FeatureFlagController_updateForTenant",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantFeatureFlagsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "feature-flags"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
     "/api/v1/widgets": {
       "get": {
         "operationId": "WidgetsController_list",
@@ -14454,502 +15264,6 @@
         "security": [
           {
             "bearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/knowledge": {
-      "get": {
-        "operationId": "KnowledgeController_list",
-        "summary": "List knowledge entries (paginated).",
-        "parameters": [
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 1,
-              "type": "number"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20,
-              "type": "number"
-            }
-          },
-          {
-            "name": "type",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "enum": [
-                "POLICY",
-                "SOP",
-                "PLAYBOOK",
-                "TEMPLATE",
-                "PROMPT",
-                "REGULATION",
-                "CONTRACT",
-                "REPORT",
-                "DOCUMENTATION",
-                "FAQ",
-                "GUIDE",
-                "BRIEFING"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "enum": [
-                "draft",
-                "published",
-                "archived"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "departmentId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "tags",
-            "required": false,
-            "in": "query",
-            "description": "Comma-separated tag list; AND-match (every tag must match).",
-            "example": "sales,q3",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KnowledgePaginatedResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "knowledge"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      },
-      "post": {
-        "operationId": "KnowledgeController_create",
-        "summary": "Create a knowledge entry.",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateKnowledgeDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "knowledge"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/knowledge/search": {
-      "get": {
-        "operationId": "KnowledgeController_search",
-        "summary": "Hybrid vector + BM25 keyword search.",
-        "parameters": [
-          {
-            "name": "query",
-            "required": true,
-            "in": "query",
-            "example": "Q3 sales methodology",
-            "schema": {
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          {
-            "name": "type",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "enum": [
-                "POLICY",
-                "SOP",
-                "PLAYBOOK",
-                "TEMPLATE",
-                "PROMPT",
-                "REGULATION",
-                "CONTRACT",
-                "REPORT",
-                "DOCUMENTATION",
-                "FAQ",
-                "GUIDE",
-                "BRIEFING"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "tags",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          },
-          {
-            "name": "departmentId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 50,
-              "default": 10,
-              "type": "number"
-            }
-          },
-          {
-            "name": "vectorWeight",
-            "required": false,
-            "in": "query",
-            "description": "Weight for vector similarity. (1 - α) is BM25 keyword weight.",
-            "schema": {
-              "minimum": 0,
-              "maximum": 1,
-              "default": 0.7,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KnowledgeSearchResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "knowledge"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/knowledge/rag-ask": {
-      "post": {
-        "operationId": "KnowledgeController_ragAsk",
-        "summary": "RAG Q&A — returns answer + structured citations for chips.",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RagAskDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RagAnswerResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "knowledge"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/knowledge/rag-ask/stream": {
-      "post": {
-        "operationId": "KnowledgeController_ragAskStream",
-        "summary": "Streaming RAG via SSE — emits answer deltas + final citations.",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RagAskDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "knowledge"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/knowledge/{id}/citations": {
-      "get": {
-        "operationId": "KnowledgeController_listCitations",
-        "summary": "Where this entry has been cited (last 50).",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Resource UUID",
-            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "knowledge"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/knowledge/{id}": {
-      "get": {
-        "operationId": "KnowledgeController_findOne",
-        "summary": "Read a single knowledge entry.",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Resource UUID",
-            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KnowledgeEntryResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "knowledge"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      },
-      "patch": {
-        "operationId": "KnowledgeController_update",
-        "summary": "Update a knowledge entry.",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Resource UUID",
-            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateKnowledgeDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "knowledge"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      },
-      "delete": {
-        "operationId": "KnowledgeController_remove",
-        "summary": "Delete a knowledge entry.",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Resource UUID",
-            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "knowledge"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
           }
         ]
       }
@@ -16071,6 +16385,1120 @@
           }
         ]
       }
+    },
+    "/api/v1/agents-pool/{id}/enabled": {
+      "patch": {
+        "operationId": "AgentsPoolController_setEnabled",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "agents-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/agents-pool/{id}/duplicate": {
+      "post": {
+        "operationId": "AgentsPoolController_duplicate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "agents-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/agents-pool": {
+      "get": {
+        "operationId": "AgentsPoolController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "agents-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "AgentsPoolController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "agents-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/agents-pool/by-slug/{slug}": {
+      "get": {
+        "operationId": "AgentsPoolController_bySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "agents-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/agents-pool/{id}": {
+      "get": {
+        "operationId": "AgentsPoolController_getOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "agents-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "AgentsPoolController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "agents-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "AgentsPoolController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "agents-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/departments-pool": {
+      "get": {
+        "operationId": "DepartmentsPoolController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "departments-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "DepartmentsPoolController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "departments-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/departments-pool/by-slug/{slug}": {
+      "get": {
+        "operationId": "DepartmentsPoolController_bySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "departments-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/departments-pool/{id}": {
+      "get": {
+        "operationId": "DepartmentsPoolController_getOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "departments-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "DepartmentsPoolController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "departments-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "DepartmentsPoolController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "departments-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/industries": {
+      "get": {
+        "operationId": "IndustriesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "industries"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "IndustriesController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "industries"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/industries/by-slug/{slug}": {
+      "get": {
+        "operationId": "IndustriesController_bySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "industries"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/industries/{id}": {
+      "get": {
+        "operationId": "IndustriesController_getOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "industries"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "IndustriesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "industries"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "IndustriesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "industries"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tier-templates": {
+      "get": {
+        "operationId": "TierTemplatesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "tier-templates"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "TierTemplatesController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "tier-templates"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tier-templates/by-slug/{slug}": {
+      "get": {
+        "operationId": "TierTemplatesController_bySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "tier-templates"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tier-templates/{id}": {
+      "get": {
+        "operationId": "TierTemplatesController_getOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "tier-templates"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "TierTemplatesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "tier-templates"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "TierTemplatesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "tier-templates"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/features": {
+      "post": {
+        "operationId": "FeaturesController_create",
+        "summary": "Create a feature",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "features"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "FeaturesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "features"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/features/{id}": {
+      "patch": {
+        "operationId": "FeaturesController_update",
+        "summary": "Update a feature",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "features"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "FeaturesController_remove",
+        "summary": "Delete a feature",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "features"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "FeaturesController_getOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "features"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/features/by-slug/{slug}": {
+      "get": {
+        "operationId": "FeaturesController_bySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "features"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/packages": {
+      "get": {
+        "operationId": "PackagesController_list",
+        "summary": "List packages (composable offerings)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "packages"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "PackagesController_create",
+        "summary": "Create a new package (identity only)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "packages"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/packages/by-slug/{slug}": {
+      "get": {
+        "operationId": "PackagesController_bySlug",
+        "summary": "Get a package by slug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "packages"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/packages/{id}": {
+      "get": {
+        "operationId": "PackagesController_getOne",
+        "summary": "Get a single package with full composition",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "packages"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "PackagesController_update",
+        "summary": "Update package metadata",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "packages"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "PackagesController_remove",
+        "summary": "Delete a package",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "packages"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/packages/{id}/composition": {
+      "patch": {
+        "operationId": "PackagesController_composition",
+        "summary": "Replace composition M2M atomically",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "packages"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/packages/preview": {
+      "post": {
+        "operationId": "PackagesController_preview",
+        "summary": "Dry-run composition without writing",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "packages"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/packages/deploy/preview": {
+      "get": {
+        "operationId": "PackagesController_deployPreview",
+        "summary": "Dry-run package deployment to a tenant (no writes)",
+        "description": "GET /api/v1/packages/deploy/preview?packageId=&tenantId=\nDry-run a package deployment. Returns blockers + capacity snapshot.\nSame scope rules as deploy (OWNER/ADMIN → own tenant, SUPER_ADMIN → any).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "packages"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/packages/deploy": {
+      "post": {
+        "operationId": "PackagesController_deploy",
+        "summary": "Deploy a package composition to a tenant",
+        "description": "POST /api/v1/packages/deploy\nApply a package composition to a tenant in one transaction.\nOWNER/ADMIN may only deploy to their own tenant.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeployPackageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "packages"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
     }
   },
   "info": {
@@ -16622,6 +18050,29 @@
           "templateId"
         ]
       },
+      "DeploySingleDepartmentDto": {
+        "type": "object",
+        "properties": {
+          "templateId": {
+            "type": "string"
+          },
+          "itemIndex": {
+            "type": "number",
+            "description": "Index into the template's `structure` JSON array (0-based)",
+            "minimum": 0
+          },
+          "parentDepartmentId": {
+            "type": "string"
+          },
+          "withHeadAgent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "templateId",
+          "itemIndex"
+        ]
+      },
       "ConnectGoogleDto": {
         "type": "object",
         "properties": {
@@ -16891,6 +18342,503 @@
             "items": {
               "type": "object"
             }
+          }
+        }
+      },
+      "KnowledgePaginatedResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Page items",
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "description": "Pagination metadata"
+          }
+        },
+        "required": [
+          "items",
+          "pagination"
+        ]
+      },
+      "KnowledgeSearchHitDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "POLICY",
+              "SOP",
+              "PLAYBOOK",
+              "TEMPLATE",
+              "PROMPT",
+              "REGULATION",
+              "CONTRACT",
+              "REPORT",
+              "DOCUMENTATION",
+              "FAQ",
+              "GUIDE",
+              "BRIEFING"
+            ]
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "relevanceScore": {
+            "type": "number",
+            "description": "Blended hybrid relevance score ∈ [0, 1].",
+            "example": 0.84
+          },
+          "highlights": {
+            "description": "Keyword highlights.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departmentId": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "type",
+          "excerpt",
+          "relevanceScore"
+        ]
+      },
+      "KnowledgeSearchResponseDto": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeSearchHitDto"
+            }
+          },
+          "took": {
+            "type": "number"
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "results",
+          "took",
+          "query"
+        ]
+      },
+      "RagAskDto": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 4000,
+            "example": "What is our Q3 sales methodology?",
+            "minLength": 1
+          },
+          "contextEntityType": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contextEntityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "POLICY",
+                "SOP",
+                "PLAYBOOK",
+                "TEMPLATE",
+                "PROMPT",
+                "REGULATION",
+                "CONTRACT",
+                "REPORT",
+                "DOCUMENTATION",
+                "FAQ",
+                "GUIDE",
+                "BRIEFING"
+              ]
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topK": {
+            "type": "number",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 25
+          },
+          "maxContextTokens": {
+            "type": "number",
+            "default": 4000,
+            "minimum": 256,
+            "maximum": 16000
+          },
+          "stream": {
+            "type": "boolean",
+            "default": true,
+            "description": "If true, return SSE stream; if false, block until done."
+          }
+        },
+        "required": [
+          "question"
+        ]
+      },
+      "KnowledgeCitationDto": {
+        "type": "object",
+        "properties": {
+          "knowledgeEntryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          },
+          "span": {
+            "type": "string",
+            "example": "Chunk 2 / 4"
+          },
+          "confidence": {
+            "type": "number",
+            "example": 0.84
+          },
+          "chunkIndex": {
+            "type": "number",
+            "example": 2
+          }
+        },
+        "required": [
+          "knowledgeEntryId",
+          "label",
+          "span",
+          "confidence",
+          "chunkIndex"
+        ]
+      },
+      "RagAnswerResponseDto": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeCitationDto"
+            }
+          },
+          "model": {
+            "type": "string",
+            "example": "gpt-4o-mini"
+          },
+          "tokensUsed": {
+            "type": "object"
+          },
+          "confidence": {
+            "type": "number",
+            "example": 0.82
+          },
+          "durationMs": {
+            "type": "number",
+            "example": 2184
+          }
+        },
+        "required": [
+          "answer",
+          "citations",
+          "model",
+          "tokensUsed",
+          "confidence",
+          "durationMs"
+        ]
+      },
+      "CreateKnowledgeDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "POLICY",
+              "SOP",
+              "PLAYBOOK",
+              "TEMPLATE",
+              "PROMPT",
+              "REGULATION",
+              "CONTRACT",
+              "REPORT",
+              "DOCUMENTATION",
+              "FAQ",
+              "GUIDE",
+              "BRIEFING"
+            ],
+            "example": "POLICY",
+            "description": "Classification of the knowledge entry."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Q3 Sales Methodology",
+            "description": "Human-readable title."
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 200000,
+            "example": "Q3 sales methodology — pipeline stages, …",
+            "description": "Full text content. Will be chunked + embedded."
+          },
+          "tags": {
+            "example": [
+              "sales",
+              "q3",
+              "methodology"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entityTypes": {
+            "example": [
+              "PROJECT",
+              "GOAL"
+            ],
+            "description": "Entity types this knowledge applies to.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sourceUrl": {
+            "type": "string",
+            "example": "https://internal.drive/q3-methodology"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ],
+            "example": "published",
+            "default": "published"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 8,
+            "default": "en",
+            "example": "en",
+            "description": "ISO 639-1 language code."
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "content"
+        ]
+      },
+      "KnowledgeEntryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "POLICY",
+              "SOP",
+              "PLAYBOOK",
+              "TEMPLATE",
+              "PROMPT",
+              "REGULATION",
+              "CONTRACT",
+              "REPORT",
+              "DOCUMENTATION",
+              "FAQ",
+              "GUIDE",
+              "BRIEFING"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entityTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "authorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "chunkCount": {
+            "type": "number"
+          },
+          "retrievalCount": {
+            "type": "number"
+          },
+          "lastRetrievedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveTo": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "type",
+          "title",
+          "content",
+          "source",
+          "status",
+          "version",
+          "language",
+          "chunkCount",
+          "retrievalCount",
+          "effectiveFrom",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateKnowledgeDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "POLICY",
+              "SOP",
+              "PLAYBOOK",
+              "TEMPLATE",
+              "PROMPT",
+              "REGULATION",
+              "CONTRACT",
+              "REPORT",
+              "DOCUMENTATION",
+              "FAQ",
+              "GUIDE",
+              "BRIEFING"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 200000
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entityTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "object"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 16
           }
         }
       },
@@ -17430,8 +19378,14 @@
           "slug": {
             "type": "string"
           },
+          "tagline": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
+          },
+          "status": {
+            "type": "object"
           },
           "isActive": {
             "type": "boolean"
@@ -17504,8 +19458,14 @@
           "slug": {
             "type": "string"
           },
+          "tagline": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
+          },
+          "status": {
+            "type": "object"
           },
           "isActive": {
             "type": "boolean"
@@ -18498,6 +20458,34 @@
           "action"
         ]
       },
+      "UpdateMyFeatureFlagsDto": {
+        "type": "object",
+        "properties": {
+          "featureFlags": {
+            "type": "object"
+          }
+        }
+      },
+      "UpdateTenantFeatureFlagsDto": {
+        "type": "object",
+        "properties": {
+          "HERMES_ENABLED": {
+            "type": "boolean"
+          },
+          "HERMES_AUTO_LINK": {
+            "type": "boolean"
+          },
+          "HERMES_APPROVAL_REQUIRED": {
+            "type": "boolean"
+          },
+          "HERMES_SESSION_LOGGING": {
+            "type": "boolean"
+          },
+          "DISABLE_AI_ACTIONS": {
+            "type": "boolean"
+          }
+        }
+      },
       "ComputeWidgetResponseDto": {
         "type": "object",
         "properties": {
@@ -18619,503 +20607,6 @@
           "itemCount",
           "updatedAt"
         ]
-      },
-      "KnowledgePaginatedResponseDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "description": "Page items",
-            "type": "array",
-            "items": {
-              "type": "array"
-            }
-          },
-          "pagination": {
-            "type": "object",
-            "description": "Pagination metadata"
-          }
-        },
-        "required": [
-          "items",
-          "pagination"
-        ]
-      },
-      "KnowledgeSearchHitDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "title": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "POLICY",
-              "SOP",
-              "PLAYBOOK",
-              "TEMPLATE",
-              "PROMPT",
-              "REGULATION",
-              "CONTRACT",
-              "REPORT",
-              "DOCUMENTATION",
-              "FAQ",
-              "GUIDE",
-              "BRIEFING"
-            ]
-          },
-          "excerpt": {
-            "type": "string"
-          },
-          "relevanceScore": {
-            "type": "number",
-            "description": "Blended hybrid relevance score ∈ [0, 1].",
-            "example": 0.84
-          },
-          "highlights": {
-            "description": "Keyword highlights.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "departmentId": {
-            "type": "string"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "type",
-          "excerpt",
-          "relevanceScore"
-        ]
-      },
-      "KnowledgeSearchResponseDto": {
-        "type": "object",
-        "properties": {
-          "results": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KnowledgeSearchHitDto"
-            }
-          },
-          "took": {
-            "type": "number"
-          },
-          "query": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "results",
-          "took",
-          "query"
-        ]
-      },
-      "RagAskDto": {
-        "type": "object",
-        "properties": {
-          "question": {
-            "type": "string",
-            "maxLength": 4000,
-            "example": "What is our Q3 sales methodology?",
-            "minLength": 1
-          },
-          "contextEntityType": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "contextEntityId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "types": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "POLICY",
-                "SOP",
-                "PLAYBOOK",
-                "TEMPLATE",
-                "PROMPT",
-                "REGULATION",
-                "CONTRACT",
-                "REPORT",
-                "DOCUMENTATION",
-                "FAQ",
-                "GUIDE",
-                "BRIEFING"
-              ]
-            }
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "departmentId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "topK": {
-            "type": "number",
-            "default": 10,
-            "minimum": 1,
-            "maximum": 25
-          },
-          "maxContextTokens": {
-            "type": "number",
-            "default": 4000,
-            "minimum": 256,
-            "maximum": 16000
-          },
-          "stream": {
-            "type": "boolean",
-            "default": true,
-            "description": "If true, return SSE stream; if false, block until done."
-          }
-        },
-        "required": [
-          "question"
-        ]
-      },
-      "KnowledgeCitationDto": {
-        "type": "object",
-        "properties": {
-          "knowledgeEntryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "label": {
-            "type": "string"
-          },
-          "span": {
-            "type": "string",
-            "example": "Chunk 2 / 4"
-          },
-          "confidence": {
-            "type": "number",
-            "example": 0.84
-          },
-          "chunkIndex": {
-            "type": "number",
-            "example": 2
-          }
-        },
-        "required": [
-          "knowledgeEntryId",
-          "label",
-          "span",
-          "confidence",
-          "chunkIndex"
-        ]
-      },
-      "RagAnswerResponseDto": {
-        "type": "object",
-        "properties": {
-          "answer": {
-            "type": "string"
-          },
-          "citations": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KnowledgeCitationDto"
-            }
-          },
-          "model": {
-            "type": "string",
-            "example": "gpt-4o-mini"
-          },
-          "tokensUsed": {
-            "type": "object"
-          },
-          "confidence": {
-            "type": "number",
-            "example": 0.82
-          },
-          "durationMs": {
-            "type": "number",
-            "example": 2184
-          }
-        },
-        "required": [
-          "answer",
-          "citations",
-          "model",
-          "tokensUsed",
-          "confidence",
-          "durationMs"
-        ]
-      },
-      "CreateKnowledgeDto": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "POLICY",
-              "SOP",
-              "PLAYBOOK",
-              "TEMPLATE",
-              "PROMPT",
-              "REGULATION",
-              "CONTRACT",
-              "REPORT",
-              "DOCUMENTATION",
-              "FAQ",
-              "GUIDE",
-              "BRIEFING"
-            ],
-            "example": "POLICY",
-            "description": "Classification of the knowledge entry."
-          },
-          "title": {
-            "type": "string",
-            "maxLength": 200,
-            "example": "Q3 Sales Methodology",
-            "description": "Human-readable title."
-          },
-          "content": {
-            "type": "string",
-            "maxLength": 200000,
-            "example": "Q3 sales methodology — pipeline stages, …",
-            "description": "Full text content. Will be chunked + embedded."
-          },
-          "tags": {
-            "example": [
-              "sales",
-              "q3",
-              "methodology"
-            ],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "departmentId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "entityTypes": {
-            "example": [
-              "PROJECT",
-              "GOAL"
-            ],
-            "description": "Entity types this knowledge applies to.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "sourceUrl": {
-            "type": "string",
-            "example": "https://internal.drive/q3-methodology"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "draft",
-              "published",
-              "archived"
-            ],
-            "example": "published",
-            "default": "published"
-          },
-          "language": {
-            "type": "string",
-            "maxLength": 8,
-            "default": "en",
-            "example": "en",
-            "description": "ISO 639-1 language code."
-          }
-        },
-        "required": [
-          "type",
-          "title",
-          "content"
-        ]
-      },
-      "KnowledgeEntryResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "POLICY",
-              "SOP",
-              "PLAYBOOK",
-              "TEMPLATE",
-              "PROMPT",
-              "REGULATION",
-              "CONTRACT",
-              "REPORT",
-              "DOCUMENTATION",
-              "FAQ",
-              "GUIDE",
-              "BRIEFING"
-            ]
-          },
-          "title": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "departmentId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "entityTypes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "source": {
-            "type": "string"
-          },
-          "sourceUrl": {
-            "type": "string"
-          },
-          "authorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "draft",
-              "published",
-              "archived"
-            ]
-          },
-          "version": {
-            "type": "string"
-          },
-          "language": {
-            "type": "string"
-          },
-          "chunkCount": {
-            "type": "number"
-          },
-          "retrievalCount": {
-            "type": "number"
-          },
-          "lastRetrievedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "effectiveFrom": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "effectiveTo": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "tenantId",
-          "type",
-          "title",
-          "content",
-          "source",
-          "status",
-          "version",
-          "language",
-          "chunkCount",
-          "retrievalCount",
-          "effectiveFrom",
-          "createdAt",
-          "updatedAt"
-        ]
-      },
-      "UpdateKnowledgeDto": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "POLICY",
-              "SOP",
-              "PLAYBOOK",
-              "TEMPLATE",
-              "PROMPT",
-              "REGULATION",
-              "CONTRACT",
-              "REPORT",
-              "DOCUMENTATION",
-              "FAQ",
-              "GUIDE",
-              "BRIEFING"
-            ]
-          },
-          "title": {
-            "type": "string",
-            "maxLength": 200
-          },
-          "content": {
-            "type": "string",
-            "maxLength": 200000
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "departmentId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "entityTypes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "status": {
-            "type": "object"
-          },
-          "language": {
-            "type": "string",
-            "maxLength": 16
-          }
-        }
       },
       "InstallSolutionPackDto": {
         "type": "object",
@@ -19385,6 +20876,40 @@
             "description": "Optional sync window start (ISO 8601)"
           }
         }
+      },
+      "DeployPackageDto": {
+        "type": "object",
+        "properties": {
+          "packageId": {
+            "type": "string",
+            "description": "Package row id (Pool #6 composite root)"
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "Target tenant"
+          },
+          "withAgents": {
+            "type": "boolean",
+            "description": "Whether to also create AI Employee instances from the package's\naiAgents composition. Default true. When false, only departments\nare created (e.g. if tenant already has the agents from a previous deploy)."
+          },
+          "authorityLevel": {
+            "type": "string",
+            "description": "Optional authority level override applied to every spawned agent",
+            "enum": [
+              "AUTO",
+              "RECOMMEND",
+              "APPROVAL"
+            ]
+          },
+          "idempotent": {
+            "type": "boolean",
+            "description": "When true, the deploy becomes idempotent: re-running for the same\n(packageId, tenantId) pair skips agents whose name + tenant already\nexist. Default true."
+          }
+        },
+        "required": [
+          "packageId",
+          "tenantId"
+        ]
       }
     }
   }

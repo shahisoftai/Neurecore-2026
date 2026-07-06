@@ -12,6 +12,7 @@ import type {
 import { restClient } from "@/core/services/api/clients/RestClient";
 
 const API_ENDPOINT = "/ai/chat";
+const STORAGE_KEY = "hq_ai_chat_history";
 let _msgId = 0;
 const genId = () => `msg_${Date.now()}_${++_msgId}`;
 
@@ -24,8 +25,45 @@ export class ConversationalAIService implements IConversationalAIService {
   private history: ChatMessage[] = [];
   private conversationId: string | null = null;
 
+  constructor() {
+    this._loadFromStorage();
+  }
+
   isAvailable(): boolean {
     return typeof window !== "undefined";
+  }
+
+  private _loadFromStorage(): void {
+    if (typeof sessionStorage === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw) as {
+        history?: ChatMessage[];
+        conversationId?: string | null;
+      };
+      if (Array.isArray(data.history)) this.history = data.history;
+      if (typeof data.conversationId === "string" || data.conversationId === null) {
+        this.conversationId = data.conversationId;
+      }
+    } catch {
+      // ignore corrupted storage
+    }
+  }
+
+  private _saveToStorage(): void {
+    if (typeof sessionStorage === "undefined") return;
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          history: this.history,
+          conversationId: this.conversationId,
+        }),
+      );
+    } catch {
+      // ignore quota exceeded
+    }
   }
 
   // ─── IMessageSender ───────────────────────────────────────────────────────
@@ -34,7 +72,6 @@ export class ConversationalAIService implements IConversationalAIService {
     message: string,
     context?: ConversationContext,
   ): Promise<ChatMessage> {
-    // Append user message immediately (for optimistic UI)
     const userMsg: ChatMessage = {
       id: genId(),
       role: "user",
@@ -42,6 +79,7 @@ export class ConversationalAIService implements IConversationalAIService {
       timestamp: new Date().toISOString(),
     };
     this.history.push(userMsg);
+    this._saveToStorage();
 
     try {
       const response = await restClient.post<{
@@ -61,25 +99,19 @@ export class ConversationalAIService implements IConversationalAIService {
         })),
       });
 
-      // Backend wraps as { status, data: { reply, conversationId, ... }, meta }
-      const payload =
-        (response as { data?: { data?: { reply: string; conversationId?: string } } })
-          ?.data ?? response;
-      const innerData: { reply?: string; conversationId?: string } =
-        (payload && typeof payload === "object" && "data" in payload && payload.data)
-          ? (payload.data as { reply?: string; conversationId?: string })
-          : (payload as { reply?: string; conversationId?: string });
+      const apiData = response.data;
 
-      if (innerData?.reply) {
-        this.conversationId = innerData.conversationId ?? this.conversationId;
-        const reply = innerData.reply;
-        const rawMeta = innerData as
-          | Record<string, unknown>
-          | null
-          | undefined;
+      if (apiData?.reply) {
+        this.conversationId = apiData.conversationId ?? this.conversationId;
         const { cleanedReply, ...metadata } = this._parseMetadata(
-          reply,
-          rawMeta ?? null,
+          apiData.reply,
+          apiData.chartType ?? apiData.chartData ?? apiData.suggestions
+            ? {
+                chartType: apiData.chartType,
+                chartData: apiData.chartData,
+                suggestions: apiData.suggestions,
+              }
+            : null,
         );
         const assistantMsg: ChatMessage = {
           id: genId(),
@@ -89,13 +121,13 @@ export class ConversationalAIService implements IConversationalAIService {
           metadata,
         };
         this.history.push(assistantMsg);
+        this._saveToStorage();
         return assistantMsg;
       }
 
-      // Empty reply — fall through to rule-based fallback
       throw new Error("Empty reply from chat backend");
-    } catch {
-      // Graceful fallback: simple rule-based responses
+    } catch (err) {
+      console.warn("[ConversationalAIService] Chat request failed:", err);
       const fallback = this._fallbackReply(message);
       const assistantMsg: ChatMessage = {
         id: genId(),
@@ -104,6 +136,7 @@ export class ConversationalAIService implements IConversationalAIService {
         timestamp: new Date().toISOString(),
       };
       this.history.push(assistantMsg);
+      this._saveToStorage();
       return assistantMsg;
     }
   }
@@ -117,6 +150,7 @@ export class ConversationalAIService implements IConversationalAIService {
   clearHistory(): void {
     this.history = [];
     this.conversationId = null;
+    this._saveToStorage();
   }
 
   getConversationId(): string | null {
@@ -127,7 +161,7 @@ export class ConversationalAIService implements IConversationalAIService {
 
   private _parseMetadata(
     reply: string,
-    apiData?: Record<string, unknown> | null,
+    apiData?: Partial<Pick<ChatMessageMetadata, "chartType" | "chartData" | "suggestions">> | null,
   ): ChatMessageMetadata & { cleanedReply: string } {
     let cleanedReply = reply;
 
@@ -149,17 +183,17 @@ export class ConversationalAIService implements IConversationalAIService {
             suggestions: (apiData?.suggestions as string[]) ?? [],
           };
         }
-      } catch {
+      } catch (err) {
+        console.warn("[ConversationalAIService] Failed to parse chart JSON:", err);
         /* fall through */
       }
     }
 
     return {
       cleanedReply,
-      chartType: apiData?.chartType as ChatMessageMetadata["chartType"],
-      chartData: apiData?.chartData as ChatMessageMetadata["chartData"],
-      suggestions:
-        (apiData?.suggestions as string[]) ?? this._inferSuggestions(reply),
+      chartType: apiData?.chartType,
+      chartData: apiData?.chartData,
+      suggestions: apiData?.suggestions ?? this._inferSuggestions(reply),
     };
   }
 

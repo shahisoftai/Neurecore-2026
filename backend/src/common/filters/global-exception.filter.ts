@@ -105,7 +105,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       status: 'error',
       error: {
         code,
-        message: this.getUserFriendlyMessage(code, message),
+        message: this.getUserFriendlyMessage(code, message, exception),
         details: this.isProduction() ? undefined : details,
       },
       meta: {

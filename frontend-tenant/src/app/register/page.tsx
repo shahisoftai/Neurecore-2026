@@ -56,6 +56,7 @@ export default function RegisterPage() {
               {field === 'firstName' ? 'First Name' : 'Last Name'}
               <input
                 type="text"
+                autoComplete={field === 'firstName' ? 'given-name' : 'family-name'}
                 required
                 value={form[field]}
                 onChange={update(field)}
@@ -65,13 +66,13 @@ export default function RegisterPage() {
           ))}
           <label className="flex flex-col gap-1 text-sm font-medium">
             Email
-            <input type="email" required value={form.email} onChange={update('email')}
+            <input type="email" autoComplete="email" required value={form.email} onChange={update('email')}
               className="rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:ring-2 focus:ring-blue-500"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
             Password
-            <input type="password" required minLength={8} value={form.password} onChange={update('password')}
+            <input type="password" autoComplete="new-password" required minLength={8} value={form.password} onChange={update('password')}
               className="rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:ring-2 focus:ring-blue-500"
             />
           </label>

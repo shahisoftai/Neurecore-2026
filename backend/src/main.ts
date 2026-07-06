@@ -97,7 +97,8 @@ async function bootstrap() {
       // Same-origin / no-origin (curl, server-to-server) — allow.
       if (!origin) return callback(null, true);
       const allowed = new Set(origins);
-      if (allowed.has(origin)) return callback(null, true);
+      const originParts = origin.split(',').map(o => o.trim());
+      if (originParts.some(o => allowed.has(o))) return callback(null, true);
       return callback(new Error(`Origin not allowed: ${origin}`), false);
     },
     credentials: true,

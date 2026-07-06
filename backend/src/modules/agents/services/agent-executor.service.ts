@@ -168,12 +168,18 @@ export class AgentExecutorService implements IAgentExecutor {
 
     // Use Official LangGraph for execution with streaming support
     try {
+      const agent = await this.prisma.agent.findUnique({
+        where: { id: agentId },
+        select: { model: true },
+      });
+
       const stream = this.officialGraph.stream({
         goal: `Execute task ${taskId}`,
         agentId,
         tenantId,
-        userId: 'system', // Or extract from context
+        userId: 'system',
         sessionId: taskId,
+        model: agent?.model ?? undefined,
       });
 
       const steps: Array<{
@@ -395,7 +401,7 @@ export class AgentExecutorService implements IAgentExecutor {
     try {
       const agent = await this.prisma.agent.findUnique({
         where: { id: agentId },
-        select: { hermesAgentId: true, name: true },
+        select: { hermesAgentId: true, name: true, model: true },
       });
 
       const autoLink = this.featureFlag.isEnabled('HERMES_AUTO_LINK');

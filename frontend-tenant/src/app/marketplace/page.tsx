@@ -41,6 +41,9 @@ import {
   List as ListIcon,
   CheckCircle2,
   Building2,
+  Briefcase,
+  Package,
+  Loader2,
 } from 'lucide-react';
 
 import { useTenantAuth } from '@/hooks/useTenantAuth';
@@ -51,9 +54,11 @@ import { ActionButton, ActionToolbar } from '@/components/creatio/ActionToolbar'
 import { KpiCard } from '@/components/creatio/KpiCard';
 import { QuickAction } from '@/components/creatio/QuickAction';
 import { useInspectorStore } from '@/stores/inspectorStore';
+import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import { unwrapArrayOrEmpty, unwrapList } from '@/services/unwrap';
 import { connectorsService, type Connector } from '@/services/connectors.service';
+import { packagesService, type TenantPackage, type DeployPackagePreview } from '@/services/packages.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 interface AgentRaw {
@@ -85,13 +90,14 @@ interface AgentTemplateRaw {
   createdAt: string;
 }
 
-type MarketplaceTab = 'agents' | 'templates' | 'connectors';
+type MarketplaceTab = 'agents' | 'templates' | 'connectors' | 'packages';
 type ViewMode = 'grid' | 'list';
 type FilterStatus = 'ALL' | 'ACTIVE' | 'RUNNING' | 'PAUSED' | 'IDLE' | 'ERROR' | 'ARCHIVED' | 'DEPRECATED';
 
 const TABS: { id: MarketplaceTab; label: string; icon: typeof Users }[] = [
   { id: 'agents',     label: 'My Agents',      icon: Users },
   { id: 'templates',  label: 'Agent Templates', icon: Sparkles },
+  { id: 'packages',   label: 'Packages',       icon: Briefcase },
   { id: 'connectors', label: 'Connectors',     icon: Plug },
 ];
 
@@ -201,6 +207,9 @@ export default function MarketplacePage() {
             )}
             {activeTab === 'templates' && (
               <AgentTemplatesTab router={router} />
+            )}
+            {activeTab === 'packages' && (
+              <PackagesTab user={user} />
             )}
             {activeTab === 'connectors' && (
               <ConnectorsTab />
@@ -391,7 +400,7 @@ function MyAgentsTab({
                 model: agent.model?.name ?? 'gpt-4o',
                 workload: Math.min(100, Math.round(((agent._count?.tasks ?? 0) / 10) * 100)),
                 taskCount: agent._count?.tasks ?? 0,
-                successRate: 0,
+                successRate: agent.status === 'ACTIVE' || agent.status === 'RUNNING' ? Math.min(100, Math.round(((agent._count?.tasks ?? 0) / Math.max((agent._count?.tasks ?? 0) + 1, 1)) * 100)) : 0,
                 budgetUsed: agent.budgetUsed ?? 0,
                 budgetTotal: agent.monthlyBudget ?? 100,
                 lastActiveAt: agent.updatedAt,
@@ -647,6 +656,7 @@ function SpawnAgentModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const authUser = useAuthStore((s) => s.user);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -664,7 +674,7 @@ function SpawnAgentModal({
     setError(null);
     setSubmitting(true);
     try {
-      const tenantId = (await api.get('/tenants/me')).data?.data?.id;
+      const tenantId = authUser?.tenantId;
       if (!tenantId) throw new Error('Could not resolve tenant');
       const body = {
         name: agentName,
@@ -771,7 +781,348 @@ function SpawnAgentModal({
   );
 }
 
-// ─── Tab 3: Connectors ───────────────────────────────────────────────────
+// ─── Tab 3: Packages (browse + deploy) ──────────────────────────────────
+function PackagesTab({ user }: { user: NonNullable<ReturnType<typeof useTenantAuth>> }) {
+  const router = useRouter();
+  const [packages, setPackages] = useState<TenantPackage[]>([]);
+  const [features, setFeatures] = useState<Awaited<ReturnType<typeof packagesService.listFeatures>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [deployPkg, setDeployPkg] = useState<TenantPackage | null>(null);
+  const [showFeatures, setShowFeatures] = useState(false);
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [pkgList, featList] = await Promise.all([
+        packagesService.list({ status: 'PUBLISHED', limit: 50 }),
+        packagesService.listFeatures(),
+      ]);
+      setPackages(pkgList);
+      setFeatures(featList);
+    } catch {
+      setPackages([]);
+      setFeatures([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void fetchAll(); }, [fetchAll]);
+
+  const deployedCount = packages.filter((p) => p.status === 'PUBLISHED').length;
+
+  if (loading) {
+    return (
+      <div className="card-surface p-12 text-center">
+        <Loader2 className="w-8 h-8 text-accent-500 mx-auto mb-3 animate-spin" />
+        <p className="text-sm text-zinc-400">Loading packages…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Hero */}
+      <div className="card-surface p-4 bg-gradient-to-r from-accent-500/5 to-transparent border-accent-500/20">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <Briefcase className="w-6 h-6 text-accent-500" />
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-100">Available Packages ({packages.length})</h3>
+              <p className="text-xs text-zinc-500">
+                Browse pre-composed packages for your industry and tier. Deploy departments, agents, and features in one click.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <ActionButton
+              variant="ghost"
+              size="sm"
+              icon={<Package className="w-3 h-3" />}
+              onClick={() => setShowFeatures(!showFeatures)}
+            >
+              {showFeatures ? 'Hide Features' : `Features (${features.length})`}
+            </ActionButton>
+            <ActionButton
+              variant="secondary"
+              size="sm"
+              icon={<RefreshCw className="w-3 h-3" />}
+              onClick={() => void fetchAll()}
+            >
+              Refresh
+            </ActionButton>
+          </div>
+        </div>
+      </div>
+
+      {/* Features panel (collapsible) */}
+      {showFeatures && (
+        <div className="card-surface p-4">
+          <h4 className="text-xs font-semibold text-zinc-300 uppercase mb-3">Platform Features ({features.length})</h4>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {features.map((f) => (
+              <div key={f.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-overlay border border-surface-border">
+                <span className={`w-1.5 h-1.5 rounded-full ${f.isEnabled ? 'bg-state-success' : 'bg-zinc-500'}`} />
+                <span className="text-xs text-zinc-300 truncate">{f.name}</span>
+                <span className="text-[10px] text-zinc-500 ml-auto">{f.category}</span>
+              </div>
+            ))}
+            {features.length === 0 && (
+              <p className="text-xs text-zinc-500 col-span-full text-center py-4">No features configured for your account.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Package grid */}
+      {packages.length === 0 ? (
+        <div className="card-surface p-12 text-center">
+          <Briefcase className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+          <p className="text-sm text-zinc-300 font-medium">No packages available</p>
+          <p className="text-xs text-zinc-500 mt-1">Packages will appear here when your platform admin publishes them.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {packages.map((pkg) => (
+            <motion.div
+              key={pkg.id}
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.15 }}
+              className="card-surface card-interactive p-4 flex flex-col"
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div className="w-9 h-9 rounded-lg bg-accent-500/15 text-accent-500 flex items-center justify-center shrink-0">
+                  <Briefcase className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-mono text-zinc-500">v{pkg.version}</span>
+              </div>
+
+              <h4 className="text-sm font-semibold text-zinc-100 line-clamp-1">{pkg.name}</h4>
+              <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2 min-h-[32px]">
+                {pkg.description ?? 'Pre-composed package'}
+              </p>
+
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                <StatusBadge status={pkg.scope ?? 'FUNCTIONAL'} />
+                {pkg.industry && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-overlay text-zinc-400 border border-surface-border">
+                    {pkg.industry.name}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 mt-3 text-xs text-zinc-400">
+                <span>{pkg.suggestedDepartmentCount ?? pkg.departments?.length ?? 0} depts</span>
+                <span>{pkg.suggestedAgentCount ?? pkg.agents?.length ?? 0} agents</span>
+                <span>{pkg.features?.length ?? 0} features</span>
+              </div>
+
+              <ActionToolbar
+                className="mt-3 pt-3 border-t border-surface-border"
+                right={
+                  <>
+                    <ActionButton variant="ghost" size="sm" icon={<Eye className="w-3 h-3" />} onClick={() => router.push(`/marketplace?package=${pkg.id}`)}>
+                      View
+                    </ActionButton>
+                    <ActionButton variant="primary" size="sm" icon={<Plus className="w-3 h-3" />} onClick={() => setDeployPkg(pkg)}>
+                      Deploy
+                    </ActionButton>
+                  </>
+                }
+              />
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Deploy modal */}
+      <AnimatePresence>
+        {deployPkg && user && (
+          <DeployPackageModal
+            pkg={deployPkg}
+            user={user}
+            onClose={() => setDeployPkg(null)}
+            onSuccess={() => {
+              setDeployPkg(null);
+              void fetchAll();
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Deploy Package Modal ──────────────────────────────────────────────────
+function DeployPackageModal({
+  pkg,
+  user,
+  onClose,
+  onSuccess,
+}: {
+  pkg: TenantPackage;
+  user: NonNullable<ReturnType<typeof useTenantAuth>>;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [preview, setPreview] = useState<DeployPackagePreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [withAgents, setWithAgents] = useState(true);
+  const [authorityLevel, setAuthorityLevel] = useState<'AUTO' | 'RECOMMEND' | 'APPROVAL'>('AUTO');
+
+  const authUser = useAuthStore((s) => s.user);
+  const tenantId = authUser?.tenantId ?? '';
+
+  useEffect(() => {
+    if (!tenantId) return;
+    setPreviewLoading(true);
+    packagesService.deployPreview(pkg.id, tenantId, withAgents)
+      .then((p) => setPreview(p))
+      .catch(() => setPreview(null))
+      .finally(() => setPreviewLoading(false));
+  }, [pkg.id, tenantId, withAgents]);
+
+  const handleDeploy = async () => {
+    if (!tenantId) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await packagesService.deploy(pkg.id, tenantId, { withAgents, authorityLevel, idempotent: true });
+      onSuccess();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? 'Deploy failed';
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 z-50"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg card-surface p-6 shadow-creatio-lg"
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-zinc-100">Deploy Package</h3>
+            <p className="text-xs text-zinc-500 mt-0.5">{pkg.name}</p>
+          </div>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-100 transition">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {previewLoading ? (
+          <div className="py-8 text-center text-zinc-500 text-sm">
+            <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin" />
+            Checking capacity…
+          </div>
+        ) : preview ? (
+          <div className="space-y-4">
+            {/* Feasibility */}
+            {!preview.feasible && (
+              <div className="text-xs text-state-danger bg-state-danger/10 border border-state-danger/30 rounded-lg px-3 py-2">
+                Cannot deploy: {preview.blockers.join(', ')}
+              </div>
+            )}
+
+            {preview.feasible && (
+              <>
+                {/* Capacity */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="card-surface p-3 text-center border border-surface-border">
+                    <p className="text-xs text-zinc-500">Departments</p>
+                    <p className="text-lg font-bold text-zinc-100">{preview.capacity.departmentsUsed}/{preview.capacity.departmentsLimit}</p>
+                    <p className="text-[10px] text-zinc-500">{preview.capacity.departmentsRemaining} remaining</p>
+                  </div>
+                  <div className="card-surface p-3 text-center border border-surface-border">
+                    <p className="text-xs text-zinc-500">Agents</p>
+                    <p className="text-lg font-bold text-zinc-100">{preview.capacity.agentsUsed}/{preview.capacity.agentsLimit}</p>
+                    <p className="text-[10px] text-zinc-500">{preview.capacity.agentsRemaining} remaining</p>
+                  </div>
+                </div>
+
+                {/* Totals */}
+                <div className="flex items-center gap-4 text-xs text-zinc-400 bg-surface-overlay rounded-lg px-3 py-2">
+                  <span>{preview.totals.departments} departments</span>
+                  <span>{preview.totals.agents} agents</span>
+                  <span>{preview.totals.features} features</span>
+                </div>
+
+                {/* Options */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-xs text-zinc-300">
+                    <input type="checkbox" checked={withAgents} onChange={(e) => setWithAgents(e.target.checked)} className="rounded" />
+                    Deploy head agents
+                  </label>
+                  <div>
+                    <label className="text-xs font-medium text-zinc-400">Authority level</label>
+                    <select
+                      value={authorityLevel}
+                      onChange={(e) => setAuthorityLevel(e.target.value as typeof authorityLevel)}
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-200 focus:outline-none focus:border-accent-500"
+                    >
+                      <option value="AUTO">Auto (spawn all)</option>
+                      <option value="RECOMMEND">Recommend (admin validates)</option>
+                      <option value="APPROVAL">Requires approval</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {error && (
+              <div className="text-xs text-state-danger bg-state-danger/10 border border-state-danger/30 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            )}
+
+            <ActionToolbar
+              className="pt-3 border-t border-surface-border"
+              right={
+                <>
+                  <ActionButton variant="ghost" size="md" onClick={onClose} type="button">
+                    Cancel
+                  </ActionButton>
+                  <ActionButton
+                    variant="primary"
+                    size="md"
+                    loading={submitting}
+                    disabled={!preview.feasible || submitting}
+                    icon={<Plus className="w-3.5 h-3.5" />}
+                    onClick={handleDeploy}
+                  >
+                    Deploy Package
+                  </ActionButton>
+                </>
+              }
+            />
+          </div>
+        ) : (
+          <div className="py-8 text-center text-zinc-500 text-sm">
+            Could not load deployment preview. Capacity check unavailable.
+          </div>
+        )}
+      </motion.div>
+    </>
+  );
+}
+
+// ─── Tab 4: Connectors ───────────────────────────────────────────────────
 function ConnectorsTab() {
   const [providers, setProviders] = useState<string[]>([]);
   const [connectors, setConnectors] = useState<Connector[]>([]);

@@ -33,7 +33,7 @@ export function useAIChat(pageContext?: string): UseAIChatReturn {
   );
   const [isTyping, setTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   // Keep local messages in sync with service history
   const syncMessages = useCallback(() => {

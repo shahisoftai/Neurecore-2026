@@ -68,6 +68,46 @@ export interface PackagePreviewResult {
   categories: Record<string, number>;
 }
 
+export interface DeployPackagePreview {
+  packageId: string;
+  tenantId: string;
+  withAgents: boolean;
+  feasible: boolean;
+  blockers: string[];
+  totals: { departments: number; agents: number; features: number };
+  capacity: {
+    departmentsUsed: number;
+    departmentsLimit: number;
+    agentsUsed: number;
+    agentsLimit: number;
+    departmentsRemaining: number;
+    agentsRemaining: number;
+  };
+}
+
+export interface DeployPackageOptions {
+  withAgents?: boolean;
+  authorityLevel?: 'AUTO' | 'RECOMMEND' | 'APPROVAL';
+  idempotent?: boolean;
+}
+
+export interface DeployPackageItemRef {
+  id: string;
+  name: string;
+  templateId: string;
+  reused: boolean;
+}
+
+export interface DeployPackageOutcome {
+  package: { id: string; slug: string; name: string; version: number };
+  tenantId: string;
+  departments: { reused: number; created: number; items: DeployPackageItemRef[] };
+  agents: { skipped: number; created: number; items: DeployPackageItemRef[] };
+  authorityLevel: string;
+  idempotent: boolean;
+  deployedAt: string;
+}
+
 export const packagesService = {
   async list(opts: PoolListOptions = {}): Promise<PoolPage<Package>> {
     const params: Record<string, unknown> = {};
@@ -132,6 +172,34 @@ export const packagesService = {
     });
     return unwrapItem(res) as PackagePreviewResult;
   },
+
+  async deployPreview(
+    packageId: string,
+    tenantId: string,
+    withAgents?: boolean,
+    reason?: string,
+  ): Promise<DeployPackagePreview> {
+    const params: Record<string, unknown> = { packageId, tenantId };
+    if (withAgents !== undefined) params.withAgents = withAgents;
+    if (reason) params.reason = reason;
+    const res = await api.get('/packages/deploy/preview', { params });
+    return unwrapItem(res) as DeployPackagePreview;
+  },
+
+  async deploy(
+    packageId: string,
+    tenantId: string,
+    options: DeployPackageOptions = {},
+  ): Promise<DeployPackageOutcome> {
+    const res = await api.post('/packages/deploy', {
+      packageId,
+      tenantId,
+      withAgents: options.withAgents ?? true,
+      authorityLevel: options.authorityLevel ?? 'RECOMMEND',
+      idempotent: options.idempotent ?? true,
+    });
+    return unwrapItem(res) as DeployPackageOutcome;
+  },
 } satisfies IPoolAdminService<Package, CreatePackagePayload> & {
   updateComposition(id: string, body: PackageComposition): Promise<Package>;
   preview(
@@ -139,4 +207,15 @@ export const packagesService = {
     tierTemplateId: string,
     composition: PackageComposition,
   ): Promise<PackagePreviewResult>;
+  deployPreview(
+    packageId: string,
+    tenantId: string,
+    withAgents?: boolean,
+    reason?: string,
+  ): Promise<DeployPackagePreview>;
+  deploy(
+    packageId: string,
+    tenantId: string,
+    options?: DeployPackageOptions,
+  ): Promise<DeployPackageOutcome>;
 };

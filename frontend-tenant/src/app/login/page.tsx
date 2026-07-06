@@ -192,8 +192,9 @@ function LoginForm() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Email
-            <input
+              <input
               type="email"
+              autoComplete="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -202,8 +203,9 @@ function LoginForm() {
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
             Password
-            <input
+              <input
               type="password"
+              autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}

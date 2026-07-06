@@ -84,7 +84,7 @@ export class AgentPlannerService implements IAgentPlanner {
 
       const llm = new ChatOpenAI({
         apiKey,
-        model: 'gpt-4o-mini',
+        model: 'MiniMax-M2.7-highspeed',
         temperature: 0.2,
         maxTokens: 1024,
       });

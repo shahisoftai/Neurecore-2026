@@ -8,6 +8,7 @@
 // • Injects accessible aria-live announce region
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { initStoreEventBridge } from "@/core/infrastructure/socket/storeEventBridge";
 import { useKeyboardShortcuts } from "@/shared/hooks/useKeyboardShortcuts";
 import { useAuthStore } from "@/stores/authStore";
@@ -15,7 +16,11 @@ import { authService } from "@/services/auth.service";
 import { tokenManager } from "@/core/infrastructure/auth/TokenManager";
 import { connectSocket, disconnectSocket } from "@/services/socket";
 
+const UNAUTHENTICATED_ROUTES = ["/login", "/register", "/forgot-password"];
+
 export function AppInitializer() {
+  const pathname = usePathname();
+
   // Register 20 keyboard shortcuts globally
   useKeyboardShortcuts();
 
@@ -28,11 +33,12 @@ export function AppInitializer() {
   // Restore session: if a valid token exists in localStorage but the store has
   // no user (e.g. after a hard refresh that cleared in-memory state), re-fetch
   // the current user profile so protected pages don't flash-redirect to /login.
+  // Skip on unauthenticated routes to avoid unnecessary /me calls and socket
+  // connections while the user is on the login/register page.
   useEffect(() => {
     const unsubscribe = useAuthStore.persist.onFinishHydration(
       async (state) => {
-        // Clear stale tokens from previous environment/backend
-        // Tokens from a different backend (local vs Contabo) will cause 401 loop
+        if (UNAUTHENTICATED_ROUTES.includes(pathname)) return;
         const accessToken = tokenManager.getAccessToken();
         if (accessToken) {
           // Validate token format (basic check) - if malformed, clear it
@@ -52,11 +58,13 @@ export function AppInitializer() {
       },
     );
     return unsubscribe;
-  }, []);
+  }, [pathname]);
 
   // Socket lifecycle: connect when authenticated, disconnect on logout.
-  // Components may also call connectSocket() safely — it's idempotent.
+  // Skip on unauthenticated routes (login/register) to avoid connection spam.
   useEffect(() => {
+    if (UNAUTHENTICATED_ROUTES.includes(pathname)) return;
+
     // Connect if already authenticated at boot
     if (useAuthStore.getState().user) {
       connectSocket();
@@ -74,7 +82,7 @@ export function AppInitializer() {
     });
 
     return unsubscribe;
-  }, []);
+  }, [pathname]);
 
   // Accessible announce region (used by useAnnounce / AccessibilityService)
   return (

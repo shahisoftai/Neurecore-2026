@@ -10,6 +10,7 @@
 import type {
   AIProviderConfig,
   AIModel,
+  AIRoutingConfig,
   TenantTier,
   EmailConfig,
   EmailTemplate,
@@ -78,6 +79,11 @@ export interface IAISettingsService {
   testProviderConnection(
     id: string,
   ): Promise<{ success: boolean; latency: number; error?: string }>;
+
+  // AI Routing
+  getAIRouting(): Promise<AIRoutingConfig>;
+  updateAIRouting(config: Partial<AIRoutingConfig>): Promise<AIRoutingConfig>;
+  resetAIRouting(): Promise<AIRoutingConfig>;
 }
 
 // ============================================

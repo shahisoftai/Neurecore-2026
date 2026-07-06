@@ -63,7 +63,7 @@ const RAIL: RailItem[] = [
   { label: 'Activity',       href: '/service-desk?tab=activity', icon: Activity },
   { label: 'Connectors',     href: '/marketplace?tab=connectors', icon: Plug },
   { label: 'Settings',       href: '/intelligence?tab=settings', icon: Cog },
-  { label: 'AI Skills',      href: '/marketplace?tab=spawn', icon: Lightbulb },
+  { label: 'AI Skills',      href: '/marketplace?tab=templates', icon: Lightbulb },
 ];
 
 interface IconRailProps {

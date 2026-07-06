@@ -6,6 +6,7 @@ import type {
   AIProvider,
   AIProviderConfig,
   AIModel,
+  AIRoutingConfig,
 } from "@/types/settings.types";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -47,6 +48,7 @@ const DEFAULT_AI_SETTINGS = {
 export default function AISettingsPage() {
   const {
     providers,
+    routing,
     loading,
     error,
     refresh,
@@ -56,6 +58,8 @@ export default function AISettingsPage() {
     toggleProvider,
     setDefaultProvider,
     testConnection,
+    updateRouting,
+    resetRouting,
   } = useAISettings();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -374,6 +378,9 @@ export default function AISettingsPage() {
         </AnimatePresence>
       </div>
 
+      {/* AI Model Routing Section */}
+      <AIRoutingSection />
+
       {/* Create/Edit Modal */}
       <AnimatePresence>
         {modalOpen && (
@@ -596,6 +603,117 @@ export default function AISettingsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+const TASK_TYPES = [
+  { key: 'planning', label: 'Planning', description: 'Task decomposition and planning' },
+  { key: 'execution', label: 'Execution', description: 'Agent task execution' },
+  { key: 'evaluation', label: 'Evaluation', description: 'Task result evaluation' },
+  { key: 'conversation', label: 'Conversation', description: 'Chat and Q&A interactions' },
+  { key: 'coding', label: 'Coding', description: 'Code generation and modification' },
+  { key: 'reasoning', label: 'Reasoning', description: 'Complex reasoning tasks' },
+] as const;
+
+const AVAILABLE_MODELS = [
+  { id: 'MiniMax-M2.7-highspeed', name: 'MiniMax M2.7 Highspeed', provider: 'minimax' },
+  { id: 'MiniMax-M2.5', name: 'MiniMax M2.5', provider: 'minimax' },
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai' },
+  { id: 'deepseek-chat', name: 'DeepSeek V3', provider: 'deepseek' },
+  { id: 'deepseek-reasoner', name: 'DeepSeek R1', provider: 'deepseek' },
+  { id: 'claude-3.5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
+];
+
+function AIRoutingSection() {
+  const { routing, updateRouting, resetRouting } = useAISettings();
+  const [saving, setSaving] = useState(false);
+  const [localRouting, setLocalRouting] = useState<AIRoutingConfig | null>(routing);
+
+  useState(() => {
+    if (routing) {
+      setLocalRouting(routing);
+    }
+  });
+
+  if (!localRouting) {
+    return null;
+  }
+
+  async function handleSave() {
+    if (!localRouting) return;
+    setSaving(true);
+    try {
+      await updateRouting(localRouting);
+      toast.success('AI routing settings saved');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleReset() {
+    try {
+      await resetRouting();
+      toast.success('AI routing reset to defaults');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to reset');
+    }
+  }
+
+  function handleModelChange(taskType: keyof AIRoutingConfig, modelId: string) {
+    setLocalRouting(prev => prev ? { ...prev, [taskType]: modelId } : null);
+  }
+
+  return (
+    <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-zinc-100">AI Model Routing</h3>
+          <p className="text-sm text-zinc-500 mt-1">
+            Configure which AI model to use for each task type
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleReset}
+            className="px-3 py-2 rounded-lg border border-zinc-700 text-sm text-zinc-300 hover:bg-zinc-800 transition"
+          >
+            Reset to Default
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save Routing'}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-4">
+        {TASK_TYPES.map(({ key, label, description }) => (
+          <div key={key} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+            <div className="flex-1">
+              <div className="font-medium text-zinc-200">{label}</div>
+              <div className="text-xs text-zinc-500">{description}</div>
+            </div>
+            <select
+              value={localRouting[key]}
+              onChange={(e) => handleModelChange(key, e.target.value)}
+              className="rounded-lg border border-zinc-600 bg-zinc-700 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 min-w-[200px]"
+            >
+              {AVAILABLE_MODELS.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name} ({model.provider})
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

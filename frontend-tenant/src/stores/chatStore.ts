@@ -1,6 +1,7 @@
 // ─── Chat Store (Tenant Portal) ───────────────────────────────────────────────
 // S — Single Responsibility: conversational message history only
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { ConversationMessage } from '@/types/chat.types';
 
 const MAX_MESSAGES = 100;
@@ -18,27 +19,38 @@ interface ChatState {
   setConversationId: (id: string) => void;
 }
 
-export const useChatStore = create<ChatState>()((set) => ({
-  open: false,
-  messages: [],
-  conversationId: null,
+export const useChatStore = create<ChatState>()(
+  persist(
+    (set) => ({
+      open: false,
+      messages: [],
+      conversationId: null,
 
-  setOpen: (open) => set({ open }),
-  toggleOpen: () => set((s) => ({ open: !s.open })),
+      setOpen: (open) => set({ open }),
+      toggleOpen: () => set((s) => ({ open: !s.open })),
 
-  addMessage: (msg) =>
-    set((s) => ({
-      messages: [...s.messages.slice(-(MAX_MESSAGES - 1)), msg],
-    })),
+      addMessage: (msg) =>
+        set((s) => ({
+          messages: [...s.messages.slice(-(MAX_MESSAGES - 1)), msg],
+        })),
 
-  updateStreamingMessage: (id, content, done = false) =>
-    set((s) => ({
-      messages: s.messages.map((m) =>
-        m.id === id ? { ...m, content, streaming: !done } : m,
-      ),
-    })),
+      updateStreamingMessage: (id, content, done = false) =>
+        set((s) => ({
+          messages: s.messages.map((m) =>
+            m.id === id ? { ...m, content, streaming: !done } : m,
+          ),
+        })),
 
-  clearHistory: () => set({ messages: [], conversationId: null }),
+      clearHistory: () => set({ messages: [], conversationId: null }),
 
-  setConversationId: (conversationId) => set({ conversationId }),
-}));
+      setConversationId: (conversationId) => set({ conversationId }),
+    }),
+    {
+      name: 'chat-store',
+      partialize: (state) => ({
+        messages: state.messages.slice(-MAX_MESSAGES),
+        conversationId: state.conversationId,
+      }),
+    },
+  ),
+);

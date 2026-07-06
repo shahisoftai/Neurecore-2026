@@ -6,6 +6,7 @@
  * Surfaces DepartmentTemplate entries that are not legacy tier rows.
  * Existing /dept-templates page remains as a 302 redirect (see
  * /dept-templates/page.tsx).
+ * Now includes "Deploy Dept" quick action per template.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -18,10 +19,18 @@ import { PoolPagination } from '@/components/pool/PoolPagination';
 import { PoolEmptyState } from '@/components/pool/PoolEmptyState';
 import { PoolConfirmDeleteDialog } from '@/components/pool/PoolConfirmDeleteDialog';
 import {
+  DeployToTenantModal,
+  type TenantOption,
+  type DeptDeployConfig,
+} from '@/components/pool/DeployToTenantModal';
+import {
   departmentsPoolService,
   type DepartmentPoolEntry,
   type CreateDepartmentPoolPayload,
 } from '@/services/departmentsPool.service';
+import { deptTemplatesService } from '@/services/deptTemplates.service';
+import api from '@/services/api';
+import { unwrapList } from '@/services/unwrap';
 
 export default function DepartmentsPoolPage() {
   const user = useAdminAuth();
@@ -39,7 +48,45 @@ export default function DepartmentsPoolPage() {
 
   const [deleting, setDeleting] = useState<DepartmentPoolEntry | null>(null);
 
+  // Deploy modal
+  const [deployTarget, setDeployTarget] = useState<DepartmentPoolEntry | null>(null);
+  const [deployTenants, setDeployTenants] = useState<TenantOption[]>([]);
+  const [deployBusy, setDeployBusy] = useState(false);
+  const [deployError, setDeployError] = useState<string | null>(null);
+  const [deployResult, setDeployResult] = useState<{ label: string } | null>(null);
+
   const canEdit = user?.role === 'SUPER_ADMIN';
+
+  async function openDeployModal(item: DepartmentPoolEntry) {
+    setDeployTarget(item);
+    setDeployError(null);
+    setDeployResult(null);
+    try {
+      const res = await api.get('/tenants', { params: { limit: 200 } });
+      const list = unwrapList(res);
+      setDeployTenants((list.items ?? []) as TenantOption[]);
+    } catch {
+      setDeployTenants([]);
+    }
+  }
+
+  async function handleDeployDept(tenantId: string, config: DeptDeployConfig) {
+    if (!deployTarget) return;
+    setDeployBusy(true);
+    setDeployError(null);
+    try {
+      const result = await deptTemplatesService.deploySingleDepartment(
+        tenantId,
+        deployTarget.id,
+        config.itemIndex,
+      );
+      setDeployResult({ label: `Deployed "${result.name}" department to tenant.` });
+    } catch (err: unknown) {
+      setDeployError(err instanceof Error ? err.message : 'Deploy failed');
+    } finally {
+      setDeployBusy(false);
+    }
+  }
 
   const categories = useMemo(() => {
     const set = new Set<string>(['ALL', 'general', 'startup', 'scaleup', 'ecommerce', 'saas', 'enterprise']);
@@ -134,6 +181,12 @@ export default function DepartmentsPoolPage() {
 
                   {canEdit && (
                     <div className="flex gap-2 mt-auto pt-2 border-t border-surface-border/50">
+                      <button
+                        onClick={() => openDeployModal(tmpl)}
+                        className="flex-1 py-1.5 rounded-lg text-xs border border-indigo-500/40 text-indigo-300 hover:text-indigo-100 hover:border-indigo-400 transition"
+                      >
+                        Deploy Dept
+                      </button>
                       <a
                         href="/dept-templates"
                         className="flex-1 text-center py-1.5 rounded-lg text-xs border border-surface-border text-zinc-400 hover:text-zinc-200 transition"
@@ -186,6 +239,19 @@ export default function DepartmentsPoolPage() {
           setDeleting(null);
           refresh();
         }}
+      />
+
+      <DeployToTenantModal
+        open={Boolean(deployTarget)}
+        onClose={() => setDeployTarget(null)}
+        deployType="department"
+        itemName={deployTarget?.name ?? ''}
+        itemDescription={`${deployTarget?.structure?.length ?? 0} structure items · ${deployTarget?.category ?? 'general'}`}
+        tenants={deployTenants}
+        busy={deployBusy}
+        error={deployError}
+        result={deployResult}
+        onDeploy={(tenantId, config) => handleDeployDept(tenantId, config as DeptDeployConfig)}
       />
     </AdminShell>
   );

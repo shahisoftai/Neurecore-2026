@@ -35,6 +35,8 @@ import {
   DollarSign,
   Sparkles,
   ExternalLink,
+  ListTodo,
+  Repeat,
 } from 'lucide-react';
 
 import { useTenantAuth } from '@/hooks/useTenantAuth';
@@ -44,9 +46,18 @@ import { StatusBadge } from '@/components/creatio/StatusBadge';
 import { QuickAction } from '@/components/creatio/QuickAction';
 import api from '@/services/api';
 import { unwrapArrayOrEmpty } from '@/services/unwrap';
+import { departmentTemplatesService, type DepartmentTemplate } from '@/services/department-templates.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────
-type RosterTab = 'departments' | 'org-chart' | 'templates';
+type RosterTab =
+  | 'departments'
+  | 'org-chart'
+  | 'templates'
+  | 'tasks'
+  | 'workflows'
+  | 'routines'
+  | 'goals'
+  | 'projects';
 
 interface Department {
   id: string;
@@ -82,21 +93,37 @@ interface TemplatePack {
 const TABS: { id: RosterTab; label: string; icon: typeof Building2 }[] = [
   { id: 'departments', label: 'Departments', icon: Building2 },
   { id: 'org-chart',   label: 'Org Chart',   icon: GitBranch },
+  { id: 'tasks',       label: 'Tasks',       icon: ListTodo },
+  { id: 'workflows',   label: 'Workflows',   icon: GitBranch },
+  { id: 'routines',    label: 'Routines',    icon: Repeat },
+  { id: 'goals',       label: 'Goals',       icon: Target },
+  { id: 'projects',    label: 'Projects',    icon: Briefcase },
   { id: 'templates',   label: 'Templates',   icon: Layers },
 ];
 
-// Static template pack data — matches seeded packs in backend
-const TEMPLATE_PACKS: TemplatePack[] = [
-  { slug: 'startup-lean',     name: 'Startup Lean',     description: 'Minimal structure for early-stage startups', category: 'Lean',     departmentCount: 4, agentCount: 12,  icon: Sparkles,    accent: 'accent' },
-  { slug: 'scaleup-business', name: 'Scale-Up Business', description: 'Mid-stage growth with specialized teams',   category: 'Growth',   departmentCount: 7, agentCount: 32,  icon: Briefcase,   accent: 'success' },
-  { slug: 'ecommerce',        name: 'E-Commerce',       description: 'Online retail with operations & support',   category: 'Retail',   departmentCount: 7, agentCount: 28,  icon: Wallet,      accent: 'warning' },
-  { slug: 'saas-company',     name: 'SaaS Company',     description: 'Software-as-a-service with engineering core', category: 'SaaS',    departmentCount: 8, agentCount: 36,  icon: Code,         accent: 'info' },
-  { slug: 'enterprise-corp',  name: 'Enterprise Corp',  description: 'Large org with full department structure',  category: 'Enterprise', departmentCount: 9, agentCount: 52,  icon: Building2,    accent: 'strategy' },
-  { slug: 'tier-starter',     name: 'Tier: Starter',     description: 'Base starter template (8 depts)',            category: 'Tier',     departmentCount: 5, agentCount: 16,  icon: Activity,     accent: 'accent' },
-  { slug: 'tier-growth',      name: 'Tier: Growth',      description: 'Growth tier template (12 depts)',            category: 'Tier',     departmentCount: 7, agentCount: 26,  icon: TrendingUp,   accent: 'success' },
-  { slug: 'tier-enterprise',  name: 'Tier: Enterprise',  description: 'Enterprise tier template (18 depts)',         category: 'Tier',     departmentCount: 9, agentCount: 42,  icon: ShieldCheck,  accent: 'info' },
-  { slug: 'tier-autonomous', name: 'Tier: Autonomous',  description: 'AI-first autonomous org (24 depts)',          category: 'Tier',     departmentCount: 11, agentCount: 58, icon: Sparkles,    accent: 'warning' },
-];
+// Template pack icon/accent rotation
+const PACK_ACCENTS: Array<TemplatePack['accent']> = ['accent', 'success', 'warning', 'info', 'strategy', 'danger'];
+const PACK_ICONS: Array<typeof Sparkles> = [Sparkles, Briefcase, Wallet, Code, Building2, Activity, TrendingUp, ShieldCheck];
+
+function packIcon(index: number): typeof Sparkles {
+  return PACK_ICONS[index % PACK_ICONS.length];
+}
+function packAccent(index: number): TemplatePack['accent'] {
+  return PACK_ACCENTS[index % PACK_ACCENTS.length];
+}
+
+function templateToPack(t: DepartmentTemplate, index: number): TemplatePack {
+  return {
+    slug: t.slug,
+    name: t.name,
+    description: t.description ?? 'Department template',
+    category: t.category ?? 'General',
+    departmentCount: t.structure?.length ?? 0,
+    agentCount: t.structure?.filter((s) => s.headAgentType).length ?? 0,
+    icon: packIcon(index),
+    accent: packAccent(index),
+  };
+}
 
 // Department accent rotation
 const DEPT_ACCENTS = ['accent', 'success', 'warning', 'info', 'strategy'] as const;
@@ -180,6 +207,7 @@ export default function DepartmentsRosterPage() {
             {activeTab === 'departments' && <DepartmentsTab />}
             {activeTab === 'org-chart' && <OrgChartTab />}
             {activeTab === 'templates' && <TemplatesTab />}
+            {(activeTab === 'tasks' || activeTab === 'workflows' || activeTab === 'routines' || activeTab === 'goals' || activeTab === 'projects') && <WorkItemsTab kind={activeTab} />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -533,6 +561,28 @@ function buildTree(flat: Department[]): TreeNode[] {
 
 // ─── Tab 3: Templates ──────────────────────────────────────────────────────
 function TemplatesTab() {
+  const [templates, setTemplates] = useState<DepartmentTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTemplates = useCallback(async () => {
+    setLoading(true);
+    try {
+      const list = await departmentTemplatesService.list();
+      setTemplates(Array.isArray(list) ? list : []);
+    } catch {
+      setTemplates([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void fetchTemplates(); }, [fetchTemplates]);
+
+  const packs: TemplatePack[] = useMemo(
+    () => templates.map((t, i) => templateToPack(t, i)),
+    [templates],
+  );
+
   return (
     <div className="space-y-4">
       {/* Hero banner */}
@@ -542,101 +592,118 @@ function TemplatesTab() {
           <div>
             <h2 className="text-base font-semibold text-zinc-100">Department template library</h2>
             <p className="text-xs text-zinc-400 mt-0.5 max-w-2xl">
-              9 pre-built org templates ready to deploy. Each pack includes a full department tree with head agents.
+              {templates.length} pre-built org templates ready to deploy. Each pack includes a full department tree with head agents.
               Contact your platform admin to deploy — tenants can't deploy templates themselves yet.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Quick categories */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <QuickAction
-          label="Lean startups"
-          description="For early-stage teams"
-          icon={<Sparkles className="w-5 h-5" />}
-          accent="accent"
-          href="#startup-lean"
-        />
-        <QuickAction
-          label="E-Commerce"
-          description="Online retail"
-          icon={<Wallet className="w-5 h-5" />}
-          accent="warning"
-          href="#ecommerce"
-        />
-        <QuickAction
-          label="SaaS"
-          description="Software companies"
-          icon={<Code className="w-5 h-5" />}
-          accent="info"
-          href="#saas-company"
-        />
-        <QuickAction
-          label="Enterprise"
-          description="Full corporate structure"
-          icon={<ShieldCheck className="w-5 h-5" />}
-          accent="accent"
-          href="#enterprise-corp"
-        />
-      </div>
+      {/* Loading state */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-48 rounded-xl bg-surface-raised border border-surface-border animate-pulse" />
+          ))}
+        </div>
+      ) : packs.length === 0 ? (
+        <div className="card-surface p-12 text-center">
+          <Layers className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+          <p className="text-sm text-zinc-300 font-medium">No templates available</p>
+          <p className="text-xs text-zinc-500 mt-1">Check back later or contact your platform admin.</p>
+        </div>
+      ) : (
+        <>
+          {/* Quick categories */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <QuickAction
+              label="Lean startups"
+              description="For early-stage teams"
+              icon={<Sparkles className="w-5 h-5" />}
+              accent="accent"
+              href="#startup-lean"
+            />
+            <QuickAction
+              label="E-Commerce"
+              description="Online retail"
+              icon={<Wallet className="w-5 h-5" />}
+              accent="warning"
+              href="#ecommerce"
+            />
+            <QuickAction
+              label="SaaS"
+              description="Software companies"
+              icon={<Code className="w-5 h-5" />}
+              accent="info"
+              href="#saas-company"
+            />
+            <QuickAction
+              label="Enterprise"
+              description="Full corporate structure"
+              icon={<ShieldCheck className="w-5 h-5" />}
+              accent="accent"
+              href="#enterprise-corp"
+            />
+          </div>
 
-      {/* Template grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {TEMPLATE_PACKS.map((pack) => {
-          const Icon = pack.icon;
-          return (
-            <motion.div
-              key={pack.slug}
-              id={pack.slug}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="card-surface p-5 flex flex-col"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                  pack.accent === 'accent'  ? 'bg-accent-500/15 text-accent-500' :
-                  pack.accent === 'success' ? 'bg-state-success/15 text-state-success' :
-                  pack.accent === 'warning' ? 'bg-state-warning/15 text-state-warning' :
-                  pack.accent === 'info'    ? 'bg-state-info/15 text-state-info' :
-                  pack.accent === 'danger'  ? 'bg-state-danger/15 text-state-danger' :
-                                              'bg-status-strategy/15 text-status-strategy'
-                }`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-surface-overlay text-zinc-400 border border-surface-border">
-                  {pack.category}
-                </span>
-              </div>
+          {/* Template grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {packs.map((pack) => {
+              const Icon = pack.icon;
+              return (
+                <motion.div
+                  key={pack.slug}
+                  id={pack.slug}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="card-surface p-5 flex flex-col"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                      pack.accent === 'accent'  ? 'bg-accent-500/15 text-accent-500' :
+                      pack.accent === 'success' ? 'bg-state-success/15 text-state-success' :
+                      pack.accent === 'warning' ? 'bg-state-warning/15 text-state-warning' :
+                      pack.accent === 'info'    ? 'bg-state-info/15 text-state-info' :
+                      pack.accent === 'danger'  ? 'bg-state-danger/15 text-state-danger' :
+                                                  'bg-status-strategy/15 text-status-strategy'
+                    }`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-surface-overlay text-zinc-400 border border-surface-border">
+                      {pack.category}
+                    </span>
+                  </div>
 
-              <h3 className="text-sm font-semibold text-zinc-100">{pack.name}</h3>
-              <p className="text-xs text-zinc-500 mt-1 line-clamp-2 min-h-[32px]">
-                {pack.description}
-              </p>
+                  <h3 className="text-sm font-semibold text-zinc-100">{pack.name}</h3>
+                  <p className="text-xs text-zinc-500 mt-1 line-clamp-2 min-h-[32px]">
+                    {pack.description}
+                  </p>
 
-              <div className="flex items-center gap-3 mt-3 pt-3 border-t border-surface-border">
-                <span className="text-xs text-zinc-400 flex items-center gap-1">
-                  <Building2 className="w-3 h-3" />
-                  {pack.departmentCount} depts
-                </span>
-                <span className="text-xs text-zinc-400 flex items-center gap-1">
-                  <Users className="w-3 h-3" />
-                  {pack.agentCount} agents
-                </span>
-              </div>
+                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-surface-border">
+                    <span className="text-xs text-zinc-400 flex items-center gap-1">
+                      <Building2 className="w-3 h-3" />
+                      {pack.departmentCount} depts
+                    </span>
+                    <span className="text-xs text-zinc-400 flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      {pack.agentCount} agents
+                    </span>
+                  </div>
 
-              <div className="mt-3 pt-3 border-t border-surface-border">
-                <p className="text-[11px] text-zinc-500 flex items-center gap-1">
-                  <Headphones className="w-3 h-3" />
-                  Contact admin to deploy
-                  <ExternalLink className="w-3 h-3 ml-auto" />
-                </p>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+                  <div className="mt-3 pt-3 border-t border-surface-border">
+                    <p className="text-[11px] text-zinc-500 flex items-center gap-1">
+                      <Headphones className="w-3 h-3" />
+                      Contact admin to deploy
+                      <ExternalLink className="w-3 h-3 ml-auto" />
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Bottom note */}
       <div className="card-surface p-4 bg-state-info/5 border-state-info/30 text-center">
@@ -644,6 +711,48 @@ function TemplatesTab() {
           <span className="text-state-info font-medium">Tip:</span> Each template pack is a complete org tree. After deployment, head agents
           spawn automatically and you can customize within each department's workspace.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Work items views: tasks / workflows / routines / goals / projects ─────
+const WORK_ITEM_KIND: Record<'tasks' | 'workflows' | 'routines' | 'goals' | 'projects', { title: string; icon: typeof ListTodo; description: string; empty: string; accent: string }> = {
+  tasks:      { title: 'Tasks',      icon: ListTodo, description: 'Open and recent tasks assigned across your departments.',           empty: 'No tasks yet. Tasks are created from department workspaces.',                    accent: 'text-accent-500' },
+  workflows:  { title: 'Workflows',  icon: GitBranch, description: 'Multi-step automations owned by your departments.',                 empty: 'No workflows yet. Build them from any department workspace.',                   accent: 'text-status-info' },
+  routines:   { title: 'Routines',   icon: Repeat,   description: 'Scheduled jobs running on cron or triggers.',                       empty: 'No routines yet. Routines are scheduled automations in a department workspace.', accent: 'text-status-warning' },
+  goals:      { title: 'Goals',      icon: Target,   description: 'OKRs and outcomes tracked across the organisation.',                empty: 'No goals yet. Define outcomes in any department workspace.',                     accent: 'text-status-strategy' },
+  projects:   { title: 'Projects',   icon: Briefcase, description: 'Cross-department initiatives and timelines.',                       empty: 'No projects yet. Projects span multiple departments.',                            accent: 'text-status-success' },
+};
+
+function WorkItemsTab({ kind }: { kind: 'tasks' | 'workflows' | 'routines' | 'goals' | 'projects' }) {
+  const cfg = WORK_ITEM_KIND[kind];
+  const Icon = cfg.icon;
+  return (
+    <div className="space-y-4">
+      <div className="card-surface p-5 bg-gradient-to-r from-surface-overlay via-surface-raised to-transparent border-surface-border">
+        <div className="flex items-center gap-3">
+          <Icon className={`w-7 h-7 ${cfg.accent}`} />
+          <div>
+            <h2 className="text-base font-semibold text-zinc-100">{cfg.title}</h2>
+            <p className="text-xs text-zinc-400 mt-0.5 max-w-2xl">{cfg.description}</p>
+          </div>
+        </div>
+      </div>
+      <div className="card-surface p-12 flex flex-col items-center justify-center text-center gap-3 border-dashed">
+        <Icon className={`w-12 h-12 ${cfg.accent} opacity-40`} />
+        <p className="text-sm font-medium text-zinc-200">{cfg.empty}</p>
+        <p className="text-xs text-zinc-500 max-w-md">
+          Open any department from the <span className="text-zinc-300">Departments</span> tab and manage its{' '}
+          {cfg.title.toLowerCase()} from its workspace.
+        </p>
+        <a
+          href="/departments?tab=departments"
+          className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-surface-overlay hover:bg-surface-border text-zinc-200 transition"
+        >
+          Go to Departments
+          <ChevronRight className="w-3 h-3" />
+        </a>
       </div>
     </div>
   );

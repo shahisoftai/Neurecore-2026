@@ -21,7 +21,7 @@
  * sidebar (preserved below as LEGACY).
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { authService } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
@@ -33,7 +33,10 @@ import { InspectorPanel } from '@/components/layout/InspectorPanel';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { OrgTree } from '@/components/sidebar/OrgTree';
 import { ConversationPanel } from '@/components/chat/ConversationPanel';
+import { UnifiedChatPanel } from '@/shared/components/chat/UnifiedChatPanel';
+import { chatService, slashCommands, tenantChatConfig } from '@/core/services/chat/chat.factory';
 import { ThingsToDoPanel } from '@/components/checklist/ThingsToDoPanel';
+import { MobileNav, MobileNavToggle } from '@/components/layout/MobileNav';
 import { useActivityStream } from '@/hooks/useActivityStream';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { registerTenantCommands } from '@/services/register-commands';
@@ -76,7 +79,7 @@ export default function TenantShell({
   );
 }
 
-// ─── New shell (Phase 3) ─────────────────────────────────────────────────────
+// ─── New shell (Phase 3 + Phase 7 mobile responsiveness) ──────────────────
 function NewShell({
   user,
   pathname,
@@ -88,6 +91,9 @@ function NewShell({
   onLogout: () => void;
   children: React.ReactNode;
 }) {
+  // Phase 7: Mobile nav state
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   // Derive current dept name from URL if on workspace
   const deptMatch = pathname.match(/^\/departments\/([^/]+)\/workspace/);
   const departmentName = deptMatch ? decodeURIComponent(deptMatch[1]) : undefined;
@@ -97,19 +103,39 @@ function NewShell({
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface text-zinc-100">
-      <IconRail />
+      {/* Phase 7: IconRail hidden on mobile (<md), shown on desktop */}
+      <div className="hidden md:block shrink-0">
+        <IconRail />
+      </div>
+
+      {/* Phase 7: Mobile nav drawer */}
+      <MobileNav
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+      >
+        <OrgTree />
+      </MobileNav>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar title={pageTitle} departmentName={departmentName} />
+        {/* Phase 7: Pass mobile nav toggle to TopBar */}
+        <TopBar
+          title={pageTitle}
+          departmentName={departmentName}
+          onMobileNavToggle={() => setMobileNavOpen(!mobileNavOpen)}
+        />
 
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        {/* Phase 7: Responsive padding (reduced on mobile) */}
+        <main className="flex-1 overflow-auto px-3 py-4 md:p-6">
+          {children}
+        </main>
 
         <ActivityStream />
       </div>
 
       {/* WS-2.1: Progressive onboarding — Things to do panel (PR-1: floating top-right). */}
-      <div className="fixed top-20 right-6 z-30 w-full max-w-md pointer-events-none">
-        <div className="pointer-events-auto">
+      {/* Phase 7: Hidden on mobile to prevent clutter */}
+      <div className="hidden lg:fixed lg:top-20 lg:right-6 z-30 w-full lg:max-w-md lg:pointer-events-none">
+        <div className="lg:pointer-events-auto">
           <ThingsToDoPanel />
         </div>
       </div>
@@ -117,6 +143,11 @@ function NewShell({
       <InspectorPanel />
       <CommandPalette />
       <ConversationPanel />
+      <UnifiedChatPanel
+        chatService={chatService}
+        slashCommands={slashCommands}
+        config={tenantChatConfig}
+      />
     </div>
   );
 }
@@ -174,9 +205,8 @@ function LegacyShell({
               <a
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition ${
-                  active ? 'bg-violet-600 text-white font-medium' : 'text-zinc-400 hover:bg-surface-overlay hover:text-white'
-                }`}
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition ${active ? 'bg-violet-600 text-white font-medium' : 'text-zinc-400 hover:bg-surface-overlay hover:text-white'
+                  }`}
               >
                 <span className="text-xs opacity-70">{item.icon}</span>
                 {item.label}
@@ -218,6 +248,11 @@ function LegacyShell({
       <InspectorPanel />
       <CommandPalette />
       <ConversationPanel />
+      <UnifiedChatPanel
+        chatService={chatService}
+        slashCommands={slashCommands}
+        config={tenantChatConfig}
+      />
     </div>
   );
 }

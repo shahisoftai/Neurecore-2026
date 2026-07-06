@@ -33,16 +33,19 @@ interface IChatService {
 const chatService: IChatService = {
   async sendMessage(req: ChatRequest): Promise<ChatResponse> {
     try {
-      const res = await api.post<{ data: ChatResponse }>('/chat/messages', req);
-      const backendData = (res as any).data?.data;
-      // Backend /api/v1/chat/messages returns
-      //   { status, data: { reply, conversationId, tokens, model, provider }, meta }
+      const res = await api.post<{ data: { reply: string; conversationId: string; tokens?: { input: number; output: number } } }>('/chat/messages', {
+        message: req.query,
+        conversationId: req.conversationId,
+        context: req.context,
+      });
+      const body = (res as { data?: { status?: string; data?: { reply?: string; conversationId?: string; tokens?: { input: number; output: number } } } }).data;
+      const backendData = body?.data;
       if (backendData && typeof backendData.reply === 'string') {
         return {
-          id: makeId(),
+          id: backendData.conversationId ?? makeId(),
           type: 'info',
           message: backendData.reply,
-          tokens: { input: 0, output: 0 },
+          tokens: backendData.tokens ?? { input: 0, output: 0 },
           timestamp: new Date().toISOString(),
         };
       }
@@ -57,7 +60,8 @@ const chatService: IChatService = {
       const res = await api.get<{ data: { data: ConversationMessage[] } }>(
         `/chat/history?limit=${limit}`,
       );
-      return (res as any).data?.data?.data ?? [];
+      const body = (res as { data?: { data?: { data?: ConversationMessage[] } } }).data;
+      return body?.data?.data ?? [];
     } catch {
       return [];
     }
@@ -70,7 +74,6 @@ const chatService: IChatService = {
   },
 
   async getSuggestions(query: string): Promise<string[]> {
-    // First check slash commands for instant offline suggestions
     const slash = SLASH_COMMANDS.find((s) => query.startsWith(s.trigger));
     if (slash) return slash.suggestions;
 
@@ -79,7 +82,8 @@ const chatService: IChatService = {
         '/chat/suggestions',
         { query },
       );
-      return (res as any).data?.data?.suggestions ?? [];
+      const body = (res as { data?: { data?: { suggestions?: string[] } } }).data;
+      return body?.data?.suggestions ?? [];
     } catch {
       return [];
     }

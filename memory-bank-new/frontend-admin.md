@@ -1,6 +1,6 @@
 # Frontend-Admin (NeureCore admin console)
 
-**Last verified:** 2026-07-05 19:50 PKT (post-FIX-016 auth audit: cookie-only auth verified, admin login works, same-origin API calls via OLS, CSRF + refresh exempt guards added)
+**Last verified:** 2026-07-07 00:15 PKT (FIX-021/022/023 deployed: GlobalExceptionFilter fix provides real validation error messages to all admin pages; Packages edit page preview panel now updates correctly with live selection; Tiers tagline/status fields no longer silently stripped)
 **Live URL:** `https://cc.neurecore.com`
 **Internal port:** 3020
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-admin/`

@@ -116,8 +116,17 @@ export default function IntelligencePage() {
   // Read tab from URL
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const t = new URL(window.location.href).searchParams.get('tab') as IntelTab | null;
+    const url = new URL(window.location.href);
+    const t = url.searchParams.get('tab') as IntelTab | null;
     if (t && TABS.find((tab) => tab.id === t)) setActiveTab(t);
+
+    // Handle aiTab=routing → scroll to AI Routing section
+    const aiTab = url.searchParams.get('aiTab');
+    if (t === 'settings' && aiTab === 'routing') {
+      setTimeout(() => {
+        document.getElementById('ai-routing-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
   }, []);
 
   const setTab = (t: IntelTab) => {
@@ -831,6 +840,9 @@ function SettingsTab() {
           );
         })}
       </div>
+
+      {/* AI Model Routing */}
+      <AIRoutingSection />
     </div>
   );
 }
@@ -844,6 +856,141 @@ function ChartCard({ title, icon, children }: { title: string; icon: React.React
         {title}
       </h3>
       {children}
+    </div>
+  );
+}
+
+// ─── AI Model Routing Section ────────────────────────────────────────────────────
+const TASK_TYPES = [
+  { key: 'planning', label: 'Planning', description: 'Task decomposition and planning' },
+  { key: 'execution', label: 'Execution', description: 'Agent task execution' },
+  { key: 'evaluation', label: 'Evaluation', description: 'Task result evaluation' },
+  { key: 'conversation', label: 'Conversation', description: 'Chat and Q&A interactions' },
+  { key: 'coding', label: 'Coding', description: 'Code generation and modification' },
+  { key: 'reasoning', label: 'Reasoning', description: 'Complex reasoning tasks' },
+] as const;
+
+const AVAILABLE_MODELS = [
+  { id: 'MiniMax-M2.7-highspeed', name: 'MiniMax M2.7 Highspeed', provider: 'minimax' },
+  { id: 'MiniMax-M2.5', name: 'MiniMax M2.5', provider: 'minimax' },
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai' },
+  { id: 'deepseek-chat', name: 'DeepSeek V3', provider: 'deepseek' },
+  { id: 'deepseek-reasoner', name: 'DeepSeek R1', provider: 'deepseek' },
+  { id: 'claude-3.5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
+];
+
+import api from '@/services/api';
+import type { AIRoutingConfig } from '@/types/settings.types';
+import { DEFAULT_AI_ROUTING } from '@/types/settings.types';
+
+function AIRoutingSection() {
+  const [routing, setRouting] = useState<AIRoutingConfig>(DEFAULT_AI_ROUTING);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    async function fetchRouting() {
+      try {
+        const response = await api.get<AIRoutingConfig>('/settings/ai/routing');
+        setRouting(response.data);
+      } catch (err) {
+        console.error('Failed to fetch AI routing:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    void fetchRouting();
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await api.patch('/settings/ai/routing', routing);
+      setToast({ message: 'AI routing settings saved', type: 'success' });
+    } catch (err) {
+      setToast({ message: 'Failed to save routing settings', type: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleReset() {
+    try {
+      const response = await api.post<AIRoutingConfig>('/settings/ai/routing/reset');
+      setRouting(response.data);
+      setToast({ message: 'AI routing reset to defaults', type: 'success' });
+    } catch (err) {
+      setToast({ message: 'Failed to reset routing', type: 'error' });
+    }
+  }
+
+  function handleModelChange(taskType: keyof AIRoutingConfig, modelId: string) {
+    setRouting(prev => ({ ...prev, [taskType]: modelId }));
+  }
+
+  if (loading) {
+    return (
+      <div className="card-surface p-5">
+        <div className="text-center text-zinc-500">Loading AI routing...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div id="ai-routing-section" className="card-surface p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-zinc-100">AI Model Routing</h3>
+          <p className="text-xs text-zinc-500 mt-1">
+            Configure which AI model to use for each task type
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleReset}
+            className="px-3 py-1.5 rounded-lg border border-zinc-600 text-xs text-zinc-300 hover:bg-zinc-700 transition"
+          >
+            Reset
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+
+      {toast && (
+        <div className={`mb-3 px-3 py-2 rounded-lg text-xs ${toast.type === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+          {toast.message}
+        </div>
+      )}
+
+      <div className="grid gap-2">
+        {TASK_TYPES.map(({ key, label, description }) => (
+          <div key={key} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+            <div className="flex-1">
+              <div className="text-xs font-medium text-zinc-200">{label}</div>
+              <div className="text-[10px] text-zinc-500">{description}</div>
+            </div>
+            <select
+              value={routing[key]}
+              onChange={(e) => handleModelChange(key, e.target.value)}
+              className="rounded-lg border border-zinc-600 bg-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 min-w-[160px]"
+            >
+              {AVAILABLE_MODELS.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name} ({model.provider})
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

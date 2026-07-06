@@ -1,7 +1,29 @@
 # NeureCore — System State (live inventory)
 
-****Last verified:** 2026-07-05 20:15 PKT (Phase 6: 3-column glassmorphic home page complete)
-**Snapshot sources:** `pm2 jlist`, `ss -tlnp`, `git log/status`, `df`, `ls /opt/neurecore`, `cat /etc/letsencrypt/live/`, `npx prisma migrate status`, `grep -c ONBOARDING_TASK .../client/index.d.ts`, `prisma.industry.count()` / `prisma.package.count()` via Prisma
+**Last verified:** 2026-07-07 01:15 PKT (FIX-024: Tenant consumption audit — home-page mock data replaced with real stores/APIs; dept templates now live-fetched; Packages tab with deploy flow added to marketplace; backend packages/features GET opened to tenant OWNER/ADMIN)
+
+> **2026-07-07 00:45 PKT — Deployment Enhancement shipped (Kilo):**
+> - **Frontend-admin** — 4 gaps closed:
+>   1. **Package Deploy** flow added to tenant detail Deploy tab (select package → preview capacity/blockers → configure authority/idempotency → deploy). Uses `GET /packages/deploy/preview` and `POST /packages/deploy`.
+>   2. **Single Department Deploy** card added to tenant detail Deploy tab.
+>   3. **Deploy from agents-pool** — "Deploy" button on each AI Employee card opens `DeployToTenantModal` (pick tenant, name, budget, authority).
+>   4. **Deploy from departments-pool** — "Deploy Dept" button on each department template card opens `DeployToTenantModal` (pick tenant + structure item index).
+> - New files: `frontend-admin/src/components/pool/DeployToTenantModal.tsx` (reusable modal).
+> - Modified files: `packages.service.ts` (+deployPreview, +deploy), `deptTemplates.service.ts` (+deploySingleDepartment), `tenants/[id]/page.tsx` (+Package/SingleDept cards), `agents-pool/page.tsx` (+Deploy button), `departments-pool/page.tsx` (+Deploy Dept button).
+> - Plan: `memory-bank-new/plans/deployment-enhancement-plan.md`.
+> - Build: `npm run build` — zero errors, 47 routes compiled.
+
+> **2026-07-07 00:15 PKT (FIX-021/022/023 deployed to Contabo — GlobalExceptionFilter fix + Packages UI fixes + Tiers DTO fix)**
+> **Snapshot sources:** `pm2 jlist`, `ss -tlnp`, `git log/status`, `df`, `ls /opt/neurecore`, `cat /etc/letsencrypt/live/`, `npx prisma migrate status`, `grep -c ONBOARDING_TASK .../client/index.d.ts`, `prisma.industry.count()` / `prisma.package.count()` via Prisma
+
+> **2026-07-06 16:15 PKT — Chat systems production-verified (Kilo):**
+> - Deployed FIX-017: `chat.service.ts` C4 fix (maps `query` → `message` for backend DTO compatibility) to Contabo.
+> - Build process: `npm install --legacy-peer-deps` (eslint peer-dep conflict on `npm ci`) → `npm run build` → `pm2 restart neurecore-tenant`.
+> - Both chat panels tested end-to-end via Playwright: ConversationPanel (💬) works — AI responds with MiniMax tokens (990↑ 44↓). AIChatPanel (✦ Ask AI) works — HeadQuarter AI responds with contextual data.
+> - Backend: PM2 id 43, git HEAD `c5c05ec`, MINIMAX_API_KEY configured, both `/chat/messages` and `/ai/chat` endpoints live.
+> - Chat backend log: `POST /api/v1/chat/messages 200 2990ms`. 
+> - Tenant test user: `audrey.wizard.test3@najeeb.test` (tenant `2881874f-..`, NeureCore Demo Inc.).
+> - Docs updated: `chat-bots.md` (C1-C4 + H1-H4 resolved, Phase 1-2 ✓), `fixes.md` (+FIX-017), `pending-tasks.md` (+D14), `deployment.md` (§1 + §10 updated).
 
 > **2026-07-05 20:15 PKT — Phase 6: 3-Column Glassmorphic Home Page (Kilo):**
 > - **New Zustand store:** `src/stores/uiPreferencesStore.ts` — manages background style (4 gradients), visible icons, visible widgets, widget order; persists to localStorage.
@@ -124,11 +146,11 @@
 PM2 dump at `/root/.pm2/dump.pm2`. Definition: `/opt/neurecore/ecosystem.config.js`.
 
 | PM2 name | ID | Status | Restarts | CWD | Uptime | Internal port |
-|---|---|---|---|---|---|---|
-| `neurecore-backend` | 37 | online | 429 | `/opt/neurecore/backend/backend` | 20h | **3003** |
-| `neurecore-tenant` | 40 | online | 4 | `/opt/neurecore/frontend-tenant` | 20h | **3005** |
-| `neurecore-admin` | 42 | online | 0 | `/opt/neurecore/frontend-admin` | fresh | **3020** |
-| `neurecore-cors-proxy` | 7 | online | 4 | `/opt/neurecore` | 20h | **3004** |
+|---|---|---|---|---|---|---|---|
+| `neurecore-backend` | 43 | online | 69 | `/opt/neurecore/backend/backend` | 117m | **3003** |
+| `neurecore-tenant` | 40 | online | 50 | `/opt/neurecore/frontend-tenant` | fresh | **3005** |
+| `neurecore-admin` | 42 | online | 70 | `/opt/neurecore/frontend-admin` | 21h | **3020** |
+| `neurecore-cors-proxy` | 7 | online | 5 | `/opt/neurecore` | 22h | **3004** |
 
 Other non-neurecore PM2 apps on the box (out of scope but share resources): `app-frontend` (GUV on 3001/3100), `gfcportal`, `shahisoft-nextjs`, `lifeosa-backend`, `ecoearthshop-backend` (cluster), `cookie-refresher`.
 

@@ -96,9 +96,11 @@ export default function NewPackagePage() {
         aiAgentIds,
         featureIds,
       })
-      .then((p) => setPreview(p))
-      .catch(() => {
-        /* noop */
+      .then((p) => {
+        if (p) setPreview(p);
+      })
+      .catch((err: unknown) => {
+        console.error('Package preview failed:', err);
       });
   }, [industryId, tierTemplateId, departmentIds, aiAgentIds, featureIds]);
 

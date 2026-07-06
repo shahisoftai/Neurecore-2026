@@ -12,6 +12,7 @@ import {
   IsEnum,
   Min,
 } from 'class-validator';
+import { TierTemplateStatus } from '@prisma/client';
 
 export class CreateTierDto {
   @IsString()
@@ -22,7 +23,15 @@ export class CreateTierDto {
 
   @IsOptional()
   @IsString()
+  tagline?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsEnum(TierTemplateStatus)
+  status?: TierTemplateStatus;
 
   @IsOptional()
   @IsBoolean()
@@ -111,7 +120,15 @@ export class UpdateTierDto {
 
   @IsOptional()
   @IsString()
+  tagline?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsEnum(TierTemplateStatus)
+  status?: TierTemplateStatus;
 
   @IsOptional()
   @IsBoolean()

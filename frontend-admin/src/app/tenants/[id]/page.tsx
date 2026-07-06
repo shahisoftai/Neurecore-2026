@@ -21,6 +21,7 @@ import api from '@/services/api';
 import { unwrapItem, unwrapList } from '@/services/unwrap';
 import { deptTemplatesService, type DepartmentTemplate, type BulkAgentDeployItem } from '@/services/deptTemplates.service';
 import { agentTemplatesService, type AgentTemplate } from '@/services/agentTemplates.service';
+import { packagesService, type Package, type DeployPackagePreview, type DeployPackageOutcome } from '@/services/packages.service';
 import type { Tenant } from '@/types/api.types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -84,6 +85,26 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
   const [agentDeployError, setAgentDeployError] = useState<string | null>(null);
   const [addTemplateId, setAddTemplateId] = useState('');
 
+  // Deploy: Package flow
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [selectedPackageId, setSelectedPackageId] = useState('');
+  const [pkgWithAgents, setPkgWithAgents] = useState(true);
+  const [pkgAuthority, setPkgAuthority] = useState<'AUTO' | 'RECOMMEND' | 'APPROVAL'>('RECOMMEND');
+  const [pkgIdempotent, setPkgIdempotent] = useState(true);
+  const [pkgPreview, setPkgPreview] = useState<DeployPackagePreview | null>(null);
+  const [pkgPreviewing, setPkgPreviewing] = useState(false);
+  const [pkgDeploying, setPkgDeploying] = useState(false);
+  const [pkgDeployResult, setPkgDeployResult] = useState<DeployPackageOutcome | null>(null);
+  const [pkgDeployError, setPkgDeployError] = useState<string | null>(null);
+
+  // Deploy: Single department flow
+  const [singleDeptTemplateId, setSingleDeptTemplateId] = useState('');
+  const [singleDeptItemIndex, setSingleDeptItemIndex] = useState(0);
+  const [singleDeptWithAgent, setSingleDeptWithAgent] = useState(false);
+  const [deployingSingleDept, setDeployingSingleDept] = useState(false);
+  const [singleDeptResult, setSingleDeptResult] = useState<{ id: string; name: string; agents?: number } | null>(null);
+  const [singleDeptError, setSingleDeptError] = useState<string | null>(null);
+
   // ─── Fetch tenant ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -121,12 +142,14 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
   }, [tenantId]);
 
   const loadDeployAssets = useCallback(async () => {
-    const [dtRes, atRes] = await Promise.all([
+    const [dtRes, atRes, pkgRes] = await Promise.all([
       deptTemplatesService.list({ limit: 100 }),
       agentTemplatesService.list({ limit: 100 }),
+      packagesService.list({ limit: 100 }),
     ]);
     setDeptTemplates(dtRes.items);
     setAgentTemplateList(atRes.items);
+    setPackages(pkgRes.items);
   }, []);
 
   useEffect(() => {
@@ -186,6 +209,67 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
       setAgentDeployError(err instanceof Error ? err.message : 'Deployment failed');
     } finally {
       setDeployingAgents(false);
+    }
+  }
+
+  // ─── Deploy: Package ────────────────────────────────────────────────────────
+
+  async function handlePackagePreview() {
+    if (!selectedPackageId) return;
+    setPkgPreviewing(true);
+    setPkgDeployError(null);
+    setPkgPreview(null);
+    setPkgDeployResult(null);
+    try {
+      const result = await packagesService.deployPreview(selectedPackageId, tenantId, pkgWithAgents);
+      setPkgPreview(result);
+    } catch (err: unknown) {
+      setPkgDeployError(err instanceof Error ? err.message : 'Preview failed');
+    } finally {
+      setPkgPreviewing(false);
+    }
+  }
+
+  async function handlePackageDeploy() {
+    if (!selectedPackageId) return;
+    setPkgDeploying(true);
+    setPkgDeployError(null);
+    setPkgDeployResult(null);
+    try {
+      const result = await packagesService.deploy(selectedPackageId, tenantId, {
+        withAgents: pkgWithAgents,
+        authorityLevel: pkgAuthority,
+        idempotent: pkgIdempotent,
+      });
+      setPkgDeployResult(result);
+      setPkgPreview(null);
+    } catch (err: unknown) {
+      setPkgDeployError(err instanceof Error ? err.message : 'Deployment failed');
+    } finally {
+      setPkgDeploying(false);
+    }
+  }
+
+  // ─── Deploy: Single Department ──────────────────────────────────────────────
+
+  async function handleDeploySingleDepartment() {
+    if (!singleDeptTemplateId) return;
+    setDeployingSingleDept(true);
+    setSingleDeptError(null);
+    setSingleDeptResult(null);
+    try {
+      const result = await deptTemplatesService.deploySingleDepartment(
+        tenantId,
+        singleDeptTemplateId,
+        singleDeptItemIndex,
+        undefined,
+        singleDeptWithAgent,
+      );
+      setSingleDeptResult(result);
+    } catch (err: unknown) {
+      setSingleDeptError(err instanceof Error ? err.message : 'Deployment failed');
+    } finally {
+      setDeployingSingleDept(false);
     }
   }
 
@@ -325,158 +409,327 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
           {/* ══ Deploy ══ */}
           {tab === 'deploy' && (
             <motion.div key="deploy" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+              className="space-y-6"
             >
+              {/* Row 1: Org Structure + Agents */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-              {/* ── Flow 1: Deploy Org Structure ── */}
-              <DeployCard title="Deploy Org Structure" subtitle="Instantly create all departments for this tenant from a pre-built blueprint.">
-                {deptDeployResult ? (
+                {/* ── Flow 1: Deploy Org Structure ── */}
+                <DeployCard title="Deploy Org Structure" subtitle="Instantly create all departments for this tenant from a pre-built blueprint.">
+                  {deptDeployResult ? (
+                    <SuccessBox>
+                      Created <strong>{deptDeployResult.departments}</strong> departments
+                      {deptDeployResult.agents > 0 && <> and <strong>{deptDeployResult.agents}</strong> agents</>}.
+                      <button onClick={() => { setDeptDeployResult(null); setSelectedDeptTmpl(''); }}
+                        className="mt-3 text-xs text-indigo-400 hover:underline block">
+                        Deploy another →
+                      </button>
+                    </SuccessBox>
+                  ) : (
+                    <>
+                      <div className="mb-3">
+                        <label className="text-xs text-zinc-500 mb-1.5 block">Select Template</label>
+                        <select value={selectedDeptTmpl} onChange={(e) => setSelectedDeptTmpl(e.target.value)}
+                          className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="">— choose a template —</option>
+                          {deptTemplates.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name} ({t.structure.length} depts)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Structure preview */}
+                      {selectedDeptTmpl && (() => {
+                        const tmpl = deptTemplates.find((t) => t.id === selectedDeptTmpl);
+                        return tmpl ? (
+                          <div className="rounded-lg bg-surface-overlay border border-surface-border/50 p-2.5 mb-3 space-y-1 max-h-28 overflow-y-auto">
+                            {tmpl.structure.map((item, i) => (
+                              <div key={i} className="flex items-center gap-1.5 text-xs">
+                                <span className="text-zinc-600">{item.parentName ? ' └' : '◆'}</span>
+                                <span className="text-zinc-300">{item.name}</span>
+                                {item.headAgentType && <span className="text-zinc-600 text-[10px]">({item.headAgentType})</span>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
+
+                      <label className="flex items-center gap-3 cursor-pointer mb-4">
+                        <div onClick={() => setWithAgents((v) => !v)}
+                          className={`relative w-9 h-5 rounded-full transition cursor-pointer ${withAgents ? 'bg-indigo-600' : 'bg-zinc-700'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${withAgents ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </div>
+                        <span className="text-sm text-zinc-300">Auto-create head agents</span>
+                      </label>
+
+                      {deptDeployError && <ErrorBox>{deptDeployError}</ErrorBox>}
+
+                      <button onClick={handleDeployDeptTemplate} disabled={!selectedDeptTmpl || deployingDept}
+                        className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition disabled:opacity-50"
+                      >
+                        {deployingDept ? 'Deploying…' : 'Deploy Structure'}
+                      </button>
+                    </>
+                  )}
+                </DeployCard>
+
+                {/* ── Flow 2: Deploy Agents ── */}
+                <DeployCard title="Deploy Agents" subtitle="Pick agent templates, configure each one, then bulk-deploy to this tenant.">
+                  {agentDeployResult !== null ? (
+                    <SuccessBox>
+                      <strong>{agentDeployResult}</strong> agent{agentDeployResult !== 1 ? 's' : ''} deployed.
+                      <button onClick={() => setAgentDeployResult(null)}
+                        className="mt-3 text-xs text-indigo-400 hover:underline block">
+                        Deploy more →
+                      </button>
+                    </SuccessBox>
+                  ) : (
+                    <>
+                      {/* Add agent from template */}
+                      <div className="flex gap-2 mb-3">
+                        <select value={addTemplateId} onChange={(e) => setAddTemplateId(e.target.value)}
+                          className="flex-1 rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="">— pick template to add —</option>
+                          {agentTemplateList.map((t) => (
+                            <option key={t.id} value={t.id}>[{t.type}] {t.name}</option>
+                          ))}
+                        </select>
+                        <button onClick={addAgentRow} disabled={!addTemplateId}
+                          className="px-4 py-2 rounded-lg bg-surface-raised border border-surface-border text-sm text-zinc-300 hover:text-indigo-300 hover:border-indigo-700 transition disabled:opacity-40"
+                        >
+                          + Add
+                        </button>
+                      </div>
+
+                      {/* Agent rows */}
+                      {agentRows.length > 0 && (
+                        <div className="space-y-2 mb-3 max-h-64 overflow-y-auto">
+                          {agentRows.map((row, i) => {
+                            const tmpl = agentTemplateList.find((t) => t.id === row.templateId);
+                            return (
+                              <div key={i} className="rounded-lg border border-surface-border bg-surface-overlay p-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${AGENT_TYPE_BADGE[tmpl?.type ?? ''] ?? 'bg-zinc-800 text-zinc-400'}`}>
+                                    {tmpl?.type ?? 'AGENT'}
+                                  </span>
+                                  <button onClick={() => removeAgentRow(i)} className="text-zinc-600 hover:text-red-400 transition text-xs">✕</button>
+                                </div>
+                                <input value={row.name}
+                                  onChange={(e) => updateAgentRow(i, { name: e.target.value })}
+                                  className="w-full rounded border border-surface-border bg-surface text-zinc-200 text-sm px-2 py-1.5 focus:outline-none focus:border-indigo-500"
+                                  placeholder="Agent display name"
+                                />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[10px] text-zinc-600 mb-0.5 block">Daily Budget ($)</label>
+                                    <input type="number" value={row.budgetPerDay ?? 100}
+                                      onChange={(e) => updateAgentRow(i, { budgetPerDay: Number(e.target.value) })}
+                                      className="w-full rounded border border-surface-border bg-surface text-zinc-300 text-sm px-2 py-1.5 focus:outline-none focus:border-indigo-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-zinc-600 mb-0.5 block">Authority</label>
+                                    <select value={row.authorityLevel ?? 'RECOMMEND'}
+                                      onChange={(e) => updateAgentRow(i, { authorityLevel: e.target.value as BulkAgentDeployItem['authorityLevel'] })}
+                                      className="w-full rounded border border-surface-border bg-surface text-zinc-300 text-sm px-2 py-1.5 focus:outline-none focus:border-indigo-500"
+                                    >
+                                      <option value="AUTO">AUTO</option>
+                                      <option value="RECOMMEND">RECOMMEND</option>
+                                      <option value="APPROVAL">APPROVAL</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {agentRows.length === 0 && (
+                        <div className="py-6 text-center text-xs text-zinc-600">
+                          Add agents using the picker above.
+                        </div>
+                      )}
+
+                      {agentDeployError && <ErrorBox>{agentDeployError}</ErrorBox>}
+
+                      <button onClick={handleBulkDeploy} disabled={agentRows.length === 0 || deployingAgents}
+                        className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition disabled:opacity-50 mt-2"
+                      >
+                        {deployingAgents ? 'Deploying…' : `Deploy ${agentRows.length || ''} Agent${agentRows.length !== 1 ? 's' : ''}`}
+                      </button>
+                    </>
+                  )}
+                </DeployCard>
+              </div>
+
+              {/* Row 2: Deploy Package */}
+              <DeployCard title="Deploy Package" subtitle="Apply a package composition (departments, AI employees, features) to this tenant in one transaction.">
+                {pkgDeployResult ? (
                   <SuccessBox>
-                    Created <strong>{deptDeployResult.departments}</strong> departments
-                    {deptDeployResult.agents > 0 && <> and <strong>{deptDeployResult.agents}</strong> agents</>}.
-                    <button onClick={() => { setDeptDeployResult(null); setSelectedDeptTmpl(''); }}
+                    Package <strong>{pkgDeployResult.package.name}</strong> deployed.
+                    <div className="text-xs mt-2 text-green-400">
+                      +{pkgDeployResult.departments.created} departments, +{pkgDeployResult.agents.created} agents
+                      {pkgDeployResult.agents.skipped > 0 && <> ({pkgDeployResult.agents.skipped} skipped — idempotent)</>}
+                    </div>
+                    <button onClick={() => { setPkgDeployResult(null); setSelectedPackageId(''); setPkgPreview(null); }}
                       className="mt-3 text-xs text-indigo-400 hover:underline block">
                       Deploy another →
                     </button>
                   </SuccessBox>
                 ) : (
-                  <>
-                    <div className="mb-3">
-                      <label className="text-xs text-zinc-500 mb-1.5 block">Select Template</label>
-                      <select value={selectedDeptTmpl} onChange={(e) => setSelectedDeptTmpl(e.target.value)}
+                  <div className="space-y-4">
+                    {/* Step 1: Select package */}
+                    <div>
+                      <label className="text-xs text-zinc-500 mb-1.5 block">
+                        Select Package ({packages.length} available)
+                      </label>
+                      <select
+                        value={selectedPackageId}
+                        onChange={(e) => { setSelectedPackageId(e.target.value); setPkgPreview(null); setPkgDeployError(null); }}
                         className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
                       >
-                        <option value="">— choose a template —</option>
-                        {deptTemplates.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name} ({t.structure.length} depts)
+                        <option value="">— choose a package —</option>
+                        {packages.map((pkg) => (
+                          <option key={pkg.id} value={pkg.id}>
+                            [{pkg.status}] {pkg.name}
+                            {pkg.industry ? ` · ${pkg.industry.name}` : ''}
+                            {pkg.tierTemplate ? ` · ${pkg.tierTemplate.name}` : ''}
+                            {' '}({pkg.departments?.length ?? 0}D / {pkg.aiAgents?.length ?? 0}A)
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    {/* Structure preview */}
-                    {selectedDeptTmpl && (() => {
-                      const tmpl = deptTemplates.find((t) => t.id === selectedDeptTmpl);
-                      return tmpl ? (
-                        <div className="rounded-lg bg-surface-overlay border border-surface-border/50 p-2.5 mb-3 space-y-1 max-h-28 overflow-y-auto">
-                          {tmpl.structure.map((item, i) => (
-                            <div key={i} className="flex items-center gap-1.5 text-xs">
-                              <span className="text-zinc-600">{item.parentName ? ' └' : '◆'}</span>
-                              <span className="text-zinc-300">{item.name}</span>
-                              {item.headAgentType && <span className="text-zinc-600 text-[10px]">({item.headAgentType})</span>}
-                            </div>
-                          ))}
+                    {/* Options */}
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-400">
+                        <div onClick={() => setPkgWithAgents((v) => !v)}
+                          className={`relative w-8 h-4.5 rounded-full transition cursor-pointer ${pkgWithAgents ? 'bg-indigo-600' : 'bg-zinc-700'}`}
+                          style={{ height: '18px' }}>
+                          <div className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${pkgWithAgents ? 'translate-x-[16px]' : 'translate-x-0.5'}`}
+                            style={{ width: '14px', height: '14px' }} />
                         </div>
-                      ) : null;
-                    })()}
-
-                    <label className="flex items-center gap-3 cursor-pointer mb-4">
-                      <div onClick={() => setWithAgents((v) => !v)}
-                        className={`relative w-9 h-5 rounded-full transition cursor-pointer ${withAgents ? 'bg-indigo-600' : 'bg-zinc-700'}`}>
-                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${withAgents ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        Agents
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-400">
+                        <div onClick={() => setPkgIdempotent((v) => !v)}
+                          className={`relative w-8 h-4.5 rounded-full transition cursor-pointer ${pkgIdempotent ? 'bg-indigo-600' : 'bg-zinc-700'}`}
+                          style={{ height: '18px' }}>
+                          <div className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${pkgIdempotent ? 'translate-x-[16px]' : 'translate-x-0.5'}`}
+                            style={{ width: '14px', height: '14px' }} />
+                        </div>
+                        Idempotent
+                      </label>
+                      <div>
+                        <label className="text-[10px] text-zinc-600 block mb-0.5">Authority</label>
+                        <select value={pkgAuthority}
+                          onChange={(e) => setPkgAuthority(e.target.value as typeof pkgAuthority)}
+                          className="rounded border border-surface-border bg-surface-overlay text-zinc-200 text-xs px-2 py-1 focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="AUTO">AUTO</option>
+                          <option value="RECOMMEND">RECOMMEND</option>
+                          <option value="APPROVAL">APPROVAL</option>
+                        </select>
                       </div>
-                      <span className="text-sm text-zinc-300">Auto-create head agents</span>
-                    </label>
+                    </div>
 
-                    {deptDeployError && <ErrorBox>{deptDeployError}</ErrorBox>}
+                    {/* Preview result */}
+                    {pkgPreview && (
+                      <div className={`rounded-lg border px-4 py-3 text-sm ${pkgPreview.feasible ? 'bg-green-950/50 border-green-800/50' : 'bg-yellow-950/50 border-yellow-800/50'}`}>
+                        <div className="font-medium text-zinc-200 mb-2">
+                          {pkgPreview.feasible ? '✅ Feasible' : '⚠️ Blocked'}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs text-zinc-400 mb-2">
+                          <div><span className="text-zinc-200">{pkgPreview.totals.departments}</span> departments</div>
+                          <div><span className="text-zinc-200">{pkgPreview.totals.agents}</span> agents</div>
+                          <div><span className="text-zinc-200">{pkgPreview.totals.features}</span> features</div>
+                        </div>
+                        <div className="text-xs text-zinc-500 mb-2">
+                          Capacity: {pkgPreview.capacity.departmentsUsed}/{pkgPreview.capacity.departmentsLimit} depts,{' '}
+                          {pkgPreview.capacity.agentsUsed}/{pkgPreview.capacity.agentsLimit} agents
+                          {' '}({pkgPreview.capacity.departmentsRemaining}D / {pkgPreview.capacity.agentsRemaining}A free)
+                        </div>
+                        {pkgPreview.blockers.length > 0 && (
+                          <ul className="text-xs text-yellow-400 list-disc pl-4 space-y-0.5">
+                            {pkgPreview.blockers.map((b, i) => <li key={i}>{b}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    )}
 
-                    <button onClick={handleDeployDeptTemplate} disabled={!selectedDeptTmpl || deployingDept}
-                      className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition disabled:opacity-50"
-                    >
-                      {deployingDept ? 'Deploying…' : 'Deploy Structure'}
-                    </button>
-                  </>
+                    {pkgDeployError && <ErrorBox>{pkgDeployError}</ErrorBox>}
+
+                    <div className="flex gap-3">
+                      <button onClick={handlePackagePreview} disabled={!selectedPackageId || pkgPreviewing}
+                        className="flex-1 py-2 rounded-lg border border-surface-border text-sm text-zinc-300 hover:text-indigo-300 hover:border-indigo-700 transition disabled:opacity-50"
+                      >
+                        {pkgPreviewing ? 'Checking…' : 'Preview'}
+                      </button>
+                      <button onClick={handlePackageDeploy}
+                        disabled={!selectedPackageId || pkgDeploying || (pkgPreview !== null && !pkgPreview.feasible)}
+                        className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition disabled:opacity-50"
+                      >
+                        {pkgDeploying ? 'Deploying…' : 'Deploy Package'}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </DeployCard>
 
-              {/* ── Flow 2: Deploy Agents ── */}
-              <DeployCard title="Deploy Agents" subtitle="Pick agent templates, configure each one, then bulk-deploy to this tenant.">
-                {agentDeployResult !== null ? (
+              {/* Row 3: Deploy Single Department */}
+              <DeployCard title="Deploy Single Department" subtitle="Deploy one department from a template structure without deploying the entire org.">
+                {singleDeptResult ? (
                   <SuccessBox>
-                    <strong>{agentDeployResult}</strong> agent{agentDeployResult !== 1 ? 's' : ''} deployed.
-                    <button onClick={() => setAgentDeployResult(null)}
+                    Created <strong>{singleDeptResult.name}</strong>
+                    {singleDeptResult.agents !== undefined && <> with {singleDeptResult.agents} agent(s)</>}.
+                    <button onClick={() => { setSingleDeptResult(null); setSingleDeptTemplateId(''); }}
                       className="mt-3 text-xs text-indigo-400 hover:underline block">
-                      Deploy more →
+                      Deploy another →
                     </button>
                   </SuccessBox>
                 ) : (
-                  <>
-                    {/* Add agent from template */}
-                    <div className="flex gap-2 mb-3">
-                      <select value={addTemplateId} onChange={(e) => setAddTemplateId(e.target.value)}
-                        className="flex-1 rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="text-xs text-zinc-500 mb-1.5 block">Department Template</label>
+                      <select value={singleDeptTemplateId} onChange={(e) => setSingleDeptTemplateId(e.target.value)}
+                        className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
                       >
-                        <option value="">— pick template to add —</option>
-                        {agentTemplateList.map((t) => (
-                          <option key={t.id} value={t.id}>[{t.type}] {t.name}</option>
+                        <option value="">— choose template —</option>
+                        {deptTemplates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name} ({t.structure.length} items)
+                          </option>
                         ))}
                       </select>
-                      <button onClick={addAgentRow} disabled={!addTemplateId}
-                        className="px-4 py-2 rounded-lg bg-surface-raised border border-surface-border text-sm text-zinc-300 hover:text-indigo-300 hover:border-indigo-700 transition disabled:opacity-40"
-                      >
-                        + Add
-                      </button>
                     </div>
-
-                    {/* Agent rows */}
-                    {agentRows.length > 0 && (
-                      <div className="space-y-2 mb-3 max-h-64 overflow-y-auto">
-                        {agentRows.map((row, i) => {
-                          const tmpl = agentTemplateList.find((t) => t.id === row.templateId);
-                          return (
-                            <div key={i} className="rounded-lg border border-surface-border bg-surface-overlay p-3 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${AGENT_TYPE_BADGE[tmpl?.type ?? ''] ?? 'bg-zinc-800 text-zinc-400'}`}>
-                                  {tmpl?.type ?? 'AGENT'}
-                                </span>
-                                <button onClick={() => removeAgentRow(i)} className="text-zinc-600 hover:text-red-400 transition text-xs">✕</button>
-                              </div>
-                              <input value={row.name}
-                                onChange={(e) => updateAgentRow(i, { name: e.target.value })}
-                                className="w-full rounded border border-surface-border bg-surface text-zinc-200 text-sm px-2 py-1.5 focus:outline-none focus:border-indigo-500"
-                                placeholder="Agent display name"
-                              />
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <label className="text-[10px] text-zinc-600 mb-0.5 block">Daily Budget ($)</label>
-                                  <input type="number" value={row.budgetPerDay ?? 100}
-                                    onChange={(e) => updateAgentRow(i, { budgetPerDay: Number(e.target.value) })}
-                                    className="w-full rounded border border-surface-border bg-surface text-zinc-300 text-sm px-2 py-1.5 focus:outline-none focus:border-indigo-500"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[10px] text-zinc-600 mb-0.5 block">Authority</label>
-                                  <select value={row.authorityLevel ?? 'RECOMMEND'}
-                                    onChange={(e) => updateAgentRow(i, { authorityLevel: e.target.value as BulkAgentDeployItem['authorityLevel'] })}
-                                    className="w-full rounded border border-surface-border bg-surface text-zinc-300 text-sm px-2 py-1.5 focus:outline-none focus:border-indigo-500"
-                                  >
-                                    <option value="AUTO">AUTO</option>
-                                    <option value="RECOMMEND">RECOMMEND</option>
-                                    <option value="APPROVAL">APPROVAL</option>
-                                  </select>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                    <div className="w-24">
+                      <label className="text-xs text-zinc-500 mb-1.5 block">Item Index</label>
+                      <input type="number" value={singleDeptItemIndex} min={0}
+                        onChange={(e) => setSingleDeptItemIndex(Math.max(0, Number(e.target.value)))}
+                        className="w-full rounded border border-surface-border bg-surface-overlay text-zinc-200 text-sm px-3 py-2 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-400">
+                      <div onClick={() => setSingleDeptWithAgent((v) => !v)}
+                        className={`relative w-8 cursor-pointer ${singleDeptWithAgent ? 'bg-indigo-600' : 'bg-zinc-700'}`}
+                        style={{ height: '18px', width: '32px', borderRadius: '9px' }}>
+                        <div style={{ width: '14px', height: '14px', borderRadius: '7px' }}
+                          className={`absolute top-0.5 bg-white shadow transition-transform ${singleDeptWithAgent ? 'translate-x-[16px]' : 'translate-x-0.5'}`} />
                       </div>
-                    )}
-
-                    {agentRows.length === 0 && (
-                      <div className="py-6 text-center text-xs text-zinc-600">
-                        Add agents using the picker above.
-                      </div>
-                    )}
-
-                    {agentDeployError && <ErrorBox>{agentDeployError}</ErrorBox>}
-
-                    <button onClick={handleBulkDeploy} disabled={agentRows.length === 0 || deployingAgents}
-                      className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition disabled:opacity-50 mt-2"
+                      <span>Head Agent</span>
+                    </label>
+                    {singleDeptError && <ErrorBox>{singleDeptError}</ErrorBox>}
+                    <button onClick={handleDeploySingleDepartment} disabled={!singleDeptTemplateId || deployingSingleDept}
+                      className="py-2 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition disabled:opacity-50"
                     >
-                      {deployingAgents ? 'Deploying…' : `Deploy ${agentRows.length || ''} Agent${agentRows.length !== 1 ? 's' : ''}`}
+                      {deployingSingleDept ? 'Deploying…' : 'Deploy'}
                     </button>
-                  </>
+                  </div>
                 )}
               </DeployCard>
             </motion.div>

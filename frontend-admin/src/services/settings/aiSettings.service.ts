@@ -5,7 +5,7 @@
  * Depends on abstraction (ISettingsApiClient) - DIP compliant
  */
 
-import type { AIProviderConfig, AIModel } from "@/types/settings.types";
+import type { AIProviderConfig, AIModel, AIRoutingConfig } from "@/types/settings.types";
 import type { IAISettingsService, ISettingsApiClient } from "./interfaces";
 
 export class AISettingsService implements IAISettingsService {
@@ -117,5 +117,18 @@ export class AISettingsService implements IAISettingsService {
       latency: number;
       error?: string;
     }>(`/ai/providers/${id}/test`);
+  }
+
+  // AI Routing
+  async getAIRouting(): Promise<AIRoutingConfig> {
+    return this.apiClient.get<AIRoutingConfig>("/ai/routing");
+  }
+
+  async updateAIRouting(config: Partial<AIRoutingConfig>): Promise<AIRoutingConfig> {
+    return this.apiClient.patch<AIRoutingConfig>("/ai/routing", config);
+  }
+
+  async resetAIRouting(): Promise<AIRoutingConfig> {
+    return this.apiClient.post<AIRoutingConfig>("/ai/routing/reset");
   }
 }

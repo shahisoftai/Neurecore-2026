@@ -92,7 +92,6 @@ const nextConfig = {
 
       // Intelligence
       { source: "/analytics", destination: "/intelligence?tab=analytics" },
-      { source: "/settings", destination: "/intelligence?tab=settings" },
 
       // Strategy page deleted
       { source: "/strategy", destination: "/home" },

@@ -140,6 +140,11 @@ const AgentStateAnnotation = Annotation.Root({
     reducer: (_left, right) => right,
     default: () => true,
   }),
+
+  model: Annotation<string | null>({
+    reducer: (_left, right) => right,
+    default: () => null,
+  }),
 });
 
 type AgentGraphState = typeof AgentStateAnnotation.State;
@@ -276,6 +281,7 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
         toolDefs,
         0.3,
         2048,
+        state.model ?? undefined,
       );
 
       // Check if LLM returned tool calls
@@ -679,6 +685,7 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
         maxIterations: 10,
         error: null,
         shouldContinue: true,
+        model: null,
       };
     }
 
@@ -725,6 +732,7 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
       maxIterations: state.maxIterations ?? 10,
       error: state.error ?? null,
       shouldContinue: state.shouldContinue ?? true,
+      model: null,
     };
   }
 
@@ -758,6 +766,7 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
     tenantId: string;
     userId: string;
     sessionId?: string;
+    model?: string;
   }): AsyncGenerator<Partial<AgentGraphState>> {
     if (!this.compiledGraph) {
       throw new Error('Graph not initialized');
@@ -780,9 +789,10 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
       maxIterations: 10,
       error: null,
       shouldContinue: true,
+      model: params.model ?? null,
     };
 
-    this.logger.log(`[stream] Starting streaming agent execution`);
+    this.logger.log(`[stream] Starting streaming agent execution with model: ${params.model ?? 'default'}`);
 
     try {
       for await (const chunk of await this.compiledGraph.stream(initialState, {
