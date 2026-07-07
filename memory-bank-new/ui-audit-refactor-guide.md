@@ -950,7 +950,48 @@ By following this roadmap over 12 phases, the application will become a **refere
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** 2026-07-05  
-**Maintained By:** Design & Engineering leads  
+## Appendix A — Defensive patterns (added 2026-07-07 from FIX-019)
+
+The 12-phase refactor roadmap above addresses design and UX. Separately, FIX-019 surfaced **three runtime defensive patterns** that every component must follow:
+
+### A.1 Unguarded array access on persisted Zustand stores
+
+A page that reads `useTaskStore((s) => s.tasks)` and calls `tasks.filter(...)` will crash with `TypeError: can't access property "length", n is undefined` if the persisted `tasks` value is corrupted. The crash appears as a generic error UI and erodes user trust.
+
+**Mandatory pattern:**
+```tsx
+const tasksRaw = useTaskStore((s) => s.tasks);
+const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
+// Then use `tasks` — never the raw value.
+```
+
+**Defence-in-depth:** every persisted store must also have a `merge` function that sanitizes the persisted state on hydration. See [fixes.md §Defensive patterns cheat sheet](fixes.md#defensive-patterns-cheat-sheet-from-fix-018--fix-019).
+
+**Coverage target:** every component that reads from a persisted store (current count: 9 fixed in FIX-019, full list in [frontend-tenant.md §19](frontend-tenant.md#19-defensive-patterns-zustand-merge--ui-guards-fix-019)). Add a lint rule (D15 in [pending-tasks.md](pending-tasks.md)) to enforce this in CI.
+
+### A.2 WebSocket URL fallback
+
+`services/socket.ts` must not fall back to `localhost:3000` when `NEXT_PUBLIC_SOCKET_URL` is missing. The browser running the production build cannot reach `localhost:3000` and silently fails with cryptic console errors.
+
+**Mandatory pattern:** derive from `window.location` (same-origin wss in production, ws in dev). See [operations.md §6.5](operations.md#65-never-hardcode-localhost3000-in-production-code).
+
+### A.3 `<Link>` must have a page
+
+TopBar.tsx had `<Link href="/help">` but no `/help` page existed. Next.js prefetches on viewport/hover, producing 404 noise in the network tab. FIX-019 added a real `/help` page. The rule for new `<Link>` elements: create the page in the same commit, or change the link to a `<button>` with a real handler.
+
+### A.4 Loading skeleton during auth hydration (not `return null`)
+
+Pages that gate on `useTenantAuth()` must not return `null` while the Zustand `persist` middleware rehydrates from localStorage — the user sees a blank screen for 50-500ms. Show a spinner instead. See [fixes.md FIX-018 §Fix #4](fixes.md#fix-018--home-page-slow-load-duplicate-api-calls-redundant-fetches-blank-auth-hydration).
+
+### A.5 Loading states, not "no data yet", when data is in flight
+
+`StatsWidget` previously showed "No data yet" with no loading indicator when `command-center/summary` hadn't returned yet. Users couldn't tell if the data was loading or actually empty. Mandatory pattern: when reading from a store that hasn't been hydrated, show a contextual loading message ("Waiting for workspace data...", "Watching for activity...") instead of an "empty" message.
+
+These patterns complement the 12-phase roadmap. They should be added to the onboarding checklist for new frontend contributors and enforced via lint rules where possible.
+
+---
+
+**Document Version:** 1.1
+**Last Updated:** 2026-07-07
+**Maintained By:** Design & Engineering leads
 **Next Review:** After Phase 7 implementation (2 weeks)

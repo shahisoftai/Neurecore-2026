@@ -7,7 +7,7 @@ import { useApprovals } from '@/hooks/useApprovals';
 import { clsx } from 'clsx';
 
 export function ApprovalsWidget() {
-    const { critical, routine, isLoading } = useApprovals({ autoRefresh: true, refreshInterval: 120_000 });
+    const { critical, routine, isLoading } = useApprovals();
 
     const pendingApprovals = [
         ...(Array.isArray(critical) ? critical : []),

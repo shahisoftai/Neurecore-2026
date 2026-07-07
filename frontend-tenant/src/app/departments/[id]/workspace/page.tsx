@@ -113,9 +113,12 @@ export default function DepartmentWorkspacePage() {
 
   const deptId = decodeURIComponent(params.id);
 
-  const { departments, fetchDepartments, fetchDepartment } = useDepartmentStore();
-  const { agents, fetchAgents } = useAgentStore();
-  const { tasks, fetchTasks } = useTaskStore();
+  const { departments: departmentsRaw, fetchDepartments, fetchDepartment } = useDepartmentStore();
+  const { agents: agentsRaw, fetchAgents } = useAgentStore();
+  const { tasks: tasksRaw, fetchTasks } = useTaskStore();
+  const departments = Array.isArray(departmentsRaw) ? departmentsRaw : [];
+  const agents = Array.isArray(agentsRaw) ? agentsRaw : [];
+  const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
   const { workflows, fetchWorkflows } = useWorkflowStore();
 
   const [activeTab, setActiveTab] = useState<WorkspaceTabId>('overview');

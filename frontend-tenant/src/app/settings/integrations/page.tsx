@@ -107,7 +107,7 @@ function GoogleIntegrationCard({
         </div>
       )}
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex gap-2 flex-wrap">
         {integration.connected ? (
           <>
             <Link href="/settings/integrations/google">
@@ -115,6 +115,20 @@ function GoogleIntegrationCard({
                 <ChevronRight className="w-4 h-4" /> Manage
               </Button>
             </Link>
+            {hasSheets && (
+              <Link href="/settings/integrations/sheets">
+                <Button variant="outline" size="sm">
+                  <Sheet className="w-4 h-4" /> Sheets
+                </Button>
+              </Link>
+            )}
+            {hasCalendar && (
+              <Link href="/settings/integrations/calendar">
+                <Button variant="outline" size="sm">
+                  <Calendar className="w-4 h-4" /> Calendar
+                </Button>
+              </Link>
+            )}
             <Button variant="destructive" size="sm" onClick={onDisconnect} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unlink className="w-4 h-4" />}
               Disconnect

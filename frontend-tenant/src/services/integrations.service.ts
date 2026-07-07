@@ -82,6 +82,39 @@ export interface DriveFile {
   size?: string;
 }
 
+export interface SpreadsheetMeta {
+  spreadsheetId: string;
+  title: string;
+  sheets: {
+    sheetId: number;
+    title: string;
+    index: number;
+    rowCount: number;
+    columnCount: number;
+  }[];
+  webViewLink?: string;
+}
+
+export interface SheetRangeData {
+  range: string;
+  values: string[][];
+  majorDimension: 'ROWS' | 'COLUMNS';
+  rowCount?: number;
+  colCount?: number;
+}
+
+export interface CreateSpreadsheetInput {
+  title: string;
+  sheets?: { title: string; rowCount?: number; columnCount?: number }[];
+}
+
+export interface SheetsSearchHit {
+  file: DriveFile;
+  matchedAs?: 'spreadsheet';
+  spreadsheetId?: string;
+  webViewLink?: string;
+}
+
 export interface AgentFolder {
   agentId: string;
   agentName: string;
@@ -115,8 +148,14 @@ class IntegrationsService {
     return unwrapItem(res) as { connected: boolean };
   }
 
-  async initiateGoogleOAuth(redirectUri?: string): Promise<{ url: string }> {
-    const res = await api.post('/integrations/google/authorize', { redirectUri });
+  async initiateGoogleOAuth(
+    redirectUri?: string,
+    audience: 'tenant' | 'admin' = 'tenant',
+  ): Promise<{ url: string }> {
+    const res = await api.post('/integrations/google/authorize', {
+      redirectUri,
+      audience,
+    });
     return unwrapItem(res) as { url: string };
   }
 
@@ -247,6 +286,123 @@ class IntegrationsService {
   async createDriveFile(input: { name: string; content: string; mimeType?: string; parentId?: string }): Promise<DriveFile> {
     const res = await api.post('/integrations/drive/files', input);
     return unwrapItem(res) as DriveFile;
+  }
+
+  async searchDrive(
+    query: string,
+    options: { pageSize?: number; mimeType?: string; mode?: 'name' | 'fulltext' } = {},
+  ): Promise<DriveFile[]> {
+    const params: Record<string, string> = { q: query };
+    if (options.pageSize) params.pageSize = String(options.pageSize);
+    if (options.mimeType) params.mimeType = options.mimeType;
+    if (options.mode) params.mode = options.mode;
+    const res = await api.get('/integrations/drive/search', { params });
+    return unwrapItem(res) as DriveFile[];
+  }
+
+  // ─── Google Sheets ─────────────────────────────────────────────────
+
+  async createSpreadsheet(input: CreateSpreadsheetInput): Promise<SpreadsheetMeta> {
+    const res = await api.post('/integrations/sheets', input);
+    return unwrapItem(res) as SpreadsheetMeta;
+  }
+
+  async getSpreadsheetMetadata(spreadsheetId: string): Promise<SpreadsheetMeta> {
+    const res = await api.get(`/integrations/sheets/${encodeURIComponent(spreadsheetId)}/metadata`);
+    return unwrapItem(res) as SpreadsheetMeta;
+  }
+
+  async readSheetRange(
+    spreadsheetId: string,
+    range: string,
+    majorDimension: 'ROWS' | 'COLUMNS' = 'ROWS',
+  ): Promise<SheetRangeData> {
+    const res = await api.get(
+      `/integrations/sheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}`,
+      { params: { majorDimension } },
+    );
+    const data = (unwrapItem(res) as { range: string; majorDimension: 'ROWS' | 'COLUMNS'; values: string[][] });
+    return {
+      range: data.range,
+      majorDimension: data.majorDimension,
+      values: data.values ?? [],
+      rowCount: data.values?.length ?? 0,
+      colCount: data.values?.[0]?.length ?? 0,
+    };
+  }
+
+  async writeSheetRange(
+    spreadsheetId: string,
+    range: string,
+    values: string[][],
+    majorDimension: 'ROWS' | 'COLUMNS' = 'ROWS',
+  ): Promise<{ updatedRange: string; updatedRows: number; updatedColumns: number; updatedCells: number }> {
+    const res = await api.post(
+      `/integrations/sheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}`,
+      { values, majorDimension },
+    );
+    return unwrapItem(res) as { updatedRange: string; updatedRows: number; updatedColumns: number; updatedCells: number };
+  }
+
+  async appendSheetRows(
+    spreadsheetId: string,
+    range: string,
+    values: string[][],
+  ): Promise<{ updatedRange: string; updatedRows: number; updatedColumns: number }> {
+    const res = await api.post(
+      `/integrations/sheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}/append`,
+      { values },
+    );
+    const data = unwrapItem(res) as { updatedRange: string; updates: { updatedRows: number; updatedColumns: number } };
+    return {
+      updatedRange: data.updatedRange,
+      updatedRows: data.updates.updatedRows,
+      updatedColumns: data.updates.updatedColumns,
+    };
+  }
+
+  async clearSheetRange(spreadsheetId: string, range: string): Promise<void> {
+    await api.post(
+      `/integrations/sheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}/clear`,
+    );
+  }
+
+  // ─── Drive Sharing (G8) ───────────────────────────────────────────
+
+  async shareDriveFile(
+    fileId: string,
+    input: {
+      role: 'reader' | 'writer' | 'commenter';
+      type: 'user' | 'group' | 'domain' | 'anyone';
+      emailAddress?: string;
+      domain?: string;
+      sendNotification?: boolean;
+      emailMessage?: string;
+    },
+  ): Promise<{ id: string; role: string; type: string; emailAddress?: string }> {
+    const res = await api.post(
+      `/integrations/drive/files/${encodeURIComponent(fileId)}/permissions`,
+      input,
+    );
+    return unwrapItem(res) as { id: string; role: string; type: string; emailAddress?: string };
+  }
+
+  async listDriveFilePermissions(
+    fileId: string,
+  ): Promise<{ id: string; role: string; type: string; emailAddress?: string; domain?: string }[]> {
+    const res = await api.get(
+      `/integrations/drive/files/${encodeURIComponent(fileId)}/permissions`,
+    );
+    return unwrapItem(res) as { id: string; role: string; type: string; emailAddress?: string; domain?: string }[];
+  }
+
+  async revokeDriveFilePermission(
+    fileId: string,
+    permissionId: string,
+  ): Promise<void> {
+    await api.delete(
+      `/integrations/drive/files/${encodeURIComponent(fileId)}/permissions/${encodeURIComponent(permissionId)}`,
+    );
   }
 }
 

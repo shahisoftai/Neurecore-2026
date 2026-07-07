@@ -13,6 +13,8 @@ import { QueryTool } from './built-in/query.tool';
 import { ExplainTool } from './built-in/explain.tool';
 import { ContextTool } from './built-in/context.tool';
 import { ChatTool } from './built-in/chat.tool';
+import { CalendarTool } from './built-in/calendar.tool';
+import { SheetsTool } from './built-in/sheets.tool';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { ModelsModule } from '../models/models.module';
 import { MemoryModule } from '../memory/memory.module';
@@ -105,6 +107,8 @@ import type { IStructuredTool } from './interfaces/structured-tool.interface';
     ExplainTool,
     ContextTool,
     ChatTool,
+    CalendarTool,
+    SheetsTool,
     CreateTaskTool,
     CreateProjectTool,
     ListDepartmentsTool,
@@ -194,6 +198,8 @@ export class ToolsModule implements OnModuleInit {
     private readonly explainTool: ExplainTool,
     private readonly contextTool: ContextTool,
     private readonly chatTool: ChatTool,
+    private readonly calendarTool: CalendarTool,
+    private readonly sheetsTool: SheetsTool,
     private readonly createTask: CreateTaskTool,
     private readonly createProject: CreateProjectTool,
     private readonly listDepts: ListDepartmentsTool,
@@ -279,6 +285,8 @@ export class ToolsModule implements OnModuleInit {
       this.explainTool,
       this.contextTool,
       this.chatTool,
+      this.calendarTool,
+      this.sheetsTool,
       this.createTask,
       this.createProject,
       this.listDepts,

@@ -42,6 +42,13 @@ const SETTINGS_TABS = [
     icon: "⚙️",
     description: "Platform settings",
   },
+  {
+    id: "integrations",
+    label: "Integrations",
+    href: "/settings/integrations",
+    icon: "🔌",
+    description: "Third-party integrations and OAuth",
+  },
 ];
 
 export default function SettingsLayout({

@@ -84,16 +84,19 @@ function filterTree(tree: OrgNode[], q: string): OrgNode[] {
 
 export function useOrgChart(): UseOrgChartReturn {
   const {
-    departments,
+    departments: departmentsRaw,
     loading: deptLoading,
     fetchDepartments,
   } = useDepartmentStore();
 
   const {
-    agents,
+    agents: agentsRaw,
     loading: agentLoading,
     fetchAgents,
   } = useAgentStore();
+
+  const departments = Array.isArray(departmentsRaw) ? departmentsRaw : [];
+  const agents = Array.isArray(agentsRaw) ? agentsRaw : [];
 
   const [query, setQuery]           = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);

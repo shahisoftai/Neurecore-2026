@@ -62,6 +62,16 @@ export const useTaskStore = create<TaskState>()(
       name: 'hq_task_store',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ tasks: state.tasks, total: state.total, page: state.page }),
+      merge: (persistedState, currentState) => {
+        const ps = (persistedState ?? {}) as Partial<TaskState>;
+        return {
+          ...currentState,
+          ...ps,
+          tasks: Array.isArray(ps.tasks) ? ps.tasks : currentState.tasks,
+          total: typeof ps.total === 'number' ? ps.total : currentState.total,
+          page: typeof ps.page === 'number' ? ps.page : currentState.page,
+        };
+      },
     },
   ),
 );

@@ -1,6 +1,6 @@
 # Frontend-Tenant (NeureCore tenant app)
 
-**Last verified:** 2026-07-07 01:10 PKT (ISSUE 1-9 audit: all home-page mock widgets wired to real stores/APIs; department templates now fetched from backend; new Packages tab in marketplace with deploy flow; success rate fixed; redundant KPI fetching removed; spawn modal tenantId from auth store; backend packages/features GET opened to tenant OWNER/ADMIN)
+**Last verified:** 2026-07-07 16:30 PKT (FIX-019 defensive patterns shipped; FIX-020 auth refactor plan written — see [plans/auth-hardening-refactor.md](../plans/auth-hardening-refactor.md))
 **Live URL:** `https://hq.neurecore.com`
 **Internal port:** 3005
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant/`
@@ -443,6 +443,8 @@ Widgets structured for WebSocket / API integration:
 7. **`/login` form hydration warning on `autoComplete`** — React 19 reports `autocomplete` attribute mismatch between SSR and client (dev-only). Cosmetic, does not affect production.
 8. **Recharts "width(-1) and height(-1)" warning on `/intelligence`** — fires when a chart container has no measured dimensions during initial mount. Non-blocking; recharts self-corrects after first layout. Tracked for refactor in [ui-audit-refactor-guide.md §7](ui-audit-refactor-guide.md).
 9. **Empty work-item tabs on `/departments`** — Tasks / Workflows / Routines / Goals / Projects are now routable (FIX-020) but show a placeholder pointing back to `?tab=departments`. Full implementations are pending (Phase 7+ scope).
+10. **Settings cards redirect loop (FIXED 2026-07-07)** — Profile, AI Providers, API Keys, Security & Access cards previously linked to `/settings?tab=...` which redirected back to the Settings tab, causing a silent loop. Fixed in FIX-017: all sub-sections now render inline within the Intelligence page's SettingsTab with URL-backed state. See §17.
+11. **Home page `.length` crash + WebSocket failure + `/help` 404 (FIXED 2026-07-07)** — Corrupted Zustand persist state caused `TypeError: can't access property "length", n is undefined`. TopBar linked to non-existent `/help`. WebSocket fell back to `localhost:3000`. All fixed in FIX-019 with merge functions, guards, a real /help page, and same-origin socket URL. See §19.
 
 ---
 
@@ -475,6 +477,170 @@ Full audit of how SuperAdmin-deployed entities (AI Employees, Departments, Featu
 
 ### New service
 **File:** `src/services/packages.service.ts` — `list()`, `getById()`, `deployPreview()`, `deploy()`, `listFeatures()`.
+
+---
+
+## 17. Settings sub-tab architecture fix (FIX-017, 2026-07-07)
+
+**Problem:** Settings cards (Profile, AI Providers, API Keys, Security & Access) linked to `/settings?tab=...` which redirected back to `/intelligence?tab=settings` — a silent redirect loop. No detail content ever opened.
+
+**Fix:** Settings sub-sections now render as inline detail views within the Intelligence page's SettingsTab:
+- **State:** `settingsSubTab` managed in `IntelligencePage`, synced to URL via `?tab=settings&settingsSub=<name>`
+- **Navigation:** Cards use `onClick → onSetSubTab(sub)` instead of `<Link href=...>`. Back button resets to card grid.
+- **Detail views** (all in `src/app/intelligence/page.tsx`):
+  - `ProfileDetail` — first/last name edit, password change, Zustand auth store sync
+  - `AIProvidersDetail` — full CRUD via `/settings/ai/providers` endpoints
+  - `APIKeysDetail` — API endpoint reference with copy buttons
+  - `SecuritySettingsDetail` — CSRF/Helmet/Rate-limit status cards
+- **New cards:** Integration card (links to `/settings/integrations` full page)
+- **Redirect fix:** `src/app/settings/page.tsx` now forwards `tab` params to `?settingsSub=` instead of dropping them
+
+**Files changed:**
+- `src/app/settings/page.tsx` — preserve + forward sub-tab params
+- `src/app/intelligence/page.tsx` — ~600 lines added (sub-tab state, 5 detail components, Integration card)
+
+---
+
+## 18. Home page performance fix (FIX-018, 2026-07-07)
+
+**Problem:** After login, `/home` showed a blank screen for seconds, then loaded slowly with duplicate API calls.
+
+**Architecture:**
+- **Single source of truth:** `command-center/summary` populates `agentStore`, `taskStore`, `departmentStore`. Widgets read from stores — never fire their own fetches.
+- **Shared approvals:** New `stores/approvalsStore.ts` + module-level `fetchInFlight` in `useApprovals` hook. Multiple components share one API call.
+- **No tenant fetch:** HomeHero uses authStore user data + browser timezone fallback. `tenants.getCurrent()` removed from page.tsx.
+- **Loading skeleton:** Page shows spinner during `_hasHydrated` window instead of `return null`.
+- **Loading states:** StatsWidget shows "Waiting for workspace data...", LiveFeedWidget shows "Watching for activity..." while awaiting data.
+
+**API calls (before → after):** 5 → 2 on initial load.
+
+**Files changed:**
+- `src/stores/approvalsStore.ts` — new shared Zustand store
+- `src/hooks/useApprovals.ts` — refactored to use shared store
+- `src/app/home/page.tsx` — removed tenant fetch, added loading skeleton, summaryLoading state
+- `src/components/home/HomeKpiStrip.tsx` — removed useApprovals, accepts pendingApprovals/loading props
+- `src/components/home/TasksWidget.tsx` — removed independent fetchTask
+- `src/components/home/ApprovalsWidget.tsx` — removed autoRefresh (handled at page level)
+- `src/components/home/StatsWidget.tsx` — added loading-empty state
+- `src/components/home/LiveFeedWidget.tsx` — contextual loading message
+
+---
+
+## 19. Defensive patterns: Zustand merge + UI guards (FIX-019, 2026-07-07)
+
+**Problem:** Five issues from the browser console after the FIX-018 deploy:
+1. `TypeError: can't access property "length", n is undefined` — kept recurring despite per-component guards
+2. `GET /help?_rsc=5vnyd 404` — TopBar links to `/help` but no page exists
+3. `wss://brain.neurecore.com/socket.io/` — WebSocket failed because the URL fallback was `localhost:3000` (a dev-only value)
+4. `Content-Security-Policy warnings 4` — pre-existing, not blocking
+5. Pre-existing build error in `command-center/page.tsx`: `setWorkflows` called but `useWorkflowStore` not destructured. Lint passed; build caught it.
+
+**Architecture decision: defensive everywhere, not just at consumers.**
+
+### 19.1 Zustand `merge` functions (defense-in-depth at the source)
+
+Every store that uses `persist` middleware now has a `merge` function that sanitizes persisted fields. Corrupted localStorage now falls back to initial state instead of `undefined`.
+
+**Pattern (mandatory for any new persisted store):**
+```ts
+persist(
+  (set) => ({ ... }),
+  {
+    name: 'my-store',
+    storage: createJSONStorage(() => localStorage),
+    partialize: (state) => ({ items: state.items, total: state.total }),
+    merge: (persistedState, currentState) => {
+      const ps = (persistedState ?? {}) as Partial<MyState>;
+      return {
+        ...currentState,
+        ...ps,
+        items: Array.isArray(ps.items) ? ps.items : currentState.items,
+        total: typeof ps.total === 'number' ? ps.total : currentState.total,
+      };
+    },
+  },
+)
+```
+
+**Stores hardened in FIX-019:**
+- `src/stores/taskStore.ts` — `hq_task_store` (tasks, total, page)
+- `src/stores/agentStore.ts` — `hq_agent_store` (agents, total)
+- `src/stores/departmentStore.ts` — `hq_department_store` (departments, total)
+- `src/stores/uiPreferencesStore.ts` — `ui-preferences-store` (visibleIcons, visibleWidgets, widgetOrder)
+
+**Stores NOT hardened (intentionally, no persist):**
+- `useAuthStore` — persist only stores `user` (object) and `isAuthenticated` (boolean), both validated on read
+- `useApprovalsStore` — no persist; always starts from initial state
+- `useActivityStore` — no persist; populated by WebSocket
+
+### 19.2 `Array.isArray` guards (defense at every consumer)
+
+Even with `merge` functions, **every consumer** of a persisted store must defensively guard. Two reasons:
+1. The `merge` is best-effort; a hostile localStorage entry could still pass through.
+2. Future store changes (e.g. a new field) won't be in the `merge` until someone remembers to add it.
+
+**Pattern (mandatory for any new component reading a persisted store):**
+```tsx
+const visibleWidgetsRaw = useUIPreferencesStore((s) => s.visibleWidgets);
+const visibleWidgets = Array.isArray(visibleWidgetsRaw) ? visibleWidgetsRaw : [];
+// Then use visibleWidgets — never the raw value.
+```
+
+**Components hardened in FIX-019:**
+- `src/components/home/RightPanel.tsx` — `visibleWidgets`
+- `src/components/home/LeftPanel.tsx` — `visibleIcons`
+- `src/components/home/PreferencesModal.tsx` — `visibleWidgets`
+- `src/components/home/TasksWidget.tsx` — `tasks` (FIX-018)
+- `src/components/home/LiveFeedWidget.tsx` — `events` (FIX-018)
+- `src/shared/hooks/useAIChat.ts` — `agents`
+- `src/app/command-center/page.tsx` — `agents`, `tasks`, `departments` (18+ accesses)
+- `src/features/org-chart/hooks/useOrgChart.ts` — `departments`, `agents`
+- `src/app/departments/[id]/workspace/page.tsx` — `departments`, `agents`, `tasks`
+
+### 19.3 WebSocket URL must derive from `window.location`
+
+**Anti-pattern (banned):**
+```ts
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? 'http://localhost:3000';
+```
+
+**Correct pattern (services/socket.ts):**
+```ts
+const SOCKET_URL = (() => {
+  if (typeof window === 'undefined') return '';
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) return process.env.NEXT_PUBLIC_SOCKET_URL;
+  if (window.location.protocol === 'https:') return `wss://${window.location.host}`;
+  return `ws://${window.location.host}`;
+})();
+```
+
+A missing `NEXT_PUBLIC_*` env var should derive from the runtime context, not silently fall back to a dev-only value. See [operations.md §6.5](operations.md#65-never-hardcode-localhost3000-in-production-code).
+
+### 19.4 Every `<Link>` must have a page
+
+TopBar.tsx linked to `/help` (line 213 in the avatar menu, line 270 in the toolbar). Next.js prefetches on viewport/hover; 404s are noise. **FIX-019** added `src/app/help/page.tsx` — a real help page with documentation links, live chat trigger, and email support.
+
+**Rule for new `<Link>` elements:** create the page in the same commit, or change the link to a `<button>` with a real handler.
+
+### 19.5 Pre-existing build error: `setWorkflows` not destructured
+
+`command-center/page.tsx` was calling `setWorkflows` from `useWorkflowStore` but the import was the only reference — the destructure was missing. The build was failing on this, but only caught during FIX-019's redeploy because we ran `next build` end-to-end.
+
+**Lesson:** `npm run lint` does NOT catch missing destructures. Always run `next build` (or `nest build`) before rsync. See [deployment.md §10](deployment.md#10-pre-deploy-checklist) for the pre-deploy checklist.
+
+**Files changed in FIX-019:**
+- `src/stores/{taskStore,agentStore,departmentStore,uiPreferencesStore}.ts` — added `merge` functions
+- `src/services/socket.ts` — derive URL from `window.location`
+- `src/app/settings/page.tsx` — preserve + forward sub-tab params (FIX-017 carryover)
+- `src/app/help/page.tsx` — new
+- `src/app/home/page.tsx` — loading skeleton (FIX-018 carryover)
+- `src/app/intelligence/page.tsx` — sub-tab state (FIX-017 carryover)
+- `src/components/home/{TasksWidget,LiveFeedWidget,RightPanel,LeftPanel,PreferencesModal,HomeKpiStrip,ApprovalsWidget,StatsWidget}.tsx` — guards
+- `src/shared/hooks/useAIChat.ts` — guards
+- `src/app/command-center/page.tsx` — guards + fixed `useWorkflowStore` destructure
+- `src/app/departments/[id]/workspace/page.tsx` — guards
+- `src/features/org-chart/hooks/useOrgChart.ts` — guards
+- `.env.production` — explicit empty `NEXT_PUBLIC_SOCKET_URL`
 
 ---
 

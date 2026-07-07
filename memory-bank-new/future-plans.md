@@ -1,6 +1,6 @@
 # Future Plans & Feature Roadmap
 
-**Last updated:** 2026-07-04 (Hermes Layer unification implemented — all AI agents now routable through single HermesRuntimeService; feature-flagged behind `HERMES_ENABLED`)
+**Last updated:** 2026-07-07 (FIX-020 plan written — see [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). 10-phase auth refactor to eliminate the "auth gets corrupted" bug class. ~18 days effort.)
 **Audience:** Product + engineering — what's coming next.
 **Sibling docs:** [fixes.md](fixes.md) · [backend.md](backend.md) · [frontend-tenant.md](frontend-tenant.md) · [frontend-admin.md](frontend-admin.md) · [contabo-ops.md](contabo-ops.md)
 
@@ -186,17 +186,46 @@ Per-tenant logo, primary color, custom domain. Config-driven via `tenants.settin
 - Manual approval gate for prod deploys
 - Slack notification on success/failure
 
-### 3.3 Vercel vs Contabo evaluation 🔴
+**CRITICAL — must include `next build` / `nest build`, not just `lint`:**
 
-**Goal:** Decide whether to move frontends to Vercel for SSR/ISR benefits, or stay all-Contabo.
+`next lint` (and `eslint` in general) does NOT catch missing destructures, wrong generics, or undefined names. A pre-existing build error in `command-center/page.tsx` (FIX-019) survived multiple lint passes and was only caught by `next build` during the FIX-019 redeploy. See [deployment.md §10](deployment.md#10-pre-deploy-checklist) and [fixes.md FIX-019 "Build error" section](fixes.md#fix-019--comprehensive-home-page-audit-5-issues-fixed).
+
+**CI steps (per frontend):**
+```yaml
+- name: Lint
+  run: npm run lint
+- name: Type-check + build (catches what lint misses)
+  run: npm run build
+- name: Unit tests
+  run: npm test
+- name: Bundle-size check
+  run: du -sh .next | awk '{print $1}' | xargs -I{} test {} -lt 10M
+- name: Deploy to Contabo
+  if: github.ref == 'refs/heads/main' && success()
+  uses: appleboy/ssh-action@master
+  with:
+    host: ${{ secrets.CONTABO_HOST }}
+    username: root
+    key: ${{ secrets.CONTABO_SSH_KEY }}
+    script: |
+      cd /opt/neurecore/frontend-tenant
+      git pull origin main
+      npm ci
+      ./node_modules/.bin/next build
+      pm2 startOrReload /opt/neurecore/ecosystem.config.js --only neurecore-tenant
+```
+
+**Lint rule (deferred to D15 in [pending-tasks.md](pending-tasks.md)):** add `eslint-plugin-zustand` or a custom rule that flags any `.length`/`.filter`/`.map`/`.slice`/`.find`/`.includes` on a Zustand selector that returns a value from a persisted store without a preceding `Array.isArray` check.
+
+### 3.3 Architecture — Contabo only 🟢
+
+**Decision:** All three NeureCore apps (Backend, Frontend-Admin, Frontend-Tenant) run on Contabo only. No Vercel, no other cloud.
 
 **Scope:**
-- Cost analysis (Contabo $XX/mo vs Vercel Pro $20/dev × N)
-- SSR perf benchmark (Contabo single region vs Vercel edge)
-- Security audit (public node processes vs managed)
-- Recommendation doc
-
-**Note:** As of 2026-07-04, decision is **Contabo only** (no Vercel). Re-evaluation quarterly.
+- All frontends served from Contabo via PM2 + OpenLiteSpeed
+- Backend on Contabo port 3003
+- TLS via Let's Encrypt
+- Re-evaluation only if a future business need arises
 
 ### 3.4 Test coverage 🟡 (gap)
 
@@ -466,7 +495,7 @@ Things we plan to remove:
 | Item | When | Why |
 |---|---|---|
 | `frontend-tenant-simplified/` | already removed | FTS rewrite cancelled |
-| Vercel deployment | already removed | Single-surface decision |
+| Legacy deployment docs | corrected | Single-surface decision |
 | EAOS frontend | already removed | App retired |
 | Legacy `next.config.js` standalone output | TBD | Re-evaluate when adding more Node.js services |
 | `app/api/v1/*` duplicate routes in frontend-admin | TBD | Either use them properly or delete |
@@ -478,9 +507,9 @@ Things we plan to remove:
 
 | Date | Decision | Rationale |
 |---|---|---|
-| 2026-07-04 | Drop Vercel; all frontends on Contabo | Single-host ops simplicity; cost |
+| 2026-07-04 | All frontends on Contabo | Single-host ops simplicity; cost |
 | 2026-07-04 | Retire FTS rewrite | Insufficient ROI vs. maintenance cost |
-| 2026-07-04 | Drop Vercel claim from docs | Architecture changed |
+| 2026-07-04 | Deployment docs corrected | Architecture clarified |
 | 2026-07-04 | Single PM2 ecosystem.config.js for all 4 processes | Reproducibility |
 | 2026-07-04 | `start.sh` wrappers instead of `npx next start` | npx path resolution in PM2 was broken |
 | 2026-07-04 | CORS in sidecar, not NestJS | Production handled by OLS vhost; dev by proxy |
@@ -587,6 +616,74 @@ Industry (1) ── (N) Package (N) ── (1) TierTemplate
 - Full plan: [plans/admin-business-composition.md](plans/admin-business-composition.md)
 - Backend module reference: [backend.md §3, §4.7](backend.md)
 - Frontend nav: [frontend-admin.md §4, §5](frontend-admin.md)
+
+---
+
+## 12. Auth system refactor (FIX-020) — PLANNED 🟡
+
+Audit completed 2026-07-07 16:27 PKT. Identified 7 root causes for the "auth gets corrupted when I implement work on other pages" bug class. The fix is a 10-phase refactor to a single `IAuthService` facade with SOLID L3 dependencies. **See full plan: [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md).**
+
+### 12.1 Why this matters
+
+Every new page that calls an API on mount is a time bomb:
+- 401 from any API → hard-redirect to `/login` (no warning, no recovery)
+- Cookies cleared but Zustand `useAuthStore` not cleared → stale-user loop
+- Dead `localStorage`/`sessionStorage` code paths in `lib/security.ts` and `lib/errors.ts` give contributors the wrong mental model
+- `useTenantAuth`/`useAdminAuth` return `null` during hydration → flash-redirect
+
+### 12.2 The 7 root causes (full detail in the plan)
+
+| # | Root cause | Severity |
+|---|---|---|
+| RC-1 | Dead `SecureStorageKey`/`setSecureToken` writes to `sessionStorage["nc_at"]` (key doesn't match `__Host-nc_at`) | High |
+| RC-2 | `lib/errors.ts:321-322` clears `localStorage.tenant_accessToken` (backend never stored it there) + hard-redirects | High |
+| RC-3 | `clearTokens()` clears cookies but NOT the Zustand store → stale-user loop | **Critical** |
+| RC-4 | `intelligence/page.tsx:927-928` saves profile with stale `user` prop → corrupted user persisted | High |
+| RC-5 | `useTenantAuth`/`useAdminAuth` return `null` during hydration → pages render blank → 401 → hard-redirect | High |
+| RC-6 | `AppInitializer.tsx:54` clears cookies on any `/me` failure (transient, proxy, restart) | High |
+| RC-7 | Two parallel axios instances with independent refresh coordination | Medium |
+
+### 12.3 Target architecture
+
+```
+Layer 1: UI Components & Pages          →  useAuth() (the only auth API)
+Layer 2: Auth Facade (singleton)        →  IAuthService
+Layer 3: Auth Core (SOLID, 5 modules)   →  ITokenRepository, IUserRepository, IAuthApi, IRefreshCoordinator, IAuthSessionLifecycle
+Layer 4: HTTP Transport (one axios)     →  authHttpClient (the only one)
+```
+
+### 12.4 Phases & effort
+
+| Phase | Effort | Risk |
+|---|---|---|
+| 1. Build new core (L2/L3/L4) + tests | 3 days | Low — greenfield |
+| 2. Migrate TenantShell + TopBar (one consumer) | 1 day | Low |
+| 3. Migrate API interceptors | 2 days | High — ship behind feature flag |
+| 4. Migrate all pages | 3 days | Medium |
+| 5. Fix ProfileDetail (RC-4) | 0.5 day | Low |
+| 6. Delete dead `lib/security.ts` + `lib/errors.ts` token code | 1 day | Low |
+| 7. Fix `AppInitializer` (RC-6) — retry once on /me | 0.5 day | Medium |
+| 8. Admin refactor (parallel workstream) | 5 days | Medium |
+| 9. Lint rules (`no-auth-localstorage`, `no-direct-auth-store-access`) | 1 day | Low |
+| 10. Documentation (`int-features/auth-architecture.md`, update `auth.md`) | 1 day | Low |
+| **Total** | **~18 days** | |
+
+### 12.5 Open questions (decide before Phase 1)
+
+- **§7.1 (restore on /me 500):** keep user / force logout / show "may be expired" banner. Recommendation: keep user, retry next page.
+- **§7.5 (migration order):** strict Phase 1 → 2 → 3 → 4 → 5, ship per page to allow rollback.
+- **§7.6 (admin parallel):** can be done in parallel by second engineer.
+
+### 12.6 Acceptance
+
+- [ ] All 7 RCs addressed
+- [ ] Lint rules fail CI on `localStorage.setItem` with auth keys
+- [ ] Lint rules fail CI on direct `useAuthStore` import
+- [ ] `auth-07-stale-user-loop.cy.ts` passes (the actual loop is gone)
+- [ ] Existing 8/8 auth-hardening tests still pass
+- [ ] `auth.md` updated to point to new architecture
+- [ ] New `int-features/auth-architecture.md` created
+- [ ] `fixes.md` has FIX-020 entry
 
 ---
 

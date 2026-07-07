@@ -18,7 +18,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Sparkles, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTenantAuth } from '@/hooks/useTenantAuth';
-import { tenantsService, type TenantSelf } from '@/services/tenants.service';
+import { useAuthStore } from '@/stores/authStore';
+import { useApprovals } from '@/hooks/useApprovals';
 import { useAgentStore } from '@/stores/agentStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useDepartmentStore } from '@/stores/departmentStore';
@@ -38,14 +39,13 @@ import {
 
 export default function HomePage() {
   const user = useTenantAuth();
+  const hasHydrated = useAuthStore((s) => s._hasHydrated);
   const router = useRouter();
   const pathname = usePathname();
 
-  // ── UI State ────────────────────────────────────────────────────────────
   const backgroundStyle = useUIPreferencesStore((s) => s.backgroundStyle);
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
 
-  // ── Stores ──────────────────────────────────────────────────────────────
   const setAgents = useAgentStore((s) => s.setAgents);
   const agents = useAgentStore((s) => s.agents);
   const tasks = useTaskStore((s) => s.tasks);
@@ -53,58 +53,17 @@ export default function HomePage() {
   const departments = useDepartmentStore((s) => s.departments);
   const setDepartments = useDepartmentStore((s) => s.setDepartments);
 
-  // ── Local view state ────────────────────────────────────────────────────
-  const [tenant, setTenant] = useState<TenantSelf | null>(null);
-  const [loadingTenant, setLoadingTenant] = useState(true);
-  const [errors, setErrors] = useState<NetworkErrorDescriptor[]>([]);
-  const [retryCount, setRetryCount] = useState(0);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [monthCost, setMonthCost] = useState<number | null>(null);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [monthCost, setMonthCost] = useState<number | null>(null);
 
-  // ── Error handling ──────────────────────────────────────────────────────
-  const pushOrReplaceError = useCallback((key: string, message: string | null) => {
-    setErrors((prev) => {
-      const idx = prev.findIndex((e) => e.key === key);
-      if (message === null) {
-        if (idx === -1) return prev;
-        const copy = prev.slice();
-        copy.splice(idx, 1);
-        return copy;
-      }
-      const entry: NetworkErrorDescriptor = { key, message };
-      if (idx === -1) return [...prev, entry];
-      const copy = prev.slice();
-      copy[idx] = entry;
-      return copy;
-    });
-  }, []);
+  const { critical, routine, isLoading: approvalsLoading } = useApprovals({ autoRefresh: true, refreshInterval: 120_000 });
+  const pendingApprovals = useMemo(() => critical.length + routine.length, [critical, routine]);
 
-  // ── Fetch tenant ────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    setLoadingTenant(true);
-    tenantsService
-      .getCurrent()
-      .then((t) => {
-        if (!cancelled) setTenant(t);
-        pushOrReplaceError('tenant', null);
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : 'Unable to load workspace info';
-        pushOrReplaceError('tenant', message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingTenant(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, retryCount, pushOrReplaceError]);
-
-  // ── Fetch command-center summary ────────────────────────────────────────
   const fetchSummary = useCallback(async () => {
+    setSummaryLoading(true);
     try {
       const summary = await commandCenterService.getSummary();
       const allAgents = (summary as { agents?: { list: unknown[] } }).agents?.list ?? [];
@@ -115,21 +74,20 @@ export default function HomePage() {
       setDepartments(allDepts as never[]);
       const monthCents = (summary as { costs?: { monthCents: number } }).costs?.monthCents;
       if (typeof monthCents === 'number') setMonthCost(monthCents / 100);
-      pushOrReplaceError('summary', null);
-      return true;
+      setSummaryError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Workspace data unavailable';
-      pushOrReplaceError('summary', message);
-      return false;
+      setSummaryError(message);
+    } finally {
+      setSummaryLoading(false);
     }
-  }, [setAgents, setTasks, setDepartments, pushOrReplaceError]);
+  }, [setAgents, setTasks, setDepartments]);
 
   useEffect(() => {
     if (!user) return;
     void fetchSummary();
   }, [user, fetchSummary]);
 
-  // ── Derived data ───────────────────────────────────────────────────────
   const safeDepartments = useMemo(() => (Array.isArray(departments) ? departments : []), [departments]);
   const safeTasks = useMemo(() => (Array.isArray(tasks) ? tasks : []), [tasks]);
 
@@ -143,7 +101,6 @@ export default function HomePage() {
     return m;
   }, [agents]);
 
-  // ── Background styles ───────────────────────────────────────────────────
   const getBackgroundClass = () => {
     switch (backgroundStyle) {
       case 'gradient-blue':
@@ -164,29 +121,33 @@ export default function HomePage() {
     setAiChatOpen(true);
   };
 
-  if (!user) return null;
+  if (!hasHydrated || !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-zinc-500">Loading workspace...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <TenantShell user={user}>
       <div className={`min-h-screen ${getBackgroundClass()} relative overflow-hidden`}>
-        {/* Animated background gradient */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl opacity-20" />
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl opacity-20" />
         </div>
 
-        {/* Main content wrapper */}
         <div className="relative z-10 flex h-screen overflow-hidden">
-          {/* Left Panel */}
           <AnimatePresence>
             {leftPanelOpen && (
               <LeftPanel isOpen={true} onClose={() => setLeftPanelOpen(false)} />
             )}
           </AnimatePresence>
 
-          {/* Center + Right Content */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Mobile menu button */}
             {!leftPanelOpen && pathname === '/home' && (
               <div className="sticky top-0 z-30 px-6 py-4 border-b border-white/10 backdrop-blur-sm bg-slate-950/50 flex items-center gap-4">
                 <button
@@ -198,15 +159,11 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Page content */}
             <div className="flex-1 overflow-y-auto">
               <div className="p-6 h-full">
                 {pathname === '/home' ? (
-                  // Home page: 2-column layout (main + right panel) - centered hero
                   <div className="flex gap-6 h-full justify-center">
-                    {/* Main content column - centered and narrower */}
                     <div className="flex-1 min-w-0 space-y-6 overflow-y-auto pr-2 flex flex-col items-center justify-start max-w-2xl">
-                      {/* Hero section - centered and reduced size */}
                       <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -214,34 +171,35 @@ export default function HomePage() {
                         className="w-full max-w-xl"
                       >
                         <GlassPanel className="p-6">
-                          <HomeHero tenant={tenant} onSend={handleSend} />
+                          <HomeHero tenant={null} onSend={handleSend} />
                         </GlassPanel>
                       </motion.div>
 
-                      {/* KPI Strip */}
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.1 }}
                         className="w-full max-w-xl"
                       >
-                        <HomeKpiStrip monthCost={monthCost} />
+                        <HomeKpiStrip monthCost={monthCost} pendingApprovals={pendingApprovals} loading={summaryLoading} />
                       </motion.div>
 
-                      {/* Network Status */}
-                      {errors.length > 0 && (
+                      {summaryError && (
                         <motion.div
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, delay: 0.2 }}
                           className="w-full max-w-xl"
                         >
-                          <HomeNetworkStatus errors={errors} onRetry={() => setRetryCount((c) => c + 1)} busy={loadingTenant} />
+                          <HomeNetworkStatus
+                            errors={[{ key: 'summary', message: summaryError }]}
+                            onRetry={() => void fetchSummary()}
+                            busy={summaryLoading}
+                          />
                         </motion.div>
                       )}
                     </div>
 
-                    {/* Right Panel - Widgets - reduced padding */}
                     <motion.div
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -257,7 +215,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* AI Chat Components */}
         <AIChatButton onClick={() => setAiChatOpen(true)} />
         <AIChatPanel
           isOpen={aiChatOpen}

@@ -219,6 +219,34 @@ Both frontends read from `/opt/neurecore/frontend-{tenant,admin}/.env.production
 | `NEXT_PUBLIC_ADMIN_URL` | `https://cc.neurecore.com` | `https://cc.neurecore.com` |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | set | not set |
 
+### 6.5 Never hardcode `localhost:3000` in production code
+
+A missing `NEXT_PUBLIC_*` env var should NOT silently fall back to a dev-only default. Browsers running the production build will then attempt to connect to `localhost:3000` (which is unreachable from the user's machine) and fail with cryptic errors.
+
+**Current pattern (FIX-019, services/socket.ts):**
+```ts
+const SOCKET_URL = (() => {
+  if (typeof window === 'undefined') return '';
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) return process.env.NEXT_PUBLIC_SOCKET_URL;
+  if (window.location.protocol === 'https:') return `wss://${window.location.host}`;
+  return `ws://${window.location.host}`;
+})();
+```
+
+**Anti-pattern (banned):**
+```ts
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? 'http://localhost:3000';
+```
+
+**Audit grep (run before every commit that touches `NEXT_PUBLIC_*` or `process.env`):**
+```bash
+grep -rn "localhost:3000\|localhost:3001\|localhost:3002" frontend-tenant/src/ frontend-admin/src/ \
+  | grep -v "//" \
+  | grep -v "node_modules" || echo "clean"
+```
+
+**`localhost:3000` is fine in `localhost`-gated `if` blocks** (dev-only) but should never be a default fallback that the production build can hit.
+
 ---
 
 ## 7. Disk & RAM
@@ -281,3 +309,5 @@ These are hard-won. Read before doing a deploy.
 10. **Don't assume port 3001 = tenant.** It's GUV's `app-frontend`.
 11. **Don't assume port 3003 is exposed publicly** — it's behind OLS reverse-proxy at `brain.neurecore.com`.
 12. **Don't skip CORS preflight test** after editing `cors-proxy.js`. Run the `curl -X OPTIONS` recipe in §4.2.
+13. **Don't hardcode `localhost:3000` as a fallback** in production code. A missing `NEXT_PUBLIC_*` env var should derive from `window.location`, not silently fall back to a dev-only value. See §6.5.
+14. **Don't trust `npm run lint` as proof of a buildable codebase.** Always run `next build` / `nest build` before rsync. Lint does not catch missing destructures, wrong generics, or undefined names. See [deployment.md §10](deployment.md#10-pre-deploy-checklist).

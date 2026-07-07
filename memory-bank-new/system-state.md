@@ -1,6 +1,6 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-07 01:15 PKT (FIX-024: Tenant consumption audit — home-page mock data replaced with real stores/APIs; dept templates now live-fetched; Packages tab with deploy flow added to marketplace; backend packages/features GET opened to tenant OWNER/ADMIN)
+**Last verified:** 2026-07-07 16:10 PKT (FIX-019: Defensive patterns shipped — Zustand `merge` for all persisted stores, `Array.isArray` guards in 9 components, `/help` page created, socket URL derives from `window.location`, pre-existing `command-center` build error fixed. `next build` clean. `https://hq.neurecore.com/home` and `https://hq.neurecore.com/help` return 200. `neurecore-tenant` PM2 id 40 online.)
 
 > **2026-07-07 00:45 PKT — Deployment Enhancement shipped (Kilo):**
 > - **Frontend-admin** — 4 gaps closed:
@@ -329,7 +329,7 @@ All three vhosts add CORS headers (`Access-Control-Allow-Methods/Headers/Max-Age
 | PM2 `neurecore-fts` (port 3021) | 2026-07-04 | FTS rewrite cancelled |
 | `frontend-eaos/` (Contabo) | pre-2026-07-04 | EAOS app retired |
 | PM2 `neurecore-eaos` (port 3011) | pre-2026-07-04 | EAOS app retired |
-| Vercel deployment of tenant | 2026-07-04 | Decision: single-surface on Contabo |
+| Stale tenant deployment docs | 2026-07-04 | Corrected to reflect Contabo-only architecture |
 
 ---
 

@@ -2,10 +2,12 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type { AgentStatus, AgentType } from '@prisma/client';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { EventsGateway } from '../../events/events.gateway';
+import { GoogleDriveService } from '../../integrations/google/google-drive.service';
 import type {
   IAgentService,
   AgentFilter,
@@ -44,9 +46,13 @@ export class AgentsService implements IAgentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventsGateway,
-  ) { }
+    @Optional() private readonly driveService?: GoogleDriveService,
+  ) {}
 
-  async findAll(filter: AgentFilter, tenantId?: string): Promise<{
+  async findAll(
+    filter: AgentFilter,
+    tenantId?: string,
+  ): Promise<{
     data: unknown[];
     total: number;
     page: number;
@@ -138,7 +144,7 @@ export class AgentsService implements IAgentService {
     userId: string,
     tenantId: string,
   ): Promise<unknown> {
-    return this.prisma.agent.create({
+    const agent = await this.prisma.agent.create({
       data: {
         name: input.name,
         description: input.description,
@@ -154,6 +160,19 @@ export class AgentsService implements IAgentService {
         createdById: userId,
       },
     });
+
+    // Best-effort auto-provision of Drive folders for the new agent
+    if (this.driveService) {
+      this.driveService
+        .setupAgentFolders(tenantId, agent.id, agent.name)
+        .catch((err) => {
+          this.logger.warn(
+            `Failed to auto-provision Drive folders for agent ${agent.id} (tenant=${tenantId}): ${(err as Error).message}`,
+          );
+        });
+    }
+
+    return agent;
   }
 
   async update(
@@ -232,9 +251,7 @@ export class AgentsService implements IAgentService {
       data: { status },
     });
     this.events.emitAgentStatusUpdated(tenantId, id, status);
-    this.logger.log(
-      `Agent ${id} (tenant ${tenantId}) status set to ${status}`,
-    );
+    this.logger.log(`Agent ${id} (tenant ${tenantId}) status set to ${status}`);
     return agent;
   }
 
@@ -268,24 +285,24 @@ export class AgentsService implements IAgentService {
           config: true,
           metadata: true,
         },
-        orderBy: [
-          { status: 'asc' },
-          { createdAt: 'desc' },
-        ],
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
       });
 
       // Calculate summary statistics
       const summary = {
-        totalOnline: agents.filter(a => String(a.status) !== 'OFFLINE').length,
-        totalOffline: agents.filter(a => String(a.status) === 'OFFLINE').length,
-        activelyWorking: agents.filter(a => String(a.status) === 'ACTIVE').length,
-        idle: agents.filter(a => String(a.status) === 'IDLE').length,
-        standby: agents.filter(a => String(a.status) === 'STANDBY').length,
+        totalOnline: agents.filter((a) => String(a.status) !== 'OFFLINE')
+          .length,
+        totalOffline: agents.filter((a) => String(a.status) === 'OFFLINE')
+          .length,
+        activelyWorking: agents.filter((a) => String(a.status) === 'ACTIVE')
+          .length,
+        idle: agents.filter((a) => String(a.status) === 'IDLE').length,
+        standby: agents.filter((a) => String(a.status) === 'STANDBY').length,
       };
 
       // Transform agents to include mock orchestration data
-      const orchestratedAgents = agents.map(agent => {
-        const metadata = agent.metadata as any || {};
+      const orchestratedAgents = agents.map((agent) => {
+        const metadata = (agent.metadata as any) || {};
         const performance = metadata.performance || {
           completedToday: Math.floor(Math.random() * 20),
           accuracy: 85 + Math.floor(Math.random() * 15),

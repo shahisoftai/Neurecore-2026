@@ -34,7 +34,8 @@ const NEURECORE_ROOT_FOLDER = 'NeureCore';
 export class GoogleDriveService implements IDriveService {
   private readonly logger = new Logger(GoogleDriveService.name);
   private readonly DRIVE_API = 'https://www.googleapis.com/drive/v3';
-  private readonly DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
+  private readonly DRIVE_UPLOAD_API =
+    'https://www.googleapis.com/upload/drive/v3';
   private readonly prisma = new PrismaClient();
 
   constructor(
@@ -46,7 +47,11 @@ export class GoogleDriveService implements IDriveService {
     return this.authClient.getAccessToken(tenantId);
   }
 
-  private async authFetch(url: string, options: RequestInit = {}, tenantId: string): Promise<Response> {
+  private async authFetch(
+    url: string,
+    options: RequestInit = {},
+    tenantId: string,
+  ): Promise<Response> {
     const accessToken = await this.authClient.getAccessToken(tenantId);
     if (!accessToken) {
       throw new BadRequestException('Google is not connected for this tenant');
@@ -63,7 +68,11 @@ export class GoogleDriveService implements IDriveService {
   /**
    * Find a folder by name in the Drive root. Used to avoid creating duplicates.
    */
-  async findFolderByName(tenantId: string, name: string, parentId?: string): Promise<DriveFile | null> {
+  async findFolderByName(
+    tenantId: string,
+    name: string,
+    parentId?: string,
+  ): Promise<DriveFile | null> {
     let query = `mimeType='${FOLDER_MIME_TYPE}' and name='${name.replace(/'/g, "\\'")}' and trashed=false`;
     if (parentId) {
       query += ` and '${parentId}' in parents`;
@@ -71,7 +80,8 @@ export class GoogleDriveService implements IDriveService {
 
     const params = new URLSearchParams({
       q: query,
-      fields: 'files(id,name,mimeType,webViewLink,parents,createdTime,modifiedTime)',
+      fields:
+        'files(id,name,mimeType,webViewLink,parents,createdTime,modifiedTime)',
     });
 
     const res = await this.authFetch(
@@ -91,8 +101,15 @@ export class GoogleDriveService implements IDriveService {
   /**
    * Create a folder. Returns existing folder if one with the same name exists.
    */
-  async createFolder(tenantId: string, input: CreateFolderInput): Promise<DriveFile> {
-    const existing = await this.findFolderByName(tenantId, input.name, input.parentId);
+  async createFolder(
+    tenantId: string,
+    input: CreateFolderInput,
+  ): Promise<DriveFile> {
+    const existing = await this.findFolderByName(
+      tenantId,
+      input.name,
+      input.parentId,
+    );
     if (existing) {
       this.logger.log(
         `Folder "${input.name}" already exists (id=${existing.id}) for tenant ${tenantId}`,
@@ -108,8 +125,10 @@ export class GoogleDriveService implements IDriveService {
       body.parents = [input.parentId];
     }
 
+    const fields =
+      'id,name,mimeType,webViewLink,parents,createdTime,modifiedTime';
     const res = await this.authFetch(
-      `${this.DRIVE_API}/files`,
+      `${this.DRIVE_API}/files?fields=${encodeURIComponent(fields)}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,7 +144,9 @@ export class GoogleDriveService implements IDriveService {
     }
 
     const file = (await res.json()) as DriveFile;
-    this.logger.log(`Folder "${input.name}" created (id=${file.id}) for tenant ${tenantId}`);
+    this.logger.log(
+      `Folder "${input.name}" created (id=${file.id}) for tenant ${tenantId}`,
+    );
     return file;
   }
 
@@ -147,7 +168,9 @@ export class GoogleDriveService implements IDriveService {
       };
     }
 
-    const root = await this.createFolder(tenantId, { name: NEURECORE_ROOT_FOLDER });
+    const root = await this.createFolder(tenantId, {
+      name: NEURECORE_ROOT_FOLDER,
+    });
 
     await this.prisma.tenant.update({
       where: { id: tenantId },
@@ -175,7 +198,9 @@ export class GoogleDriveService implements IDriveService {
     });
 
     if (!agent || agent.tenantId !== tenantId) {
-      throw new BadRequestException(`Agent ${agentId} not found for tenant ${tenantId}`);
+      throw new BadRequestException(
+        `Agent ${agentId} not found for tenant ${tenantId}`,
+      );
     }
 
     const root = await this.ensureRootFolder(tenantId);
@@ -198,7 +223,13 @@ export class GoogleDriveService implements IDriveService {
       });
     }
 
-    const subfolderNames = ['Drafts', 'Documents', 'Reports', 'Templates', 'Archive'];
+    const subfolderNames = [
+      'Drafts',
+      'Documents',
+      'Reports',
+      'Templates',
+      'Archive',
+    ];
     const subfolders: Record<string, string> = {};
 
     for (const subName of subfolderNames) {
@@ -228,7 +259,8 @@ export class GoogleDriveService implements IDriveService {
     const params = new URLSearchParams({
       q: `'${folderId}' in parents and trashed=false`,
       pageSize: String(pageSize),
-      fields: 'files(id,name,mimeType,webViewLink,parents,createdTime,modifiedTime,size)',
+      fields:
+        'files(id,name,mimeType,webViewLink,parents,createdTime,modifiedTime,size)',
       orderBy: 'modifiedTime desc',
     });
 
@@ -249,7 +281,10 @@ export class GoogleDriveService implements IDriveService {
   /**
    * Create a file in a folder
    */
-  async createFile(tenantId: string, input: CreateFileInput): Promise<DriveFile> {
+  async createFile(
+    tenantId: string,
+    input: CreateFileInput,
+  ): Promise<DriveFile> {
     const metadata: Record<string, unknown> = {
       name: input.name,
       mimeType: input.mimeType ?? 'text/plain',
@@ -268,8 +303,10 @@ export class GoogleDriveService implements IDriveService {
       `${input.content}\r\n` +
       `--${boundary}--`;
 
+    const fields =
+      'id,name,mimeType,webViewLink,parents,createdTime,modifiedTime,size';
     const res = await this.authFetch(
-      `${this.DRIVE_UPLOAD_API}/files?uploadType=multipart`,
+      `${this.DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=${encodeURIComponent(fields)}`,
       {
         method: 'POST',
         headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
@@ -288,11 +325,62 @@ export class GoogleDriveService implements IDriveService {
   }
 
   /**
+   * Search files across Drive.
+   *
+   * mode='name'     — `name contains '<query>'` (filenames only; default)
+   * mode='fulltext' — `fullText contains '<query>'` (Drive indexes filenames,
+   *                   descriptions, text content of text/markdown/csv/json,
+   *                   and OCR for PDFs/images)
+   */
+  async searchFiles(
+    tenantId: string,
+    query: string,
+    options: {
+      pageSize?: number;
+      mimeType?: string;
+      mode?: 'name' | 'fulltext';
+    } = {},
+  ): Promise<DriveFile[]> {
+    const { pageSize = 25, mimeType, mode = 'name' } = options;
+    const safe = query.replace(/'/g, "\\'");
+    const operator = mode === 'fulltext' ? 'fullText contains' : 'name contains';
+    let q = `${operator} '${safe}' and trashed=false`;
+    if (mimeType) {
+      q += ` and mimeType='${mimeType}'`;
+    }
+    const params = new URLSearchParams({
+      q,
+      pageSize: String(pageSize),
+      fields:
+        'files(id,name,mimeType,webViewLink,parents,createdTime,modifiedTime,size)',
+      orderBy: 'modifiedTime desc',
+    });
+
+    const res = await this.authFetch(
+      `${this.DRIVE_API}/files?${params.toString()}`,
+      {},
+      tenantId,
+    );
+
+    if (!res.ok) {
+      throw new BadRequestException('Failed to search Drive files');
+    }
+
+    const data = (await res.json()) as { files?: DriveFile[] };
+    return data.files ?? [];
+  }
+
+  /**
    * List all agent folders for the tenant
    */
   async listAgentFolders(tenantId: string): Promise<{
     rootFolderId: string;
-    agents: { agentId: string; agentName: string; folderId: string; folderLink?: string }[];
+    agents: {
+      agentId: string;
+      agentName: string;
+      folderId: string;
+      folderLink?: string;
+    }[];
   }> {
     const root = await this.ensureRootFolder(tenantId);
 
@@ -312,6 +400,138 @@ export class GoogleDriveService implements IDriveService {
   }
 
   /**
+   * G8: Share a Drive file or folder with another user or make it public.
+   *
+   * Drive permissions API:
+   *   POST /drive/v3/files/{fileId}/permissions
+   *   body: { role: 'reader'|'writer'|'commenter', type: 'user'|'group'|'domain'|'anyone', emailAddress?: string }
+   *
+   * Returns the created permission resource so callers can persist the id.
+   */
+  async shareFile(
+    tenantId: string,
+    fileId: string,
+    input: {
+      role: 'reader' | 'writer' | 'commenter';
+      type: 'user' | 'group' | 'domain' | 'anyone';
+      emailAddress?: string;
+      domain?: string;
+      sendNotification?: boolean;
+      emailMessage?: string;
+    },
+  ): Promise<{ id: string; role: string; type: string }> {
+    if ((input.type === 'user' || input.type === 'group') && !input.emailAddress) {
+      throw new BadRequestException(
+        'emailAddress is required for user/group permissions',
+      );
+    }
+    if (input.type === 'domain' && !input.domain) {
+      throw new BadRequestException(
+        'domain is required for type="domain" permissions',
+      );
+    }
+
+    const body: Record<string, unknown> = {
+      role: input.role,
+      type: input.type,
+    };
+    if (input.emailAddress) body.emailAddress = input.emailAddress;
+    if (input.domain) body.domain = input.domain;
+
+    const params = new URLSearchParams();
+    if (input.sendNotification === false) {
+      // Drive API default is true; we only send the param when caller wants off.
+      params.set('sendNotificationEmail', 'false');
+    }
+    if (input.emailMessage) {
+      params.set('emailMessage', input.emailMessage);
+    }
+    const queryString = params.toString();
+
+    const url =
+      `${this.DRIVE_API}/files/${encodeURIComponent(fileId)}/permissions` +
+      (queryString ? `?${queryString}` : '');
+
+    const res = await this.authFetch(
+      url,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+      tenantId,
+    );
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => 'unknown');
+      this.logger.error(
+        `Drive share failed for ${fileId}: ${res.status} ${err}`,
+      );
+      throw new BadRequestException('Failed to share Drive file');
+    }
+
+    const created = (await res.json()) as { id: string; role: string; type: string };
+    this.logger.log(
+      `Drive file ${fileId} shared (permission ${created.id}, role=${input.role}, type=${input.type}) for tenant ${tenantId}`,
+    );
+    return created;
+  }
+
+  /**
+   * G8: List permissions on a Drive file or folder.
+   */
+  async listFilePermissions(
+    tenantId: string,
+    fileId: string,
+  ): Promise<
+    Array<{
+      id: string;
+      role: string;
+      type: string;
+      emailAddress?: string;
+      domain?: string;
+    }>
+  > {
+    const url =
+      `${this.DRIVE_API}/files/${encodeURIComponent(fileId)}/permissions` +
+      `?fields=permissions(id,role,type,emailAddress,domain)` +
+      `&supportsAllDrives=true`;
+    const res = await this.authFetch(url, {}, tenantId);
+    if (!res.ok) {
+      throw new BadRequestException('Failed to list Drive permissions');
+    }
+    const data = (await res.json()) as {
+      permissions?: Array<{
+        id: string;
+        role: string;
+        type: string;
+        emailAddress?: string;
+        domain?: string;
+      }>;
+    };
+    return data.permissions ?? [];
+  }
+
+  /**
+   * G8: Revoke a single Drive permission (un-share a file with one user).
+   * 204 No Content on success.
+   */
+  async revokeFilePermission(
+    tenantId: string,
+    fileId: string,
+    permissionId: string,
+  ): Promise<void> {
+    const res = await this.authFetch(
+      `${this.DRIVE_API}/files/${encodeURIComponent(fileId)}/permissions/${encodeURIComponent(permissionId)}`,
+      { method: 'DELETE' },
+      tenantId,
+    );
+    if (!res.ok && res.status !== 404) {
+      throw new BadRequestException('Failed to revoke Drive permission');
+    }
+  }
+
+  /**
    * WS-6.2: Permanently delete a Drive file or folder (used by cleanup cron).
    * Caller should have already verified the file is empty.
    */
@@ -323,7 +543,9 @@ export class GoogleDriveService implements IDriveService {
     );
     if (!res.ok && res.status !== 404) {
       const err = await res.text().catch(() => 'unknown');
-      this.logger.error(`Drive delete failed for ${fileId}: ${res.status} ${err}`);
+      this.logger.error(
+        `Drive delete failed for ${fileId}: ${res.status} ${err}`,
+      );
       throw new BadRequestException('Failed to delete Drive file');
     }
   }
@@ -334,7 +556,13 @@ export class GoogleDriveService implements IDriveService {
    */
   async listRootTree(tenantId: string): Promise<{
     rootFolderId: string | null;
-    children: { id: string; name: string; mimeType: string; webViewLink?: string; children: DriveFile[] }[];
+    children: {
+      id: string;
+      name: string;
+      mimeType: string;
+      webViewLink?: string;
+      children: DriveFile[];
+    }[];
   }> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -347,7 +575,9 @@ export class GoogleDriveService implements IDriveService {
 
     let rootChildren: DriveFile[];
     try {
-      rootChildren = await this.listFiles(tenantId, rootFolderId, { pageSize: 50 });
+      rootChildren = await this.listFiles(tenantId, rootFolderId, {
+        pageSize: 50,
+      });
     } catch {
       return { rootFolderId, children: [] };
     }
@@ -357,7 +587,9 @@ export class GoogleDriveService implements IDriveService {
         let nested: DriveFile[] = [];
         if (folder.mimeType === FOLDER_MIME_TYPE) {
           try {
-            nested = await this.listFiles(tenantId, folder.id, { pageSize: 20 });
+            nested = await this.listFiles(tenantId, folder.id, {
+              pageSize: 20,
+            });
           } catch {
             nested = [];
           }

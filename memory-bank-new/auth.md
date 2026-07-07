@@ -1,8 +1,10 @@
 # NeureCore — Auth & Login System (Authoritative Reference)
 
-**Last updated:** 2026-07-05 (Auth Hardening Batch 1 deployed + Batch 1a audit: 10 bugs fixed — 401 refresh-loop on login failure, stale Contabo build, cookie-clearing consolidation, error extraction, unwrapItem, CSRF clearing, admin rewrite fallback, routeAfterAdminAuth)
+**Last updated:** 2026-07-07 16:27 PKT (Auth Hardening Refactor plan written — see [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). 10 phases, ~18 days. Eliminates the "auth gets corrupted when I implement work on other pages" bug class.)
 **Audience:** Anyone (human or AI) modifying or debugging login, sessions, or cookies in the NeureCore platform.
 **TL;DR:** Both frontends (admin + tenant) and the NestJS backend use **cookie-only authentication** (HttpOnly `__Host-nc_at` + `__Host-nc_rt` + `__Host-nc_csrf`). API calls are **same-origin** (Next.js `rewrites()` proxy `/api/v1/*` → backend on `127.0.0.1:3003`). Refresh tokens are tracked in **families** with reuse detection. Per-account **lockout** after 5 failures in 10 minutes. CSRF double-submit on all state-changing requests. Password changes invalidate all outstanding tokens.
+
+> **Planned refactor (FIX-020):** the current ad-hoc auth wiring has 7 root causes that produce "auth gets corrupted on new-page work" symptoms. The full fix is a 10-phase refactor to a single `IAuthService` facade with SOLID L3 dependencies — see [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). Until that's shipped, see [§16 below](#16-known-issues-deferred-to-fix-020) for the current pain points.
 
 **Sibling docs:** [`backend.md`](backend.md) · [`frontend-admin.md`](frontend-admin.md) · [`frontend-tenant.md`](frontend-tenant.md) · [`contabo-ops.md`](contabo-ops.md) · [`fixes.md`](fixes.md) · [`disaster-recovery.md`](disaster-recovery.md)
 
@@ -435,6 +437,33 @@ Run: `cd backend && ./node_modules/.bin/jest --config jest.config.js src/modules
 | Login attempts on `/auth/register` not lockouted (only throttled 5/min). | Low-risk (no existing user enumeration vector). |
 | Session table grows unbounded; logout sets `isActive=false` but inactive rows aren't pruned. | Add nightly cron to expire sessions older than access-token TTL. |
 | No per-route "remember me" / device-trust options. Refresh always 7d. | Future. |
+| **Ad-hoc auth wiring** — see §16 below. | **FIX-020 plan written 2026-07-07** — see [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). 10 phases, ~18 days. |
+
+---
+
+## 16. Known issues deferred to FIX-020
+
+> **These are the "auth gets corrupted" issues.** The full plan to fix them is in [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). Until FIX-020 ships, workarounds are documented below.
+
+| # | Issue | Workaround until FIX-020 |
+|---|---|---|
+| **RC-1** | Dead `SecureStorageKey` + `setSecureToken` writes `nc_at` to sessionStorage in `lib/security.ts:108-172` (tenant) and `lib/security.ts:80-107` (admin). The key `nc_at` doesn't even match `__Host-nc_at`. | Do NOT import `lib/security.ts` for token storage. Use `TokenManager` / `cookieAuth`. |
+| **RC-2** | `lib/errors.ts:321-322` (tenant) and `lib/errors.ts:324-340` (admin) do `localStorage.removeItem("tenant_accessToken")` + hard-redirect to `/login` on `TOKEN_EXPIRED` error codes. The backend never stored the token there. | Do NOT call `useErrorHandler` from new pages. The axios interceptor already handles 401. |
+| **RC-3** | `clearTokens()` clears cookies but does NOT clear the Zustand store. → Stale-user loop on next page load. | After `tokenManager.clearTokens()`, also call `useAuthStore.getState().clearUser()`. |
+| **RC-4** | `intelligence/page.tsx:927-928` saves profile with stale `user` prop, writes corrupted user back to persisted store. | Read user from `useAuthStore.getState().user` at save time, not from prop. |
+| **RC-5** | `useTenantAuth` / `useAdminAuth` return `null` during hydration → pages render blank → first API call returns 401 → hard-redirect. | Use `useAuth()` (planned) which returns discriminated `initializing | unauthenticated | authenticated | error`. |
+| **RC-6** | `AppInitializer.tsx:54` clears cookies on any `/me` failure (transient, proxy, restart). | Wrap `/me` call in retry-once. Only clear session on 401 with `invalid_token`. |
+| **RC-7** | Two parallel axios instances (`api.ts` vs `RestClient.ts`) with independent refresh coordination. | Migrate all callers to one shared `authHttpClient`. |
+
+### 16.1 Quick diagnostic for "auth feels broken"
+
+If a user reports "auth got corrupted":
+
+1. **Check the JS console** for `localStorage.setItem` / `getItem` calls referencing `accessToken` or `tenant_accessToken` — these indicate a page is using the dead path.
+2. **Check the Network tab** for any 401 response — every 401 is followed by a hard-redirect to `/login` until the interceptor is changed.
+3. **Check the application tab** in DevTools for `__Host-nc_at` cookie. If it's gone but `auth-storage` in localStorage still has the user → stale-user loop (RC-3). Hard refresh to recover.
+4. **Open the failing page** and grep for `useTenantAuth` / `useAdminAuth`. If the page returns `null` while waiting, it might race a fetch → 401 → redirect.
+5. **Reference:** the full audit and the FIX-020 plan: [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md).
 
 ---
 

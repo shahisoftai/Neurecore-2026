@@ -15,6 +15,8 @@ import {
   Folder,
   AlertTriangle,
   ArrowLeft,
+  ChevronRight,
+  FileSpreadsheet,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -163,6 +165,44 @@ function ManageGoogleContent() {
           <ScopeRow granted={hasSheets} icon={<Sheet className="w-4 h-4" />} label="Google Sheets" description="Read, write spreadsheets" />
         </div>
       </Card>
+
+      {status?.connected && (
+        <Card className="p-5 space-y-3">
+          <div>
+            <h2 className="font-semibold text-sm">Open Google apps</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Jump into Sheets or Calendar with one click. Each page uses your connected
+              Google account.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <Link href="/settings/integrations/sheets">
+              <div className="border border-border rounded-md p-3 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition cursor-pointer flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Google Sheets</p>
+                    <p className="text-xs text-muted-foreground">Browse, create, edit</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              </div>
+            </Link>
+            <Link href="/settings/integrations/calendar">
+              <div className="border border-border rounded-md p-3 hover:border-blue-500/40 hover:bg-blue-500/5 transition cursor-pointer flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Calendar className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Google Calendar</p>
+                    <p className="text-xs text-muted-foreground">Browse, schedule, invite</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              </div>
+            </Link>
+          </div>
+        </Card>
+      )}
 
       <Card className="p-5 space-y-3">
         <div>

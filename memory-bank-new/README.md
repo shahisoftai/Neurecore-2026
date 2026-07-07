@@ -1,6 +1,6 @@
 # NeureCore — Memory Bank (Single-Page Index)
 
-**Last updated:** 2026-07-06 (Phase 6.5: left-panel audit complete — `lucide-react` pinned to 0.460.0, `IconRail` dead `?tab=spawn` → `?tab=templates`, `/departments` extended with tasks/workflows/routines/goals/projects tabs. Production build clean. See [`fixes.md FIX-020`](fixes.md) and [`frontend-tenant.md §13 Phase 6.5`](frontend-tenant.md).)
+**Last updated:** 2026-07-07 16:10 PKT (FIX-019: Defensive patterns shipped — Zustand `merge` for all persisted stores, `Array.isArray` guards in 9 components, `/help` page created, socket URL derives from `window.location`, pre-existing `command-center` build error fixed. **Always run `next build` before rsync** — lint misses missing destructures. See [`fixes.md FIX-019`](fixes.md) and [`frontend-tenant.md §19`](frontend-tenant.md#19-defensive-patterns-zustand-merge--ui-guards-fix-019).)
 **Audience:** Anyone (human or AI) needing the current state of the NeureCore platform.
 **TL;DR:** Three services on a single Contabo VPS, no Vercel, no other cloud. PM2 + OpenLiteSpeed + Neon Postgres. See `system-state.md` for the full inventory. **Master Package Pool:** 68 `Package` rows seeded 2026-07-05; **15 with full composition** (Accounting & Audit Services, 2026-07-05) — see [`pools-taxonomy.md`](pools-taxonomy.md). **Auth:** cookie-only via `__Host-nc_at/_rt/csrf`; refresh-families with reuse detection; per-account lockout (5/10min); same-origin via Next.js rewrites — see [`auth.md`](auth.md). **UI (Phase 6 + 6.5):** New home page (`/home`) with 3-column layout, glossy left sidebar (dynamic icons), glassmorphic glasspanels, 5 real-time widgets (live feed, stats, tasks, approvals, quick actions), background/widget preferences modal — see [`frontend-tenant.md §13A`](frontend-tenant.md#13a-phase-6--3-column-home-page-architecture). **`lucide-react` pinned to `0.460.0`** — lockfile previously drifted to a broken `1.22.0`; do not bump without re-validating `next dev` end-to-end (see [`fixes.md FIX-020`](fixes.md)).
 
@@ -51,7 +51,7 @@ This is the **master index**. Every doc below has a one-paragraph summary so you
 |---|---|---|
 | **[ui-audit-refactor-guide.md](ui-audit-refactor-guide.md)** | Comprehensive audit of all 40+ frontend-tenant pages + components. Design analysis (Creatio reference patterns), current state (strengths/weaknesses), page-by-page findings, 12-phase refactor roadmap, specific recommendations for mobile responsiveness, form validation, button/table consolidation, loading states, search architecture | Planning Phase 7+ UI improvements; refactoring any page or component; ensuring design consistency |
 | **[future-plans.md](future-plans.md)** | Roadmap: Phase 6-10 tenant features, admin roadmap, platform engineering (CI/CD, Sentry, vector DB, i18n), security/compliance (SOC 2, GDPR), performance, deprecation plan, decision log | Scoping new work; quarterly planning |
-| **[fixes.md](fixes.md)** | Running changelog of every production fix with root cause + prevention: 20 entries so far (FIX-001 through FIX-020 — CORS, paperclip noise, FTS retirement, admin PM2, Vercel docs, memory-bank restructure, credential signup, wizard persistence, auth refresh 500s + MissionFeed enum crash, HermesNode import-type, admin 400 INVALID_REQUEST, password reset, agents-pool filter, login redirect loop, Auth Hardening Batch 1, dev-cache Network Error, auth-hardening audit, chat C4 deployment, login WebSocket spam, Unified Chat deployment, lucide-react crash + left-panel audit) | Before doing something similar to a past fix; after any production incident |
+| **[fixes.md](fixes.md)** | Running changelog of every production fix with root cause + prevention: 19 entries so far (FIX-001 through FIX-019 — CORS, paperclip noise, FTS retirement, admin PM2, stale docs, memory-bank restructure, credential signup, wizard persistence, auth refresh 500s + MissionFeed enum crash, HermesNode import-type, admin 400 INVALID_REQUEST, password reset, agents-pool filter, login redirect loop, Auth Hardening Batch 1, dev-cache Network Error, auth-hardening audit, Settings sub-tab redirect loop, Home page performance, comprehensive defensive patterns + WebSocket + /help + build error) | Before doing something similar to a past fix; after any production incident |
 
 ---
 
@@ -182,12 +182,12 @@ After editing, run the quick health check above to confirm docs match reality.
 |---|---|---|
 | `frontend-tenant-simplified/` | 2026-07-04 | [fixes.md FIX-003](fixes.md), [future-plans.md §9](future-plans.md#9-deprecation-plan) |
 | PM2 `neurecore-fts` (port 3021) | 2026-07-04 | [fixes.md FIX-003](fixes.md) |
-| Vercel deployment | 2026-07-04 | [fixes.md FIX-005](fixes.md) |
+| Deployment docs corrected | 2026-07-04 | [fixes.md FIX-005](fixes.md) |
 | `frontend-eaos/` (Contabo) | pre-2026-07-04 | [system-state.md §5](system-state.md) |
 | PM2 `neurecore-eaos` (port 3011) | pre-2026-07-04 | [system-state.md §5](system-state.md) |
 | Pre-2026-07-04 memory-bank docs | 2026-07-04 | archived to `../memory-bank-ARCHIVED/legacy-2026-07-04/` |
 
 ---
 
-**Last verified live by:** automated audit on 2026-07-05 01:50 PKT (post-Master Package Pool + Accounting composition seed).
+**Last verified live by:** Kilo on 2026-07-07 16:10 PKT (post-FIX-019: defensive patterns + `/help` + socket fix; PM2 `neurecore-tenant` reloaded; `https://hq.neurecore.com/home` and `https://hq.neurecore.com/help` return 200).
 **Next review:** quarterly, or after any production incident.

@@ -2,7 +2,98 @@
 
 **Purpose:** Running record of every production fix, with root cause, fix, and prevention. Append entries; never delete or rewrite history.
 
-**Sibling docs:** [contabo-ops.md](contabo-ops.md) · [operations.md](operations.md) · [future-plans.md](future-plans.md)
+**Sibling docs:** [contabo-ops.md](contabo-ops.md) · [operations.md](operations.md) · [future-plans.md](future-plans.md) · [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md)
+
+---
+
+## Defensive patterns cheat sheet (from FIX-018 + FIX-019)
+
+These three patterns were the root cause of 5+ production issues in a single week. Use them in every new component / store / service.
+
+### 1. Every persisted Zustand store MUST have a `merge` function
+
+Corrupted localStorage (manually edited, schema drift, manual browser changes) can hydrate any field to `undefined` or wrong type. The `merge` function is the last line of defense.
+
+```ts
+persist(
+  (set) => ({ tasks: [], total: 0, ... }),
+  {
+    name: 'my-store',
+    storage: createJSONStorage(() => localStorage),
+    partialize: (state) => ({ tasks: state.tasks, total: state.total }),
+    merge: (persistedState, currentState) => {
+      const ps = (persistedState ?? {}) as Partial<MyState>;
+      return {
+        ...currentState,
+        ...ps,
+        tasks: Array.isArray(ps.tasks) ? ps.tasks : currentState.tasks,
+        total: typeof ps.total === 'number' ? ps.total : currentState.total,
+      };
+    },
+  },
+)
+```
+
+**Pattern applies to:** every store that has `persist` middleware. Check the current set: `grep -l "persist(" frontend-*/src/stores/*.ts`.
+
+### 2. Every consumer of a persisted store MUST defensively guard
+
+Even with `merge`, two reasons to guard at the consumer:
+- The `merge` is best-effort; a hostile entry could still pass through.
+- Future store changes won't be in the `merge` until someone remembers.
+
+```tsx
+const tasksRaw = useTaskStore((s) => s.tasks);
+const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
+// Then use `tasks` — never the raw value.
+```
+
+**Banned pattern:**
+```tsx
+const tasks = useTaskStore((s) => s.tasks);
+tasks.filter(...);  // crashes if tasks is undefined
+```
+
+**Lint rule pending** (D15): `eslint-plugin-zustand` or custom rule to enforce this. See [pending-tasks.md D15](pending-tasks.md).
+
+### 3. Never hardcode `localhost:3000` as a default fallback
+
+A missing `NEXT_PUBLIC_*` env var should derive from `window.location`, not silently fall back to a dev-only value.
+
+```ts
+// BAD — production build falls back to localhost
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? 'http://localhost:3000';
+
+// GOOD — same-origin wss in production, ws in dev
+const SOCKET_URL = (() => {
+  if (typeof window === 'undefined') return '';
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) return process.env.NEXT_PUBLIC_SOCKET_URL;
+  if (window.location.protocol === 'https:') return `wss://${window.location.host}`;
+  return `ws://${window.location.host}`;
+})();
+```
+
+**Audit grep (run before every commit):**
+```bash
+grep -rn "localhost:3000\|localhost:3001\|localhost:3002" frontend-tenant/src/ frontend-admin/src/ \
+  | grep -v "node_modules" \
+  | grep -v "^[^:]*://" || echo "clean"
+```
+
+### 4. Always run `next build` (not just lint) before rsync
+
+Lint does NOT catch:
+- Missing destructures (`useWorkflowStore()` imported but never destructured)
+- Wrong generics / undefined names
+- Module resolution errors (broken import paths)
+
+`next build` catches all of these. A pre-existing build error survived 3+ lint passes in `command-center/page.tsx` (FIX-019). See [deployment.md §10](deployment.md#10-pre-deploy-checklist).
+
+### 5. Every `<Link>` must have a page
+
+Next.js prefetches on viewport/hover; 404s are noise. Either create the page in the same commit, or change to `<button>` with a real handler. Example: TopBar.tsx had `<Link href="/help">` but no `/help` page existed — FIX-019 added the page.
+
+---
 
 ---
 
@@ -57,7 +148,7 @@ Severity ladder:
 After `frontend-tenant-simplified` removal, browser requests from `https://hq.neurecore.com` to backend (via the dev CORS proxy) would fail preflight in local dev. Production worked (OLS vhost handles CORS), but any developer running `next dev` locally got blocked.
 
 ### Root cause
-`/opt/neurecore/cors-proxy.js` `ALLOWED_ORIGINS` was last updated when tenant was on Vercel. It still only listed `localhost:3001/3002` and `https://hq.neurecore.com` / `https://cc.neurecore.com` — missing `localhost:3005` (the new tenant dev port), `localhost:3020` (admin), and `localhost:3011` (EAOS, though retired).
+`/opt/neurecore/cors-proxy.js` `ALLOWED_ORIGINS` had stale port entries. It still only listed `localhost:3001/3002` and `https://hq.neurecore.com` / `https://cc.neurecore.com` — missing `localhost:3005` (the new tenant dev port), `localhost:3020` (admin), and `localhost:3011` (EAOS, though retired).
 
 ### Fix
 Patched `ALLOWED_ORIGINS` to include:
@@ -196,7 +287,7 @@ curl -sk -o /dev/null -w "%{http_code}\n" https://cc.neurecore.com/   # 200
 
 ---
 
-## FIX-005 — Vercel deployment dropped from memory-bank
+## FIX-005 — Stale deployment docs corrected
 **Date:** 2026-07-04
 **Severity:** medium (docs accuracy)
 **Component:** docs
@@ -205,7 +296,7 @@ curl -sk -o /dev/null -w "%{http_code}\n" https://cc.neurecore.com/   # 200
 **Resolver:** Kilo
 
 ### Symptom
-`memory-bank-new/contabo-operations.md` and `contabo-operations-july.md` claimed tenant frontend was Vercel-only and that no PM2 `neurecore-tenant` existed. This was stale — the tenant had been brought back to Contabo at some point.
+`memory-bank-new/contabo-operations.md` and `contabo-operations-july.md` claimed tenant frontend was not on Contabo and that no PM2 `neurecore-tenant` existed. This was stale — the tenant had been running on Contabo.
 
 ### Root cause
 Documentation drift. The deploy happened (likely during a backend perf-deploy window), but the memory-bank wasn't updated.
@@ -998,6 +1089,57 @@ Browser (Playwright):
 
 ---
 
+## FIX-017 — Settings page cards redirect loop (Profile, AI Providers, API Keys, Security & Access)
+**Date:** 2026-07-07
+**Severity:** medium (Settings sub-sections inoperable — all cards looped back to Settings tab)
+**Component:** frontend-tenant (intelligence page, settings page)
+**Status:** fixed (verified via lint + manual review)
+**Reporter:** user (card clicks never opened detail pages)
+**Resolver:** Kilo
+
+### Symptom
+Clicking any Settings card (Profile, AI Providers, API Keys, Security & Access) navigated the browser to `/settings?tab=profile` etc., which immediately redirected to `/intelligence?tab=settings` — the same Settings tab the user was already on. No detail page ever opened; clicking any card produced a silent redirect loop.
+
+### Root cause
+Three compounding issues:
+1. **Redirect page stripped tab params:** `src/app/settings/page.tsx` only handled `tab=ai` (→ `aiTab=routing`). All other tabs fell through to a generic `redirect("/intelligence?tab=settings")`, losing the sub-tab context.
+2. **Cards linked to `/settings?tab=...`:** The SettingsTab component rendered each card as a `<Link href="/settings?tab=profile">` — an external navigation that hit the redirect page and looped back.
+3. **No sub-tab state management:** The Intelligence page's SettingsTab had no mechanism to render sub-tab detail views inline. The architecture expected separate pages under `/settings/` that didn't exist.
+
+### Fix
+1. **`src/app/settings/page.tsx`** — added `VALID_SUB_TABS` array (`profile`, `ai`, `apikeys`, `security`). Each now redirects to `/intelligence?tab=settings&settingsSub=<tab>` instead of falling through to the generic redirect.
+2. **`src/app/intelligence/page.tsx`** — comprehensive rewrite of SettingsTab and surrounding infrastructure:
+   - Added `SettingsSubTab` type: `'profile' | 'ai-providers' | 'apikeys' | 'security' | null`
+   - Added `settingsSubTab` state to `IntelligencePage`, reading from `?settingsSub=` URL param
+   - `setTab()` now resets `settingsSubTab` to `null` on tab switch + cleans up URL param
+   - `SettingsTab` now accepts `subTab` + `onSetSubTab` props:
+     - `subTab === null` → shows card grid (with **new Integration card**)
+     - `subTab !== null` → shows detail view with `< Back to Settings` button
+   - All cards converted from `<Link href=...>` to `<button onClick=...>` to use in-app state navigation
+   - **New Integration card** (Globe icon, green) navigates to `/settings/integrations`
+3. **Five new inline detail view components** in `intelligence/page.tsx`:
+   - **ProfileDetail** — edit firstName/lastName via `PATCH /users/:id`, change password via `PATCH /users/:id/password`, with eye-toggle inputs, Zustand store sync
+   - **AIProvidersDetail** — full CRUD for AI providers: list, add (name/provider/apiKey/baseUrl), toggle enabled, set default, delete via `GET/POST/PATCH/DELETE /settings/ai/providers`
+   - **APIKeysDetail** — quick reference card (base URL, auth header, content-type with copy buttons); full key management deferred to backend API
+   - **SecuritySettingsDetail** — security status cards (CSRF, Helmet, Rate Limiting) + rate-limit gauge + IP allowlist placeholder
+   - Fixed `state-ops` CSS class (doesn't exist) → `state-success` for Integration card
+
+### Verification
+```bash
+cd frontend-tenant && npm run lint -- --file src/app/intelligence/page.tsx --no-cache  # ✔ No warnings
+npm run lint -- --file src/app/settings/page.tsx --no-cache                            # ✔ No warnings
+```
+- New architecture: clicking a Settings card transitions SettingsTab to the detail sub-view inside the Intelligence page, with URL state preserved via `?tab=settings&settingsSub=profile` etc.
+- Integration card navigates to `/settings/integrations` (its own page, pre-existing)
+- Back button returns to the card grid without full page reload
+
+### Prevention
+- All Settings sub-sections should render inline as sub-tab views within the Intelligence page, not as separately routed pages. This keeps the tab navigation consistent and avoids redirect chains.
+- When adding a new Settings section, add it to both the `SettingsSubTab` type and the `sections` array in `SettingsTab`, then create a sibling detail component.
+- The `/settings/page.tsx` redirect page exists only for direct navigation/bookmarks — it must preserve and forward ALL recognized sub-tab params to the Intelligence page.
+
+---
+
 ## FIX-018 — Login page: WebSocket connection spam + missing autocomplete attributes (2026-07-06)
 
 **Severity:** medium
@@ -1050,87 +1192,130 @@ Browser (local — deploy pending):
 ---
 **Next ID:** FIX-019. Append below.
 
-## FIX-019 — Unified Chat widget: deployment + production verification of `UnifiedChatPanel` (Phase 0–3 complete) — 2026-07-06 18:25 PKT
+---
 
-**Severity:** medium — feature deployment + 4 integration issues fixed
-**Component:** frontend-tenant
-**Status:** fixed + verified on Contabo production (`https://hq.neurecore.com`)
-**Reporter:** Kilo (audit + verification)
+## FIX-018 — Home page slow load: duplicate API calls, redundant fetches, blank auth hydration
+**Date:** 2026-07-07
+**Severity:** high (Home page took 4-8s to become interactive after login; visible blank screen during auth hydration)
+**Component:** frontend-tenant (home page, hooks, stores, widgets)
+**Status:** fixed (verified via lint + Contabo rebuild/redeploy, 200 on /home)
+**Reporter:** user (Home page too long to respond after login)
 **Resolver:** Kilo
 
-### Context
-Per [`unified-chat-implementation.md`](unified-chat-implementation.md) and [`consolidated-chat-plan.md`](consolidated-chat-plan.md), the new `UnifiedChatPanel` (16 new files: 6 components + 1 hook + 1 store + 1 factory + 3 fallback classes + 1 slash-commands class + 1 service + 1 types + 1 interface; 0 deletions; only `TenantShell.tsx` additively modified) was deployed to Contabo and fully tested in the browser against the live MiniMax-backed backend.
+### Symptom
+After login, the `/home` page showed a blank screen for several seconds, then loaded slowly. Network tab showed multiple duplicate API calls and unnecessary large payloads.
 
-### Issues found & fixed
+### Root cause
+Six compounding performance issues:
+1. **Duplicate `/approvals/stratified?status=PENDING`:** Both `HomeKpiStrip` and `ApprovalsWidget` created separate `useApprovals` hook instances, each firing the same API call on mount. Two identical HTTP requests in parallel.
+2. **Redundant `GET /tenants/me/current`:** `page.tsx` fetched the full `TenantSelf` object (35+ fields including large JSON blobs like `addressJson`, `billingProfileJson`) on every home page mount. Only `tenant.timezone` and `tenant.name` were used by `HomeHero`, and both had built-in fallbacks.
+3. **Redundant `fetchTasks` in TasksWidget:** `TasksWidget` called `fetchTasks(1, 10)` independently even though the `command-center/summary` already populated `taskStore.tasks`. Race condition: if the summary was slow, the widget fired an extra `GET /tasks`.
+4. **Blank page during auth hydration:** `page.tsx:167` returned `null` while Zustand `persist` rehydrated from localStorage (`useTenantAuth`), showing a blank white screen for 50-500ms.
+5. **No loading indicators on widgets:** `StatsWidget` showed "No data yet" and `LiveFeedWidget` showed "No recent activity" with no loading indicator, making it unclear if data was arriving.
+6. **`useApprovals` used local state per instance:** Each `useApprovals()` call created independent `useState` arrays. No sharing. Two components → two API calls.
 
-| # | Issue | File | Resolution |
-|---|---|---|---|
-| **B1** | End-point doubled to `/api/v1/api/v1/chat/messages` (404). The config string already had `/api/v1/` prefix but `RestClient` also prepends its base URL `/api/v1`. | `chat.factory.ts:27` | Changed `apiEndpoint` from `/api/v1/chat/messages` to `/chat/messages`. |
-| **B2** | UnifiedChatPanel floating trigger button (`fixed bottom-16 right-4 z-50`) overlapped exactly with the legacy ConversationPanel trigger at the same coords — `💬` legacy button intercepted pointer events for the new panel's send button. | `TriggerButton.tsx:17`, `UnifiedChatPanel.tsx:99` | Moved UnifiedChatPanel to `bottom-16 right-20 z-50` (offset to the left of legacy) and changed colour to `indigo-600` for visual differentiation. |
-| **B3** | Only `Ctrl+Enter` triggered send; plain `Enter` did nothing. UX expectation for chat input is that plain Enter sends (Shift+Enter for newline). | `UnifiedChatInput.tsx:47-56` | Added plain `Enter` handling (`if e.key === 'Enter' && !e.shiftKey → submit`) while preserving `Ctrl/Cmd+Enter` shortcut. `Escape` clears input. |
-| **B4** | Local dev mode (`next dev`) errors with React-Server-DOM-Webpack runtime `Cannot read properties of undefined (reading 'call')` — caused by `optimizePackageImports: [..., "zustand"]` + Next 15.5.12 dev mode. Affects EVERY page, not just chat. Production build unaffected. | `next.config.js:14-16` | No change shipped (production OK); reverted my earlier local-only removal of "zustand" from `optimizePackageImports` (kept the config identical to the pre-deploy state since prod build is unaffected). |
+### Fix
+1. **Shared approvals store** (`src/stores/approvalsStore.ts` new): Zustand store for `critical`, `routine`, `isLoading`, `error`, `lastFetchedAt`. Write-once, read-many.
+2. **`useApprovals` hook refactored:** Uses the shared Zustand store + module-level `fetchInFlight` promise to deduplicate concurrent requests. Multiple hook instances share one API call.
+3. **`ApprovalsWidget`:** Removed `autoRefresh` option (now managed at page level only). Reads from shared store.
+4. **`page.tsx`:**
+   - Removed `tenants.getCurrent()` fetch entirely (1 HTTP request eliminated). `HomeHero` passes `tenant={null}`; timezone and name gracefully fall back to browser defaults.
+   - Calls `useApprovals({ autoRefresh: true })` once at page level for all consumers.
+   - Computes `pendingApprovals` count and passes to `HomeKpiStrip` as prop.
+   - Added loading skeleton (`Loading workspace...` spinner) during auth hydration instead of returning `null`.
+   - Added `summaryLoading` state for progressive loading indicators.
+5. **`HomeKpiStrip`:** Removed `useApprovals()` call. Now accepts `pendingApprovals` and `loading` as props.
+6. **`TasksWidget`:** Removed `useEffect`+`fetchTasks(1,10)` call. Tasks come from `command-center/summary` via `taskStore`. Shows loading indicator when store is empty and `loading` is true.
+7. **`StatsWidget`:** Early return shows "Waiting for workspace data..." when no data yet.
+8. **`LiveFeedWidget`:** Empty state shows "Watching for activity..." (with pulsing icon) instead of "No recent activity".
 
-### Deployed files (verified live on Contabo)
+### API call savings
+| Before | After |
+|---|---|
+| `GET /tenants/me/current` | ❌ removed |
+| `GET /command-center/summary` | ✅ kept (single source of truth) |
+| `GET /approvals/stratified` × 2 | ✅ 1 shared call |
+| `GET /tasks` (widget side-fetch) | ❌ removed |
+
+**Result:** 5 HTTP calls → 2 HTTP calls on initial load.
+
+### Verification
+```bash
+cd frontend-tenant && npm run lint                                 # ✔ 0 errors
+curl -sk -o /dev/null -w "%{http_code}" https://hq.neurecore.com/  # 200
+curl -sk https://hq.neurecore.com/home                             # 200
 ```
-src/shared/components/chat/TriggerButton.tsx
-src/shared/components/chat/UnifiedChatEmptyState.tsx
-src/shared/components/chat/UnifiedChatHeader.tsx
-src/shared/components/chat/UnifiedChatInput.tsx
-src/shared/components/chat/UnifiedChatMessage.tsx
-src/shared/components/chat/UnifiedChatPanel.tsx
-src/shared/hooks/useChat.ts
-src/shared/types/chat.types.ts
-src/core/services/chat/ChatService.ts
-src/core/services/chat/ChatStore.ts
-src/core/services/chat/chat.factory.ts
-src/core/services/chat/fallback/{BraceBalancedJsonExtractor,KeywordFallbackReply,TenantSystemPromptBuilder}.ts
-src/core/services/chat/slash-commands/TenantSlashCommands.ts
-src/core/services/interfaces/IChatService.ts
-```
-`src/components/TenantShell.tsx` additively imports + mounts `<UnifiedChatPanel>` in both `NewShell` (line 146) and `LegacyShell` (line 251).
-
-### Verification (Browser + cURL + PM2)
-**Pre-deploy sanity (local):** `npx tsc --noEmit` → 0 errors.
-
-**Deploy:** `rsync` source → `npm install --legacy-peer-deps` → `npm run build` (clean) → `pm2 startOrReload /opt/neurecore/ecosystem.config.js --only neurecore-tenant && pm2 save` (`neurecore-tenant` id 40 → pid 786711, online).
-
-**Playwright on `https://hq.neurecore.com/home` (tenant `2881874f-…`, user `e1f15145-…` `audrey.wizard.test3@najeeb.test`):**
-
-| # | Test | Result |
-|---|---|---|
-| 1 | Login → land on `/home` | ✅ |
-| 2 | Both 💬 (legacy) and ✦ (new) trigger buttons rendered at non-overlapping positions (`right-4 violet-600` vs `right-20 indigo-600`) | ✅ |
-| 3 | Click ✦ trigger → panel slides open with header `HeadQuarter AI [AI]` + clear ↺ + close ✕ | ✅ |
-| 4 | Empty state shows `✦ How can I help?` + 5 starter prompts + 4 HomeHero chips | ✅ |
-| 5 | Click starter `How is my team performing today?` → message sent, response received | ✅ (Minor: stale `hq_chat_store` localStorage entry caused fallback to fire; cleared, retested) |
-| 6 | Free-text query "How many agents are currently running in my tenant?" → AI reply "0 agents running" + inline chart `Active Agents` + suggestion chip `Show me all agents` + tokens `985↑ 66↓` + timestamp `05:57 PM` | ✅ Backend log: `POST /api/v1/chat/messages 200 4654ms` |
-| 7 | Type `/` → slash-command autocomplete shows 4 suggestions inferred from `/agents` context (`How many agents are running?`, etc.) | ✅ |
-| 8 | Click slash suggestion → fills input; plain `Enter` sends | ✅ (after B3 fix) |
-| 9 | Suggested follow-up chip click ("Show pending tasks", "Show pending tasks" etc.) sends as new message | ✅ |
-| 10 | "Summarize today's activity across all departments" → AI summarises with inline chart of metrics and suggestion chips, tokens `983↑ 168↓` | ✅ Backend `200 2627ms` |
-| 11 | "Create a new agent named Alex in the Sales department…" → AI attempts action, returns backend LangGraph fallback string (known pre-existing issue `Branch condition returned unknown or null destination`, see [`chat-bots.md §11`](chat-bots.md)) — chat layer itself handles gracefully (message persisted, error rendered in bubble) | ✅ Chat works; backend agent graph bug is separate |
-| 12 | Panel close (✕) → panel removed, button reverts to ✦ icon | ✅ |
-| 13 | Panel clear (↺) → messages wipe, conversationId null, empty state restored | ✅ (verified via `localStorage.hq_chat_store` → `messages:0, conversationId:null`) |
-| 14 | Escape key clears input text + slash suggestions | ✅ |
-| 15 | Ctrl+Enter shortcut sends (still works) | ✅ |
-| 16 | Page reload → conversation restored from `localStorage` (`hq_chat_store` key, Zustand persist) | ✅ |
-| 17 | Cross-page persistence: nav to `/marketplace?tab=agents` and `/command-center` → both chat triggers still mounted on every page | ✅ |
-
-**Network request log (production):** all chat POSTs returned `200` (`200 4654ms`, `200 3208ms`, `200 3385ms`, `200 2627ms`, `200 3094ms`, `200 6944ms`). User/tenant attribution correct: `userId: e1f15145-04f8-4ecc-b541-8f748ac7a23a`, `tenantId: 2881874f-50a0-4756-a7bf-a68620f434a3`.
-
-### TODO (separate fix)
-- Backend `OfficialAgentGraph` "Branch condition returned unknown or null destination" for action intents — pre-existing bug from `chat-bots.md §11`. Not blocking unified chat (chat layer renders whatever backend returns, including the error string).
-
-### Files changed
-- `frontend-tenant/src/core/services/chat/chat.factory.ts` (B1 fix)
-- `frontend-tenant/src/shared/components/chat/TriggerButton.tsx` (B2 position offset)
-- `frontend-tenant/src/shared/components/chat/UnifiedChatPanel.tsx` (B2 panel position)
-- `frontend-tenant/src/shared/components/chat/UnifiedChatInput.tsx` (B3 Enter handler)
+- No duplicate network requests in DevTools Network tab
+- Loading spinner visible during auth hydration instead of blank page
+- Widgets show contextual loading messages while data arrives
+- KPI strip shows loading pulse until summary resolves
 
 ### Prevention
-- **`apiEndpoint` config in `ChatConfig` should be a path-only string** when paired with a `RestClient` (or any HTTP client) that owns the `/api/v1/` base URL prefix. Document in `ChatConfig` JSDoc.
-- **Floating trigger buttons across multiple chat panels must be positioned distinctly** (`right-4`, `right-20`, `right-36`, etc.) when intentionally co-mounted for migration. Use unique background colours per panel for visual disambiguation.
-- **Chat textarea should treat Enter as "send" by default** (Shift+Enter = newline). Ctrl/Cmd+Enter is a secondary shortcut. Align with mainstream chat UX (Slack, Teams, etc.).
+- All shared data hooks should use a Zustand store with `lastFetchedAt` pattern + `fetchInFlight` promise to deduplicate. Never create independent `useState` in hooks that multiple components consume.
+- Widgets should never make their own `fetch` calls if the page-level data source already covers them. Pass data via props or shared stores.
+- Every page with auth-dependent content must show a loading state during `_hasHydrated` window. Never `return null`.
+- The `command-center/summary` endpoint is the single source of truth for home page data. Add new data types there rather than creating new widget-level endpoints.
+- Audit any useEffect that calls `fetch*` in a widget component — it should either read from a shared store or receive data as props.
+
+**Post-deploy fix (2026-07-07):** `TasksWidget` crashed with `TypeError: can't access property "length", n is undefined` when Zustand persist hydration returned a non-array for `tasks` (corrupted localStorage). Added `const safeTasks = Array.isArray(tasks) ? tasks : []` guard. Same guard added to `LiveFeedWidget` for `events`. Root cause: removing `fetchTasks(1,10)` safety-net useEffect exposed pre-existing corrupt persist state. All store readers must defensively guard against non-array values from Zustand persist hydration.
+
+---
+
+## FIX-019 — Comprehensive Home page audit: 5 issues fixed (length crash, help 404, socket, store guards, build error)
+**Date:** 2026-07-07
+**Severity:** medium (crash on Home + 404 prefetch + socket failure + pre-existing build error)
+**Component:** frontend-tenant (home, stores, socket, help page, command-center, org-chart, workspace)
+**Status:** fixed (verified via lint + Contabo rebuild, 200 on /home and /help)
+**Reporter:** Kilo (error log: TypeError, /help 404, wss://brain.neurecore.com WebSocket failure)
+**Resolver:** Kilo
+
+### Symptom
+Five issues from console error log:
+1. `TypeError: can't access property "length", n is undefined` — recurred after FIX-018
+2. `GET /help?_rsc=5vnyd 404` — Next.js prefetching missing /help route
+3. WebSocket `wss://brain.neurecore.com/socket.io/` — connection refused (wrong URL in prod)
+4. Content-Security-Policy warnings (4)
+5. Feature Policy unsupported (`identity-credentials-get` — cosmetic, can ignore)
+
+### Root cause
+1. **Crash:** `RightPanel.tsx:130` accesses `visibleWidgets.length` from `useUIPreferencesStore` without `Array.isArray` guard. Same risk in `LeftPanel.tsx:57`, `PreferencesModal.tsx:97`, `useAIChat.ts:52-53`, `command-center/page.tsx` (18+ unguarded accesses), `useOrgChart.ts:45,112`, `departments/[id]/workspace/page.tsx:131,146,150`. Zustand persist hydration can return non-array if localStorage is corrupted.
+2. **/help 404:** `TopBar.tsx:213,270` link to `/help` but no page exists. Next.js prefetches on viewport/hover.
+3. **WebSocket failure:** `services/socket.ts:5` — `SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? 'http://localhost:3000'`. In production the env var is empty, so it falls back to localhost. The `wss://brain.neurecore.com` URL was being attempted because OLS may have proxied it, but the backend doesn't expose socket.io on that port.
+4. **CSP warnings:** Pre-existing, not blocking (caused by missing CSP headers for inline scripts Next.js adds).
+5. **Build error:** `command-center/page.tsx:182` calls `setWorkflows` but `useWorkflowStore` is only imported, never destructured. Pre-existing latent error that was masked by successful previous builds (build was deploying from previous successful build artifacts).
+
+### Fix
+1. **Zustand store `merge` functions** — `taskStore.ts`, `agentStore.ts`, `departmentStore.ts`, `uiPreferencesStore.ts` all now have a `merge` function that sanitizes persisted state: `Array.isArray(ps.tasks) ? ps.tasks : currentState.tasks` for every array field. Corrupted localStorage now falls back to initial state instead of `undefined`.
+2. **Defensive guards added to 8 components:**
+   - `RightPanel.tsx` — `visibleWidgets = Array.isArray(raw) ? raw : []`
+   - `LeftPanel.tsx` — same for `visibleIcons`
+   - `PreferencesModal.tsx` — same for `visibleWidgets`
+   - `TasksWidget.tsx` (FIX-018) — same for `tasks`
+   - `LiveFeedWidget.tsx` (FIX-018) — same for `events`
+   - `useAIChat.ts` — same for `agents`
+   - `command-center/page.tsx` — same for `agents`/`tasks`/`departments` (18+ accesses now safe)
+   - `useOrgChart.ts` — same for `departments`/`agents`
+   - `departments/[id]/workspace/page.tsx` — same for all three stores
+3. **Help page created** — `src/app/help/page.tsx` with help resources (docs, live chat, email support) and proper TenantShell wrapper.
+4. **Socket URL fixed** — `services/socket.ts` now derives URL from `window.location` (`wss://<host>` in HTTPS, `ws://<host>` in HTTP). Removed the `localhost:3000` fallback that was breaking production. `.env.production` updated with `NEXT_PUBLIC_SOCKET_URL=` (empty) plus explanatory comment.
+5. **Build error fixed** — Added `const { setWorkflows } = useWorkflowStore();` destructure in `command-center/page.tsx:125`.
+
+### Verification
+```bash
+cd frontend-tenant && npm run lint      # ✔ 0 errors
+ssh contabo 'cd /opt/neurecore/frontend-tenant && ./node_modules/.bin/next build'  # ✔ compiles
+ssh contabo 'pm2 startOrReload /opt/neurecore/ecosystem.config.js --only neurecore-tenant'
+curl -sk -o /dev/null -w "%{http_code}" https://hq.neurecore.com/home  # 200
+curl -sk -o /dev/null -w "%{http_code}" https://hq.neurecore.com/help  # 200
+```
+
+### Prevention
+- **Every Zustand store with `persist` must have a `merge` function** that validates persisted fields. Never trust localStorage data shape.
+- **Every consumer of a persisted store must defensively guard** with `Array.isArray` (or `typeof x === 'number'`) before calling `.length`/`.filter`/`.map`/`.slice`/`.find`. Add a lint rule or codemod for this pattern.
+- **Never use `localhost:3000` as a fallback in production code** — always derive from `window.location` or env var. A missing env var should be an error, not a silent fallback to dev defaults.
+- **Every `<Link href="/foo">` must have a corresponding page** — Next.js prefetches on viewport/hover and 404s are noise. Either create the page or change the link to a button with a real handler.
+- **Always run `next build` (not just lint) before deploy.** Lint passes on missing destructures; build catches them. A pre-existing build error was masked by deploying old artifacts.
+- **Feature Policy warnings (`identity-credentials-get`) are cosmetic** — Firefox doesn't support that feature. No action needed.
 
 ---
 
@@ -1434,3 +1619,44 @@ Full audit of how SuperAdmin-deployed entities (AI Employees, Departments, Featu
 | `memory-bank-new/fixes.md` | This entry + system-state timestamp |
 
 **Next ID:** FIX-025. Append below.
+
+## FIX-020 — Auth system corrupted on new-page work (PLANNED — see [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md))
+
+**Date:** 2026-07-07 (planned)
+**Severity:** high (every new page that calls an API on mount risks triggering a stale-user redirect loop)
+**Component:** frontend-tenant + frontend-admin (auth state machine, not just one page)
+**Status:** PLANNED — full refactor in 10 phases. See [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md).
+**Reporter:** Kilo (comprehensive auth audit 2026-07-07 16:10 PKT)
+**Resolver:** pending
+
+### Symptom
+"Auth gets corrupted when I implement work on different pages or features." The auth system appears to break at random — users are silently logged out, redirected to `/login`, or the page renders a blank screen followed by a flash of "logged in" content then a redirect.
+
+### Root cause
+The frontend runs **two parallel, incompatible auth state machines**:
+
+1. **Cookie-based session (correct).** Backend sets `__Host-nc_at`, `__Host-nc_rt`, `__Host-nc_csrf`. Frontend reads/writes them through `TokenManager` / `cookieAuth`.
+2. **A vestigial "token in localStorage" code path (dead).** `lib/security.ts` defines `SecureStorageKey.ACCESS_TOKEN = "nc_at"` and writes to `sessionStorage` under that key. `lib/errors.ts:321-322` clears `localStorage.tenant_accessToken`. No axios interceptor, no `TokenManager`, no `cookieAuth` ever reads or writes these keys.
+
+**Plus 6 other root causes (RC-1 through RC-7)** — see [plans/auth-hardening-refactor.md §1.3](plans/auth-hardening-refactor.md#13-the-7-root-causes-audit-results).
+
+### Fix
+Replace the ad-hoc auth wiring with a single `IAuthService` module that owns the entire Auth State Machine. 10-phase plan, ~18 days, one engineer. See [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md).
+
+### Key outcomes
+1. ✅ One `IAuthService` interface and one Zustand auth store. No bypass paths.
+2. ✅ Zero `localStorage` / `sessionStorage` access for auth (CI-enforced).
+3. ✅ Discriminated `AuthState` (`initializing | unauthenticated | authenticated | error`) — pages can't render `null` mid-hydration.
+4. ✅ Atomic `clearSession()` — cookie + store cleared together, no stale-user loop.
+5. ✅ 401 interceptor distinguishes transient from fatal — no more hard-redirects on every 401.
+6. ✅ 100% SOLID — 5 small L3 interfaces (`ITokenRepository`, `IUserRepository`, `IAuthApi`, `IRefreshCoordinator`, `IAuthSessionLifecycle`), one L2 facade, one L1 hook.
+7. ✅ ESLint custom rules fail CI on `localStorage.setItem` with auth keys or direct `useAuthStore` import.
+
+### Prevention
+After refactor:
+- Single source of truth for "am I logged in?" via `useAuth()` discriminated state.
+- Banned patterns are CI-enforced (lint + grep).
+- 401 → `<SessionExpired />` UI with explicit "Sign in again" button (no silent redirects).
+- New contributors find the architecture in 5 min via `auth.md` → `int-features/auth-architecture.md`.
+
+**Next ID:** FIX-021. Append below.

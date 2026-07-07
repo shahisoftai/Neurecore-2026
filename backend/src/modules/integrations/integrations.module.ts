@@ -9,6 +9,7 @@ import { GoogleAuthClient } from './google/google-auth.client';
 import { GoogleGmailService } from './google/google-gmail.service';
 import { GoogleCalendarService } from './google/google-calendar.service';
 import { GoogleDriveService } from './google/google-drive.service';
+import { GoogleSheetsService } from './google/google-sheets.service';
 import { DriveCleanupService } from './google/drive-cleanup.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { GmailEmailProvider } from './email/gmail-email.provider';
@@ -28,11 +29,23 @@ import { EmailProviderFactory } from './email/email-provider.factory';
     GoogleGmailService,
     GoogleCalendarService,
     GoogleDriveService,
+    GoogleSheetsService,
     DriveCleanupService,
     GmailEmailProvider,
     BrevoEmailProvider,
     EmailProviderFactory,
   ],
-  exports: [IntegrationsService, BrevoEmailService, BrevoUsageService, GoogleAuthClient, GoogleGmailService, GoogleCalendarService, GoogleDriveService, DriveCleanupService, EmailProviderFactory],
+  exports: [
+    IntegrationsService,
+    BrevoEmailService,
+    BrevoUsageService,
+    GoogleAuthClient,
+    GoogleGmailService,
+    GoogleCalendarService,
+    GoogleDriveService,
+    GoogleSheetsService,
+    DriveCleanupService,
+    EmailProviderFactory,
+  ],
 })
 export class IntegrationsModule {}

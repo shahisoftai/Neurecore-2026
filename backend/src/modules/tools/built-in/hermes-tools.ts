@@ -61,6 +61,8 @@ export const HERMES_TOOL_SETS: Record<HermesAgentType, HermesToolDescriptor[]> =
         { name: 'query', description: 'Query financial data (read-only)', permission: ToolPermissionLevel.READ_ONLY },
         { name: 'reports', description: 'Generate financial reports', permission: ToolPermissionLevel.ALLOW },
         { name: 'documents', description: 'Read and create financial documents', permission: ToolPermissionLevel.ALLOW },
+        { name: 'sheets', description: 'Create and manage spreadsheets', permission: ToolPermissionLevel.ALLOW },
+        { name: 'calendar', description: 'Schedule and manage calendar events', permission: ToolPermissionLevel.ALLOW },
         {
             name: 'process_invoice',
             description: 'Process and approve invoices',
@@ -108,6 +110,8 @@ export const HERMES_TOOL_SETS: Record<HermesAgentType, HermesToolDescriptor[]> =
         { name: 'documents', description: 'Read and create marketing content', permission: ToolPermissionLevel.ALLOW },
         { name: 'query', description: 'Query marketing analytics', permission: ToolPermissionLevel.READ_ONLY },
         { name: 'reports', description: 'Generate marketing reports', permission: ToolPermissionLevel.ALLOW },
+        { name: 'sheets', description: 'Create and manage spreadsheets', permission: ToolPermissionLevel.ALLOW },
+        { name: 'calendar', description: 'Schedule and manage calendar events', permission: ToolPermissionLevel.ALLOW },
         { name: 'http_request', description: 'Call external marketing APIs', permission: ToolPermissionLevel.ALLOW },
         {
             name: 'publish_content',
@@ -144,6 +148,7 @@ export const HERMES_TOOL_SETS: Record<HermesAgentType, HermesToolDescriptor[]> =
         { name: 'documents', description: 'Read and create research documents', permission: ToolPermissionLevel.ALLOW },
         { name: 'query', description: 'Query internal knowledge base', permission: ToolPermissionLevel.READ_ONLY },
         { name: 'reports', description: 'Generate research reports', permission: ToolPermissionLevel.ALLOW },
+        { name: 'sheets', description: 'Create and manage spreadsheets', permission: ToolPermissionLevel.ALLOW },
         { name: 'calculator', description: 'Perform calculations', permission: ToolPermissionLevel.ALLOW },
     ],
 
@@ -181,6 +186,7 @@ export const HERMES_TOOL_SETS: Record<HermesAgentType, HermesToolDescriptor[]> =
         { name: 'query', description: 'Query operational data', permission: ToolPermissionLevel.READ_ONLY },
         { name: 'tasks', description: 'Create and manage operational tasks', permission: ToolPermissionLevel.ALLOW },
         { name: 'reports', description: 'Generate operations reports', permission: ToolPermissionLevel.ALLOW },
+        { name: 'sheets', description: 'Create and manage spreadsheets', permission: ToolPermissionLevel.ALLOW },
     ],
 
     CUSTOMER_SUPPORT: [
@@ -200,6 +206,8 @@ export const HERMES_TOOL_SETS: Record<HermesAgentType, HermesToolDescriptor[]> =
         { name: 'email', description: 'Email operations', permission: ToolPermissionLevel.ALLOW },
         { name: 'documents', description: 'Document operations', permission: ToolPermissionLevel.ALLOW },
         { name: 'query', description: 'Query data', permission: ToolPermissionLevel.READ_ONLY },
+        { name: 'sheets', description: 'Spreadsheet operations', permission: ToolPermissionLevel.ALLOW },
+        { name: 'calendar', description: 'Calendar operations', permission: ToolPermissionLevel.ALLOW },
     ],
 };
 

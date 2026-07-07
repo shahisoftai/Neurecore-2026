@@ -25,7 +25,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
 import {
   BarChart3,
   Activity,
@@ -45,9 +44,19 @@ import {
   User,
   ExternalLink,
   RefreshCw,
+  ArrowLeft,
+  Globe,
+  ShieldAlert,
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 import { useTenantAuth } from '@/hooks/useTenantAuth';
+import { useAuthStore } from '@/stores/authStore';
 import TenantShell from '@/components/TenantShell';
 import { KpiCard } from '@/components/creatio/KpiCard';
 import { StatusBadge } from '@/components/creatio/StatusBadge';
@@ -59,9 +68,13 @@ import { DonutChart } from '@/components/charts/DonutChart';
 import { useDashboardKpis } from '@/hooks/useDashboardKpis';
 import { useChartData } from '@/hooks/useChartData';
 import { useTimeRange } from '@/hooks/useTimeRange';
+import api from '@/services/api';
+import type { AIRoutingConfig } from '@/types/settings.types';
+import { DEFAULT_AI_ROUTING } from '@/types/settings.types';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 type IntelTab = 'analytics' | 'observability' | 'health' | 'reliability' | 'security' | 'settings';
+type SettingsSubTab = 'profile' | 'ai-providers' | 'apikeys' | 'security' | null;
 
 interface HealthCheck {
   service: string;
@@ -112,15 +125,17 @@ const RANGE_OPTIONS = [
 export default function IntelligencePage() {
   const user = useTenantAuth();
   const [activeTab, setActiveTab] = useState<IntelTab>('analytics');
+  const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>(null);
 
-  // Read tab from URL
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     const t = url.searchParams.get('tab') as IntelTab | null;
     if (t && TABS.find((tab) => tab.id === t)) setActiveTab(t);
 
-    // Handle aiTab=routing → scroll to AI Routing section
+    const sub = url.searchParams.get('settingsSub') as SettingsSubTab;
+    if (sub) setSettingsSubTab(sub);
+
     const aiTab = url.searchParams.get('aiTab');
     if (t === 'settings' && aiTab === 'routing') {
       setTimeout(() => {
@@ -131,9 +146,25 @@ export default function IntelligencePage() {
 
   const setTab = (t: IntelTab) => {
     setActiveTab(t);
+    setSettingsSubTab(null);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('tab', t);
+      url.searchParams.delete('settingsSub');
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
+
+  const handleSetSettingsSubTab = (sub: SettingsSubTab) => {
+    setSettingsSubTab(sub);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (sub) {
+        url.searchParams.set('tab', 'settings');
+        url.searchParams.set('settingsSub', sub);
+      } else {
+        url.searchParams.delete('settingsSub');
+      }
       window.history.replaceState(null, '', url.toString());
     }
   };
@@ -198,7 +229,7 @@ export default function IntelligencePage() {
             {activeTab === 'health' && <HealthTab />}
             {activeTab === 'reliability' && <ReliabilityTab />}
             {activeTab === 'security' && <SecurityTab />}
-            {activeTab === 'settings' && <SettingsTab />}
+            {activeTab === 'settings' && <SettingsTab subTab={settingsSubTab} onSetSubTab={handleSetSettingsSubTab} />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -747,40 +778,65 @@ function SecurityTab() {
   );
 }
 
-// ─── Tab 6: Settings (deep-link to /settings) ───────────────────────────
-function SettingsTab() {
+// ─── Tab 6: Settings ─────────────────────────────────────────────────────
+function SettingsTab({ subTab, onSetSubTab }: { subTab: SettingsSubTab; onSetSubTab: (sub: SettingsSubTab) => void }) {
   const user = useTenantAuth();
 
   const sections = [
     {
       title: 'Profile',
       icon: User,
-      description: 'Update your name, email, and password',
-      href: '/settings?tab=profile',
+      description: 'Update your name and password',
+      sub: 'profile' as const,
       color: 'bg-accent-500/15 text-accent-500',
     },
     {
       title: 'AI Providers',
       icon: Cpu,
-      description: 'Configure OpenAI, Anthropic, OpenRouter, and other LLM providers',
-      href: '/settings?tab=ai',
+      description: 'Configure OpenAI, Anthropic, DeepSeek, and other LLM providers',
+      sub: 'ai-providers' as const,
       color: 'bg-state-info/15 text-state-info',
     },
     {
       title: 'API Keys',
       icon: Key,
       description: 'Manage API keys for programmatic access',
-      href: '/settings?tab=apikeys',
+      sub: 'apikeys' as const,
       color: 'bg-state-warning/15 text-state-warning',
     },
     {
       title: 'Security & Access',
       icon: Lock,
-      description: 'Two-factor auth, session management, IP allowlist',
-      href: '/settings?tab=security',
+      description: 'Security status, rate limits, and recent events',
+      sub: 'security' as const,
       color: 'bg-state-danger/15 text-state-danger',
     },
+    {
+      title: 'Integrations',
+      icon: Globe,
+      description: 'Connect Google Workspace, Brevo, Slack, Microsoft 365',
+      sub: 'integrations' as const,
+      color: 'bg-state-success/15 text-state-success',
+    },
   ];
+
+  if (subTab) {
+    return (
+      <div className="space-y-5">
+        <button
+          onClick={() => onSetSubTab(null)}
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Settings
+        </button>
+        {subTab === 'profile' && <ProfileDetail user={user} onBack={() => onSetSubTab(null)} />}
+        {subTab === 'ai-providers' && <AIProvidersDetail />}
+        {subTab === 'apikeys' && <APIKeysDetail />}
+        {subTab === 'security' && <SecuritySettingsDetail />}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -791,7 +847,6 @@ function SettingsTab() {
         </h2>
       </div>
 
-      {/* Profile card */}
       <div className="card-surface p-5">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-accent-500 flex items-center justify-center text-white font-semibold">
@@ -806,25 +861,30 @@ function SettingsTab() {
               Role: <span className="font-medium">{user?.role}</span>
             </p>
           </div>
-          <Link
-            href="/settings?tab=profile"
+          <button
+            onClick={() => onSetSubTab('profile')}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-surface-border text-zinc-300 hover:bg-surface-overlay transition"
           >
             Edit profile
             <ExternalLink className="w-3 h-3" />
-          </Link>
+          </button>
         </div>
       </div>
 
-      {/* Settings sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {sections.map((s) => {
           const Icon = s.icon;
           return (
-            <Link
+            <button
               key={s.title}
-              href={s.href}
-              className="card-surface card-interactive p-5 flex items-start gap-3"
+              onClick={() => {
+                if (s.sub === 'integrations') {
+                  window.location.href = '/settings/integrations';
+                } else {
+                  onSetSubTab(s.sub);
+                }
+              }}
+              className="card-surface card-interactive p-5 flex items-start gap-3 text-left w-full"
             >
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${s.color}`}>
                 <Icon className="w-5 h-5" />
@@ -836,13 +896,558 @@ function SettingsTab() {
                 </div>
                 <p className="text-xs text-zinc-500 mt-0.5">{s.description}</p>
               </div>
-            </Link>
+            </button>
           );
         })}
       </div>
 
-      {/* AI Model Routing */}
       <AIRoutingSection />
+    </div>
+  );
+}
+
+// ─── Settings Detail: Profile ──────────────────────────────────────────────
+function ProfileDetail({ user, onBack }: { user: ReturnType<typeof useTenantAuth>; onBack: () => void }) {
+  const [firstName, setFirstName] = useState(user?.firstName ?? '');
+  const [lastName, setLastName] = useState(user?.lastName ?? '');
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  async function handleSaveProfile() {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await api.patch(`/users/${user.id}`, { firstName, lastName });
+      const setUser = useAuthStore.getState().setUser;
+      setUser({ ...user, firstName, lastName });
+      setToast({ message: 'Profile updated', type: 'success' });
+    } catch {
+      setToast({ message: 'Failed to update profile', type: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleChangePassword() {
+    if (!user || !currentPassword || !newPassword) return;
+    if (newPassword.length < 8) {
+      setToast({ message: 'Password must be at least 8 characters', type: 'error' });
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await api.patch(`/users/${user.id}/password`, { currentPassword, newPassword });
+      setCurrentPassword('');
+      setNewPassword('');
+      setToast({ message: 'Password changed', type: 'success' });
+    } catch {
+      setToast({ message: 'Failed to change password. Check your current password.', type: 'error' });
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <h2 className="text-base font-semibold text-zinc-100">Profile Settings</h2>
+
+      {toast && (
+        <div className={`px-3 py-2 rounded-lg text-xs ${toast.type === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+          {toast.message}
+        </div>
+      )}
+
+      <div className="card-surface p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-zinc-200">Personal Information</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs text-zinc-400 block mb-1">First Name</label>
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-100 focus:outline-none focus:border-accent-500"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-zinc-400 block mb-1">Last Name</label>
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-100 focus:outline-none focus:border-accent-500"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 block mb-1">Email</label>
+          <input
+            type="email"
+            value={user?.email ?? ''}
+            disabled
+            className="w-full px-3 py-2 rounded-lg border border-surface-border bg-zinc-800/50 text-sm text-zinc-500 cursor-not-allowed"
+          />
+          <p className="text-[10px] text-zinc-600 mt-1">Contact support to change your email address.</p>
+        </div>
+        <button
+          onClick={handleSaveProfile}
+          disabled={saving}
+          className="px-4 py-2 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-xs font-medium transition disabled:opacity-50"
+        >
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+
+      <div className="card-surface p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-zinc-200">Change Password</h3>
+        <div>
+          <label className="text-xs text-zinc-400 block mb-1">Current Password</label>
+          <div className="relative">
+            <input
+              type={showCurrent ? 'text' : 'password'}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full px-3 py-2 pr-10 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-100 focus:outline-none focus:border-accent-500"
+            />
+            <button
+              onClick={() => setShowCurrent(!showCurrent)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+            >
+              {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 block mb-1">New Password</label>
+          <div className="relative">
+            <input
+              type={showNew ? 'text' : 'password'}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-3 py-2 pr-10 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-100 focus:outline-none focus:border-accent-500"
+              placeholder="Min 8 characters"
+            />
+            <button
+              onClick={() => setShowNew(!showNew)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+            >
+              {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+        <button
+          onClick={handleChangePassword}
+          disabled={changingPassword || !currentPassword || !newPassword}
+          className="px-4 py-2 rounded-lg border border-surface-border text-zinc-300 hover:bg-surface-overlay text-xs font-medium transition disabled:opacity-50"
+        >
+          {changingPassword ? 'Changing...' : 'Change Password'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings Detail: AI Providers ─────────────────────────────────────────
+interface AIProvider {
+  id: string;
+  name: string;
+  provider: string;
+  apiKey?: string;
+  baseUrl?: string;
+  isEnabled: boolean;
+  isDefault: boolean;
+}
+
+function AIProvidersDetail() {
+  const [providers, setProviders] = useState<AIProvider[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newProvider, setNewProvider] = useState('openai');
+  const [newApiKey, setNewApiKey] = useState('');
+  const [newBaseUrl, setNewBaseUrl] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const fetchProviders = useCallback(async () => {
+    try {
+      const res = await api.get<AIProvider[]>('/settings/ai/providers');
+      setProviders(res.data ?? []);
+    } catch {
+      setToast({ message: 'Failed to load AI providers', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void fetchProviders(); }, [fetchProviders]);
+
+  async function handleAdd() {
+    if (!newName.trim() || !newApiKey.trim()) return;
+    setAdding(true);
+    try {
+      await api.post('/settings/ai/providers', {
+        name: newName.trim(),
+        provider: newProvider,
+        apiKey: newApiKey.trim(),
+        baseUrl: newBaseUrl.trim() || undefined,
+      });
+      setNewName('');
+      setNewApiKey('');
+      setNewBaseUrl('');
+      setShowAdd(false);
+      setToast({ message: 'Provider added', type: 'success' });
+      await fetchProviders();
+    } catch {
+      setToast({ message: 'Failed to add provider', type: 'error' });
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function handleToggle(id: string, isEnabled: boolean) {
+    try {
+      await api.patch(`/settings/ai/providers/${id}/toggle`);
+      setProviders(prev => prev.map(p => p.id === id ? { ...p, isEnabled: !isEnabled } : p));
+    } catch {
+      setToast({ message: 'Failed to toggle provider', type: 'error' });
+    }
+  }
+
+  async function handleSetDefault(id: string) {
+    try {
+      await api.post(`/settings/ai/providers/${id}/set-default`);
+      setProviders(prev => prev.map(p => ({ ...p, isDefault: p.id === id })));
+    } catch {
+      setToast({ message: 'Failed to set default provider', type: 'error' });
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this provider? This cannot be undone.')) return;
+    setDeleting(id);
+    try {
+      await api.delete(`/settings/ai/providers/${id}`);
+      setProviders(prev => prev.filter(p => p.id !== id));
+      setToast({ message: 'Provider deleted', type: 'success' });
+    } catch {
+      setToast({ message: 'Failed to delete provider', type: 'error' });
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-zinc-100">AI Providers</h2>
+        <button
+          onClick={() => setShowAdd(!showAdd)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-xs font-medium transition"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add Provider
+        </button>
+      </div>
+
+      {toast && (
+        <div className={`px-3 py-2 rounded-lg text-xs ${toast.type === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+          {toast.message}
+        </div>
+      )}
+
+      {showAdd && (
+        <div className="card-surface p-5 space-y-3">
+          <h3 className="text-sm font-semibold text-zinc-200">New Provider</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-zinc-400 block mb-1">Name</label>
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="My OpenAI Key"
+                className="w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-100 focus:outline-none focus:border-accent-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400 block mb-1">Provider</label>
+              <select
+                value={newProvider}
+                onChange={(e) => setNewProvider(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-100 focus:outline-none focus:border-accent-500"
+              >
+                {AVAILABLE_MODELS.map((m) => (
+                  <option key={m.provider} value={m.provider}>{m.provider}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-zinc-400 block mb-1">API Key</label>
+            <input
+              type="password"
+              value={newApiKey}
+              onChange={(e) => setNewApiKey(e.target.value)}
+              placeholder="sk-..."
+              className="w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-100 focus:outline-none focus:border-accent-500"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-zinc-400 block mb-1">Base URL (optional)</label>
+            <input
+              type="text"
+              value={newBaseUrl}
+              onChange={(e) => setNewBaseUrl(e.target.value)}
+              placeholder="https://api.openai.com/v1"
+              className="w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-100 focus:outline-none focus:border-accent-500"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAdd}
+              disabled={adding || !newName.trim() || !newApiKey.trim()}
+              className="px-4 py-2 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-xs font-medium transition disabled:opacity-50"
+            >
+              {adding ? 'Adding...' : 'Add Provider'}
+            </button>
+            <button
+              onClick={() => setShowAdd(false)}
+              className="px-4 py-2 rounded-lg border border-surface-border text-zinc-400 hover:text-zinc-200 text-xs"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="card-surface p-8 text-center text-zinc-500 text-sm">Loading providers...</div>
+      ) : providers.length === 0 ? (
+        <div className="card-surface p-12 text-center">
+          <Cpu className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+          <p className="text-sm text-zinc-300 font-medium">No AI providers configured</p>
+          <p className="text-xs text-zinc-500 mt-1">Add your first provider above.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {providers.map((p) => (
+            <div key={p.id} className="card-surface p-4 flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-zinc-100">{p.name}</span>
+                  <span className="text-[10px] uppercase text-zinc-500 bg-surface-overlay px-1.5 py-0.5 rounded">{p.provider}</span>
+                  {p.isDefault && (
+                    <span className="text-[10px] bg-accent-500/20 text-accent-400 px-1.5 py-0.5 rounded">Default</span>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-500 mt-0.5">{p.isEnabled ? 'Enabled' : 'Disabled'}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => handleToggle(p.id, p.isEnabled)}
+                  className={`px-2 py-1 rounded text-xs transition ${p.isEnabled ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+                >
+                  {p.isEnabled ? 'Enabled' : 'Disabled'}
+                </button>
+                {!p.isDefault && (
+                  <button
+                    onClick={() => handleSetDefault(p.id)}
+                    className="px-2 py-1 rounded text-xs text-zinc-400 hover:text-zinc-200 hover:bg-surface-overlay transition"
+                  >
+                    Set Default
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(p.id)}
+                  disabled={deleting === p.id}
+                  className="p-1.5 rounded text-zinc-500 hover:text-red-400 hover:bg-red-900/20 transition disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Settings Detail: API Keys ─────────────────────────────────────────────
+function APIKeysDetail() {
+  const [copied, setCopied] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  function handleCopy(value: string, id: string) {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 2000);
+    }).catch(() => setToast({ message: 'Failed to copy', type: 'error' }));
+  }
+
+  return (
+    <div className="space-y-5">
+      <h2 className="text-base font-semibold text-zinc-100">API Keys</h2>
+
+      <p className="text-sm text-zinc-400">
+        API keys allow programmatic access to the NeureCore API. Keys are scoped to your tenant.
+      </p>
+
+      {toast && (
+        <div className={`px-3 py-2 rounded-lg text-xs ${toast.type === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+          {toast.message}
+        </div>
+      )}
+
+      <div className="card-surface p-8 text-center">
+        <Key className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+        <p className="text-sm text-zinc-300 font-medium">Programmatic API key management</p>
+        <p className="text-xs text-zinc-500 mt-1 max-w-md mx-auto">
+          Full API key generation and management is available via the API directly.
+          Use the endpoints below with your session credentials to create and manage keys.
+        </p>
+      </div>
+
+      <div className="card-surface p-5 space-y-3">
+        <h3 className="text-sm font-semibold text-zinc-200">Quick Reference</h3>
+        <div className="space-y-2">
+          {[
+            { label: 'Base URL', value: typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : '/api/v1' },
+            { label: 'Auth Header', value: 'Authorization: Bearer <token>' },
+            { label: 'Content Type', value: 'Content-Type: application/json' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center justify-between p-2.5 rounded-lg bg-surface-overlay border border-surface-border">
+              <div>
+                <span className="text-xs text-zinc-500">{item.label}</span>
+                <p className="text-xs font-mono text-zinc-200 mt-0.5 break-all">{item.value}</p>
+              </div>
+              <button
+                onClick={() => handleCopy(item.value, item.label)}
+                className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700 transition shrink-0"
+              >
+                {copied === item.label ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings Detail: Security & Access ────────────────────────────────────
+function SecuritySettingsDetail() {
+  const [securityStatus, setSecurityStatus] = useState<{ csrf: boolean; rateLimit: boolean; helmet: boolean } | null>(null);
+  const [rateLimitStatus, setRateLimitStatus] = useState<{ remaining: number; limit: number; resetAt: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [statusRes, rateRes] = await Promise.all([
+          fetch('/api/v1/security/status', { credentials: 'include' }),
+          fetch('/api/v1/security/rate-limit/status', { credentials: 'include' }),
+        ]);
+        if (statusRes.ok) {
+          const s = await statusRes.json();
+          setSecurityStatus(s?.data ?? s);
+        }
+        if (rateRes.ok) {
+          const r = await rateRes.json();
+          setRateLimitStatus(r?.data ?? r);
+        }
+      } catch {
+        // silently fail
+      } finally {
+        setLoading(false);
+      }
+    }
+    void fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-5">
+        <h2 className="text-base font-semibold text-zinc-100">Security & Access</h2>
+        <div className="card-surface p-8 text-center text-zinc-500 text-sm">Loading security status...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <h2 className="text-base font-semibold text-zinc-100">Security & Access</h2>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="card-surface p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield className="w-4 h-4 text-state-info" />
+            <span className="text-sm font-medium text-zinc-200">CSRF Protection</span>
+          </div>
+          <p className={`text-xs font-medium ${securityStatus?.csrf ? 'text-green-400' : 'text-red-400'}`}>
+            {securityStatus?.csrf ? 'Enabled' : 'Disabled'}
+          </p>
+        </div>
+        <div className="card-surface p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldAlert className="w-4 h-4 text-state-warning" />
+            <span className="text-sm font-medium text-zinc-200">Helmet Headers</span>
+          </div>
+          <p className={`text-xs font-medium ${securityStatus?.helmet ? 'text-green-400' : 'text-red-400'}`}>
+            {securityStatus?.helmet ? 'Enabled' : 'Disabled'}
+          </p>
+        </div>
+        <div className="card-surface p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="w-4 h-4 text-accent-400" />
+            <span className="text-sm font-medium text-zinc-200">Rate Limiting</span>
+          </div>
+          <p className={`text-xs font-medium ${securityStatus?.rateLimit ? 'text-green-400' : 'text-red-400'}`}>
+            {securityStatus?.rateLimit ? 'Enabled' : 'Disabled'}
+          </p>
+        </div>
+      </div>
+
+      {rateLimitStatus && (
+        <div className="card-surface p-5">
+          <h3 className="text-sm font-semibold text-zinc-200 mb-3">Your Rate Limit</h3>
+          <div className="flex items-center justify-between text-xs mb-2">
+            <span className="text-zinc-400">Remaining requests</span>
+            <span className="font-mono text-zinc-200">
+              {rateLimitStatus.remaining} / {rateLimitStatus.limit}
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-surface-overlay overflow-hidden">
+            <div
+              className="h-full bg-accent-500 transition-all"
+              style={{ width: `${Math.min(100, ((rateLimitStatus.limit - rateLimitStatus.remaining) / rateLimitStatus.limit) * 100)}%` }}
+            />
+          </div>
+          {rateLimitStatus.resetAt && (
+            <p className="text-[10px] text-zinc-600 mt-2">
+              Resets at {new Date(rateLimitStatus.resetAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="card-surface p-5">
+        <h3 className="text-sm font-semibold text-zinc-200 mb-3">IP Access</h3>
+        <div className="flex items-center gap-2">
+          <Lock className="w-4 h-4 text-zinc-500" />
+          <p className="text-xs text-zinc-500">
+            IP allowlist management is available upon request. Contact support to configure allowed IP ranges.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -879,10 +1484,6 @@ const AVAILABLE_MODELS = [
   { id: 'deepseek-reasoner', name: 'DeepSeek R1', provider: 'deepseek' },
   { id: 'claude-3.5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
 ];
-
-import api from '@/services/api';
-import type { AIRoutingConfig } from '@/types/settings.types';
-import { DEFAULT_AI_ROUTING } from '@/types/settings.types';
 
 function AIRoutingSection() {
   const [routing, setRouting] = useState<AIRoutingConfig>(DEFAULT_AI_ROUTING);

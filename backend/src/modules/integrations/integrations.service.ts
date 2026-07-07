@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IntegrationProvider, IntegrationStatus } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
@@ -22,7 +27,11 @@ export class IntegrationsService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async initiateGoogleOAuth(tenantId: string, redirectUri?: string): Promise<{ url: string; state: string }> {
+  async initiateGoogleOAuth(
+    tenantId: string,
+    redirectUri?: string,
+    audience: 'tenant' | 'admin' = 'tenant',
+  ): Promise<{ url: string; state: string }> {
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET');
 
@@ -36,7 +45,12 @@ export class IntegrationsService {
       `${process.env.FRONTEND_BASE_URL ?? 'https://hq.neurecore.com'}/settings/integrations/callback/google`;
 
     const state = Buffer.from(
-      JSON.stringify({ tenantId, provider: 'google', redirectUri: finalRedirectUri }),
+      JSON.stringify({
+        tenantId,
+        provider: 'google',
+        redirectUri: finalRedirectUri,
+        audience,
+      }),
     ).toString('base64');
 
     const params = new URLSearchParams({
@@ -142,6 +156,46 @@ export class IntegrationsService {
       // Tenant update is best-effort cleanup
     });
     this.logger.log(`Google OAuth disconnected for tenant ${tenantId}`);
+  }
+
+  /**
+   * G7 — Admin-initiated revoke of a tenant's Google connection.
+   *
+   * Throws NotFoundException when the tenant has no Google connection so
+   * admins get clear feedback. Safe to call regardless of whether
+   * `googleCalendarId` was set on the tenant record.
+   *
+   * Audit logging is the responsibility of the caller (controller). It
+   * writes resource='integration_credential' / action='google.admin_revoke'
+   * so the super admin audit log at /settings/audit picks it up.
+   */
+  async adminDisconnectGoogle(tenantId: string): Promise<{
+    tenantId: string;
+    revoked: true;
+    hadCalendar: boolean;
+  }> {
+    const exists = await this.credentialStore.exists(
+      tenantId,
+      IntegrationProvider.GOOGLE,
+    );
+    if (!exists) {
+      throw new NotFoundException(
+        `No Google connection for tenant ${tenantId}`,
+      );
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { googleCalendarId: true, name: true },
+    });
+
+    await this.disconnectGoogle(tenantId);
+
+    return {
+      tenantId,
+      revoked: true,
+      hadCalendar: !!tenant?.googleCalendarId,
+    };
   }
 
   async getGoogleConnectionStatus(tenantId: string): Promise<{

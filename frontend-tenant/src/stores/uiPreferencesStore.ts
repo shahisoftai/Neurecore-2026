@@ -79,6 +79,16 @@ export const useUIPreferencesStore = create<UIPreferencesState>()(
         {
             name: 'ui-preferences-store',
             version: 1,
+            merge: (persistedState, currentState) => {
+                const ps = (persistedState ?? {}) as Partial<UIPreferencesState>;
+                return {
+                    ...currentState,
+                    ...ps,
+                    visibleIcons: Array.isArray(ps.visibleIcons) ? ps.visibleIcons : currentState.visibleIcons,
+                    visibleWidgets: Array.isArray(ps.visibleWidgets) ? ps.visibleWidgets : currentState.visibleWidgets,
+                    widgetOrder: Array.isArray(ps.widgetOrder) ? ps.widgetOrder : currentState.widgetOrder,
+                };
+            },
         }
     )
 );

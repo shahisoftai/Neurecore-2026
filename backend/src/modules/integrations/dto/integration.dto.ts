@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 export class ConnectGoogleDto {
   @IsOptional()
@@ -8,6 +8,10 @@ export class ConnectGoogleDto {
   @IsOptional()
   @IsString()
   scopes?: string;
+
+  @IsOptional()
+  @IsIn(['tenant', 'admin'])
+  audience?: 'tenant' | 'admin';
 }
 
 export class ConnectBrevoDto {

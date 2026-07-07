@@ -67,6 +67,15 @@ export const useDepartmentStore = create<DepartmentState>()(
       name: 'hq_department_store',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ departments: state.departments, total: state.total }),
+      merge: (persistedState, currentState) => {
+        const ps = (persistedState ?? {}) as Partial<DepartmentState>;
+        return {
+          ...currentState,
+          ...ps,
+          departments: Array.isArray(ps.departments) ? ps.departments : currentState.departments,
+          total: typeof ps.total === 'number' ? ps.total : currentState.total,
+        };
+      },
     },
   ),
 );

@@ -21,7 +21,8 @@ const BACKGROUNDS = [
 export function PreferencesModal({ isOpen, onClose }: PreferencesModalProps) {
     const backgroundStyle = useUIPreferencesStore((s) => s.backgroundStyle);
     const setBackgroundStyle = useUIPreferencesStore((s) => s.setBackgroundStyle);
-    const visibleWidgets = useUIPreferencesStore((s) => s.visibleWidgets);
+    const visibleWidgetsRaw = useUIPreferencesStore((s) => s.visibleWidgets);
+    const visibleWidgets = Array.isArray(visibleWidgetsRaw) ? visibleWidgetsRaw : [];
     const toggleWidgetVisibility = useUIPreferencesStore((s) => s.toggleWidgetVisibility);
 
     if (!isOpen) return null;

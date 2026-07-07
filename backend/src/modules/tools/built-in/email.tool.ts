@@ -149,7 +149,7 @@ export class EmailTool extends BaseStructuredTool {
         case 'get_message':
           return await this.getMessage(tenantId, input);
         case 'send':
-          return await this.send(tenantId, input);
+          return await this.send(tenantId, input, context);
         case 'flag':
           return await this.flag(tenantId, input);
         default:
@@ -220,6 +220,7 @@ export class EmailTool extends BaseStructuredTool {
   private async send(
     tenantId: string,
     input: EmailInput,
+    context?: Partial<ToolExecutionContext>,
   ): Promise<StructuredToolResult<EmailOutput>> {
     if (!input.to || !input.subject || input.body === undefined) {
       return {
@@ -228,7 +229,7 @@ export class EmailTool extends BaseStructuredTool {
       };
     }
 
-    const agentId = undefined;
+    const agentId = context?.agentId;
     const sender = await this.resolveSender(tenantId, agentId, input.provider ?? 'auto');
     const provider = await this.providerFactory.forSend(
       tenantId,

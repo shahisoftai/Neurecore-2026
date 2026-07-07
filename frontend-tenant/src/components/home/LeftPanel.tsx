@@ -49,7 +49,8 @@ interface LeftPanelProps {
 }
 
 export function LeftPanel({ onClose, isOpen = true }: LeftPanelProps) {
-    const visibleIcons = useUIPreferencesStore((s) => s.visibleIcons);
+    const visibleIconsRaw = useUIPreferencesStore((s) => s.visibleIcons);
+    const visibleIcons = Array.isArray(visibleIconsRaw) ? visibleIconsRaw : [];
     const [showPreferences, setShowPreferences] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
 

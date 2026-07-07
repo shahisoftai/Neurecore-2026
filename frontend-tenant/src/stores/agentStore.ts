@@ -71,6 +71,15 @@ export const useAgentStore = create<AgentState>()(
       name: 'hq_agent_store',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ agents: state.agents, total: state.total }),
+      merge: (persistedState, currentState) => {
+        const ps = (persistedState ?? {}) as Partial<AgentState>;
+        return {
+          ...currentState,
+          ...ps,
+          agents: Array.isArray(ps.agents) ? ps.agents : currentState.agents,
+          total: typeof ps.total === 'number' ? ps.total : currentState.total,
+        };
+      },
     },
   ),
 );

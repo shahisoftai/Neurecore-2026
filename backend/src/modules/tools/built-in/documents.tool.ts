@@ -9,6 +9,8 @@
  *   action='create'   → write a new document (HTML or plain text) into the agent's Documents folder
  *   action='list'     → list files in the agent's Documents folder
  *   action='read'     → fetch the content of a specific Drive file (downloads as text)
+ *   action='share'    → share a Drive file with a user, group, domain, or anyone (G8)
+ *   action='unshare'  → revoke a single Drive permission (G8)
  *
  * Format strategy:
  *   - HTML is preferred (Drive converts to Doc natively)
@@ -19,6 +21,12 @@
  * capability by storing HTML — agents can pass `format='html'` and downstream tools
  * convert via Drive export API. Browser-side rendering is also supported via the
  * tool returning the HTML string in its result for the UI to display/print.
+ *
+ * Phase 3 G8:
+ *   - `share`  uses the Drive permissions API (POST .../permissions) to grant
+ *     reader/writer/commenter access to a user, group, domain, or the world.
+ *   - `unshare` lists permissions and revokes the matching one by email or by
+ *     provided permissionId; idempotent (404s are swallowed).
  */
 
 import { Injectable } from '@nestjs/common';
@@ -34,7 +42,7 @@ import { GoogleDriveService } from '../../integrations/google/google-drive.servi
 
 export const DocumentInputSchema = z.object({
   action: z
-    .enum(['create', 'list', 'read'])
+    .enum(['create', 'list', 'read', 'share', 'unshare'])
     .describe('Document operation'),
 
   // create
@@ -56,6 +64,39 @@ export const DocumentInputSchema = z.object({
   // list / read
   pageSize: z.number().int().positive().max(100).optional().describe('Max files (list, default 50)'),
   fileId: z.string().optional().describe('Drive file ID (read, required)'),
+
+  // share (G8)
+  role: z
+    .enum(['reader', 'writer', 'commenter'])
+    .optional()
+    .describe('Access role to grant (share, default reader)'),
+  shareType: z
+    .enum(['user', 'group', 'domain', 'anyone'])
+    .optional()
+    .describe('Who to share with (share, default user)'),
+  emailAddress: z
+    .string()
+    .email()
+    .optional()
+    .describe('Email of the user/group (share when shareType=user|group, required)'),
+  domain: z
+    .string()
+    .optional()
+    .describe('Domain to share with (share when shareType=domain, required)'),
+  sendNotification: z
+    .boolean()
+    .optional()
+    .describe('Email the recipient (share, default true)'),
+  emailMessage: z
+    .string()
+    .optional()
+    .describe('Custom message for the notification email (share, optional)'),
+
+  // unshare (G8)
+  permissionId: z
+    .string()
+    .optional()
+    .describe('Drive permission id to revoke (unshare, optional if emailAddress given)'),
 });
 export type DocumentInput = z.infer<typeof DocumentInputSchema>;
 
@@ -81,6 +122,10 @@ export const DocumentOutputSchema = z.object({
     .optional(),
   count: z.number().optional(),
   folder: z.string().optional(),
+  // G8 share/unshare
+  permissionId: z.string().optional(),
+  role: z.string().optional(),
+  shareType: z.string().optional(),
 });
 export type DocumentOutput = z.infer<typeof DocumentOutputSchema>;
 
@@ -92,7 +137,9 @@ export class DocumentsTool extends BaseStructuredTool {
     "action='create' writes a new document into the agent's Google Drive folder (HTML or plain text). " +
     "action='list' shows all files in the agent's Documents folder. " +
     "action='read' fetches the content of a specific document. " +
-    "Use create to draft reports, proposals, briefs, or any artifact; the agent can then email or share the link.";
+    "action='share' grants access on a Drive file to a user (emailAddress), group (emailAddress), domain (domain), or anyone (no recipient). role='reader'|'writer'|'commenter'. " +
+    "action='unshare' revokes a Drive permission — provide permissionId OR emailAddress (or domain for domain permissions). " +
+    'Use create to draft reports, proposals, briefs, or any artifact; the agent can then email or share the link.';
   readonly category = ToolCategory.FILE;
   readonly inputSchema = DocumentInputSchema;
   readonly outputSchema = DocumentOutputSchema;
@@ -121,6 +168,10 @@ export class DocumentsTool extends BaseStructuredTool {
           return await this.list(tenantId, agentId, input);
         case 'read':
           return await this.read(tenantId, input);
+        case 'share':
+          return await this.share(tenantId, input);
+        case 'unshare':
+          return await this.unshare(tenantId, input);
         default:
           return { success: false, error: `Unknown action: ${String(input.action)}` };
       }
@@ -213,7 +264,7 @@ export class DocumentsTool extends BaseStructuredTool {
   ): Promise<StructuredToolResult<DocumentOutput>> {
     if (!input.fileId) return { success: false, error: 'read requires fileId' };
 
-    const accessToken = await this.drive['authClient'].getAccessToken(tenantId);
+    const accessToken = await this.drive.getAccessToken(tenantId);
     if (!accessToken) return { success: false, error: 'Google is not connected' };
 
     // Use Drive's "export" endpoint for Google Docs (HTML), or "download" for binary
@@ -257,6 +308,97 @@ export class DocumentsTool extends BaseStructuredTool {
         mimeType: meta.mimeType,
         content,
         contentLength: content.length,
+      },
+      metadata: { model: 'documents-tool-v1' },
+    };
+  }
+
+  // ─── share (G8) ─────────────────────────────────────────────────────────
+
+  private async share(
+    tenantId: string,
+    input: DocumentInput,
+  ): Promise<StructuredToolResult<DocumentOutput>> {
+    if (!input.fileId) {
+      return { success: false, error: 'share requires fileId' };
+    }
+    const shareType = input.shareType ?? 'user';
+    if ((shareType === 'user' || shareType === 'group') && !input.emailAddress) {
+      return {
+        success: false,
+        error: `shareType="${shareType}" requires emailAddress`,
+      };
+    }
+    if (shareType === 'domain' && !input.domain) {
+      return {
+        success: false,
+        error: 'shareType="domain" requires domain',
+      };
+    }
+
+    const perm = await this.drive.shareFile(tenantId, input.fileId, {
+      role: input.role ?? 'reader',
+      type: shareType,
+      emailAddress: input.emailAddress,
+      domain: input.domain,
+      sendNotification: input.sendNotification,
+      emailMessage: input.emailMessage,
+    });
+
+    return {
+      success: true,
+      data: {
+        action: 'share',
+        fileId: input.fileId,
+        permissionId: perm.id,
+        role: perm.role,
+        shareType: perm.type,
+      },
+      metadata: { model: 'documents-tool-v1' },
+    };
+  }
+
+  // ─── unshare (G8) ───────────────────────────────────────────────────────
+
+  private async unshare(
+    tenantId: string,
+    input: DocumentInput,
+  ): Promise<StructuredToolResult<DocumentOutput>> {
+    if (!input.fileId) {
+      return { success: false, error: 'unshare requires fileId' };
+    }
+    let permissionId = input.permissionId;
+    if (!permissionId) {
+      if (!input.emailAddress && !input.domain) {
+        return {
+          success: false,
+          error:
+            'unshare requires permissionId or emailAddress (or domain for domain-type permissions)',
+        };
+      }
+      const perms = await this.drive.listFilePermissions(tenantId, input.fileId);
+      const match = perms.find((p) => {
+        if (input.emailAddress && p.emailAddress === input.emailAddress) return true;
+        if (input.domain && p.domain === input.domain) return true;
+        return false;
+      });
+      if (!match) {
+        return {
+          success: false,
+          error: 'No matching permission found for the given identifier',
+        };
+      }
+      permissionId = match.id;
+    }
+
+    await this.drive.revokeFilePermission(tenantId, input.fileId, permissionId);
+
+    return {
+      success: true,
+      data: {
+        action: 'unshare',
+        fileId: input.fileId,
+        permissionId,
       },
       metadata: { model: 'documents-tool-v1' },
     };

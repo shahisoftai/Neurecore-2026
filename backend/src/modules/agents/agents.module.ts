@@ -8,6 +8,7 @@ import { AgentEvaluatorService } from './services/agent-evaluator.service';
 import { DeploymentService } from './services/deployment.service';
 import { EventsModule } from '../events/events.module';
 import { ToolsModule } from '../tools/tools.module';
+import { IntegrationsModule } from '../integrations/integrations.module';
 import { GovernanceModule } from '../governance/governance.module';
 import { ModelsModule } from '../models/models.module';
 import { AgentStreamingService } from './streaming/agent-streaming.service';
@@ -27,9 +28,10 @@ import { SecurityModule } from './security/security.module';
   imports: [
     forwardRef(() => EventsModule),
     ToolsModule,
+    forwardRef(() => IntegrationsModule),
     GovernanceModule,
     ModelsModule,
-    SecurityModule, // Security interceptors for tool validation
+    SecurityModule,
   ],
   controllers: [
     AgentsController,

@@ -278,10 +278,26 @@ Before `./scripts/deploy.sh`, run this from local:
 cd /home/najeeb/Linux-Dev/neurecore-2026/neurecore
 git status                                    # should be clean (or only intended changes)
 
-# 2. Confirm local builds work
-cd frontend-tenant && npm run build && cd ..   # optional but catches compile errors before rsync
-cd backend        && npm run build && cd ..
+# 2. Confirm local builds work (NOT just lint)
+cd frontend-tenant && npm run build && cd ..   # next build catches what lint misses
+cd backend        && npm run build && cd ..   # nest build catches missing destructures, type errors
+```
 
+**Why `npm run build` and not just `npm run lint`?** — `next lint` (and `eslint` in general) does NOT catch missing destructures, unused imports in certain patterns, or type-system errors. A pre-existing build error in `frontend-tenant/src/app/command-center/page.tsx` (called `setWorkflows` from `useWorkflowStore` but never destructured it) survived **multiple lint passes** and was only caught by `next build`. Lint said "0 errors"; the build said "Type error: Cannot find name 'setWorkflows'". If we'd run the build, we'd have caught it before the 1.7 MB rsync. (See [fixes.md FIX-019](fixes.md#fix-019--comprehensive-home-page-audit-5-issues-fixed) §"Build error" for the post-mortem.)
+
+**The local build catches:**
+- Type errors (missing destructures, wrong generics, undefined names)
+- Module resolution errors (import paths that no longer exist)
+- `next.config.js` / `tsconfig.json` errors
+- `next/image` / `<Image>` constraints
+- Server-only imports leaking into client components
+
+**The local build does NOT catch:**
+- Production-only env-var behaviour (NEXT_PUBLIC_* is inlined at build time)
+- Network/connectivity (only runtime tests catch this)
+- localStorage shape drift in user browsers (FIX-019 added `merge` to defensively handle)
+
+```bash
 # 3. Confirm Contabo is reachable and healthy
 ssh contabo 'pm2 list | grep neurecore'        # all 4 online
 curl -sk https://brain.neurecore.com/api/v1/health   # 200
@@ -302,3 +318,6 @@ If any check fails, **do not deploy**. Fix the issue first.
 | Build succeeds but frontend still shows old behaviour | Next.js webpack persistent cache | `rm -rf .next node_modules/.cache && npm run build` (see §1) |
 | Frontend requests go to `localhost:3000` on production | Source code has hardcoded `?? 'http://localhost:3000/api/v1'` fallback | Replace with `/api/v1` (same-origin). Check: `grep -r 'localhost:3000' src/` |
 | `pm2 restart` doesn't reflect changes | Build output cached, or `rsync --delete` removed `start.sh` | Check `ls /opt/neurecore/<app>/.next` exists; ensure `start.sh` is present |
+| Build on Contabo fails: `Type error: Cannot find name 'X'` | Pre-existing TypeScript error in source — `npm run lint` did not catch it | **Run `npm run build` locally BEFORE rsync** — see [§10 Pre-deploy checklist](deployment.md#10-pre-deploy-checklist). The build catches missing destructures, wrong generics, etc. that lint misses. |
+| Browser console: `TypeError: can't access property "length", n is undefined` on a tenant page | Zustand `persist` middleware hydrated a non-array from corrupted `localStorage` | See [runbook.md §3.1](runbook.md#31-tenant-cant-access-property-length-crash) and [frontend-tenant.md §19](frontend-tenant.md#19-defensive-patterns-zustand-merge--ui-guards-fix-019) |
+| `wss://brain.neurecore.com/socket.io/` connection failure | WebSocket URL fallback to dev `localhost:3000` (FIX-019) | See [runbook.md §3.2](runbook.md#32-tenant-websocket-connection-failure) |

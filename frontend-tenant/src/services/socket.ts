@@ -2,7 +2,12 @@ import { io, Socket } from 'socket.io-client';
 import { tokenManager } from '@/core/infrastructure/auth/TokenManager';
 import { hqEventBus } from '@/core/infrastructure/socket/EventBus';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? 'http://localhost:3000';
+const SOCKET_URL = (() => {
+  if (typeof window === 'undefined') return '';
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) return process.env.NEXT_PUBLIC_SOCKET_URL;
+  if (window.location.protocol === 'https:') return `wss://${window.location.host}`;
+  return `ws://${window.location.host}`;
+})();
 
 let socket: Socket | null = null;
 

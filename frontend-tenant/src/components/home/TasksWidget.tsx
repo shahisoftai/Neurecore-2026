@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useEffect } from 'react';
 import { CheckSquare, Circle } from 'lucide-react';
 import { GlassPanel } from './GlassPanel';
 import { useTaskStore } from '@/stores/taskStore';
@@ -10,16 +9,13 @@ import { clsx } from 'clsx';
 export function TasksWidget() {
     const tasks = useTaskStore((s) => s.tasks);
     const loading = useTaskStore((s) => s.loading);
-    const fetchTasks = useTaskStore((s) => s.fetchTasks);
 
-    useEffect(() => {
-        if (tasks.length === 0 && !loading) {
-            void fetchTasks(1, 10);
-        }
-    }, [fetchTasks, tasks.length, loading]);
+    const safeTasks = Array.isArray(tasks) ? tasks : [];
 
-    const activeTasks = tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'CANCELLED');
-    const completedCount = tasks.filter((t) => t.status === 'COMPLETED').length;
+    const activeTasks = safeTasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'CANCELLED');
+    const completedCount = safeTasks.filter((t) => t.status === 'COMPLETED').length;
+
+    const isLoading = loading && safeTasks.length === 0;
 
     return (
         <GlassPanel className="p-6 h-full flex flex-col">
@@ -36,7 +32,7 @@ export function TasksWidget() {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2">
-                {loading ? (
+                {isLoading ? (
                     <div className="flex items-center gap-2 text-zinc-500 text-sm">
                         <Circle className="w-3 h-3 animate-spin" />
                         Loading tasks...

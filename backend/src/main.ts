@@ -66,7 +66,7 @@ async function bootstrap() {
   const adminFrontendUrl = config.get<string>('ADMIN_FRONTEND_URL');
 
   // Dev defaults in this repo: admin=3001, tenant=3002 (support localhost and 127.0.0.1)
-  // Production domains for Vercel frontends
+  // Production domains for Contabo frontends
   const defaultOrigins = [
     'http://localhost:3001',
     'http://localhost:3002',

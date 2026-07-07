@@ -119,10 +119,14 @@ export default function CommandCenterPage() {
   const router = useRouter();
   const openInspector = useInspectorStore((s) => s.openInspector);
 
-  const { agents, fetchAgents, setAgents, updateAgentStatus } = useAgentStore();
-  const { tasks, fetchTasks, setTasks, updateTaskStatus } = useTaskStore();
-  const { workflows, fetchWorkflows, setWorkflows } = useWorkflowStore();
-  const { departments, fetchDepartments, setDepartments } = useDepartmentStore();
+  const { agents: agentsRaw, fetchAgents, setAgents, updateAgentStatus } = useAgentStore();
+  const { tasks: tasksRaw, fetchTasks, setTasks, updateTaskStatus } = useTaskStore();
+  const { departments: departmentsRaw, fetchDepartments, setDepartments } = useDepartmentStore();
+  const { setWorkflows } = useWorkflowStore();
+
+  const agents = Array.isArray(agentsRaw) ? agentsRaw : [];
+  const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
+  const departments = Array.isArray(departmentsRaw) ? departmentsRaw : [];
 
   const { kpis, loading: kpisLoading } = useDashboardKpis();
   const { range, setRange } = useTimeRange();

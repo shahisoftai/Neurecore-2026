@@ -30,7 +30,8 @@ interface RightPanelProps {
 }
 
 export function RightPanel({ className }: RightPanelProps) {
-    const visibleWidgets = useUIPreferencesStore((s) => s.visibleWidgets);
+    const visibleWidgetsRaw = useUIPreferencesStore((s) => s.visibleWidgets);
+    const visibleWidgets = Array.isArray(visibleWidgetsRaw) ? visibleWidgetsRaw : [];
     const toggleWidgetVisibility = useUIPreferencesStore((s) => s.toggleWidgetVisibility);
     const [collapsedWidgets, setCollapsedWidgets] = useState<Record<string, boolean>>({});
     const [showMenu, setShowMenu] = useState<string | null>(null);

@@ -19,7 +19,8 @@ interface ActivityItem {
 }
 
 export function LiveFeedWidget() {
-    const events = useActivityStore((s) => s.events);
+    const eventsStore = useActivityStore((s) => s.events);
+    const events = Array.isArray(eventsStore) ? eventsStore : [];
 
     const activities: ActivityItem[] = useMemo(() => {
         if (events.length === 0) return [];
@@ -38,7 +39,7 @@ export function LiveFeedWidget() {
             <GlassPanel className="p-6">
                 <div className="flex items-center gap-2">
                     <Activity className="w-5 h-5 text-blue-400 animate-pulse" />
-                    <p className="text-zinc-400">No recent activity</p>
+                    <p className="text-zinc-400">Watching for activity...</p>
                 </div>
             </GlassPanel>
         );

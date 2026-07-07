@@ -97,6 +97,65 @@ ssh contabo '
 '
 ```
 
+### 3.1 Tenant "can't access property length" crash
+
+**Symptoms (browser console):**
+- `TypeError: can't access property "length", n is undefined` (or `.filter`, `.map`, `.find`, `.slice`)
+- `[app/error] Route error: TypeError...` (Next.js app-level error boundary fires)
+- Page may show a blank screen or a generic error UI
+
+**Root cause:** A component called `something.length` (or `.filter`/`.map`/`.find`/`.slice`) on a value from a Zustand `persist`-backed store, where the persisted localStorage entry has been corrupted to a non-array value. This can happen if:
+- A previous build wrote a different shape to localStorage.
+- The user manually edited localStorage.
+- A Zustand version migration was missing.
+
+**Quick fix for the affected user:**
+1. Open browser DevTools → Application → Local Storage → `https://hq.neurecore.com`
+2. Find and **delete** the offending key. Known culprits (all use `persist` middleware):
+   - `hq_task_store` — `tasks` field should be an array
+   - `hq_agent_store` — `agents` field
+   - `hq_department_store` — `departments` field
+   - `ui-preferences-store` — `visibleIcons`, `visibleWidgets`, `widgetOrder`
+3. Reload the page.
+
+**Permanent fix (already shipped in FIX-019):**
+- Every persisted store has a `merge` function that sanitizes arrays on hydration: `Array.isArray(ps.tasks) ? ps.tasks : currentState.tasks`
+- Every consumer of a persisted store defensively guards: `const safe = Array.isArray(raw) ? raw : []`
+- See [frontend-tenant.md §19](frontend-tenant.md#19-defensive-patterns-zustand-merge--ui-guards-fix-019) for the pattern.
+
+**Related:** [fixes.md FIX-019](fixes.md#fix-019--comprehensive-home-page-audit-5-issues-fixed), [fixes.md FIX-018 post-deploy fix](fixes.md).
+
+### 3.2 Tenant WebSocket connection failure
+
+**Symptoms (browser console):**
+- `Firefox can't establish a connection to the server at wss://brain.neurecore.com/socket.io/?EIO=4&transport=websocket`
+- `The connection to wss://brain.neurecore.com/socket.io/ was interrupted while the page was loading`
+- Live feed / activity stream never updates
+- Agent status changes don't propagate to the UI
+
+**Root cause:** `frontend-tenant/src/services/socket.ts` reads `SOCKET_URL` from `process.env.NEXT_PUBLIC_SOCKET_URL`. If that env var is missing or empty in production, it used to fall back to `http://localhost:3000` (a dev-only value). Browsers then attempt to connect to `wss://brain.neurecore.com/socket.io/` (the OLS-proxied path), but the backend on port 3003 doesn't expose a Socket.IO server that OLS can reverse-proxy. (FIX-019 changed this to derive from `window.location` — same-origin wss/ws.)
+
+**Quick check on the affected user:**
+1. Open browser DevTools → Network → filter "WS" → look at the failed WebSocket frames.
+2. The destination URL should be `wss://hq.neurecore.com/socket.io/` (same-origin), NOT `wss://brain.neurecore.com/socket.io/`.
+3. If it's the wrong host, the user is running a build BEFORE the FIX-019 redeploy. They need to hard-reload (Cmd+Shift+R) to bust the browser cache, or wait for the next deploy.
+
+**Permanent fix (already shipped in FIX-019):**
+- `services/socket.ts` now derives URL from `window.location` (same-origin wss/ws).
+- `.env.production` has explicit `NEXT_PUBLIC_SOCKET_URL=` (empty) plus a comment explaining the same-origin behaviour.
+- A missing env var is no longer a silent fallback to dev defaults.
+
+**Verification:**
+```bash
+# Build should not have a localhost:3000 reference
+ssh contabo 'grep -rn "localhost:3000" /opt/neurecore/frontend-tenant/src/ || echo "clean"'
+# Should print "clean" (zero matches).
+```
+
+**Related:** [fixes.md FIX-019](fixes.md#fix-019--comprehensive-home-page-audit-5-issues-fixed).
+
+---
+
 ### 2.4 CORS proxy
 
 ```bash
@@ -138,6 +197,10 @@ Expected: `204 No Content` + `Access-Control-Allow-Origin: <origin>` for each.
 | TLS cert expired | certbot renewal failed | `certbot renew --force-renewal` |
 | `prisma migrate` fails after deploy | migrations not synced | `rsync -avz prisma/migrations/<new-dir>/ contabo:/opt/neurecore/backend/backend/prisma/migrations/<new-dir>/` |
 | Disk `df` shows >90% | old archives or logs | See [disaster-recovery.md §5](disaster-recovery.md#5-disk-full-recovery) |
+| Browser console: `TypeError: can't access property "length", n is undefined` on `/home` (or any tenant page) | Zustand `persist` middleware hydrated a non-array from corrupted `localStorage` | See [§3.1 Tenant "can't access property length" crash](runbook.md#31-tenant-cant-access-property-length-crash) |
+| `GET /help?_rsc=... 404` in network tab | `<Link href="/help">` exists in TopBar but no `/help` page | Either create the page or remove the link — see [frontend-tenant.md §19](frontend-tenant.md#19-defensive-patterns-zustand-merge--ui-guards-fix-019) |
+| `Firefox can't establish a connection to wss://brain.neurecore.com/socket.io/` in console | WebSocket URL falls back to wrong host in production (no `NEXT_PUBLIC_SOCKET_URL`, or hardcoded `localhost:3000`) | See [§3.2 Tenant WebSocket connection failure](runbook.md#32-tenant-websocket-connection-failure) |
+| `Content-Security-Policy warnings 4` in console | Pre-existing — Next.js inlines scripts that don't have a strict CSP nonce | Cosmetic, not blocking; OLS vhost doesn't yet emit `Content-Security-Policy` header |
 
 ---
 
@@ -230,4 +293,106 @@ for p in json.load(sys.stdin):
 
 ---
 
+## 9. Google OAuth credential rotation (CLIENT_ID / CLIENT_SECRET)
+
+**When this matters**
+
+- `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` leaked / disclosed.
+- Routine rotation per security policy (recommended every 6 months for public-facing apps).
+- Google's "unverified app" warning escalates and they request credential change.
+- Moving the OAuth app from one Google Cloud project to another.
+- Tenant reports recurring `invalid_client` after deploys.
+
+**Key facts**
+
+- OAuth client ID + secret are stored **server-side only** in `backend/.env.production` and read by `IntegrationsService.initiateGoogleOAuth()`.
+- Tenant credentials (per-tenant access/refresh tokens) are persisted in the `integration_credential` table, encrypted with `INTEGRATION_ENCRYPTION_KEY` / `GOOGLE_TOKEN_ENCRYPTION_KEY` (AES-256-GCM). They are **not** derived from the client secret.
+- When you rotate the client secret, every existing tenant's refresh token continues to work **until Google revokes it** — typically only happens if (a) the OAuth app is deleted, (b) the OAuth consent screen is unpublished, or (c) Google invalidates tokens for security reasons. Practical impact for our use case: zero automatic disruption after a secret-only rotation.
+- However, the `state` payload issued during the **next** `POST /integrations/google/authorize` flow will be signed by the new secret; in-flight `state`s issued before the rotation continue to validate against the old secret. Once `backend` PM2 restarts, all `state`s issued post-restart are signed by the new secret and fail verification if the secret env hasn't been reloaded — always restart backend after the env file change.
+- The `access_token` re-exchange uses the *current* client_id+secret pair. If secret rotates mid-token-life, refresh still works (refresh tokens do not require the secret to be the same one used at original-issue time, only at *exchange* time, which uses the *current* configured secret).
+
+**Steps**
+
+1. **Pre-flight**
+
+   ```bash
+   ssh contabo
+   cd /opt/neurecore/backend
+   cat .env.production | grep -E "^GOOGLE_" || echo "no GOOGLE_* vars present"
+   ```
+
+   Note the current values. Confirm `GOOGLE_REDIRECT_URI` matches what is registered in the new Google Cloud project (typically `https://brain.neurecore.com/api/v1/integrations/google/callback`).
+
+2. **Create the new OAuth client** in the Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID → Web application. Add:
+   - Authorized JavaScript origins: `https://hq.neurecore.com`, `https://cc.neurecore.com`
+   - Authorized redirect URIs: `https://brain.neurecore.com/api/v1/integrations/google/callback`
+
+3. **Bake the new credentials into `.env.production`**
+
+   ```bash
+   ssh contabo
+   cd /opt/neurecore/backend
+   cp .env.production .env.production.bak-$(date +%F-%H%M)
+   sed -i "s|^GOOGLE_CLIENT_ID=.*|GOOGLE_CLIENT_ID=<NEW>|"  .env.production
+   sed -i "s|^GOOGLE_CLIENT_SECRET=.*|GOOGLE_CLIENT_SECRET=<NEW>|" .env.production
+   grep -E "^GOOGLE_(CLIENT_ID|CLIENT_SECRET|REDIRECT_URI)" .env.production
+   ```
+
+4. **Restart the backend** to pick up the new env (PM2 does not auto-reload env):
+
+   ```bash
+   pm2 restart neurecore-backend
+   pm2 logs --lines 50 neurecore-backend
+   # Expect: Nest instantiation logs but no "OAuth is not configured" error.
+   ```
+
+5. **Smoke-test** the OAuth round-trip (validates G1 fix too):
+
+   - Open `https://hq.neurecore.com/settings/integrations` in an incognito window.
+   - Click **Connect Google**, consent, and ensure the browser lands back at `https://hq.neurecore.com/settings/integrations?connected=true&email=...` (not on `brain.neurecore.com`).
+   - DB confirm:
+     ```sql
+     SELECT "tenantId", provider, scopes
+     FROM integration_credential
+     WHERE provider='GOOGLE' AND "updatedAt" > NOW() - INTERVAL '5 minutes';
+     ```
+
+6. **Verify tenants still work**
+
+   - All existing tenants should continue functioning with their existing refresh tokens. No proactive re-consent is needed.
+   - Spot-check 2-3 tenants by inspecting `integration_credential` rows — they retain their encrypted `refreshToken` and continue issuing `accessToken` calls with the new client_secret (which is fine — refresh tokens are bound to the user, not the secret).
+   - If a tenant reports failures (HTTP 400 `invalid_grant`), use the new Phase 3 admin override: `POST /integrations/admin/google/:tenantId/disconnect` (role `SUPER_ADMIN`/`PLATFORM_ADMIN`) and ask them to re-consent.
+
+7. **Audit log entry**
+
+   `adminDisconnectGoogle` writes an `AuditLog` row at `action='google.admin_revoke'` with `resourceId=<tenantId>`, and the platform audit log UI at `/settings/audit` will surface it. If you have to re-consent a tenant manually, prefer the admin endpoint (with audit trail) over direct DB mutation.
+
+8. **Revoke the old credentials** in Google Cloud Console. Optional but recommended once the new credentials are verified live (typical: 48 hours). Revoking the old secret does NOT invalidate tenant refresh tokens automatically — but any new `initiateGoogleOAuth` calls before you remove the old credentials will still succeed. Removing the old client entirely from the project will eventually invalidate refresh tokens only if a tenant's `access_token` request fails — at that point `GoogleAuthClient` will surface a re-consent error and the tenant UI surfaces the "Connect Google" CTA again.
+
+**Failure-mode cheatsheet**
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Failed to start Google authorization` toast after rotation | Env not loaded | Restart `neurecore-backend`; check `pm2 logs` for "Google OAuth is not configured" |
+| Google returns `invalid_client` | Wrong secret typed; key rotation not propagated | Re-set `.env`, restart backend, retry consent |
+| Existing tenant Gmail calls return 401 | Refresh token revoked (rare, only on full OAuth app deletion) | Admin: `POST /integrations/admin/google/:tenantId/disconnect`, ask tenant to reconnect |
+| OAuth callback lands on `brain.neurecore.com` instead of `hq.neurecore.com` | `FRONTEND_BASE_URL` not set, env fell back to a hard default | Confirm `TENANT_FRONTEND_BASE_URL=https://hq.neurecore.com` is set in `backend/.env.production`; restart backend |
+
+**Related docs**
+
+- [int-features/google-services.md](./int-features/google-services.md) §2.6 OAuth callback redirect (G1)
+- [int-features/google-services.md](./int-features/google-services.md) §9 Phase-3 G7 admin-revoke endpoint
+- [operations.md](./operations.md) — how env files are deployed
+- [deployment.md](./deployment.md) — backend redeploy steps
+
+---
+
 **End of runbook.**
+
+---
+
+## See also
+
+- [auth.md](auth.md) — Authoritative reference for the cookie-only auth system.
+- [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md) — The 10-phase plan to eliminate the "auth gets corrupted" bug class (FIX-020).
+- [fixes.md](fixes.md) — FIX-014 (Auth Hardening Batch 1), FIX-015-016 (auth-hardening audit), FIX-019 (defensive patterns), FIX-020 (planned refactor).

@@ -2,14 +2,13 @@
 
 // HomeKpiStrip — 4 KPI cards reflecting tenant-level metrics.
 //
-// Each tile maps to a Creatio reference KPI and a backend store / service:
+// Each tile maps to a Creatio reference KPI and a backend store:
 //   - Active Agents        → useAgentStore() agents list length / "N running"
-//   - Tasks Today          → useDashboardKpis().kpis.completedToday + failed
+//   - Tasks Today          → useTaskStore() tasks list
 //   - Cost MTD             → derived from command-center summary (monthCost)
-//   - Pending Approvals    → useApprovals() length
+//   - Pending Approvals    → passed from page level (shared store)
 //
-// Each tile is clickable → navigates to the relevant section. Loading state
-// keeps the layout stable while data is fetched.
+// Each tile is clickable → navigates to the relevant section.
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -21,7 +20,6 @@ import {
 } from 'lucide-react';
 import { useAgentStore } from '@/stores/agentStore';
 import { useTaskStore } from '@/stores/taskStore';
-import { useApprovals } from '@/hooks/useApprovals';
 
 function formatCurrency(amount: number | null | undefined): string {
   if (amount == null) return '—';
@@ -32,18 +30,16 @@ function formatCurrency(amount: number | null | undefined): string {
 }
 
 interface HomeKpiStripProps {
-  /** Cost MTD in dollars; sourced from command-center summary. */
   monthCost?: number | null;
+  pendingApprovals?: number;
+  loading?: boolean;
 }
 
-export function HomeKpiStrip({ monthCost }: HomeKpiStripProps = {}) {
+export function HomeKpiStrip({ monthCost, pendingApprovals = 0, loading = false }: HomeKpiStripProps = {}) {
   const router = useRouter();
   const agents = useAgentStore((s) => s.agents);
   const tasks = useTaskStore((s) => s.tasks);
-  const { critical = [], routine = [] } = useApprovals();
 
-  // Defensive coercions — zustand persist hydration can briefly hand back
-  // non-array values (legacy localStorage shape). Bail to [].
   const safeAgents = useMemo(() => (Array.isArray(agents) ? agents : []), [agents]);
   const safeTasks = useMemo(() => (Array.isArray(tasks) ? tasks : []), [tasks]);
 
@@ -75,13 +71,6 @@ export function HomeKpiStrip({ monthCost }: HomeKpiStripProps = {}) {
     [safeTasks],
   );
 
-  // Approvals hook returns stratified critical + routine buckets. The Total
-  // is the pending approvals count shown on the home KPI tile.
-  const pendingApprovals = useMemo(
-    () => critical.length + routine.length,
-    [critical, routine],
-  );
-
   const costMtd = monthCost ?? null;
 
   return (
@@ -92,7 +81,7 @@ export function HomeKpiStrip({ monthCost }: HomeKpiStripProps = {}) {
         badge={`${runningAgents} running`}
         badgeTone="ops"
         icon={<Users className="w-4 h-4" aria-hidden />}
-        loading={false}
+        loading={loading}
         onClick={() => router.push('/marketplace?tab=agents')}
       />
       <KpiTile
@@ -101,7 +90,7 @@ export function HomeKpiStrip({ monthCost }: HomeKpiStripProps = {}) {
         badge={`${failedToday} failed`}
         badgeTone="profit"
         icon={<CheckCircle2 className="w-4 h-4" aria-hidden />}
-        loading={false}
+        loading={loading}
         onClick={() => router.push('/departments?tab=tasks')}
       />
       <KpiTile
@@ -110,7 +99,7 @@ export function HomeKpiStrip({ monthCost }: HomeKpiStripProps = {}) {
         badge={costMtd != null ? 'this month' : 'loading\u2026'}
         badgeTone="warn"
         icon={<Wallet className="w-4 h-4" aria-hidden />}
-        loading={false}
+        loading={loading}
         onClick={() => router.push('/finance')}
       />
       <KpiTile
@@ -119,13 +108,14 @@ export function HomeKpiStrip({ monthCost }: HomeKpiStripProps = {}) {
         badge={pendingApprovals === 0 ? 'all clear' : 'requires attention'}
         badgeTone="risk"
         icon={<AlertCircle className="w-4 h-4" aria-hidden />}
+        loading={loading}
         onClick={() => router.push('/service-desk?tab=approvals')}
       />
     </section>
   );
 }
 
-// ─── Internal tile (KpiCard-shaped, themed correctly for light + dark) ───────
+// ─── Internal tile ──────────────────────────────────────────────────────────
 
 interface KpiTileProps {
   label: string;

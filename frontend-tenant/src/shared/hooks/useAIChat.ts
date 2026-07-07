@@ -27,7 +27,8 @@ interface UseAIChatReturn {
 }
 
 export function useAIChat(pageContext?: string): UseAIChatReturn {
-  const agents = useAgentStore((s) => s.agents);
+  const agentsRaw = useAgentStore((s) => s.agents);
+  const agents = Array.isArray(agentsRaw) ? agentsRaw : [];
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     conversationalAIService.getHistory(),
   );

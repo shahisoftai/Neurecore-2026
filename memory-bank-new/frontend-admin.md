@@ -319,7 +319,7 @@ Browser → backend: `NEXT_PUBLIC_API_URL` defaults to `http://localhost:3000` (
 2. **Next.js API routes duplicate backend endpoints** — currently unused (admin uses absolute brain URL). Either delete or document as intended for server-side enrichment.
 3. **OLS vhost rewrites only 21 paths** (Phase 10 added 3: `/agents-pool`, `/departments-pool`, `/industries`, `/tiers`, `/features`, `/packages`) — new admin routes must be added to `/usr/local/lsws/conf/vhosts/cc.neurecore.com/vhost.conf` or the catch-all rewrite handles it (which it does).
 4. **No Sentry** — `NEXT_PUBLIC_SENTRY_DSN` is empty. Errors rely on browser console.
-5. **`next.config.js` standalone output** — fine for direct Node.js deploy, but breaks if we ever move to Vercel-style deployment. See [future-plans.md §3.3](future-plans.md).
+5. **`next.config.js` standalone output** — fine for direct Node.js deploy on Contabo.
 6. **Phase 10 — `agents-pool` page editor** — currently has a minimal edit modal (identity + system prompt). Full editor mirroring the legacy `/agent-templates` modal (permissions, config, version) is a follow-up; legacy service remains callable for now.
 
 ---

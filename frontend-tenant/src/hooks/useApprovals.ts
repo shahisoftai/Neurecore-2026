@@ -1,7 +1,8 @@
 /**
  * src/hooks/useApprovals.ts
  *
- * React hook for approval data fetching with batch processing
+ * React hook for approval data fetching with shared Zustand store.
+ * Multiple hook instances share the same API call — only the first fires the fetch.
  * SOLID:
  * - SRP: Only handles approval data fetching and state
  * - DIP: Depends on restClient service
@@ -9,14 +10,16 @@
 
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useRef, useMemo } from 'react';
 import { restClient } from '@/core/services/api/clients/RestClient';
+import { useApprovalsStore } from '@/stores/approvalsStore';
 import type {
     ApprovalRequest,
     StratifiedApprovalsResponse,
-    ApprovalsQueryOptions,
     ApprovalFeedback,
 } from '@/types/approvals.types';
+
+export type { ApprovalRequest };
 
 /**
  * Return type for useApprovals hook
@@ -31,90 +34,82 @@ export interface UseApprovalsReturn {
     refetch: () => Promise<void>;
 }
 
-/**
- * useApprovals Hook
- * SOLID: SRP - Only handles approval data fetching
- *
- * Features:
- * - Fetches stratified approvals (critical vs routine)
- * - Error handling and retry
- * - Feedback submission
- * - Memoized returns
- *
- * Usage:
- * const { critical, routine, submitFeedback } = useApprovals();
- */
+let fetchInFlight: Promise<void> | null = null;
+
 export const useApprovals = (options?: {
     autoRefresh?: boolean;
     refreshInterval?: number;
 }): UseApprovalsReturn => {
-    const [critical, setCritical] = useState<ApprovalRequest[]>([]);
-    const [routine, setRoutine] = useState<ApprovalRequest[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
     const autoRefresh = options?.autoRefresh ?? false;
-    const refreshInterval = options?.refreshInterval ?? 60000; // 60s default
+    const refreshInterval = options?.refreshInterval ?? 60000;
 
-    /**
-     * Fetch stratified approvals
-     * SOLID: SRP - Only data fetching
-     */
+    const critical = useApprovalsStore((s) => s.critical);
+    const routine = useApprovalsStore((s) => s.routine);
+    const isLoading = useApprovalsStore((s) => s.isLoading);
+    const error = useApprovalsStore((s) => s.error);
+    const lastFetchedAt = useApprovalsStore((s) => s.lastFetchedAt);
+    const setData = useApprovalsStore((s) => s.setData);
+    const setError = useApprovalsStore((s) => s.setError);
+
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
     const fetchApprovals = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            setError(null);
-
-            const response =
-                await restClient.get<StratifiedApprovalsResponse>(
-                    '/approvals/stratified?status=PENDING'
-                );
-
-            // Extract data from API response wrapper
-            const approvalsData = response.data;
-
-            if (approvalsData) {
-                setCritical(approvalsData.critical);
-                setRoutine(approvalsData.routine);
-            } else {
-                setError('Failed to fetch approvals');
-            }
-        } catch (err) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
-            setError(message);
-            console.error('[useApprovals] Error:', err);
-        } finally {
-            setIsLoading(false);
+        if (fetchInFlight) {
+            await fetchInFlight;
+            return;
         }
-    }, []);
 
-    /**
-     * Initial fetch on mount
-     */
+        fetchInFlight = (async () => {
+            try {
+                const response =
+                    await restClient.get<StratifiedApprovalsResponse>(
+                        '/approvals/stratified?status=PENDING'
+                    );
+
+                const approvalsData = response.data;
+
+                if (approvalsData) {
+                    setData(approvalsData.critical, approvalsData.routine);
+                } else {
+                    setError('Failed to fetch approvals');
+                }
+            } catch (err) {
+                const message =
+                    err instanceof Error ? err.message : 'Unknown error';
+                setError(message);
+                console.error('[useApprovals] Error:', err);
+            } finally {
+                fetchInFlight = null;
+            }
+        })();
+
+        await fetchInFlight;
+    }, [setData, setError]);
+
     useEffect(() => {
-        fetchApprovals();
-    }, [fetchApprovals]);
+        if (lastFetchedAt === null) {
+            void fetchApprovals();
+        }
+    }, [fetchApprovals, lastFetchedAt]);
 
-    /**
-     * Auto-refresh effect
-     * SOLID: SRP - Only manages refresh interval
-     */
     useEffect(() => {
         if (!autoRefresh) return;
 
-        const interval = setInterval(fetchApprovals, refreshInterval);
-        return () => clearInterval(interval);
+        intervalRef.current = setInterval(() => {
+            void fetchApprovals();
+        }, refreshInterval);
+
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+        };
     }, [fetchApprovals, autoRefresh, refreshInterval]);
 
-    /**
-     * Submit feedback for learning
-     * SOLID: SRP - Only feedback submission
-     */
     const submitFeedback = useCallback(async (feedback: ApprovalFeedback) => {
         try {
             await restClient.post('/approvals/feedback', feedback);
-            console.log('[useApprovals] Feedback submitted successfully');
         } catch (err) {
             console.error('[useApprovals] Feedback submission error:', err);
             throw err;
@@ -122,8 +117,7 @@ export const useApprovals = (options?: {
     }, []);
 
     const total = useMemo(
-        () => (Array.isArray(critical) ? critical.length : 0)
-              + (Array.isArray(routine) ? routine.length : 0),
+        () => critical.length + routine.length,
         [critical, routine]
     );
 
