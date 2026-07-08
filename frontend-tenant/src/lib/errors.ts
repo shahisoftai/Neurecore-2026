@@ -304,26 +304,14 @@ export function logError(
 // ============================================
 
 /**
- * React hook for handling errors in components
+ * React hook for handling errors in components.
+ * FIX-020: removed the hard-redirect on token errors. 401 handling now lives
+ * in the IAuthService — see authService.reportAuthFailure(). This hook only
+ * maps errors to user-friendly messages.
  */
 export function useErrorHandler() {
   const handleError = (error: unknown) => {
     const appError = parseApiError(error);
-
-    // Handle specific error codes
-    if (
-      appError.code === ErrorCode.TOKEN_EXPIRED ||
-      appError.code === ErrorCode.TOKEN_INVALID ||
-      appError.code === ErrorCode.REFRESH_TOKEN_EXPIRED
-    ) {
-      // Redirect to login
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("tenant_accessToken");
-        localStorage.removeItem("tenant_refreshToken");
-        window.location.href = "/login";
-      }
-    }
-
     return appError;
   };
 

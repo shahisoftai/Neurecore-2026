@@ -71,7 +71,7 @@ const nextConfig = {
 
       // Departments roster + org chart
       { source: "/departments", destination: "/departments" }, // canonical
-      { source: "/org-chart", destination: "/departments?tab=org" },
+      { source: "/org-chart", destination: "/departments?tab=org-chart" },
 
       // Per-dept workspace redirects (Phase 5 ships these; placeholder for now)
       // Tenant sees first dept's workspace if /tasks etc. hit without context.

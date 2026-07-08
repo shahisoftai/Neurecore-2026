@@ -3,8 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { authService } from "@/services/auth.service";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuth } from "@/auth";
 import type { AuthUser } from "@/types/auth.types";
 import { TopBar } from "@/components/layout/TopBar";
 import { ActivityStream } from "@/components/layout/ActivityStream";
@@ -23,11 +22,10 @@ export default function AdminShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const clearUser = useAuthStore((s) => s.clearUser);
+  const { logout } = useAuth();
 
   async function handleLogout() {
-    await authService.logout();
-    clearUser();
+    await logout();
     router.push("/login");
   }
 

@@ -3,11 +3,8 @@
 import { useState, FormEvent, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { authService } from "@/services/auth.service";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuth, AuthError } from "@/auth";
 import { routeAfterAuth } from "@/services/auth-redirect.service";
-import { tokenManager } from "@/core/infrastructure/auth/TokenManager";
-import { errorHandler } from "@/core/infrastructure/ErrorHandler";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
@@ -33,7 +30,7 @@ declare global {
 
 function GoogleSignInButton({ onError }: { onError: (msg: string) => void }) {
   const router = useRouter();
-  const setUser = useAuthStore((s) => s.setUser);
+  const { loginWithGoogle } = useAuth();
   const [loading, setLoading] = useState(false);
   const buttonRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
@@ -42,21 +39,22 @@ function GoogleSignInButton({ onError }: { onError: (msg: string) => void }) {
   const completeSignIn = useCallback(async (credential: string, intent: 'signin' | 'link' = 'signin') => {
     setLoading(true);
     try {
-      const result = await authService.googleSignIn(credential, intent);
-      if (result.status === 'ok') {
-        setUser(result.user);
-        await routeAfterAuth(router);
-      } else if (result.status === 'existing_unlinked') {
-        lastCredentialRef.current = credential;
-        const event = new CustomEvent('neurecore:google-account-exists', { detail: result });
-        window.dispatchEvent(event);
-      }
+      await loginWithGoogle(credential, intent);
+      await routeAfterAuth(router);
     } catch (err: unknown) {
-      onError(errorHandler.normalise(err).message ?? "Google sign-in failed");
+      if (err instanceof AuthError && err.code === 'existing_unlinked') {
+        lastCredentialRef.current = credential;
+        const event = new CustomEvent('neurecore:google-account-exists', {
+          detail: { email: err.email },
+        });
+        window.dispatchEvent(event);
+        return;
+      }
+      onError(err instanceof Error ? err.message : "Google sign-in failed");
     } finally {
       setLoading(false);
     }
-  }, [router, setUser, onError]);
+  }, [router, loginWithGoogle, onError]);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID || initializedRef.current) return;
@@ -120,23 +118,24 @@ function GoogleSignInButton({ onError }: { onError: (msg: string) => void }) {
 
 function LoginForm() {
   const router = useRouter();
-  const setUser = useAuthStore((s) => s.setUser);
-  const user = useAuthStore((s) => s.user);
-  const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  const { login, state } = useAuth();
   const [email, setEmail] = useState("");
 
   useEffect(() => {
-    if (hasHydrated && user) {
-      const token = tokenManager.getAccessToken();
-      if (token && token.split(".").length === 3) {
-        void routeAfterAuth(router);
-      }
+    if (state.status === 'authenticated') {
+      void routeAfterAuth(router);
     }
-  }, [hasHydrated, user, router]);
+  }, [state, router]);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [linkPrompt, setLinkPrompt] = useState<{ email: string; firstName?: string } | null>(null);
+
+  useEffect(() => {
+    if (state.status === 'unauthenticated' && state.reason === 'locked_out' && state.lockoutRemainingSeconds) {
+      setError(`Too many attempts. Try again in ${Math.ceil(state.lockoutRemainingSeconds / 60)} minute(s).`);
+    }
+  }, [state]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -156,11 +155,16 @@ function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      const result = await authService.login({ email, password });
-      setUser(result.user);
-      await routeAfterAuth(router);
+      await login({ email, password });
+      // state will transition to authenticated, useEffect above routes us.
     } catch (err: unknown) {
-      setError(errorHandler.normalise(err).message ?? "Login failed");
+      if (err instanceof AuthError && err.code === 'account_locked' && err.retryAfterSeconds) {
+        setError(`Too many attempts. Try again in ${Math.ceil(err.retryAfterSeconds / 60)} minute(s).`);
+      } else if (err instanceof AuthError) {
+        setError(err.message || 'Invalid credentials');
+      } else {
+        setError(err instanceof Error ? err.message : "Login failed");
+      }
     } finally {
       setLoading(false);
     }

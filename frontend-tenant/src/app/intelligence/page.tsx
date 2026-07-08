@@ -57,6 +57,7 @@ import {
 
 import { useTenantAuth } from '@/hooks/useTenantAuth';
 import { useAuthStore } from '@/stores/authStore';
+import { authService } from '@/auth';
 import TenantShell from '@/components/TenantShell';
 import { KpiCard } from '@/components/creatio/KpiCard';
 import { StatusBadge } from '@/components/creatio/StatusBadge';
@@ -924,8 +925,12 @@ function ProfileDetail({ user, onBack }: { user: ReturnType<typeof useTenantAuth
     setSaving(true);
     try {
       await api.patch(`/users/${user.id}`, { firstName, lastName });
-      const setUser = useAuthStore.getState().setUser;
-      setUser({ ...user, firstName, lastName });
+      // FIX-020 RC-4: read fresh user from the store, not from prop.
+      // The prop was captured at mount; using it could persist stale data.
+      const fresh = useAuthStore.getState().user;
+      if (fresh) {
+        useAuthStore.getState().setUser({ ...fresh, firstName, lastName });
+      }
       setToast({ message: 'Profile updated', type: 'success' });
     } catch {
       setToast({ message: 'Failed to update profile', type: 'error' });
@@ -945,7 +950,12 @@ function ProfileDetail({ user, onBack }: { user: ReturnType<typeof useTenantAuth
       await api.patch(`/users/${user.id}/password`, { currentPassword, newPassword });
       setCurrentPassword('');
       setNewPassword('');
-      setToast({ message: 'Password changed', type: 'success' });
+      setToast({ message: 'Password changed. Please sign in again.', type: 'success' });
+      // FIX-020: server invalidates refresh tokens on password change.
+      // Force a clean sign-out so the user lands on /login.
+      setTimeout(() => {
+        void authService.logout();
+      }, 1500);
     } catch {
       setToast({ message: 'Failed to change password. Check your current password.', type: 'error' });
     } finally {

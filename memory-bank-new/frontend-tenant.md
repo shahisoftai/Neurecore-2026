@@ -1,6 +1,6 @@
 # Frontend-Tenant (NeureCore tenant app)
 
-**Last verified:** 2026-07-07 16:30 PKT (FIX-019 defensive patterns shipped; FIX-020 auth refactor plan written — see [plans/auth-hardening-refactor.md](../plans/auth-hardening-refactor.md))
+**Last verified:** 2026-07-07 20:00 PKT (FIX-020 SHIPPED + deployed — see §20 below; **DO NOT corrupt** the new auth architecture — see [`int-features/auth-architecture.md`](../int-features/auth-architecture.md))
 **Live URL:** `https://hq.neurecore.com`
 **Internal port:** 3005
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant/`
@@ -60,46 +60,43 @@ Top-level app routes:
 
 ```
 src/app/
-├── page.tsx                       # / → command-center or login
+├── page.tsx                       # → /home (authed) or marketing landing
 ├── login/page.tsx
 ├── register/page.tsx
 ├── onboarding/
 │   └── setup/
-│       ├── page.tsx              # WS-2.1 thin orchestrator (200 lines)
-│       └── steps/                # 6 step components: CompanyStep, LogoStep, LocalizationStep, PlanStep, TemplateStep, CompleteStep
+│       ├── page.tsx               # WS-2.1 thin orchestrator (200 lines)
+│       └── steps/                 # 6 step components: CompanyStep, LogoStep, LocalizationStep, PlanStep, TemplateStep, CompleteStep
 ├── privacy/page.tsx
 ├── error.tsx, loading.tsx, not-found.tsx, layout.tsx, globals.css
 │
-├── command-center/...             # KPI tiles + timeline (default landing for existing users)
-├── dashboard/...
-├── home/...                        # Phase 5.5: new post-onboarding landing (TODO — PR-6)
-├── service-desk/
-│   ├── inbox/...
-│   ├── approvals/...
-│   └── audit/...
-├── departments/...
-├── agents/...
-├── agent-templates/...
-├── analytics/...
-├── approvals/...                  # (separate from service-desk/approvals)
-├── billing/...
-├── finance/...
-├── costs/...
-├── goals/...
-├── inbox/...
-├── intelligence/...
-├── marketplace/...
-├── org-chart/...
-├── projects/...
-├── routines/...
+├── home/                           # Creatio-style landing (hero + KPIs + right-rail widgets)
+├── departments/                    # Workspace hub (with tab= tasks|workflows|routines|goals|projects|org-chart)
+├── marketplace/                    # Marketplace hub (tab= agents|connectors|templates)
+├── service-desk/                   # Service Desk hub (tab= inbox|approvals|activity)
+├── finance/                        # Financial hub (tab= overview|billing|costs)
+├── intelligence/                   # Intelligence hub (tab= analytics|observability|health|reliability|security|settings)
 ├── settings/
-│   ├── page.tsx
+│   ├── page.tsx                    # Smart redirect → /intelligence?tab=settings
 │   ├── integrations/
-│   └── wizard/                    # WS-2.1: 11 progressive sub-wizards
-│       ├── page.tsx               # index — list all wizards with status
-│       └── [slug]/page.tsx        # generic per-wizard route (PR-3 fills body)
-├── activity/...
-└── connectors/...
+│   └── wizard/                     # WS-2.1: 11 progressive sub-wizards
+│       ├── page.tsx                # index — list all wizards with status
+│       └── [slug]/page.tsx         # generic per-wizard route (PR-3 fills body)
+├── help/                           # Help resources (support docs, contact)
+│
+├── strategy/page.tsx               # Placeholder (redirect to /home)
+├── users/[id]/page.tsx             # User profile (future)
+│
+├── apps/                           # App-router API proxies
+├── api/                            # Client-side API proxies
+
+Deleted in FIX-021 (no page.tsx; next.config.js rewrites still serve):
+  command-center, dashboard, agents, tasks, tasks/delegate, workflows,
+  routines, goals, projects, costs, inbox, activity, approvals, analytics,
+  connectors, billing, org-chart
+
+All legacy URLs → canonical hub with ?tab= via next.config.js.
+See left-rail-icon.md §3.3 for the full rewrite table.
 ```
 
 ---
@@ -182,9 +179,9 @@ src/stores/
 
 ```
 src/hooks/
-├── useTenantAuth.ts              # Wraps authStore + tenant context
+├── useTenantAuth.ts              # Back-compat shim over useAuth() (FIX-020) — exports AuthUser|null
 ├── useFeatureFlag.ts             # Reads from /api/v1/features
-├── useDashboardKpis.ts           # /command-center
+├── useDashboardKpis.ts           # /command-center (deprecated — data now flows via commandCenterService.getSummary)
 ├── useAgents.ts                  # Agent list + status
 ├── useAgentMetrics.ts            # Per-agent metrics
 ├── useApprovals.ts               # Stratified approvals
@@ -197,6 +194,8 @@ src/hooks/
 ├── useTimeRange.ts               # Shared 24h/7d/30d/90d range
 └── useOnboardingChecklist.ts     # WS-2.1: subscribe to onboardingChecklist.store + auto-hydrate
 ```
+
+> **New auth hook** — `useAuth()` in `src/auth/hooks/useAuth.ts`. **All new code should import this, NOT `useTenantAuth`.** See [`int-features/auth-architecture.md`](../int-features/auth-architecture.md).
 
 ---
 
@@ -316,7 +315,7 @@ Phases 1-5 of the original refactoring plan are delivered (see [future-plans.md 
 | 4 | Agent orchestration | `src/components/agents/`, `src/hooks/useAgents.ts` |
 | 5 | Batch approvals + learning loop | `src/components/approvals/BatchApprovalView.tsx`, `LearningFeedbackModal.tsx` |
 | **5.5 (WS-2.1 PR-1+2)** | **Progressive onboarding wizard system** — Tier-1 wizard reduced to 6 steps (Company → Logo → Localization → Plan → Template → Complete); 11 sub-wizards scaffolded under `/settings/wizard/[slug]`; Things-to-do panel mounted in TenantShell; logo uploads via `POST /uploads/logo` + `GET /cdn/*`; `PATCH /tenants/me` owner-scoped endpoint; `OnboardingChecklistEntry` Prisma model + Zustand `onboardingChecklist.store.ts`. | `src/app/onboarding/setup/{page.tsx,steps/*.tsx}`, `src/app/settings/wizard/`, `src/components/{checklist,uploads,wizard}/`, `src/services/{checklist,tenants,uploads}.service.ts`, `src/stores/onboardingChecklist.store.ts`, `src/hooks/useOnboardingChecklist.ts`, `src/lib/wizard/types.ts` |
-| **6 (Phase 6 – 3-column home)** | **Glassmorphic 3-column home page** — Left panel: dynamic glossy gradient icons (selectable per user); Center: hero section (date/time/greeting + AI prompt), KPI strip, network status, departments + quick actions, tasks; Right panel: collapsible live feed, stats chart, quick actions, tasks, approvals widgets. Background style selector (4 gradients) in preferences modal. Real-time ready widget structure. Zustand `uiPreferencesStore` persists UI state. | `src/app/home/page.tsx`, `src/stores/uiPreferencesStore.ts`, `src/components/home/{LeftPanel,RightPanel,GlassPanel,PreferencesModal,*Widget}.tsx`, `src/app/globals.css` (.glass-panel, .glass-icon) |
+| **6 (Phase 6 – 3-column home)** | **Glassmorphic 3-column home page** — Center: hero section (date/time/greeting + AI prompt), KPI strip, network status, departments + quick actions, tasks; Right panel: collapsible live feed, stats chart, quick actions, tasks, approvals widgets. Background style selector (4 gradients) in preferences modal. Real-time ready widget structure. Zustand `uiPreferencesStore` persists UI state. **FIX-021 (2026-07-07):** the page's own decorative `LeftPanel` was deleted; the IconRail (rendered by `TenantShell`) is now the single source of truth for left navigation across the portal. | `src/app/home/page.tsx`, `src/stores/uiPreferencesStore.ts`, `src/components/home/{RightPanel,GlassPanel,*Widget}.tsx`, `src/components/layout/{IconRail,RailCustomizeModal}.tsx`, `src/stores/railPreferencesStore.ts`, `src/components/TenantShell.tsx`, `src/app/globals.css` (.glass-panel, .glass-icon) |
 | **6.5 (Left-panel audit 2026-07-06)** | **Left-panel route audit + fixes (FIX-020)** — Pinned `lucide-react@0.460.0` (lockfile drift to `1.22.0` was crashing every page on `next dev` with `Cannot read properties of undefined (reading 'call')`). Fixed `IconRail` "AI Skills" dead link (`?tab=spawn` → `?tab=templates`). Extended `RosterTab` on `/departments` with `tasks|workflows|routines|goals|projects` plus a new `WorkItemsTab` placeholder component so the 5 work-item links from the rail actually resolve. All 23 left-panel routes now return `200`; production build clean (43 routes); type-check and lint clean. | `frontend-tenant/package.json:37` (lucide-react pin), `src/components/layout/IconRail.tsx:66`, `src/app/departments/page.tsx:49-57` + new `WorkItemsTab` |
 
 The original phase plans are archived in `../memory-bank-ARCHIVED/legacy-2026-07-04/` for diff. The Phase 5.5 plan is in [`plans/onboarding-progressive-wizard.md`](plans/onboarding-progressive-wizard.md).
@@ -326,17 +325,15 @@ The original phase plans are archived in `../memory-bank-ARCHIVED/legacy-2026-07
 ## 13A. Phase 6 – 3-Column Home Page Architecture
 
 ### Overview
-Post-onboarding landing page with Creatio-inspired 3-column layout: left panel (dynamic glossy icons), center content (hero + dashboard sections), right panel (real-time widgets).
+Post-onboarding landing page with Creatio-inspired 2-column layout: center content (hero + dashboard sections), right panel (real-time widgets). The left navigation is provided globally by `TenantShell` → `IconRail` (see [left-rail-icon.md](left-rail-icon.md)); the `/home` page no longer renders its own `LeftPanel`.
 
-### Left Panel (Glossy Icon Sidebar)
-- **Visibility**: Only visible on `/home` route; accessible via menu icon on other routes
-- **Icon Configuration**: 
-  - 10 default icons (Home, Agents, Departments, Tasks, Approvals, Workflows, Analytics, Connectors, Intelligence, Settings)
-  - Vibrant gradient backgrounds (blue, purple, pink, green, yellow, indigo, cyan, orange, red, gray)
-  - Dynamic visibility controlled by `uiPreferencesStore.visibleIcons`
-  - User can toggle per-icon visibility via "Preferences" modal
-- **Animation**: Framer Motion entrance/exit (x-slide, opacity fade)
-- **State Store**: `src/stores/uiPreferencesStore.ts` (persists to localStorage `ui-preferences-store`)
+### Left Navigation (IconRail — canonical)
+See [left-rail-icon.md](left-rail-icon.md) for the full reference. Brief summary:
+
+- **Visibility**: Always visible (desktop) or behind a hamburger (mobile). Same nav on every authenticated page.
+- **Sections**: Home, Workspace (Departments + work-item tabs), Marketplace (Agents/Connectors/AI Skills), Service Desk (Inbox/Approvals/Activity), Finance, Intelligence (+ Settings).
+- **Customisation**: Per-user toggles for whole sections and individual items via the in-rail **⚙ Customize** modal. Persisted in `railPreferencesStore` (localStorage `neurecore-rail-preferences`).
+- **State Store**: `src/stores/railPreferencesStore.ts` (Zustand persist v1).
 
 ### Center Column
 1. **Hero Section** (`HomeHero` enhanced):
@@ -381,18 +378,22 @@ Zustand store managing:
 ```typescript
 interface UIPreferencesState {
   backgroundStyle: 'gradient-blue' | 'gradient-purple' | 'gradient-dark' | 'solid-dark'
-  visibleIcons: VisibleIcon[]  // { id, visible }
   visibleWidgets: string[]     // ['live-feed', 'stats', ...]
   widgetOrder: string[]
 }
 ```
-- Persists to localStorage via `zustand/middleware`
+- Persists to localStorage via `zustand/middleware` (key `ui-preferences-store`, version 2)
 - Accessed via `useUIPreferencesStore(state => state.field)`
+- `visibleIcons` was removed in FIX-021 (legacy `LeftPanel` deleted). Existing payloads with `visibleIcons` are silently dropped by the store's `migrate` function. See [left-rail-icon.md §7.1](left-rail-icon.md#71-uipreferencesstore-migration).
 
-### Preferences Modal
-Accessible from left panel "Preferences" button:
-- **Background selector**: 4 gradient options with visual previews
-- **Widget toggles**: Show/hide each of 5 widgets
+### Rail Preferences Store (`railPreferencesStore.ts`)
+Holds `hiddenSections`, `hiddenItems`, `collapsedSections`. See [left-rail-icon.md §4](left-rail-icon.md#4-railcustomizemodal) for the user-facing UI.
+
+### Rail Customize Modal
+Accessible from the IconRail footer (`⚙ Customize` button):
+- **Section toggles**: Show/hide entire sections (Workspace, Marketplace, etc.)
+- **Item toggles**: Show/hide individual links
+- **Reset to defaults**: restores the canonical 19-link rail
 - Settings persist immediately to store (and localStorage)
 
 ### Glassmorphic Styling (`globals.css`)
@@ -421,14 +422,14 @@ Widgets structured for WebSocket / API integration:
 - **ApprovalsWidget**: Connect to `useApprovalStore` (already integrated)
 
 ### Layout Dimensions
-- **Left panel**: Fixed 280px width (visible on `/home` only)
+- **Left navigation**: IconRail, 56px (collapsed) / 240px (expanded), persistent on desktop, drawer on mobile. See [left-rail-icon.md](left-rail-icon.md).
 - **Center column**: Flex-1, max-width 1200px
 - **Right panel**: Fixed 320px width, scrollable
 - **Total viewport**: 1800px+ recommended (desktop-first design)
 
 ### Mobile Behavior
-- Menu icon (top-left) toggles left panel as overlay
-- 3-column layout stacks to single column on small screens (future enhancement)
+- Hamburger icon (TopBar left) opens the IconRail drawer (slide-in from left).
+- IconRail uses the same nav data as desktop; both subscribe to `railPreferencesStore` so they stay in sync.
 
 
 
@@ -588,8 +589,8 @@ const visibleWidgets = Array.isArray(visibleWidgetsRaw) ? visibleWidgetsRaw : []
 
 **Components hardened in FIX-019:**
 - `src/components/home/RightPanel.tsx` — `visibleWidgets`
-- `src/components/home/LeftPanel.tsx` — `visibleIcons`
-- `src/components/home/PreferencesModal.tsx` — `visibleWidgets`
+- ~~`src/components/home/LeftPanel.tsx` — `visibleIcons`~~ *(deleted in FIX-021)*
+- ~~`src/components/home/PreferencesModal.tsx` — `visibleWidgets`~~ *(deleted in FIX-021; icon toggles now live in `RailCustomizeModal`)*
 - `src/components/home/TasksWidget.tsx` — `tasks` (FIX-018)
 - `src/components/home/LiveFeedWidget.tsx` — `events` (FIX-018)
 - `src/shared/hooks/useAIChat.ts` — `agents`
@@ -635,9 +636,9 @@ TopBar.tsx linked to `/help` (line 213 in the avatar menu, line 270 in the toolb
 - `src/app/help/page.tsx` — new
 - `src/app/home/page.tsx` — loading skeleton (FIX-018 carryover)
 - `src/app/intelligence/page.tsx` — sub-tab state (FIX-017 carryover)
-- `src/components/home/{TasksWidget,LiveFeedWidget,RightPanel,LeftPanel,PreferencesModal,HomeKpiStrip,ApprovalsWidget,StatsWidget}.tsx` — guards
+- `src/components/home/{TasksWidget,LiveFeedWidget,RightPanel,HomeKpiStrip,ApprovalsWidget,StatsWidget}.tsx` — guards *(LeftPanel + PreferencesModal deleted in FIX-021)*
 - `src/shared/hooks/useAIChat.ts` — guards
-- `src/app/command-center/page.tsx` — guards + fixed `useWorkflowStore` destructure
+- ~~`src/app/command-center/page.tsx` — guards + fixed `useWorkflowStore` destructure~~ *(deleted in FIX-021; the `/command-center` route is rewritten to `/home`)*
 - `src/app/departments/[id]/workspace/page.tsx` — guards
 - `src/features/org-chart/hooks/useOrgChart.ts` — guards
 - `.env.production` — explicit empty `NEXT_PUBLIC_SOCKET_URL`
@@ -656,7 +657,56 @@ curl -sk -o /dev/null -w "%{http_code}\n" https://hq.neurecore.com/             
 curl -sk -o /dev/null -w "%{http_code}\n" https://hq.neurecore.com/login          # 200
 curl -sk -o /dev/null -w "%{http_code}\n" https://hq.neurecore.com/command-center  # 200
 curl -sk -o /dev/null -w "%{http_code}\n" https://hq.neurecore.com/api/v1/agents   # 401 (auth required)
+
+# After FIX-020 — the 401 path no longer hard-redirects to /login. The user sees
+# a <SessionExpiredScreen /> and clicks "Sign in again". Verify with Playwright:
+PLAYWRIGHT_BASE_URL=https://hq.neurecore.com npx playwright test prod-auth-smoke --project=chromium --workers=1
 ```
+
+---
+
+## 20. Auth system (FIX-020 — shipped 2026-07-07)
+
+> **⚠️ DO NOT CORRUPT.** See [`int-features/auth-architecture.md`](../int-features/auth-architecture.md) — the authoritative reference. Treat any auth regression as Critical; run `bash scripts/auth-lint.sh` before any auth-touching PR.
+
+The auth system was reorganised on 2026-07-07 from an ad-hoc multi-file wiring (with two parallel state machines + dead localStorage code) into a single `IAuthService` facade:
+
+| Before (deprecated, gone) | After (FIX-020, current) |
+|---|---|
+| Multiple files import `useAuthStore` directly; pages race the hydration | `useAuth()` returns discriminated `AuthState` (`initializing | unauthenticated | authenticated | error`) |
+| `lib/security.ts` had `SecureStorageKey`/`setSecureToken` writing to `sessionStorage["nc_at"]` (wrong key) | **Deleted.** Replaced by `ITokenRepository` (cookie-only). |
+| `lib/errors.ts:useErrorHandler` cleared `localStorage.tenant_accessToken` + `window.location.href = '/login'` on 401 | `useErrorHandler` just maps errors. 401 → `authService.reportAuthFailure()` → `<SessionExpiredScreen />` |
+| `useTenantAuth()` returned `null` during hydration → page renders blank → fetch → 401 → hard-redirect | `useTenantAuth()` is a back-compat shim over `useAuth()` with `AuthUser|null` return preserved |
+| 3 axios instances (`api.ts`, `RestClient.ts`, admin `api.ts`) with independent refresh | Single `authHttpClient` + `authResponseInterceptor` → `authService.reportAuthFailure` |
+| `AppInitializer.tsx:54` cleared cookies on any `/me` failure (transient/proxy) | `authService.initialize()` only transitions to `unauthenticated` on explicit 401 |
+| `clearTokens()` cleared cookies but not the Zustand store → stale-user loop | `IAuthSessionLifecycle.killSession()` is atomic: cookies + store + eventBus + BroadcastChannel |
+| ProfileDetail saved stale `user` prop back to persisted store | `handleSaveProfile` reads `useAuthStore.getState().user` at save time |
+
+**New file layout** (both `frontend-tenant/src/auth/` and `frontend-admin/src/auth/` mirror each other):
+```
+src/auth/
+├── core/interfaces.ts          ← 7 SOLID interfaces + types
+├── impl/                       ← 7 implementations + BaseAuthService (L2)
+├── hooks/{useAuth,useTenantAuth|useAdminAuth,useRequireAuth}.ts
+├── components/{AuthProvider,SessionExpiredScreen,AuthErrorScreen,LockoutScreen,AuthLoadingScreen}.tsx
+├── transport/{authHttpClient,authResponseInterceptor}.ts
+├── di/authContainer.ts         ← composition root
+├── __tests__/                  ← 5 vitest spec files (27 tests)
+└── index.ts
+```
+
+For any new auth wiring, **read [`int-features/auth-architecture.md`](../int-features/auth-architecture.md) first** and route everything through `useAuth()` + `IAuthService`. The lint script catches regressions:
+```
+bash scripts/auth-lint.sh
+# OK — no banned patterns found.
+```
+Failing patterns:
+- `localStorage.setItem/getItem/removeItem` with auth keys outside `src/auth/`
+- `sessionStorage.setItem/getItem/removeItem` with auth keys outside `src/auth/`
+- `document.cookie = ...` outside `src/auth/impl/CookieTokenRepository.ts`
+- `window.location.href = '/login'` outside `src/auth/`
+- `useAuthStore.getState().setUser/clearUser` outside `src/auth/impl/ZustandUserRepository.ts`
+- `SecureStorageKey` / `setSecureToken` / `getSecureToken` (all dead legacy helpers)
 
 ---
 

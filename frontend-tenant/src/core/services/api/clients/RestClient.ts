@@ -3,6 +3,9 @@
 // DIP: Implements IApiClient — all feature services depend on this interface.
 // SRP: Handles HTTP transport, auth cookie injection, token refresh, error wrapping.
 // OCP: Interceptors are pluggable; new auth strategies extend without modifying.
+//
+// FIX-020: hard-redirect on 401 replaced with authService.reportAuthFailure()
+// so the user lands on the SessionExpiredScreen instead of a redirect loop.
 
 import axios, {
   AxiosInstance,
@@ -12,6 +15,7 @@ import axios, {
 import type { IApiClient, RequestConfig, ApiResponse } from '@/core/services/api/interfaces/IApiClient';
 import type { ITokenManager } from '@/core/services/api/interfaces/ITokenManager';
 import type { IErrorHandler } from '@/core/services/api/interfaces/IErrorHandler';
+import { authService } from '@/auth';
 
 const CSRF_COOKIE = '__Host-nc_csrf';
 const CSRF_EXEMPT_PATHS = ['/auth/login', '/auth/register', '/auth/google'];
@@ -147,11 +151,8 @@ export class RestClient implements IApiClient {
             // Retry — the browser picked up the new __Host-nc_at via Set-Cookie.
             return this.axios(original);
           } catch {
-            // F20: clear cookies BEFORE redirecting.
-            this.tokenManager.clearTokens();
-            if (typeof window !== 'undefined') {
-              window.location.href = '/login';
-            }
+            // FIX-020: report the failure to the AuthService, never redirect.
+            authService.reportAuthFailure({ type: 'session_expired' });
           }
         }
 

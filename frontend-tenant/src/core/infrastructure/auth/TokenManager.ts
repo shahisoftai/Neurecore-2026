@@ -1,74 +1,34 @@
-// ─── TokenManager.ts (cookie-backed, F1) ─────────────────────────────────────
+// ─── TokenManager.ts (cookie-backed, F1; delegates to auth core) ─────────────
 //
-// Single Responsibility: read tokens from the auth cookies set by the
-// backend. Tokens NEVER touch localStorage, so an XSS payload cannot
-// exfiltrate them. setTokens / clearTokens become no-ops because the
-// server is the source of truth.
+// SRP: read tokens from the auth cookies set by the backend. Tokens NEVER
+// touch localStorage, so an XSS payload cannot exfiltrate them.
 //
-// Dependency Inversion: this implementation reads only document.cookie.
-// The interface above (ITokenManager) is unchanged so callers don't have
-// to know about the storage switch.
+// FIX-020: this shim now delegates to the ITokenRepository in @/auth so the
+// entire codebase has a single source of truth. To delete this file entirely,
+// switch ISocketManager to take ITokenRepository and update the boot code.
 
-export const ACCESS_COOKIE = '__Host-nc_at';
-export const REFRESH_COOKIE = '__Host-nc_rt';
-export const CSRF_COOKIE = '__Host-nc_csrf';
+import type { ITokenManager } from '@/core/services/api/interfaces/ITokenManager';
+import { CookieTokenRepository } from '@/auth/impl/CookieTokenRepository';
 
-function readCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const cookies = document.cookie ? document.cookie.split('; ') : [];
-  for (const raw of cookies) {
-    const eq = raw.indexOf('=');
-    if (eq < 0) continue;
-    const key = raw.slice(0, eq);
-    if (key === name) {
-      const v = raw.slice(eq + 1);
-      try {
-        return decodeURIComponent(v);
-      } catch {
-        return v;
-      }
-    }
-  }
-  return null;
-}
+const tokens = new CookieTokenRepository();
 
-/** Decode the `exp` claim from a JWT without verifying the signature. */
-function decodeExpiry(token: string): number | null {
-  try {
-    const [, payload] = token.split('.');
-    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-    return typeof decoded.exp === 'number' ? decoded.exp : null;
-  } catch {
-    return null;
-  }
-}
-
-export class TokenManager {
+export class TokenManager implements ITokenManager {
   getAccessToken(): string | null {
-    return readCookie(ACCESS_COOKIE);
+    return tokens.getAccessToken();
   }
 
   getRefreshToken(): string | null {
-    return readCookie(REFRESH_COOKIE);
+    return tokens.getRefreshToken();
   }
 
-  /**
-   * No-op — the backend owns token persistence in HttpOnly cookies.
-   * Kept on the interface so call-sites don't need to know.
-   */
+  /** No-op: server owns persistence in HttpOnly cookies. */
   setTokens(_accessToken: string, _refreshToken: string): void {
     /* server has already set cookies via Set-Cookie */
   }
 
-  /**
-   * Clear all auth cookies before redirecting (F20).
-   */
+  /** Delegates to the auth core's ITokenRepository. */
   clearTokens(): void {
-    if (typeof document === 'undefined') return;
-    const past = 'Thu, 01 Jan 1970 00:00:00 GMT';
-    document.cookie = `${ACCESS_COOKIE}=; expires=${past}; path=/; Secure; SameSite=None`;
-    document.cookie = `${REFRESH_COOKIE}=; expires=${past}; path=/; Secure; SameSite=None`;
-    document.cookie = `${CSRF_COOKIE}=; expires=${past}; path=/; Secure; SameSite=None`;
+    tokens.clearTokens();
   }
 
   isTokenExpired(token: string): boolean {
@@ -77,13 +37,22 @@ export class TokenManager {
     return Date.now() >= exp * 1000;
   }
 
-  /** Returns true when < 60 s remain before the access token expires. */
   shouldRefresh(): boolean {
     const token = this.getAccessToken();
     if (!token) return true;
     const exp = decodeExpiry(token);
     if (exp === null) return true;
     return Date.now() >= (exp - 60) * 1000;
+  }
+}
+
+function decodeExpiry(token: string): number | null {
+  try {
+    const [, payload] = token.split('.');
+    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof decoded.exp === 'number' ? decoded.exp : null;
+  } catch {
+    return null;
   }
 }
 

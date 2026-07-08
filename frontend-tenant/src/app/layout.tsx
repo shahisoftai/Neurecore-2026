@@ -3,6 +3,7 @@ import './globals.css';
 import { AppInitializer } from '@/shared/components/AppInitializer';
 import { ThemeProvider } from '@/shared/components/ThemeProvider';
 import { ServiceWorkerRegistrar } from '@/shared/components/ServiceWorkerRegistrar';
+import { AuthProvider } from '@/auth';
 
 export const metadata: Metadata = {
   title: 'NeureCore — Tenant Portal',
@@ -39,10 +40,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="bg-surface text-zinc-100 antialiased font-sans">
-        <ThemeProvider />
-        <AppInitializer />
-        <ServiceWorkerRegistrar />
-        {children}
+        <AuthProvider>
+          <ThemeProvider />
+          <AppInitializer />
+          <ServiceWorkerRegistrar />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

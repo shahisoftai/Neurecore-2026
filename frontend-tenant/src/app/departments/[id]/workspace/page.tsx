@@ -119,7 +119,8 @@ export default function DepartmentWorkspacePage() {
   const departments = Array.isArray(departmentsRaw) ? departmentsRaw : [];
   const agents = Array.isArray(agentsRaw) ? agentsRaw : [];
   const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
-  const { workflows, fetchWorkflows } = useWorkflowStore();
+  const { workflows: workflowsRaw, fetchWorkflows } = useWorkflowStore();
+  const workflows = Array.isArray(workflowsRaw) ? workflowsRaw : [];
 
   const [activeTab, setActiveTab] = useState<WorkspaceTabId>('overview');
   const [members, setMembers] = useState<Member[]>([]);

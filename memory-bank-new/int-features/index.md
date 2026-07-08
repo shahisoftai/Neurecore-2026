@@ -55,6 +55,11 @@ This directory documents the atomic platform capabilities (Features) managed in 
 |-----|-----|---------|
 | [multi-tenant.md](./multi-tenant.md) | `multi_tenant` | Multi-tenant isolation and management |
 
+### AUTH (cross-cutting, not a feature flag)
+| Doc | Summary |
+|-----|---------|
+| [auth-architecture.md](./auth-architecture.md) | **The authoritative reference for the IAuthService facade (FIX-020).** 7 SOLID interfaces, 7 implementations, DI container, atomic `killSession()`, banned patterns. **Read this before any auth change.** |
+
 ## Reference
 
 - **Prisma model**: `Feature` at `schema.prisma:2788` — fields: `id`, `key` (unique), `name`, `description`, `category` (enum), `icon`, `integrationKey`, `sortOrder`

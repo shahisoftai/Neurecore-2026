@@ -50,7 +50,9 @@ sync_app() {
   local dst="${APP_DST[$app]}"
   echo ""
   echo "=== Syncing $app: $src → $dst ==="
-  rsync -avz -e ssh "${EXCLUDES[@]}" "$src/" "$dst/"
+  # --delete-after: remove files on dst that no longer exist in src, AFTER
+  # the transfer so a partial sync doesn't delete files we didn't replace.
+  rsync -avz --delete-after -e ssh "${EXCLUDES[@]}" "$src/" "$dst/"
 }
 
 if [ -z "$APP" ]; then

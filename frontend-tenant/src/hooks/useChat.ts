@@ -12,7 +12,8 @@ function makeId() {
 }
 
 export function useChat() {
-  const { messages, conversationId, addMessage, updateStreamingMessage, clearHistory: storeClear, setConversationId } = useChatStore();
+  const { messages: messagesRaw, conversationId, addMessage, updateStreamingMessage, clearHistory: storeClear, setConversationId } = useChatStore();
+  const messages = Array.isArray(messagesRaw) ? messagesRaw : [];
   const [sending, setSending] = useState(false);
 
   const sendMessage = useCallback(

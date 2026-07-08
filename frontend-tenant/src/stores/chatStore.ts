@@ -48,9 +48,23 @@ export const useChatStore = create<ChatState>()(
     {
       name: 'chat-store',
       partialize: (state) => ({
-        messages: state.messages.slice(-MAX_MESSAGES),
+        messages: Array.isArray(state.messages)
+          ? state.messages.slice(-MAX_MESSAGES)
+          : [],
         conversationId: state.conversationId,
       }),
+      merge: (persistedState, currentState) => {
+        const ps = (persistedState ?? {}) as Partial<ChatState>;
+        return {
+          ...currentState,
+          ...ps,
+          messages: Array.isArray(ps.messages) ? ps.messages : currentState.messages,
+          conversationId:
+            typeof ps.conversationId === 'string' || ps.conversationId === null
+              ? ps.conversationId
+              : currentState.conversationId,
+        };
+      },
     },
   ),
 );

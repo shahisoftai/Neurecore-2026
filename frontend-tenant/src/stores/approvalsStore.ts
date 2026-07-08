@@ -22,7 +22,7 @@ export const useApprovalsStore = create<ApprovalsState>()((set) => ({
   lastFetchedAt: null,
 
   setData: (critical, routine) =>
-    set({ critical, routine, isLoading: false, error: null, lastFetchedAt: Date.now() }),
+    set({ critical: Array.isArray(critical) ? critical : [], routine: Array.isArray(routine) ? routine : [], isLoading: false, error: null, lastFetchedAt: Date.now() }),
 
   setLoading: (loading) => set({ isLoading: loading }),
 

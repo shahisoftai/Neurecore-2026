@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useEffect, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { restClient } from '@/core/services/api/clients/RestClient';
 import { useApprovalsStore } from '@/stores/approvalsStore';
 import type {
@@ -69,7 +69,10 @@ export const useApprovals = (options?: {
                 const approvalsData = response.data;
 
                 if (approvalsData) {
-                    setData(approvalsData.critical, approvalsData.routine);
+                    setData(
+                        Array.isArray(approvalsData.critical) ? approvalsData.critical : [],
+                        Array.isArray(approvalsData.routine) ? approvalsData.routine : [],
+                    );
                 } else {
                     setError('Failed to fetch approvals');
                 }
@@ -116,14 +119,9 @@ export const useApprovals = (options?: {
         }
     }, []);
 
-    const total = useMemo(
-        () => critical.length + routine.length,
-        [critical, routine]
-    );
-
     return {
-        critical,
-        routine,
+        critical: Array.isArray(critical) ? critical : [],
+        routine: Array.isArray(routine) ? routine : [],
         isLoading,
         error,
         submitFeedback,

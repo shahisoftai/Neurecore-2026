@@ -1136,18 +1136,18 @@ const chatHook = useChat(chatService, slashCommands, adminChatConfig);
 />
 ```
 
-**TenantShell.tsx** — TWO mount points (NewShell line 143, LegacyShell line 243):
+**TenantShell.tsx** — single shell since FIX-021 (LegacyShell was deleted):
 ```typescript
 // Before
 import { ConversationPanel } from '@/components/chat/ConversationPanel';
-// Rendered at line 143 (NewShell) and line 243 (LegacyShell)
+// Rendered once in the (single) TenantShell.
 
-// After — same UnifiedChatPanel rendered in both shells:
+// After — same UnifiedChatPanel rendered in the shell:
 import { UnifiedChatPanel } from '@/shared/components/chat/UnifiedChatPanel';
 import { chatService, useChatStore, slashCommands } from '@/core/services/chat.factory';
 import { useChat } from '@/shared/hooks/useChat';
 
-// In component (replace BOTH ConversationPanel instances):
+// In component (replace the single ConversationPanel):
 const chatHook = useChat(chatService, slashCommands, tenantChatConfig);
 const chatPanel = (
   <UnifiedChatPanel
@@ -1156,10 +1156,10 @@ const chatPanel = (
     config={tenantChatConfig}
   />
 );
-// Render {chatPanel} in both NewShell (line 143) and LegacyShell (line 243) blocks
+// Render {chatPanel} once inside the shell.
 ```
 
-**Note on page-mounted AIChatPanel:** The current AIChatPanel is page-mounted on `/home` and `/command-center`. After migration, the UnifiedChatPanel will be shell-mounted (like ConversationPanel). The HomeHero integration must continue working — use the `pendingMessage` prop pattern to pre-fill the chat input when HomeHero submits.
+**Note on page-mounted AIChatPanel:** The current AIChatPanel is page-mounted on `/home`. After migration, the UnifiedChatPanel will be shell-mounted (like ConversationPanel). The HomeHero integration must continue working — use the `pendingMessage` prop pattern to pre-fill the chat input when HomeHero submits.
 
 **HomeHero integration fix:** `SUGGESTION_CHIPS` are defined in `components/home/HomeHero.tsx` (not `home/page.tsx`). The chips fill the HomeHero input; on send, `home/page.tsx` sets `pendingMessage` and opens the chat panel via `setOpen(true)` on the Zustand store.
 
@@ -1386,7 +1386,7 @@ This section documents all issues discovered during cross-referencing the plan a
 
 Cross-referenced:
 - Backend: `chat.controller.ts`, `chat.service.ts`, `chat.dto.ts` (exact response shapes, intent detection logic)
-- Tenant frontend: `types/chat.types.ts`, `IConversationalAIService.ts`, `ConversationalAIService.ts`, `chatStore.ts`, `RestClient.ts`, `IApiClient.ts`, `useAIChat.ts`, `AIChatPanel.tsx`, `AIChatMessage.tsx`, `TenantShell.tsx`, `HomeHero.tsx`, `home/page.tsx`, `command-center/page.tsx`
+- Tenant frontend: `types/chat.types.ts`, `IConversationalAIService.ts`, `ConversationalAIService.ts`, `chatStore.ts`, `RestClient.ts`, `IApiClient.ts`, `useAIChat.ts`, `AIChatPanel.tsx`, `AIChatMessage.tsx`, `TenantShell.tsx`, `HomeHero.tsx`, `home/page.tsx` *(`/command-center/page.tsx` was also listed but deleted in FIX-021 — the chat mount moved entirely into `/home/page.tsx`)*
 - Admin frontend: `types/chat.types.ts`, `chat.service.ts`, `chatStore.ts`, `ConversationPanel.tsx`, `AdminShell.tsx`
 
 ### Correction Index
@@ -1400,8 +1400,8 @@ Cross-referenced:
 | **A5** | 🟡 High | `IFallbackReply` interface lacked `generateSuggestions` | Single `generate()` method only | Added `generateSuggestions(replyText: string): string[]` method | Suggestions are client-inferred, not backend-returned |
 | **A6** | 🟡 High | `getSuggestions` service method implied endpoint works | `POST /api/v1/chat/suggestions` appeared functional | Noted: endpoint is a **stub** — always returns `{ suggestions: [] }`. Slash commands work client-side only | Prevents assumption of server-backed suggestions |
 | **A7** | 🟡 Medium | `ChatRequest.message` vs existing `ChatRequest.query` naming mismatch | Field named `message` (matching backend) | Documented: `ChatService.sendMessage()` maps `query → message` for backward compat. New types use `message` | Prevents field naming confusion |
-| **A8** | 🟡 Medium | TenantShell migration described single mount point | NewShell only mentioned | Documented: `ConversationPanel` is rendered at **TWO** places (NewShell line 143, LegacyShell line 243). Both must be replaced | Prevents missed mount point |
-| **A9** | 🟡 Medium | AIChatPanel page-mount migration not addressed | Plan implied shell-mount replaces everything | Documented: AIChatPanel is currently page-mounted on `/home` and `/command-center`. HomeHero integration preserved via `pendingMessage` prop. Command-center's local `AIChatButton` removed. | Prevents broken HomeHero/command-center flows |
+| **A8** | 🟡 Medium | TenantShell migration described single mount point | NewShell only mentioned | **Superseded by FIX-021:** LegacyShell was deleted; only one shell + one IconRail now exist. `ConversationPanel` is rendered exactly once. | No-op after FIX-021 |
+| **A9** | 🟡 Medium | AIChatPanel page-mount migration not addressed | Plan implied shell-mount replaces everything | Documented: AIChatPanel is currently page-mounted on `/home` only (the `/command-center` page was deleted in FIX-021). HomeHero integration preserved via `pendingMessage` prop. | Prevents broken HomeHero flows |
 | **A10** | 🟢 Low | HomeHero chips referenced wrong file | Implied `home/page.tsx` contains `SUGGESTION_CHIPS` | Corrected: defined in `components/home/HomeHero.tsx`. Chips fill HomeHero input; `page.tsx` `handleSend` triggers chat open | Prevents incorrect code location |
 | **A11** | 🟢 Low | `_extractFirstJsonObject` and `_fallbackReply` are private methods with service coupling | Extracted without noting coupling concerns | Documented: methods reference `apiData` fields internally. Extraction requires careful interface design (`IJsonExtractor.extract(text)` is self-contained; `IFallbackReply.generate(message)` is self-contained) | Prevents incorrect extraction |
 | **A12** | 🟢 Low | Admin has NO existing `core/` or `shared/` directories | Assumed existing but empty | Confirmed: both directories must be created from scratch. Effort estimate increased from 4h → 6h for Phase 4 | Prevents timeline underestimation |
@@ -1423,9 +1423,9 @@ These plan claims were verified against the codebase and confirmed accurate:
 | Intent `'action'` routes to `OfficialAgentGraph.run()` — returns tool execution results | ✅ Lines 231-242 of chat.service.ts |
 | 75+ tools registered in `StructuredToolRegistry` | ✅ Confirmed: CRUD for agents, tasks, workflows, approvals, departments, projects, billing |
 | Streaming endpoints exist at `/agents/streaming/` | ✅ SSE-based session streaming |
-| Both backends (tenant + admin) mount `ConversationPanel` in their shells | ✅ TenantShell line 143 + 243; AdminShell line 112 |
+| Both backends (tenant + admin) mount `ConversationPanel` in their shells | ✅ TenantShell (single mount since FIX-021); AdminShell line 112 |
 | Both backends have independent copies of `chat.types.ts`, `chat.service.ts`, `chatStore.ts` | ✅ Confirmed: admin types have `tenantId` on ChatSuggestion, `tenant|billing` context |
-| `AIChatPanel` is page-mounted on `/home` and `/command-center` (not shell-mounted) | ✅ Confirmed |
+| `AIChatPanel` is page-mounted on `/home` (only — `/command-center` was deleted in FIX-021) | ✅ Confirmed |
 | `STARTER_PROMPTS` (5 items) in `AIChatPanel.tsx` | ✅ Verified |
 | `SUGGESTION_CHIPS` (4 items) in `HomeHero.tsx` | ✅ Verified |
 | `shared/hooks/`, `shared/types/`, `shared/components/` directories already exist in tenant | ✅ All exist with production code |

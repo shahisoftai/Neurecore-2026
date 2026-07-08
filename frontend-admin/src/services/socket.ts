@@ -13,7 +13,10 @@ export function getSocket(): Socket {
 
     socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ["websocket"],
+      // Polling-only — see FIX-022 / runbook §3.2 for the OLS WebSocket
+      // upgrade rationale.
+      transports: ["polling"],
+      upgrade: false,
       autoConnect: false,
     });
   }

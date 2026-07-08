@@ -7,6 +7,7 @@ import axios, {
 import { unwrapItem } from './unwrap';
 import { parseApiError, logError, AppError } from '@/lib/errors';
 import { cookieAuth, refreshCoordinator } from './cookieAuth';
+import { authService } from '@/auth';
 
 // Same-origin by default: Next.js's `rewrites()` proxies /api/v1/* to the
 // NestJS backend so the browser sees same-origin and no CORS preflight is
@@ -119,13 +120,9 @@ api.interceptors.response.use(
       });
 
       if (!newAccess) {
-        if (typeof window !== 'undefined') {
-          cookieAuth.clear();
-          const origin = window.location.origin || '';
-          if (!window.location.pathname.includes('/login')) {
-            window.location.href = origin + '/login';
-          }
-        }
+        // FIX-020: delegate to the IAuthService. The user will see the
+        // SessionExpiredScreen instead of a hard reload.
+        authService.reportAuthFailure({ type: 'session_expired' });
         return Promise.reject(
           new AppError('Session expired. Please log in again.', 'TOKEN_EXPIRED', 401),
         );
@@ -144,17 +141,8 @@ api.interceptors.response.use(
         appError.code,
       )
     ) {
-      try {
-        if (typeof window !== 'undefined') {
-          cookieAuth.clear();
-          const origin = window.location.origin || '';
-          if (!window.location.pathname.includes('/login')) {
-            window.location.href = origin + '/login';
-          }
-        }
-      } catch {
-        /* noop */
-      }
+      // FIX-020: report to the IAuthService.
+      authService.reportAuthFailure({ type: 'session_expired' });
     }
 
     return Promise.reject(appError);

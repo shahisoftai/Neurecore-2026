@@ -1,41 +1,42 @@
 'use client';
 
 /**
- * TopBar — Phase 3 Creatio-style global header
+ * TopBar — Slim global header for the IconRail-era portal.
  *
- * Layout: [Brand] [Department breadcrumb] ... [⌘K Search] [Theme]    [Inbox] [Marketplace] [Service Desk] [Intelligence] [Finance] [Notifications] [Help] [Settings] [Avatar]
+ * Layout: [Brand] [Breadcrumb] … [⌘K] [Theme] [Notifications] [Help] [Avatar▾]
  *
- * Replaces the minimal Phase 1 TopBar. Uses lucide icons throughout.
+ * The IconRail (left) is the single source of truth for navigation. The TopBar
+ * only carries:
+ *   - Page context (brand + breadcrumb)
+ *   - Global command palette trigger
+ *   - Theme toggle
+ *   - Notifications bell
+ *   - Help link
+ *   - User menu (name, email, role, settings, sign out)
+ *
+ * Phase 3 left legacy behind: the Inbox/Marketplace/Service Desk/Intelligence
+ * /Finance secondary icons were removed because the IconRail now covers
+ * those routes.
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
 import {
   Search,
   Bell,
-  Inbox,
-  Store,
-  Headphones,
-  BarChart3,
-  Wallet,
   HelpCircle,
   Settings,
   Sun,
   Moon,
   Contrast,
-  Palette,
   ChevronDown,
   LogOut,
   Menu,
 } from 'lucide-react';
+import type { AuthUser } from '@/types/auth.types';
 import { useCommandStore } from '@/stores/commandStore';
 import { useActivityStore } from '@/stores/activityStore';
-import { useAuthStore } from '@/stores/authStore';
 import { useUIPreferencesStore } from '@/shared/stores/uiPreferencesStore';
-import api from '@/services/api';
-import { unwrapList } from '@/services/unwrap';
-import { authService } from '@/services/auth.service';
 
 interface TopBarProps {
   title?: string;
@@ -43,6 +44,10 @@ interface TopBarProps {
   departmentName?: string;
   /** Phase 7: Mobile nav toggle callback */
   onMobileNavToggle?: () => void;
+  /** Authenticated user (drives avatar + sign-out menu). */
+  user?: AuthUser | null;
+  /** Sign-out handler from TenantShell. */
+  onLogout?: () => void | Promise<void>;
 }
 
 type ThemeName = 'dark' | 'light' | 'high-contrast';
@@ -53,39 +58,13 @@ const THEME_ICON: Record<ThemeName, React.ComponentType<{ className?: string }>>
   'high-contrast': Contrast,
 };
 
-export function TopBar({ title, departmentName, onMobileNavToggle }: TopBarProps) {
+export function TopBar({ title, departmentName, onMobileNavToggle, user: userProp, onLogout }: TopBarProps) {
   const { openPalette } = useCommandStore();
   const { events } = useActivityStore();
   const { theme, setTheme } = useUIPreferencesStore();
-  const user = useAuthStore((s) => s.user);
-  const clearUser = useAuthStore((s) => s.clearUser);
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const [pendingApprovals, setPendingApprovals] = useState(0);
-  const [unreadInbox, setUnreadInbox] = useState(0);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
 
   const errorCount = events.filter((e) => e.severity === 'error').length;
-
-  // Live data fetch — approvals + inbox badges
-  useEffect(() => {
-    api
-      .get('/approvals?status=PENDING&limit=1')
-      .then((res) => {
-        const { total } = unwrapList(res);
-        setPendingApprovals(total ?? 0);
-      })
-      .catch(() => setPendingApprovals(0));
-
-    api
-      .get('/inbox/summary')
-      .then((res) => {
-        const data = res?.data?.data ?? res?.data ?? {};
-        setUnreadInbox(data.unread ?? data.count ?? 0);
-      })
-      .catch(() => setUnreadInbox(0));
-  }, []);
 
   const ThemeIcon = THEME_ICON[theme as ThemeName] ?? Moon;
 
@@ -96,21 +75,19 @@ export function TopBar({ title, departmentName, onMobileNavToggle }: TopBarProps
     setTheme(next);
   };
 
-  const handleLogout = async () => {
+  const handleSignOut = async () => {
     setAvatarMenuOpen(false);
-    try {
-      await authService.logout();
-    } catch {
-      /* ignore */
+    if (onLogout) {
+      await onLogout();
     }
-    clearUser();
-    router.push('/login');
   };
+
+  const user = userProp ?? null;
 
   return (
     <header className="topbar-surface h-14 flex items-center px-4 gap-2 flex-shrink-0 z-20">
       {/* ── Left: brand + breadcrumb ─────────────────────────── */}
-      <Link href="/command-center" className="flex items-center gap-2 shrink-0">
+      <Link href="/home" className="flex items-center gap-2 shrink-0">
         <img src="/logo.png" alt="NeureCore" className="h-6 w-auto object-contain" />
       </Link>
 
@@ -150,38 +127,8 @@ export function TopBar({ title, departmentName, onMobileNavToggle }: TopBarProps
           </button>
         )}
 
-        <SecondaryIcon
-          href="/service-desk?tab=inbox"
-          icon={<Inbox className="w-4 h-4" />}
-          label="Inbox"
-          badge={unreadInbox}
-          active={pathname.startsWith('/service-desk')}
-        />
-        <SecondaryIcon
-          href="/marketplace"
-          icon={<Store className="w-4 h-4" />}
-          label="Marketplace"
-          active={pathname.startsWith('/marketplace')}
-        />
-        <SecondaryIcon
-          href="/service-desk?tab=approvals"
-          icon={<Headphones className="w-4 h-4" />}
-          label="Service Desk"
-          badge={pendingApprovals}
-          active={pathname.startsWith('/service-desk')}
-        />
-        <SecondaryIcon
-          href="/intelligence"
-          icon={<BarChart3 className="w-4 h-4" />}
-          label="Intelligence"
-          active={pathname.startsWith('/intelligence')}
-        />
-        <SecondaryIcon
-          href="/finance"
-          icon={<Wallet className="w-4 h-4" />}
-          label="Finance"
-          active={pathname.startsWith('/finance')}
-        />
+        {/* Secondary icons (Inbox/Marketplace/Service Desk/Intelligence/Finance)
+            are removed — the IconRail is the single source of truth for nav. */}
       </nav>
 
       {/* ── Theme toggle ──────────────────────────────────────── */}
@@ -218,15 +165,8 @@ export function TopBar({ title, departmentName, onMobileNavToggle }: TopBarProps
         <HelpCircle className="w-4 h-4" />
       </Link>
 
-      {/* ── Settings ─────────────────────────────────────────── */}
-      <Link
-        href="/intelligence?tab=settings"
-        className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-surface-overlay transition"
-        title="Settings"
-        aria-label="Settings"
-      >
-        <Settings className="w-4 h-4" />
-      </Link>
+      {/* Settings is reachable via the user menu (avatar dropdown) below,
+          so the standalone icon-link here is removed to avoid duplication. */}
 
       {/* ── Avatar + dropdown ─────────────────────────────────── */}
       {user && (
@@ -274,7 +214,7 @@ export function TopBar({ title, departmentName, onMobileNavToggle }: TopBarProps
                   <HelpCircle className="w-3.5 h-3.5" /> Help
                 </Link>
                 <button
-                  onClick={handleLogout}
+                  onClick={handleSignOut}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-state-danger hover:bg-state-danger/10 border-t border-surface-border"
                 >
                   <LogOut className="w-3.5 h-3.5" /> Sign out
@@ -285,34 +225,5 @@ export function TopBar({ title, departmentName, onMobileNavToggle }: TopBarProps
         </div>
       )}
     </header>
-  );
-}
-
-interface SecondaryIconProps {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  badge?: number;
-  active?: boolean;
-}
-
-function SecondaryIcon({ href, icon, label, badge, active }: SecondaryIconProps) {
-  return (
-    <Link
-      href={href}
-      title={label}
-      aria-label={label}
-      className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition ${active
-          ? 'bg-accent-500/15 text-accent-500'
-          : 'text-zinc-400 hover:text-zinc-100 hover:bg-surface-overlay'
-        }`}
-    >
-      {icon}
-      {badge !== undefined && badge > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-state-warn text-[9px] font-bold text-white">
-          {badge > 99 ? '99+' : badge}
-        </span>
-      )}
-    </Link>
   );
 }

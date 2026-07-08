@@ -1,6 +1,6 @@
 # Future Plans & Feature Roadmap
 
-**Last updated:** 2026-07-07 (FIX-020 plan written — see [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). 10-phase auth refactor to eliminate the "auth gets corrupted" bug class. ~18 days effort.)
+**Last updated:** 2026-07-07 19:55 PKT (FIX-020 SHIPPED — see [int-features/auth-architecture.md](int-features/auth-architecture.md) for the new single source of truth. The 10-phase plan from §12 is ✅ done; do not revert any of it.)
 **Audience:** Product + engineering — what's coming next.
 **Sibling docs:** [fixes.md](fixes.md) · [backend.md](backend.md) · [frontend-tenant.md](frontend-tenant.md) · [frontend-admin.md](frontend-admin.md) · [contabo-ops.md](contabo-ops.md)
 
@@ -27,8 +27,8 @@ The original Phase 1-5 refactor plan is delivered (see [frontend-tenant.md §13]
 A Creatio-inspired post-login landing page with glassmorphic design, 3-column layout, and real-time ready widgets:
 
 **Layout:**
-- **Left panel** (280px, fixed): Dynamic glossy gradient icons (Home, Agents, Departments, Tasks, Approvals, Workflows, Analytics, Connectors, Intelligence, Settings) with per-icon visibility toggle in Preferences modal. Visible on `/home` only; accessible via menu icon on other routes.
-- **Center column** (flex): 
+- **Left navigation** — single IconRail (FIX-021) replaces the legacy wide sidebar, the `/home` LeftPanel, and the TopBar secondary nav. See [left-rail-icon.md](left-rail-icon.md) for the canonical reference.
+- **Center column** (flex):
   - Hero section with live date/time, user greeting, AI prompt input, suggestion chips
   - KPI strip (4 tiles)
   - Network status banner
@@ -42,26 +42,27 @@ A Creatio-inspired post-login landing page with glassmorphic design, 3-column la
   - Approvals (pending list with inline approve/reject)
 
 **UI State Management:**
-- New Zustand store: `src/stores/uiPreferencesStore.ts`
-- Manages: background style (4 presets), visible icons, visible widgets, widget order
-- Persists to localStorage
+- `src/stores/uiPreferencesStore.ts` — background style + widget visibility/order. `visibleIcons` field was removed in FIX-021 (legacy LeftPanel deleted). See [left-rail-icon.md §7.1](left-rail-icon.md#71-uipreferencesstore-migration).
+- `src/stores/railPreferencesStore.ts` — IconRail visibility (sections + items + section collapse). Persists to localStorage.
 
 **Preferences Modal:**
-- Background selector (4 gradient options with visual previews)
-- Widget visibility toggles
-- Accessible from left panel "Preferences" button
+- Per-icon show/hide now lives inside the IconRail's own **Customize** modal (see [left-rail-icon.md §4](left-rail-icon.md#4-railcustomizemodal)).
+- The old `PreferencesModal` component (background style + widget toggles) was deleted in FIX-021.
 
 **Styling:**
 - Glassmorphic CSS classes (`.glass-panel`, `.glass-icon`) added to `globals.css`
 - Backdrop-blur + semi-transparent white backgrounds
 - Framer Motion animations (entrance/exit, stagger, hover)
 
-**Files created:**
+**Files (current):**
 - `src/stores/uiPreferencesStore.ts`
-- `src/components/home/{LeftPanel,RightPanel,GlassPanel,PreferencesModal,LiveFeedWidget,StatsWidget,QuickActionsWidget,TasksWidget,ApprovalsWidget}.tsx`
-- Updated: `src/app/home/page.tsx` (3-column layout), `src/app/globals.css` (glassmorphic utilities)
+- `src/stores/railPreferencesStore.ts`
+- `src/components/layout/IconRail.tsx`
+- `src/components/layout/RailCustomizeModal.tsx`
+- `src/components/home/{RightPanel,GlassPanel,LiveFeedWidget,StatsWidget,QuickActionsWidget,TasksWidget,ApprovalsWidget}.tsx`
+- Updated: `src/app/home/page.tsx` (no longer renders its own LeftPanel), `src/components/TenantShell.tsx` (single shell + IconRail), `src/components/layout/TopBar.tsx` (trimmed secondary nav).
 
-**Real-time ready:** Widget structure supports easy integration with WebSocket/API streams. Mock data included; replace with actual `/command-center/activity`, `/analytics/performance`, etc.
+**Real-time ready:** Widget structure supports easy integration with WebSocket/API streams. Replace mock data with actual `/intelligence/analytics`, `/intelligence/observability`, etc.
 
 **Next phases (1.1+):**
 - Department control rooms
@@ -619,71 +620,48 @@ Industry (1) ── (N) Package (N) ── (1) TierTemplate
 
 ---
 
-## 12. Auth system refactor (FIX-020) — PLANNED 🟡
+## 12. ~~Auth system refactor (FIX-020) — SHIPPED 2026-07-07~~ 🟢
 
-Audit completed 2026-07-07 16:27 PKT. Identified 7 root causes for the "auth gets corrupted when I implement work on other pages" bug class. The fix is a 10-phase refactor to a single `IAuthService` facade with SOLID L3 dependencies. **See full plan: [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md).**
+> **Historical record.** The original plan is preserved in [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). For the current implementation, see [int-features/auth-architecture.md](int-features/auth-architecture.md) — the **authoritative reference** for any future auth change.
 
-### 12.1 Why this matters
+**Audit (2026-07-07 16:27 PKT)** identified 7 root causes for the "auth gets corrupted when I implement work on other pages" bug class. **Implementation (2026-07-07)** shipped all 10 phases:
 
-Every new page that calls an API on mount is a time bomb:
-- 401 from any API → hard-redirect to `/login` (no warning, no recovery)
-- Cookies cleared but Zustand `useAuthStore` not cleared → stale-user loop
-- Dead `localStorage`/`sessionStorage` code paths in `lib/security.ts` and `lib/errors.ts` give contributors the wrong mental model
-- `useTenantAuth`/`useAdminAuth` return `null` during hydration → flash-redirect
-
-### 12.2 The 7 root causes (full detail in the plan)
-
-| # | Root cause | Severity |
+| Phase | Status | Notes |
 |---|---|---|
-| RC-1 | Dead `SecureStorageKey`/`setSecureToken` writes to `sessionStorage["nc_at"]` (key doesn't match `__Host-nc_at`) | High |
-| RC-2 | `lib/errors.ts:321-322` clears `localStorage.tenant_accessToken` (backend never stored it there) + hard-redirects | High |
-| RC-3 | `clearTokens()` clears cookies but NOT the Zustand store → stale-user loop | **Critical** |
-| RC-4 | `intelligence/page.tsx:927-928` saves profile with stale `user` prop → corrupted user persisted | High |
-| RC-5 | `useTenantAuth`/`useAdminAuth` return `null` during hydration → pages render blank → 401 → hard-redirect | High |
-| RC-6 | `AppInitializer.tsx:54` clears cookies on any `/me` failure (transient, proxy, restart) | High |
-| RC-7 | Two parallel axios instances with independent refresh coordination | Medium |
+| 1. Build new core (L2/L3/L4) + tests | ✅ | 7 interfaces, 7 implementations, DI container; 27 new unit tests |
+| 2. Migrate TenantShell + TopBar (one consumer) | ✅ | `useAuth().logout()` everywhere |
+| 3. Migrate API interceptors | ✅ | Single `authHttpClient`, single response interceptor, NO hard-redirects |
+| 4. Migrate all pages | ✅ | Back-compat `useTenantAuth`/`useAdminAuth` shims over `useAuth()` |
+| 5. Fix ProfileDetail (RC-4) | ✅ | Read user fresh from store at save time |
+| 6. Delete dead `lib/security.ts` + `lib/errors.ts` token code | ✅ | Both files truncated to sanitization helpers; auth bits deleted |
+| 7. Fix `AppInitializer` (RC-6) | ✅ | Subscribes to `authService.subscribe()` instead of clearing on transient failure |
+| 8. Admin refactor (parallel) | ✅ | Mirrored in `frontend-admin/src/auth/` |
+| 9. Lint rules | ✅ | Implemented as `bash scripts/auth-lint.sh` (4 greps). ESLint plugin deferred. |
+| 10. Documentation | ✅ | [int-features/auth-architecture.md](int-features/auth-architecture.md) + updates to auth.md, fixes.md, runbook.md, system-state.md, pending-tasks.md |
 
-### 12.3 Target architecture
+**Verification (post-deploy):**
+- `vitest run` → 43/43 pass
+- Backend `auth-hardening.spec.ts` → 8/8 pass on Contabo
+- `npx playwright test auth-smoke prod-auth-smoke prod-login-flow prod-walkthrough` → 9/9 pass against live `https://hq.neurecore.com` and `https://cc.neurecore.com`
+- `bash scripts/auth-lint.sh` → OK, no banned patterns
 
-```
-Layer 1: UI Components & Pages          →  useAuth() (the only auth API)
-Layer 2: Auth Facade (singleton)        →  IAuthService
-Layer 3: Auth Core (SOLID, 5 modules)   →  ITokenRepository, IUserRepository, IAuthApi, IRefreshCoordinator, IAuthSessionLifecycle
-Layer 4: HTTP Transport (one axios)     →  authHttpClient (the only one)
-```
+**The 7 root causes** (now structurally impossible):
+- **RC-1** ✅ `lib/security.ts` deleted in both frontends; `scripts/auth-lint.sh` blocks any reintroduction
+- **RC-2** ✅ `lib/errors.ts:useErrorHandler` no longer clears localStorage or hard-redirects; 401 handling moved to `authResponseInterceptor`
+- **RC-3** ✅ `killSession()` is atomic; only one place can clear the session
+- **RC-4** ✅ `ProfileDetail.handleSaveProfile` now reads `useAuthStore.getState().user` at save time
+- **RC-5** ✅ `useAuth()` returns discriminated `AuthState`; pages can no longer render `null` mid-hydration
+- **RC-6** ✅ `AuthService.initialize()` keeps user on transient `/me` failure; only clears on explicit 401
+- **RC-7** ✅ Single `authHttpClient` instance; shared response interceptor
 
-### 12.4 Phases & effort
+**⚠️ DO NOT CORRUPT.** A new contributor who:
+- imports `localStorage`/`sessionStorage` for auth keys → `scripts/auth-lint.sh` fails
+- writes `document.cookie = ...` outside `src/auth/impl/CookieTokenRepository.ts` → lint fails
+- calls `window.location.href = '/login'` outside `src/auth/` → lint fails
+- mutates `useAuthStore` directly outside `src/auth/impl/ZustandUserRepository.ts` → lint fails
+- imports the dead `SecureStorageKey`/`setSecureToken` helpers → lint fails
 
-| Phase | Effort | Risk |
-|---|---|---|
-| 1. Build new core (L2/L3/L4) + tests | 3 days | Low — greenfield |
-| 2. Migrate TenantShell + TopBar (one consumer) | 1 day | Low |
-| 3. Migrate API interceptors | 2 days | High — ship behind feature flag |
-| 4. Migrate all pages | 3 days | Medium |
-| 5. Fix ProfileDetail (RC-4) | 0.5 day | Low |
-| 6. Delete dead `lib/security.ts` + `lib/errors.ts` token code | 1 day | Low |
-| 7. Fix `AppInitializer` (RC-6) — retry once on /me | 0.5 day | Medium |
-| 8. Admin refactor (parallel workstream) | 5 days | Medium |
-| 9. Lint rules (`no-auth-localstorage`, `no-direct-auth-store-access`) | 1 day | Low |
-| 10. Documentation (`int-features/auth-architecture.md`, update `auth.md`) | 1 day | Low |
-| **Total** | **~18 days** | |
-
-### 12.5 Open questions (decide before Phase 1)
-
-- **§7.1 (restore on /me 500):** keep user / force logout / show "may be expired" banner. Recommendation: keep user, retry next page.
-- **§7.5 (migration order):** strict Phase 1 → 2 → 3 → 4 → 5, ship per page to allow rollback.
-- **§7.6 (admin parallel):** can be done in parallel by second engineer.
-
-### 12.6 Acceptance
-
-- [ ] All 7 RCs addressed
-- [ ] Lint rules fail CI on `localStorage.setItem` with auth keys
-- [ ] Lint rules fail CI on direct `useAuthStore` import
-- [ ] `auth-07-stale-user-loop.cy.ts` passes (the actual loop is gone)
-- [ ] Existing 8/8 auth-hardening tests still pass
-- [ ] `auth.md` updated to point to new architecture
-- [ ] New `int-features/auth-architecture.md` created
-- [ ] `fixes.md` has FIX-020 entry
+…will fail CI before merge. That is the design.
 
 ---
 

@@ -15,7 +15,15 @@ export function getSocket(): Socket {
   if (!socket) {
     socket = io(SOCKET_URL, {
       auth: { token: tokenManager.getAccessToken() },
-      transports: ['websocket', 'polling'],
+      // Polling-only transport: the OpenLiteSpeed → Next.js → NestJS path
+      // can't reliably proxy the WebSocket upgrade (HTTP/2 downgrade + missing
+      // Connection: Upgrade on the response), which causes noisy
+      // 'Connection header value must contain Upgrade' errors in the browser
+      // console. Socket.IO's long-polling transport still gives us real-time
+      // push at sub-second latency without needing a true WS tunnel. See
+      // memory-bank/runbook.md §3.2 and FIX-022.
+      transports: ['polling'],
+      upgrade: false,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,

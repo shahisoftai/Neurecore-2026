@@ -134,20 +134,26 @@ All authenticated pages wrapped in **TenantShell** providing:
 
 **Issue:** Right "AI Panel" is placeholder; not utilized on most pages
 
-### Home Page (Phase 6)
+### Home Page (FIX-021 layout)
 
 ```
-┌─ Left Panel ──┬─ Center ────────────────────────────┬─ Right Panel ─┐
-│ Icons         │ Hero (greeting, AI prompt)          │ Live Feed     │
-│ (text only)   │ KPI Strip (4 metrics)              │ Performance   │
-│ Collapse btn  │ Network Status                     │ Quick Actions │
-│               │                                    │ Tasks         │
-│               │                                    │ Approvals     │
-└───────────────┴────────────────────────────────────┴───────────────┘
+┌─ IconRail (56/240px) ─┬─ Center ────────────────────────────┬─ Right Panel ─┐
+│ NeureCore brand        │ Hero (greeting, AI prompt)          │ Live Feed     │
+│ Sectioned nav:         │ KPI Strip (4 metrics)              │ Performance   │
+│  Home                  │ Network Status                     │ Quick Actions │
+│  Workspace (Depts…)    │                                    │ Tasks         │
+│  Marketplace           │                                    │ Approvals     │
+│  Service Desk          │                                    │               │
+│  Finance               │                                    │               │
+│  Intelligence          │                                    │               │
+│ Customize / Collapse   │                                    │               │
+└────────────────────────┴────────────────────────────────────┴───────────────┘
 ```
 
-**Current State:** ✅ Matches Creatio pattern (hero centered, right panel widgets)  
-**Remaining Issues:** Right panel widgets still mock data; collapse button visual feedback needed
+The `/home` page no longer renders its own `LeftPanel` — the **IconRail** (hosted by `TenantShell`) is the canonical left navigation for the entire portal. See [left-rail-icon.md](left-rail-icon.md).
+
+**Current State:** ✅ Matches Creatio pattern (hero centered, right-rail widgets).  
+**Remaining Issues:** Right panel widgets still mock data; collapse button visual feedback needed.
 
 ### Key Pages Analyzed
 
@@ -323,9 +329,9 @@ const { values, errors, touched, handleChange, handleSubmit } = useFormValidatio
 
 ### ✅ Good Examples
 
-#### `/home` (Phase 6)
+#### `/home` (FIX-021)
 - ✅ Centered hero with greeting
-- ✅ Left panel with collapsible icons
+- ✅ IconRail with collapsible sections + per-user customisation (see [left-rail-icon.md](left-rail-icon.md))
 - ✅ Right panel with widgets
 - ⚠️ Widget data is mock (needs real API)
 
@@ -898,7 +904,7 @@ src/components/
 │   ├── FilterChip.tsx             [NEW: filter tags]
 │   └── FilterButton.tsx           [NEW: filter toggle]
 ├── home/
-│   ├── LeftPanel.tsx              [UPDATE: already Phase 6]
+│   ├── ~~LeftPanel.tsx~~          [DELETED in FIX-021 — navigation moved to IconRail]
 │   ├── RightPanel.tsx             [UPDATE: add context awareness]
 │   ├── SkeletonWidget.tsx         [NEW: loading state for widgets]
 │   └── WidgetContext.tsx          [NEW: context-specific widgets]

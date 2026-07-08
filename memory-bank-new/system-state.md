@@ -1,6 +1,21 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-07 16:10 PKT (FIX-019: Defensive patterns shipped — Zustand `merge` for all persisted stores, `Array.isArray` guards in 9 components, `/help` page created, socket URL derives from `window.location`, pre-existing `command-center` build error fixed. `next build` clean. `https://hq.neurecore.com/home` and `https://hq.neurecore.com/help` return 200. `neurecore-tenant` PM2 id 40 online.)
+**Last verified:** 2026-07-07 20:00 PKT (FIX-020 SHIPPED + DEPLOYED — full 10-phase auth hardening refactor. New `IAuthService` facade with 7 SOLID interfaces, 7 implementations, DI container. Shipped to Contabo 2026-07-07. Live `https://hq.neurecore.com` and `https://cc.neurecore.com` on new builds; backend auth-hardening 8/8 still pass; 9 Playwright prod smoke tests green. New entrypoint: [`int-features/auth-architecture.md`](int-features/auth-architecture.md) — DO NOT corrupt.)
+
+> **2026-07-07 19:55 PKT — FIX-020 SHIPPED + DEPLOYED TO CONTABO (Kilo):**
+> - **Auth hardening refactor** complete across 10 phases. See [`plans/auth-hardening-refactor.md`](plans/auth-hardening-refactor.md) (now fully ✅ across all 10 phases) and [`int-features/auth-architecture.md`](int-features/auth-architecture.md) (the new authoritative reference).
+> - **Production behavior changes you must not regress:**
+>   - 401 on any API no longer triggers `window.location.href = '/login'`. The new `authResponseInterceptor` calls `authService.reportAuthFailure()` which transitions React state to `unauthenticated` and renders `<SessionExpiredScreen>` with a "Sign in again" button.
+>   - All `localStorage`/`sessionStorage` writes for auth keys are banned (`bash scripts/auth-lint.sh` enforces).
+>   - `lib/security.ts` deleted in both frontends.
+>   - `TokenManager` (tenant) and `cookieAuth` (admin) are now thin shims that delegate to `@/auth/impl/CookieTokenRepository` — they are NOT independent cookie writers anymore.
+> - **PM2 (after deploy):** `neurecore-tenant` (id 40, pid 844016, uptime 30m), `neurecore-admin` (id 42, pid 846031, uptime 27m), `neurecore-backend` (id 43, pid 636597, uptime 5h), `neurecore-cors-proxy` (id 7, uptime 2D). All online.
+> - **Tests:** `vitest run` → 43/43 (27 new auth tests + 16 existing). Backend `auth-hardening.spec.ts` → 8/8. Playwright on prod → 9/9.
+> - **Snapshot:** `/opt/neurecore/_archives/20260707-161320/pre-fix-020/` (~89 MB).
+
+**Earlier (now historical — see FIX-020 SHIPPED above):**
+
+> **2026-07-07 16:10 PKT (FIX-019: Defensive patterns shipped — Zustand `merge` for all persisted stores, `Array.isArray` guards in 9 components, `/help` page created, socket URL derives from `window.location`, pre-existing `command-center` build error fixed. `next build` clean. `https://hq.neurecore.com/home` and `https://hq.neurecore.com/help` return 200. `neurecore-tenant` PM2 id 40 online.)**
 
 > **2026-07-07 00:45 PKT — Deployment Enhancement shipped (Kilo):**
 > - **Frontend-admin** — 4 gaps closed:
@@ -243,7 +258,8 @@ tools             users
 | Env file | `/opt/neurecore/frontend-tenant/.env.production` |
 | Public API URL | `NEXT_PUBLIC_API_URL=/api/v1` (relative — relies on OLS catch-all rewrite to forward to backend via the same hostname) |
 | Public WS URL | `NEXT_PUBLIC_WS_URL=wss://brain.neurecore.com` |
-| Test framework | Playwright (`tests/e2e/smoke.spec.ts`) |
+| Test framework | Vitest (`src/**/*.{test,spec}.{ts,tsx}`) + Playwright (`tests/e2e/`) |
+| **Auth core** | `src/auth/` — see [`int-features/auth-architecture.md`](../int-features/auth-architecture.md). **DO NOT add localStorage auth writes, raw cookie reads, or hard-redirects outside `src/auth/`.** |
 | Notable: `frontend-tenant-simplified/` (canary, Next.js 16) | **DELETED 2026-07-04** |
 
 ### 2.5 Frontend-Admin (Next.js)
@@ -259,6 +275,7 @@ tools             users
 | Source folder | `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-admin/` |
 | Env file | `/opt/neurecore/frontend-admin/.env.production` |
 | Public API URL | `NEXT_PUBLIC_API_URL=https://brain.neurecore.com/api/v1` (absolute — admin browser calls backend directly, no proxy through OLS needed) |
+| **Auth core** | `src/auth/` — see [`int-features/auth-architecture.md`](../int-features/auth-architecture.md). Admin extends the tenant core (register + loginWithGoogle disabled; admin-role allow-list enforced). |
 | Notable: `frontend-eaos/` (EAOS UI) | **DELETED** prior to 2026-07-04 |
 
 ### 2.6 CORS sidecar proxy

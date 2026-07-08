@@ -114,7 +114,8 @@ export default function AdminIntegrationsPage() {
   }
 
   if (error && tenants.length === 0) {
-    return (
+    return null;
+  }
 
   return (
     <div className="p-6 space-y-6">

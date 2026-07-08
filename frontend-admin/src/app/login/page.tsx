@@ -1,34 +1,40 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { authService } from '@/services/auth.service';
-import { useAuthStore } from '@/stores/authStore';
-import { getUserFriendlyMessage } from '@/lib/errors';
-import { routeAfterAdminAuth } from '@/services/auth-redirect.service';
+import { useAuth, AuthError } from '@/auth';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const setUser = useAuthStore((s) => s.setUser);
+  const { login, state } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (state.status === 'authenticated') {
+      router.replace('/overview');
+    } else if (state.status === 'unauthenticated' && state.reason === 'locked_out' && state.lockoutRemainingSeconds) {
+      setError(`Too many attempts. Try again in ${Math.ceil(state.lockoutRemainingSeconds / 60)} minute(s).`);
+    }
+  }, [state, router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const result = await authService.login(email, password);
-      const allowedRoles = ['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SECURITY_OFFICER', 'SUPPORT'];
-      if (!allowedRoles.includes(result.user.role)) {
-        throw new Error('Insufficient permissions for admin portal');
-      }
-      setUser(result.user);
-      routeAfterAdminAuth(router);
+      await login({ email, password });
+      // useEffect above redirects on state transition to authenticated.
     } catch (err: unknown) {
-      setError(getUserFriendlyMessage(err));
+      if (err instanceof AuthError && err.code === 'account_locked' && err.retryAfterSeconds) {
+        setError(`Too many attempts. Try again in ${Math.ceil(err.retryAfterSeconds / 60)} minute(s).`);
+      } else if (err instanceof AuthError) {
+        setError(err.message || 'Invalid credentials');
+      } else {
+        setError(err instanceof Error ? err.message : 'Login failed');
+      }
     } finally {
       setLoading(false);
     }

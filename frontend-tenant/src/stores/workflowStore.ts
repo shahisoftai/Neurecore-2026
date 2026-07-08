@@ -60,6 +60,16 @@ export const useWorkflowStore = create<WorkflowState>()(
       name: 'hq_workflow_store',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ workflows: state.workflows, total: state.total, page: state.page }),
+      merge: (persistedState, currentState) => {
+        const ps = (persistedState ?? {}) as Partial<WorkflowState>;
+        return {
+          ...currentState,
+          ...ps,
+          workflows: Array.isArray(ps.workflows) ? ps.workflows : currentState.workflows,
+          total: typeof ps.total === 'number' ? ps.total : currentState.total,
+          page: typeof ps.page === 'number' ? ps.page : currentState.page,
+        };
+      },
     },
   ),
 );

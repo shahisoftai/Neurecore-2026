@@ -3,17 +3,15 @@
 // SRP: Boots cross-cutting client-side concerns once on mount. Renders nothing.
 // • Wires EventBus → Zustand stores (real-time updates)
 // • Registers global keyboard shortcuts (20 actions)
-// • Restores session from localStorage tokens on app boot
-// • Manages socket lifecycle (connect on login, disconnect on logout)
-// • Injects accessible aria-live announce region
+// • Disconnects/connects socket on auth transitions (driven by IAuthEventBus)
+// • Subscribes to SESSION_KILLED for socket teardown
+// The session RESTORE itself is now AuthProvider's job via authService.initialize().
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { initStoreEventBridge } from "@/core/infrastructure/socket/storeEventBridge";
 import { useKeyboardShortcuts } from "@/shared/hooks/useKeyboardShortcuts";
-import { useAuthStore } from "@/stores/authStore";
-import { authService } from "@/services/auth.service";
-import { tokenManager } from "@/core/infrastructure/auth/TokenManager";
+import { authService } from "@/auth";
 import { connectSocket, disconnectSocket } from "@/services/socket";
 
 const UNAUTHENTICATED_ROUTES = ["/login", "/register", "/forgot-password"];
@@ -30,58 +28,24 @@ export function AppInitializer() {
     return teardown;
   }, []);
 
-  // Restore session: if a valid token exists in localStorage but the store has
-  // no user (e.g. after a hard refresh that cleared in-memory state), re-fetch
-  // the current user profile so protected pages don't flash-redirect to /login.
-  // Skip on unauthenticated routes to avoid unnecessary /me calls and socket
-  // connections while the user is on the login/register page.
-  useEffect(() => {
-    const unsubscribe = useAuthStore.persist.onFinishHydration(
-      async (state) => {
-        if (UNAUTHENTICATED_ROUTES.includes(pathname)) return;
-        const accessToken = tokenManager.getAccessToken();
-        if (accessToken) {
-          // Validate token format (basic check) - if malformed, clear it
-          const parts = accessToken.split(".");
-          if (parts.length !== 3) {
-            tokenManager.clearTokens();
-          } else {
-            // Try to validate with backend - if 401, token is stale
-            try {
-              const user = await authService.me();
-              if (user) useAuthStore.getState().setUser(user);
-            } catch {
-              tokenManager.clearTokens();
-            }
-          }
-        }
-      },
-    );
-    return unsubscribe;
-  }, [pathname]);
-
-  // Socket lifecycle: connect when authenticated, disconnect on logout.
-  // Skip on unauthenticated routes (login/register) to avoid connection spam.
+  // Socket lifecycle: connect when authenticated, disconnect when killed.
   useEffect(() => {
     if (UNAUTHENTICATED_ROUTES.includes(pathname)) return;
 
-    // Connect if already authenticated at boot
-    if (useAuthStore.getState().user) {
+    // Connect immediately if already authenticated.
+    if (authService.getState().status === 'authenticated') {
       connectSocket();
     }
 
-    // Subscribe to auth state changes
-    const unsubscribe = useAuthStore.subscribe((state, prev) => {
-      if (!prev.user && state.user) {
-        // Logged in — connect with current token
+    const unsubState = authService.subscribe((state) => {
+      if (state.status === 'authenticated') {
         connectSocket();
-      } else if (prev.user && !state.user) {
-        // Logged out — tear down connection
+      } else if (state.status === 'unauthenticated' || state.status === 'error') {
         disconnectSocket();
       }
     });
 
-    return unsubscribe;
+    return unsubState;
   }, [pathname]);
 
   // Accessible announce region (used by useAnnounce / AccessibilityService)

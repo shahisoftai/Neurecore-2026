@@ -32,7 +32,7 @@ rebuild_backend() {
   tar -czf "/tmp/dist-backup-$(date +%Y%m%d-%H%M%S).tar.gz" dist/ 2>/dev/null || true
 
   # 2. Pull deps + regen Prisma client
-  npm ci --omit=dev=false 2>&1 | tail -5
+  npm ci --include=dev --legacy-peer-deps 2>&1 | tail -5
   if [ -f .env ]; then
     set +u
     export $(grep -v '^#' .env | grep -E 'DATABASE_URL|DIRECT_URL' | xargs)
@@ -54,7 +54,7 @@ rebuild_tenant() {
   echo "=== Rebuilding tenant ($(date)) ===" | tee -a "$LOG"
   cd "$TENANT_DIR"
 
-  npm ci --omit=dev=false 2>&1 | tail -5
+  npm ci --include=dev --legacy-peer-deps 2>&1 | tail -5
   ./node_modules/.bin/next build 2>&1 | tail -10
 
   pm2 startOrReload "$ECOSYSTEM" --only neurecore-tenant
@@ -66,7 +66,7 @@ rebuild_admin() {
   echo "=== Rebuilding admin ($(date)) ===" | tee -a "$LOG"
   cd "$ADMIN_DIR"
 
-  npm ci --omit=dev=false 2>&1 | tail -5
+  npm ci --include=dev --legacy-peer-deps 2>&1 | tail -5
   ./node_modules/.bin/next build 2>&1 | tail -10
 
   pm2 startOrReload "$ECOSYSTEM" --only neurecore-admin

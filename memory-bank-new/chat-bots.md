@@ -154,7 +154,7 @@ interface ChatState {
 
 ### 2.6 ConversationPanel Placement
 
-Used in **TenantShell** (both NewShell and LegacyShell) at line 143 and 243:
+Used in **TenantShell** (single shell since FIX-021):
 ```typescript
 import { ConversationPanel } from '@/components/chat/ConversationPanel';
 // ...
@@ -334,11 +334,11 @@ interface ChatMessageMetadata {
    - `AIChatButton` in TopBar area (line 261)
    - HomeHero prompt bar `onSend` → sets `pendingMessage` → `AIChatPanel` opens with pre-filled input
 
-2. **`/command-center/page.tsx`** — mounted at line 740:
+2. **`/home/page.tsx`** (the sole landing page since FIX-021; `/command-center` was deleted):
    ```typescript
    <AIChatPanel isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
    ```
-   Triggered by `AIChatButton` in the command-center TopBar.
+   Triggered by `AIChatButton` in the home page.
 
 ### 3.10 Context Enrichment
 
@@ -796,7 +796,7 @@ Defined in `ChatMessageMetadata` but have **no rendering code, no assignment, an
 
 ### G6: AIChatPanel `pageContext` prop is never passed
 
-`useAIChat` accepts a `pageContext` parameter, and `ConversationContext.currentPage` is sent to the backend — but neither `/home/page.tsx` nor `/command-center/page.tsx` passes a `pageContext` prop to `AIChatPanel`. The field is always `undefined` at runtime.
+`useAIChat` accepts a `pageContext` parameter, and `ConversationContext.currentPage` is sent to the backend — but `/home/page.tsx` (the only landing page since FIX-021; `/command-center` was deleted) does not pass a `pageContext` prop to `AIChatPanel`. The field is always `undefined` at runtime.
 
 ### G7: HomeHero SUGGESTION_CHIPS are separate from AIChatPanel STARTER_PROMPTS
 

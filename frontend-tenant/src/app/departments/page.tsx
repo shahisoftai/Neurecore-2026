@@ -228,7 +228,7 @@ function DepartmentsTab() {
     try {
       const [deptRes, agentRes] = await Promise.all([
         api.get('/departments?limit=100'),
-        api.get('/agents?limit=200'),
+        api.get('/agents?limit=100'),
       ]);
       setDepartments(unwrapArrayOrEmpty(deptRes) as Department[]);
       setAgents(unwrapArrayOrEmpty(agentRes) as AgentLite[]);

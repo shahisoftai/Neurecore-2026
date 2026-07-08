@@ -1,22 +1,22 @@
 'use client';
 
 /**
- * /home — Enhanced 3-column home page with left icon panel, center content, and right widgets
- * 
- * Layout (3-column design):
- *   ┌─ Left Panel ───┬─ Center Content ──────────────┬─ Right Widgets ───┐
- *   │ Glossy Icons   │ Hero (date/greeting/AI)       │ Live Feed         │
- *   │ Dynamic        │ KPI Strip                     │ Stats             │
- *   │ Selectable     │ Network Status                │ Quick Actions     │
- *   │ (Home only)    │ Departments + Quick Actions   │ Tasks             │
- *   │                │ Recent Tasks                  │ Approvals         │
- *   └────────────────┴───────────────────────────────┴───────────────────┘
+ * /home — Creatio-style home with hero + KPIs + right rail.
+ *
+ * Navigation is provided by the IconRail (rendered by TenantShell). The
+ * /home page only renders the centre content + right widgets.
+ *
+ * Layout:
+ *   ┌─ IconRail (in TenantShell) ─┬─ Centre ────────────────────┬─ Right rail ──┐
+ *   │                             │  Hero (date/greeting/AI)    │  Live Feed    │
+ *   │                             │  KPI Strip                  │  Stats        │
+ *   │                             │  Network Status (errors)    │  Quick Actions│
+ *   │                             │                             │  Tasks        │
+ *   │                             │                             │  Approvals    │
+ *   └─────────────────────────────┴─────────────────────────────┴───────────────┘
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { Sparkles, Menu } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTenantAuth } from '@/hooks/useTenantAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { useApprovals } from '@/hooks/useApprovals';
@@ -28,8 +28,7 @@ import { commandCenterService } from '@/services/command-center.service';
 import TenantShell from '@/components/TenantShell';
 import { HomeHero } from '@/components/home/HomeHero';
 import { HomeKpiStrip } from '@/components/home/HomeKpiStrip';
-import { HomeNetworkStatus, type NetworkErrorDescriptor } from '@/components/home/HomeNetworkStatus';
-import { LeftPanel } from '@/components/home/LeftPanel';
+import { HomeNetworkStatus } from '@/components/home/HomeNetworkStatus';
 import { RightPanel } from '@/components/home/RightPanel';
 import { GlassPanel } from '@/components/home/GlassPanel';
 import {
@@ -40,11 +39,8 @@ import {
 export default function HomePage() {
   const user = useTenantAuth();
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
-  const router = useRouter();
-  const pathname = usePathname();
 
   const backgroundStyle = useUIPreferencesStore((s) => s.backgroundStyle);
-  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
 
   const setAgents = useAgentStore((s) => s.setAgents);
   const agents = useAgentStore((s) => s.agents);
@@ -59,8 +55,11 @@ export default function HomePage() {
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
-  const { critical, routine, isLoading: approvalsLoading } = useApprovals({ autoRefresh: true, refreshInterval: 120_000 });
-  const pendingApprovals = useMemo(() => critical.length + routine.length, [critical, routine]);
+  const { critical, routine } = useApprovals({ autoRefresh: true, refreshInterval: 120_000 });
+  const pendingApprovals = useMemo(
+    () => (Array.isArray(critical) ? critical : []).length + (Array.isArray(routine) ? routine : []).length,
+    [critical, routine],
+  );
 
   const fetchSummary = useCallback(async () => {
     setSummaryLoading(true);
@@ -140,78 +139,31 @@ export default function HomePage() {
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl opacity-20" />
         </div>
 
-        <div className="relative z-10 flex h-screen overflow-hidden">
-          <AnimatePresence>
-            {leftPanelOpen && (
-              <LeftPanel isOpen={true} onClose={() => setLeftPanelOpen(false)} />
-            )}
-          </AnimatePresence>
+        <div className="relative z-10 max-w-7xl mx-auto px-4 py-6 space-y-6">
+          <GlassPanel className="p-6 max-w-2xl mx-auto">
+            <HomeHero tenant={null} onSend={handleSend} />
+          </GlassPanel>
 
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {!leftPanelOpen && pathname === '/home' && (
-              <div className="sticky top-0 z-30 px-6 py-4 border-b border-white/10 backdrop-blur-sm bg-slate-950/50 flex items-center gap-4">
-                <button
-                  onClick={() => setLeftPanelOpen(true)}
-                  className="rounded-lg p-2 hover:bg-white/10 transition-colors"
-                >
-                  <Menu className="w-5 h-5 text-zinc-300" />
-                </button>
-              </div>
-            )}
+          <div className="max-w-2xl mx-auto">
+            <HomeKpiStrip
+              monthCost={monthCost}
+              pendingApprovals={pendingApprovals}
+              loading={summaryLoading}
+            />
+          </div>
 
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-6 h-full">
-                {pathname === '/home' ? (
-                  <div className="flex gap-6 h-full justify-center">
-                    <div className="flex-1 min-w-0 space-y-6 overflow-y-auto pr-2 flex flex-col items-center justify-start max-w-2xl">
-                      <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className="w-full max-w-xl"
-                      >
-                        <GlassPanel className="p-6">
-                          <HomeHero tenant={null} onSend={handleSend} />
-                        </GlassPanel>
-                      </motion.div>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.1 }}
-                        className="w-full max-w-xl"
-                      >
-                        <HomeKpiStrip monthCost={monthCost} pendingApprovals={pendingApprovals} loading={summaryLoading} />
-                      </motion.div>
-
-                      {summaryError && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.5, delay: 0.2 }}
-                          className="w-full max-w-xl"
-                        >
-                          <HomeNetworkStatus
-                            errors={[{ key: 'summary', message: summaryError }]}
-                            onRetry={() => void fetchSummary()}
-                            busy={summaryLoading}
-                          />
-                        </motion.div>
-                      )}
-                    </div>
-
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
-                      className="w-72 flex-shrink-0 overflow-y-auto"
-                    >
-                      <RightPanel />
-                    </motion.div>
-                  </div>
-                ) : null}
-              </div>
+          {summaryError && (
+            <div className="max-w-2xl mx-auto">
+              <HomeNetworkStatus
+                errors={[{ key: 'summary', message: summaryError }]}
+                onRetry={() => void fetchSummary()}
+                busy={summaryLoading}
+              />
             </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <RightPanel />
           </div>
         </div>
 

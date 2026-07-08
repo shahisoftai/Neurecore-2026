@@ -2,17 +2,19 @@
  * CookieAuthClient — cookie-only auth reader (F1).
  *
  * The backend emits `__Host-nc_at`, `__Host-nc_rt`, `__Host-nc_csrf` cookies
- * on every successful login / refresh. We read them directly from
- * `document.cookie` and never store the tokens in localStorage so an XSS
- * payload cannot exfiltrate them.
+ * on every successful login / refresh. This module is a thin shim that
+ * delegates to the new ITokenRepository in `@/auth`.
  *
- * SRP:        only reads cookies + coordinates refresh.
- * OCP:        cookie names exported as constants for symmetry with backend.
- * LSP/DIP:    depends only on `document.cookie`, no DOM/storage coupling.
+ * FIX-020: rewritten to delegate to the auth core. The legacy cookie-write
+ * logic (and the window.location.href redirect) is gone.
  */
+import { CookieTokenRepository } from '@/auth/impl/CookieTokenRepository';
+
 export const ACCESS_COOKIE = '__Host-nc_at';
 export const REFRESH_COOKIE = '__Host-nc_rt';
 export const CSRF_COOKIE = '__Host-nc_csrf';
+
+const tokens = new CookieTokenRepository();
 
 export interface CookieAuthSnapshot {
   accessToken: string | null;
@@ -20,56 +22,35 @@ export interface CookieAuthSnapshot {
   csrfToken: string | null;
 }
 
-function readCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const cookies = document.cookie ? document.cookie.split('; ') : [];
-  for (const raw of cookies) {
-    const eq = raw.indexOf('=');
-    if (eq < 0) continue;
-    const key = raw.slice(0, eq);
-    if (key === name) {
-      const v = raw.slice(eq + 1);
-      try {
-        return decodeURIComponent(v);
-      } catch {
-        return v;
-      }
-    }
-  }
-  return null;
-}
-
 export const cookieAuth = {
   snapshot(): CookieAuthSnapshot {
     return {
-      accessToken: readCookie(ACCESS_COOKIE),
-      refreshToken: readCookie(REFRESH_COOKIE),
-      csrfToken: readCookie(CSRF_COOKIE),
+      accessToken: tokens.getAccessToken(),
+      refreshToken: tokens.getRefreshToken(),
+      csrfToken: tokens.getCsrfToken(),
     };
   },
   csrf(): string | null {
-    return readCookie(CSRF_COOKIE);
+    return tokens.getCsrfToken();
   },
   access(): string | null {
-    return readCookie(ACCESS_COOKIE);
+    return tokens.getAccessToken();
   },
-  /** Clear all auth cookies (F20 — use before redirecting to login). */
+  /**
+   * Clear all auth cookies — used by the legacy refresh-coordinator path.
+   * The new authService.reportAuthFailure({type:'session_expired'}) is the
+   * preferred entry point — killSession is atomic and never redirects.
+   */
   clear(): void {
-    if (typeof document === 'undefined') return;
-    const past = 'Thu, 01 Jan 1970 00:00:00 GMT';
-    document.cookie = `${ACCESS_COOKIE}=; expires=${past}; path=/; Secure; SameSite=None`;
-    document.cookie = `${REFRESH_COOKIE}=; expires=${past}; path=/; Secure; SameSite=None`;
-    document.cookie = `${CSRF_COOKIE}=; expires=${past}; path=/; Secure; SameSite=None`;
+    tokens.clearTokens();
   },
 };
 
 /**
- * RefreshCoordinator — F21.
- *
- * When several parallel requests hit a 401 because the access token just
- * expired (common on app-boot fetch storms), each one would otherwise
- * trigger its own `/auth/refresh` call. We share a single inflight
- * promise and await it on the rest.
+ * RefreshCoordinator (single-flight dedup of /auth/refresh calls).
+ * FIX-020: still useful for non-authApi axios callers (e.g. plain fetch wrappers).
+ * The new IRefreshCoordinator in @/auth/impl/SingleFlightRefreshCoordinator is
+ * wired into the IAuthService. This remains for backwards compatibility.
  */
 class RefreshCoordinator {
   private inflight: Promise<string | null> | null = null;

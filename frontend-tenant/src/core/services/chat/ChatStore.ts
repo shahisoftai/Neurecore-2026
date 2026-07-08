@@ -60,9 +60,25 @@ export function createChatStore(config: ChatConfig) {
       {
         name: config.storageKey,
         partialize: (state) => ({
-          messages: state.messages.slice(-config.maxMessages),
+          messages: Array.isArray(state.messages)
+            ? state.messages.slice(-config.maxMessages)
+            : [],
           conversationId: state.conversationId,
         }),
+        merge: (persistedState, currentState) => {
+          const ps = (persistedState ?? {}) as Partial<ChatStoreState>;
+          return {
+            ...currentState,
+            ...ps,
+            messages: Array.isArray(ps.messages) ? ps.messages : currentState.messages,
+            conversationId:
+              typeof ps.conversationId === 'string' || ps.conversationId === null
+                ? ps.conversationId
+                : currentState.conversationId,
+            sending: typeof ps.sending === 'boolean' ? ps.sending : currentState.sending,
+            open: typeof ps.open === 'boolean' ? ps.open : currentState.open,
+          };
+        },
       },
     ),
   );

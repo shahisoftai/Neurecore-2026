@@ -1,12 +1,16 @@
 # NeureCore — Auth & Login System (Authoritative Reference)
 
-**Last updated:** 2026-07-07 16:27 PKT (Auth Hardening Refactor plan written — see [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). 10 phases, ~18 days. Eliminates the "auth gets corrupted when I implement work on other pages" bug class.)
+**Last updated:** 2026-07-07 (FIX-020 SHIPPED — see [int-features/auth-architecture.md](int-features/auth-architecture.md) for the new single source of truth. The 10-phase refactor is complete and deployed to production on 2026-07-07.)
 **Audience:** Anyone (human or AI) modifying or debugging login, sessions, or cookies in the NeureCore platform.
 **TL;DR:** Both frontends (admin + tenant) and the NestJS backend use **cookie-only authentication** (HttpOnly `__Host-nc_at` + `__Host-nc_rt` + `__Host-nc_csrf`). API calls are **same-origin** (Next.js `rewrites()` proxy `/api/v1/*` → backend on `127.0.0.1:3003`). Refresh tokens are tracked in **families** with reuse detection. Per-account **lockout** after 5 failures in 10 minutes. CSRF double-submit on all state-changing requests. Password changes invalidate all outstanding tokens.
 
-> **Planned refactor (FIX-020):** the current ad-hoc auth wiring has 7 root causes that produce "auth gets corrupted on new-page work" symptoms. The full fix is a 10-phase refactor to a single `IAuthService` facade with SOLID L3 dependencies — see [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). Until that's shipped, see [§16 below](#16-known-issues-deferred-to-fix-020) for the current pain points.
+> ## ⚠️ DO NOT CORRUPT THE AUTH SYSTEM
+>
+> **The single source of truth for auth state is `useAuth()` in `@/auth`.** All auth-related changes (login, logout, session refresh, 401 handling, lockout, role guards) **must go through `IAuthService`**. Don't reintroduce `localStorage`/sessionStorage token writes, raw `document.cookie` access outside `CookieTokenRepository`, direct `useAuthStore.getState().setUser/clearUser`, or `window.location.href = '/login'` hard-redirects. There is **one** entrypoint per concern; using anything else re-creates the "auth gets corrupted on new-page work" class of bugs.
+>
+> See [int-features/auth-architecture.md](int-features/auth-architecture.md) for the SOLID layered design (7 interfaces, 7 implementations, DI container) and the banned-pattern list. The lint script `bash scripts/auth-lint.sh` fails CI on any banned pattern. See [§16.2](#162-corrupting-the-auth-system-is-structurally-hard) for details.
 
-**Sibling docs:** [`backend.md`](backend.md) · [`frontend-admin.md`](frontend-admin.md) · [`frontend-tenant.md`](frontend-tenant.md) · [`contabo-ops.md`](contabo-ops.md) · [`fixes.md`](fixes.md) · [`disaster-recovery.md`](disaster-recovery.md)
+**Sibling docs:** [`int-features/auth-architecture.md`](int-features/auth-architecture.md) · [`backend.md`](backend.md) · [`frontend-admin.md`](frontend-admin.md) · [`frontend-tenant.md`](frontend-tenant.md) · [`contabo-ops.md`](contabo-ops.md) · [`fixes.md`](fixes.md#fix-020--auth-system-corrupted-on-new-page-work-shipped) · [`disaster-recovery.md`](disaster-recovery.md)
 
 ---
 
@@ -379,7 +383,9 @@ Each row has `details.severity = 'CRITICAL'`. The `familyId` and `userId` are in
 
 ## 13. Test coverage
 
-`backend/src/modules/auth/services/auth-hardening.spec.ts` (8/8 passing):
+### Backend — FIX-020 leaves these untouched; still 8/8
+
+`backend/src/modules/auth/services/auth-hardening.spec.ts`:
 
 | Test | Verifies |
 |---|---|
@@ -394,9 +400,39 @@ Each row has `details.severity = 'CRITICAL'`. The `familyId` and `userId` are in
 
 Run: `cd backend && ./node_modules/.bin/jest --config jest.config.js src/modules/auth/services/auth-hardening.spec.ts`
 
+### Frontend — NEW 27 tests added by FIX-020
+
+`frontend-tenant/src/auth/__tests__/` (vitest, run via `cd frontend-tenant && npx vitest run`):
+
+| File | Test cases |
+|---|---|
+| `cookie-token-repository.spec.ts` (6) | reads/writes all 3 cookies; `clearTokens()` works; **never touches localStorage/sessionStorage**; `setAccessToken` is no-op (server owns persistence) |
+| `auth-event-bus.spec.ts` (3) | deliver to all subscribers; unsubscribe works; one bad listener doesn't break others |
+| `auth-route-registry.spec.ts` (3) | `/login`/`/register`/`/onboarding/*` etc. unauthenticated; `/home`/`/command-center` not |
+| `auth-session-lifecycle.spec.ts` (4) | `killSession` clears cookies+user+emits+broadcasts; correct reason propagation; unsubscribe works; survives missing `BroadcastChannel` |
+| `auth-service.spec.ts` (11) | state starts `initializing`; login success/failure/lockout; `reportAuthFailure` for all 4 types; logout fires `killSession`; refetch updates user on 200 / unauthenticates on 401 |
+
+### Playwright (browser-level, run against prod)
+
+`frontend-tenant/tests/e2e/` (chromium):
+
+| File | Tests |
+|---|---|
+| `auth-smoke.spec.ts` (3) | home renders; login renders without errors; protected route doesn't loop — works against both local dev and prod |
+| `prod-auth-smoke.spec.ts` (4) | tenant/login; admin/login; tenant/protected-no-loop; admin/protected-no-loop — against `https://hq.neurecore.com` and `https://cc.neurecore.com` |
+| `prod-login-flow.spec.ts` (1) | Real `admin@neurecore.ai` login → `/admin/overview` (browser-level E2E) |
+| `prod-walkthrough.spec.ts` (1) | Login → overview → agents → security pages, no console errors |
+
+### CI prevention
+
+- `bash scripts/auth-lint.sh` — runs 4 grep checks. **Run this before pushing auth-related changes.**
+- TypeScript: `npx tsc --noEmit` on both `frontend-tenant/` and `frontend-admin/`.
+
 ---
 
 ## 14. Files of interest
+
+### Backend (unchanged — FIX-020 was frontend-only)
 
 | File | Role |
 |---|---|
@@ -410,19 +446,64 @@ Run: `cd backend && ./node_modules/.bin/jest --config jest.config.js src/modules
 | `backend/src/modules/auth/guards/jwt-auth.guard.ts` | `@Public()` opt-out |
 | `backend/src/modules/auth/controllers/auth.controller.ts` | `@Throttle({...})` decorators on every route |
 | `backend/src/modules/security/services/account-lockout.service.ts` | sliding window + DB lock + token revocation |
-| `backend/src/modules/security/security.module.ts` | SecretProviderService only (AccountLockoutService moved to AuthModule to avoid forwardRef cycle) |
 | `backend/src/common/auth/cookie-auth.service.ts` | setAuthCookies / clearAuthCookies / parseCookies / safeEquals |
 | `backend/src/common/auth/csrf.middleware.ts` | double-submit CSRF, in app.module.ts |
 | `backend/prisma/migrations/20260705_auth_hardening_batch1/migration.sql` | User.passwordChangedAt + lockedUntil, RefreshToken.familyId + replacedById, LoginAttempt table, 246-row backfill of familyId |
-| `frontend-admin/src/services/cookieAuth.ts` | cookie-only reader (replaces localStorage); RefreshCoordinator for F21 race-free refresh |
-| `frontend-admin/src/services/api.ts` | axios with `withCredentials: false` (same-origin), `X-CSRF-Token` interceptor, error handler |
-| `frontend-admin/src/services/auth.service.ts` | cookie-pure login/me/logout (no localStorage) |
-| `frontend-admin/src/lib/errors.ts` | useErrorHandler clears cookies before redirect (F20) |
-| `frontend-admin/next.config.js` | `rewrites()` proxy `/api/v1/* → 127.0.0.1:3003` |
-| `frontend-tenant/src/core/infrastructure/auth/TokenManager.ts` | cookie-backed `getAccess/RefreshToken` (no localStorage) |
-| `frontend-tenant/src/core/services/api/clients/RestClient.ts` | RestClient with cookie-backed tokenManager |
-| `frontend-tenant/src/services/api.ts` | legacy axios same-origin |
-| `frontend-tenant/next.config.js` | same rewrite |
+
+### Frontend — NEW auth core (FIX-020)
+
+> ⚠️ **DO NOT** import from anywhere other than `@/auth` for auth state changes. See [§16](#16-auth-architecture-fix-020--current-state).
+
+| File | Role |
+|---|---|
+| `frontend-{tenant,admin}/src/auth/core/interfaces.ts` | ALL 7 SOLID interfaces + `AuthState`/`AuthFailure`/`AuthEvent` types |
+| `frontend-{tenant,admin}/src/auth/impl/CookieTokenRepository.ts` | **The only** file that reads/writes the auth cookies. NEVER touches localStorage. |
+| `frontend-{tenant,admin}/src/auth/impl/ZustandUserRepository.ts` | **The only** owner of the `useAuthStore` (tenant: `auth-storage`, admin: `admin-auth-storage`). |
+| `frontend-{tenant,admin}/src/auth/impl/AuthEventBus.ts` | Pub/sub for cross-tab + non-React subscribers (sockets, analytics). |
+| `frontend-{tenant,admin}/src/auth/impl/AuthRouteRegistry.ts` | Public-route allow-list + login/post-auth URLs. |
+| `frontend-{tenant,admin}/src/auth/impl/RestAuthApi.ts` | Pure `/auth/*` HTTP calls. No state, no cookies. |
+| `frontend-{tenant,admin}/src/auth/impl/SingleFlightRefreshCoordinator.ts` | Single-flight dedup of parallel `/auth/refresh` calls. |
+| `frontend-{tenant,admin}/src/auth/impl/AuthSessionLifecycle.ts` | **The only** `killSession()` implementation. Atomic: cookies + store + eventBus + BroadcastChannel. |
+| `frontend-{tenant,admin}/src/auth/impl/BaseAuthService.ts` | The L2 facade (the auth state machine). Admin extends this. |
+| `frontend-admin/src/auth/impl/AuthService.ts` | Admin's subclass — disables register/loginWithGoogle, enforces admin roles. |
+| `frontend-{tenant,admin}/src/auth/transport/authHttpClient.ts` | The single axios instance + CSRF request interceptor. |
+| `frontend-{tenant,admin}/src/auth/transport/authResponseInterceptor.ts` | The 401/lockout/refresh-reuse response interceptor — delegates to `IAuthService.reportAuthFailure()`. |
+| `frontend-{tenant,admin}/src/auth/di/authContainer.ts` | **Composition root.** The only place that wires concrete classes. |
+| `frontend-{tenant,admin}/src/auth/hooks/useAuth.ts` | The L1 hook. Pages import only this. Uses `useSyncExternalStore`. |
+| `frontend-{tenant,admin}/src/auth/hooks/useTenantAuth.ts` / `useAdminAuth.ts` | Back-compat shims. Thin wrappers over `useAuth()`. |
+| `frontend-{tenant,admin}/src/auth/hooks/useRequireAuth.ts` | Convenience: `useAuth()` + soft redirect to `/login?from=...` if unauthenticated. |
+| `frontend-{tenant,admin}/src/auth/components/AuthProvider.tsx` | Mounts `authService.initialize()` exactly once on mount. Cross-tab BroadcastChannel sync. |
+| `frontend-{tenant,admin}/src/auth/components/SessionExpiredScreen.tsx` | Full-page "Your session expired. Sign in again." UI. |
+| `frontend-{tenant,admin}/src/auth/components/AuthErrorScreen.tsx` | Unrecoverable error (refresh-reuse detected). |
+| `frontend-{tenant,admin}/src/auth/components/LockoutScreen.tsx` | Lockout timer. |
+| `frontend-{tenant,admin}/src/auth/index.ts` | Re-exports `{ AuthProvider, useAuth, useRequireAuth, authService, AuthError, ... }`. |
+
+### Frontend — back-compat shims (still exist, delegate to the new core)
+
+| File | Role |
+|---|---|
+| `frontend-{tenant,admin}/src/hooks/useTenantAuth.ts` / `useAdminAuth.ts` | Re-export of `auth/hooks/useTenantAuth.ts`. Existing 45 pages keep working. |
+| `frontend-{tenant,admin}/src/stores/authStore.ts` | Re-export of `useAuthStore` from the auth core. |
+| `frontend-tenant/src/services/cookieAuth.ts` (admin: deprecated, kept for back-compat) | Tenant: removed in FIX-020. Admin: thin shim that delegates to `CookieTokenRepository`. `CookieTokenRepository.clearTokens()` is what `cookieAuth.clear()` now calls. |
+| `frontend-{tenant,admin}/src/services/api.ts` | Legacy axios instance (kept for non-auth-cored consumers). The interceptor now calls `authService.reportAuthFailure` instead of `window.location.href = '/login'`. |
+| `frontend-{tenant,admin}/src/lib/errors.ts` | `useErrorHandler` no longer clears cookies / hard-redirects. The 401 handling moved to `authResponseInterceptor`. |
+
+### DELETED in FIX-020
+
+| File | Why |
+|---|---|
+| `frontend-{tenant,admin}/src/lib/security.ts` | Dead `SecureStorageKey`/`setSecureToken`/`getSecureToken`/`clearAllSecureTokens`. The XSS helpers (`sanitizeHtml`, `isValidEmail`, etc.) were never imported — if needed later, re-add narrowly. |
+| `frontend-admin/src/services/cookieAuth.ts` direct cookie writes | Now delegates to `CookieTokenRepository`. |
+
+### CI / prevention
+
+| File | Role |
+|---|---|
+| `scripts/auth-lint.sh` | Greps for 4 banned patterns. Fails CI on any hit. Run before every push. |
+| `frontend-tenant/tests/e2e/auth-smoke.spec.ts` | 3 Playwright tests on local + production — verify the loop is gone. |
+| `frontend-tenant/tests/e2e/prod-auth-smoke.spec.ts` | 4 Playwright tests against `https://hq.neurecore.com` / `https://cc.neurecore.com`. |
+| `frontend-tenant/tests/e2e/prod-login-flow.spec.ts` | 1 test: real login flow on prod. |
+| `frontend-tenant/tests/e2e/prod-walkthrough.spec.ts` | 1 test: post-login walkthrough with no console errors. |
 
 ---
 
@@ -437,43 +518,75 @@ Run: `cd backend && ./node_modules/.bin/jest --config jest.config.js src/modules
 | Login attempts on `/auth/register` not lockouted (only throttled 5/min). | Low-risk (no existing user enumeration vector). |
 | Session table grows unbounded; logout sets `isActive=false` but inactive rows aren't pruned. | Add nightly cron to expire sessions older than access-token TTL. |
 | No per-route "remember me" / device-trust options. Refresh always 7d. | Future. |
-| **Ad-hoc auth wiring** — see §16 below. | **FIX-020 plan written 2026-07-07** — see [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). 10 phases, ~18 days. |
+| ~~Ad-hoc auth wiring~~ | ✅ **FIX-020 SHIPPED 2026-07-07** — 7 interfaces, 7 implementations, DI container, Atomic `killSession()`, single response interceptor, back-compat `useTenantAuth`/`useAdminAuth` shims, 27 new unit tests, 4 prod Playwright smoke tests, all green. See [int-features/auth-architecture.md](int-features/auth-architecture.md). |
 
 ---
 
-## 16. Known issues deferred to FIX-020
+## 16. Auth architecture (FIX-020 — current state)
 
-> **These are the "auth gets corrupted" issues.** The full plan to fix them is in [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md). Until FIX-020 ships, workarounds are documented below.
+> **⚠️ This entire section is structural. If any item below is broken in a regression, treat it as a Critical bug. Do NOT patch symptoms by reintroducing localStorage auth, direct cookie writes, or `window.location.href` redirects.**
 
-| # | Issue | Workaround until FIX-020 |
-|---|---|---|
-| **RC-1** | Dead `SecureStorageKey` + `setSecureToken` writes `nc_at` to sessionStorage in `lib/security.ts:108-172` (tenant) and `lib/security.ts:80-107` (admin). The key `nc_at` doesn't even match `__Host-nc_at`. | Do NOT import `lib/security.ts` for token storage. Use `TokenManager` / `cookieAuth`. |
-| **RC-2** | `lib/errors.ts:321-322` (tenant) and `lib/errors.ts:324-340` (admin) do `localStorage.removeItem("tenant_accessToken")` + hard-redirect to `/login` on `TOKEN_EXPIRED` error codes. The backend never stored the token there. | Do NOT call `useErrorHandler` from new pages. The axios interceptor already handles 401. |
-| **RC-3** | `clearTokens()` clears cookies but does NOT clear the Zustand store. → Stale-user loop on next page load. | After `tokenManager.clearTokens()`, also call `useAuthStore.getState().clearUser()`. |
-| **RC-4** | `intelligence/page.tsx:927-928` saves profile with stale `user` prop, writes corrupted user back to persisted store. | Read user from `useAuthStore.getState().user` at save time, not from prop. |
-| **RC-5** | `useTenantAuth` / `useAdminAuth` return `null` during hydration → pages render blank → first API call returns 401 → hard-redirect. | Use `useAuth()` (planned) which returns discriminated `initializing | unauthenticated | authenticated | error`. |
-| **RC-6** | `AppInitializer.tsx:54` clears cookies on any `/me` failure (transient, proxy, restart). | Wrap `/me` call in retry-once. Only clear session on 401 with `invalid_token`. |
-| **RC-7** | Two parallel axios instances (`api.ts` vs `RestClient.ts`) with independent refresh coordination. | Migrate all callers to one shared `authHttpClient`. |
+### 16.1 The contract
 
-### 16.1 Quick diagnostic for "auth feels broken"
+The auth system is one orthogonal 4-layer machine:
 
-If a user reports "auth got corrupted":
+| Layer | Lives in | What | Single entrypoint |
+|---|---|---|---|
+| L1 (UI) | `@/auth` | Hook + Context | `useAuth()` (discriminated `AuthState`) |
+| L2 (Service) | `@/auth/di/authContainer.ts` | State machine | `IAuthService` (singleton `authService`) |
+| L3 (Core) | `@/auth/impl/*` | 7 SOLID modules | `IAuthSessionLifecycle`, `ITokenRepository`, `IUserRepository`, `IAuthApi`, `IRefreshCoordinator`, `IAuthEventBus`, `IAuthRouteRegistry` |
+| L4 (Transport) | `@/auth/transport/*` | Single axios + response interceptor | `authHttpClient` + `authResponseInterceptor` |
 
-1. **Check the JS console** for `localStorage.setItem` / `getItem` calls referencing `accessToken` or `tenant_accessToken` — these indicate a page is using the dead path.
-2. **Check the Network tab** for any 401 response — every 401 is followed by a hard-redirect to `/login` until the interceptor is changed.
-3. **Check the application tab** in DevTools for `__Host-nc_at` cookie. If it's gone but `auth-storage` in localStorage still has the user → stale-user loop (RC-3). Hard refresh to recover.
-4. **Open the failing page** and grep for `useTenantAuth` / `useAdminAuth`. If the page returns `null` while waiting, it might race a fetch → 401 → redirect.
-5. **Reference:** the full audit and the FIX-020 plan: [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md).
+**Every layer depends on abstractions below, never concretions.** This is what makes the architecture "structurally incapable of being corrupted".
+
+Full design: [int-features/auth-architecture.md](int-features/auth-architecture.md).
+
+### 16.2 Corrupting the auth system is structurally hard
+
+The following patterns are **banned** (CI-enforced by `bash scripts/auth-lint.sh`):
+
+| Pattern | Why banned |
+|---|---|
+| `localStorage.setItem/getItem/removeItem` for `accessToken`/`refreshToken`/`auth`/`session`/`user` keys (outside `auth/`) | XSS exfiltration. Tokens must be in HttpOnly cookies. |
+| `sessionStorage.setItem/getItem/removeItem` for the same keys | Same. |
+| `document.cookie = ...` outside `src/auth/impl/CookieTokenRepository.ts` | Single owner of cookie I/O. The tenant `TokenManager` (a thin shim) and admin `cookieAuth` (also a shim) both delegate to it. |
+| `window.location.href = '/login'` outside `auth/` | Bypasses the React state machine. Use `useAuth().logout()` or `useRequireAuth()` for soft redirects. |
+| `SecureStorageKey` / `setSecureToken` / `getSecureToken` / `clearAllSecureTokens` | Dead legacy code (writes to `nc_at` key that doesn't match `__Host-nc_at`). The whole `lib/security.ts` file was deleted. |
+| `useAuthStore.getState().setUser/clearUser` outside `auth/` | Bypasses the auth state machine. The store is owned by `ZustandUserRepository`. |
+| `import { useAuthStore } from '@/stores/authStore'` for direct mutation | Use `useAuth()` instead. The `@/stores/authStore` re-export exists only for backwards-compat. |
+
+If you find yourself wanting to add one of these for a "quick fix" — stop and ask: is there a way to do this through `useAuth()` / `authService` instead? In 100% of cases there is.
+
+### 16.3 Quick diagnostic for "auth feels broken"
+
+If a user reports "auth got corrupted" or "I got logged out randomly":
+
+1. **Run `bash scripts/auth-lint.sh`** — if it fails, there's a banned-pattern regression. The error message tells you exactly which file/line.
+2. **Check the served JS bundle** on the prod URL: `curl -sk https://hq.neurecore.com/_next/static/chunks/$(curl -sk https://hq.neurecore.com/ | grep -oE 'main-app-[a-z0-9]+\.js' | head -1) | grep -c "authService"`. Should be > 0. The reverse — if the new bundle doesn't reference `authService`, the deploy didn't go through or the build cache is stale.
+3. **Check `__Host-nc_at` cookie**. If it's gone but the user is on a protected page, `killSession()` was called. Inspect the PM2 log for `[AuthSessionLifecycle]` (if added) or just `pm2 logs neurecore-tenant --lines 200 | grep -i auth`.
+4. **Run `npx playwright test prod-auth-smoke --project=chromium`** (lives in `frontend-tenant/tests/e2e/`). 4 tests cover the live prod URLs. They assert: login form renders, no console errors, no hard-redirect-loop.
+5. **Reference:** the full audit (now historical): [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md).
+
+### 16.4 What `useTenantAuth` / `useAdminAuth` do now
+
+The shims are still exported (for the 21 tenant pages + 24 admin pages that imported them) but **they are now thin wrappers over `useAuth()`** with the original `AuthUser | null` return signature preserved. New code should `import { useAuth } from '@/auth'` directly.
+
+```ts
+// tenant: src/hooks/useTenantAuth.ts → re-exports auth/hooks/useTenantAuth.ts
+// admin:  src/hooks/useAdminAuth.ts → re-exports auth/hooks/useAdminAuth.ts
+// Both internals live in src/auth/hooks/.
+```
 
 ---
 
-## 16. Quick troubleshooting
+## 17. Quick troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Browser shows "Network Error" on login | OLS CORS strip; frontend using `withCredentials: true` to cross-origin API | Verify `next.config.js` rewrites exist; `NEXT_PUBLIC_API_URL` not set in `.env.production`; backend at `NEXT_INTERNAL_API_URL` reachable from Next.js process |
 | `Login failed` immediately with no network log | Frontend axios baseURL fell back to hardcoded `http://localhost:3000` | Check that the new build replaced all webpack persistent cache; verify `services/api.ts` source has `'/api/v1'` |
 | 401 on every protected endpoint | Token issued before backend's `passwordChangedAt` bump (or token in blacklist Redis after logout) | Re-login |
-| 429 after a few bad attempts | AccountLockoutService threshold hit (5/10min) | Reset `lockedUntil` and Redis keys (Section 12) |
+| 429 after a few bad attempts | AccountLockoutService threshold hit (5/10min) → surface `<LockoutScreen />` | Reset `lockedUntil` and Redis keys (Section 12); the user will see the lockout timer in the UI |
+| User stuck on "Restoring session..." splash | State stuck in `initializing` — usually means the persist hydration promise never resolved | Check `ZustandUserRepository.onHydrationComplete()` — it falls back to `queueMicrotask` if `persist.hasHydrated()` already returned true. If the issue persists, run `pm2 restart neurecore-tenant` (clears in-memory state). |
 | Backend `INVALID_REQUEST` with no useful message | Class-validator 400; an old issue fixed by F8 update of `GlobalExceptionFilter` | Verify the deployed global exception filter has `extractGenericBadRequestHint` (Section F8 in fixes) |
 | Access token returns 401 right after refresh | Refresh-failed → refresh-reuse detected → account tokens were revoked | Verify it's not a real compromise via `audit_logs` (Section 12); otherwise have user re-login |

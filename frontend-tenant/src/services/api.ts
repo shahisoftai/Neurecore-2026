@@ -1,20 +1,16 @@
-// ─── services/api.ts (cookie-only legacy, F1) ────────────────────────────────
+// ─── services/api.ts (legacy axios instance, F20-era FIX-020) ─────────────────
 //
-// Legacy Axios instance kept for backward compatibility with existing stores.
-// ✅ New feature code: import { restClient } from '@/core/services/api/clients/RestClient'
-// ✅ New repositories: import { agentRepository } from '@/core/repositories/AgentRepository'
-//
-// Token lifecycle is delegated to TokenManager (DIP, cookie-backed).
+// Backwards-compatible axios instance kept for stores/services that haven't
+// migrated to the authHttpClient. The interceptor used to hard-redirect on 401
+// (which caused the stale-user redirect loop). It now delegates to the
+// IAuthService via authService.reportAuthFailure — same fix as authHttpClient.
 
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
 import type { ApiResponse } from '@/types/api.types';
 
-import { tokenManager } from '@/core/infrastructure/auth/TokenManager';
 import { errorHandler } from '@/core/infrastructure/ErrorHandler';
+import { authService } from '@/auth';
 
-// Same-origin by default: Next.js rewrites proxy /api/v1/* to NestJS so
-// the browser sees same-origin and no CORS preflight is needed. `__Host-`
-// cookies stay first-party.
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api/v1';
 
 const CSRF_COOKIE = '__Host-nc_csrf';
@@ -54,8 +50,6 @@ const api: AxiosInstance = axios.create({
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (typeof window === 'undefined') return config;
-
-  // F6: echo __Host-nc_csrf on state-changing calls (except exemptions).
   const method = (config.method ?? '').toUpperCase();
   const url = config.url ?? '';
   const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
@@ -70,7 +64,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// Refresh on 401
+// FIX-020: delegate auth failures to the IAuthService instead of hard-redirecting.
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError<ApiResponse>) => {
@@ -90,12 +84,10 @@ api.interceptors.response.use(
             },
           },
         );
-        // Retry — new __Host-nc_at is now in the browser jar.
         return api(original);
       } catch {
-        // F20: clear before redirect
-        tokenManager.clearTokens();
-        if (typeof window !== 'undefined') window.location.href = '/login';
+        // FIX-020: report the failure to the AuthService, never redirect.
+        authService.reportAuthFailure({ type: 'session_expired' });
       }
     }
 

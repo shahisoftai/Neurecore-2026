@@ -37,7 +37,7 @@ A single consolidated chat widget (`UnifiedChatPanel`) replacing two independent
 
 | File | Change |
 |---|---|
-| `src/components/TenantShell.tsx` | Added `UnifiedChatPanel` import + mount in both NewShell (line 146) and LegacyShell (line 251), alongside existing `ConversationPanel` |
+| `src/components/TenantShell.tsx` | Added `UnifiedChatPanel` import + mount in the shell, alongside existing `ConversationPanel`. (FIX-021 deleted LegacyShell, so there is now exactly one shell.) |
 
 ## Files Deleted (0)
 

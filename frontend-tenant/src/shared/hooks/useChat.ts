@@ -21,7 +21,8 @@ export function useChat(
   _config: ChatConfig,
   pageContext?: string,
 ) {
-  const messages = useChatStore((s) => s.messages);
+  const messagesRaw = useChatStore((s) => s.messages);
+  const messages = Array.isArray(messagesRaw) ? messagesRaw : [];
   const open = useChatStore((s) => s.open);
   const sending = useChatStore((s) => s.sending);
   const conversationId = useChatStore((s) => s.conversationId);

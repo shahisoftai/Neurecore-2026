@@ -201,6 +201,40 @@ Expected: `204 No Content` + `Access-Control-Allow-Origin: <origin>` for each.
 | `GET /help?_rsc=... 404` in network tab | `<Link href="/help">` exists in TopBar but no `/help` page | Either create the page or remove the link — see [frontend-tenant.md §19](frontend-tenant.md#19-defensive-patterns-zustand-merge--ui-guards-fix-019) |
 | `Firefox can't establish a connection to wss://brain.neurecore.com/socket.io/` in console | WebSocket URL falls back to wrong host in production (no `NEXT_PUBLIC_SOCKET_URL`, or hardcoded `localhost:3000`) | See [§3.2 Tenant WebSocket connection failure](runbook.md#32-tenant-websocket-connection-failure) |
 | `Content-Security-Policy warnings 4` in console | Pre-existing — Next.js inlines scripts that don't have a strict CSP nonce | Cosmetic, not blocking; OLS vhost doesn't yet emit `Content-Security-Policy` header |
+| User reports "I got logged out randomly" / "auth got corrupted" | **FIX-020 shipped 2026-07-07 — the "auth gets corrupted" bug class is structurally gone.** If this regresses, run `bash scripts/auth-lint.sh` on Contabo first (or locally). | See [§3.5 "Auth feels corrupted" diagnostic](runbook.md#35-auth-feels-corrupted-diagnostic) |
+| Browser stuck on `Restoring session…` splash (was a known issue, FIX-020 fixed it) | State stuck in `initializing` — means the `ZustandUserRepository.onHydrationComplete()` promise never resolves | See [`auth.md §17`](auth.md#17-quick-troubleshooting) — usually resolved by `pm2 restart neurecore-tenant`. If persistent, check that `useAuthStore.persist.hasHydrated()` returns true via the new repository's fallback (`queueMicrotask`). |
+| Deploy fails: `npm error: npm ci can only install packages when your package.json and package-lock.json are in sync` | Local `package-lock.json` is stale (new dev deps added without re-syncing) | Run `npm install --package-lock-only --legacy-peer-deps` locally, commit, re-deploy. (FIX-020 added vitest specs that pulled new transitive deps.) |
+
+### 3.5 "Auth feels corrupted" diagnostic (post-FIX-020)
+
+The "auth gets corrupted" symptom class — the one the FIX-020 plan was written to eliminate — should not recur. If a user reports it:
+
+1. **Run `bash scripts/auth-lint.sh`** (from the repo root). If it fails, the regression introduced a banned pattern. CI should have caught it; investigate the PR/merge that brought it in.
+2. **Check the served bundle has the new code:**
+   ```bash
+   curl -sk https://hq.neurecore.com/ | grep -oE 'main-app-[a-z0-9]+\.js'
+   BUNDLE=$(curl -sk https://hq.neurecore.com/ | grep -oE 'main-app-[a-z0-9]+\.js' | head -1)
+   curl -sk "https://hq.neurecore.com/_next/static/chunks/$BUNDLE" | grep -c "authService"
+   # Expected: 1 or more
+   ```
+   If 0 → deploy didn't update the bundle. Rebuild + restart.
+3. **Check the user's cookies** (DevTools → Application → Cookies):
+   - `__Host-nc_at` (HttpOnly, ~15 min) → access token
+   - `__Host-nc_rt` (HttpOnly, 7 d) → refresh token
+   - `__Host-nc_csrf` (JS-readable) → for state-changing requests
+   If absent → `killSession()` was called. Inspect backend log for `4091` (refresh reuse) or 401s.
+4. **Check React state via dev tools** (if you can repro): in the browser console, run:
+   ```js
+   // The exposed hook isn't on window — instead, look for the AuthProvider's
+   // children mounting state in the React DevTools Profiler.
+   ```
+5. **Run the Playwright prod smoke:**
+   ```bash
+   PLAYWRIGHT_BASE_URL=https://hq.neurecore.com \
+     npx playwright test prod-auth-smoke prod-login-flow prod-walkthrough --project=chromium --workers=1
+   ```
+   All 9 should pass.
+6. **Reference:** [`int-features/auth-architecture.md`](int-features/auth-architecture.md) and [`fixes.md` FIX-020](fixes.md#fix-020--auth-system-corrupted-on-new-page-work-shipped).
 
 ---
 
@@ -394,5 +428,7 @@ for p in json.load(sys.stdin):
 ## See also
 
 - [auth.md](auth.md) — Authoritative reference for the cookie-only auth system.
-- [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md) — The 10-phase plan to eliminate the "auth gets corrupted" bug class (FIX-020).
-- [fixes.md](fixes.md) — FIX-014 (Auth Hardening Batch 1), FIX-015-016 (auth-hardening audit), FIX-019 (defensive patterns), FIX-020 (planned refactor).
+- [int-features/auth-architecture.md](int-features/auth-architecture.md) — The SOLID architecture of the IAuthService facade (post-FIX-020 — single source of truth for any auth change).
+- [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md) — The 10-phase FIX-020 plan (now ✅ SHIPPED 2026-07-07).
+- [fixes.md](fixes.md) — FIX-014 (Auth Hardening Batch 1), FIX-015-016 (auth-hardening audit), FIX-019 (defensive patterns), FIX-020 (✅ shipped auth refactor).
+- `scripts/auth-lint.sh` — Banned-pattern CI check. Run before any auth-related PR.

@@ -18,7 +18,7 @@ NeureCore integrates with Google Workspace via OAuth 2.0. The integration is **t
 
 | Service | Backend Service | REST Endpoints | Tenant UI | Admin UI | Agent Tool |
 |---------|-----------------|---------------|-----------|----------|-----------|
-| Google Sign-In | `auth.service.googleSignIn()` | `POST /auth/google` | `/login` | ❌ (N/A — login route) | N/A |
+| Google Sign-In | `auth.service.googleSignIn()` (backend) — fronted by `useAuth().loginWithGoogle(idToken, intent)` via `RestAuthApi` | `POST /auth/google` | `/login` | ❌ (N/A — admin doesn't support Google login; see [int-features/auth-architecture.md](../int-features/auth-architecture.md)) | N/A |
 | OAuth connect/disconnect | `IntegrationsService` | `/integrations/google/{authorize,callback,disconnect,status}` + admin-revoke | ✅ `/settings/integrations` | ✅ revoke button + read-only overview | N/A |
 | Gmail | `GoogleGmailService` | `/integrations/gmail/*` (inbox, message, body, send, labels) | ✅ Inbox UI + Compose page | ❌ | ✅ `EmailTool` |
 | Google Drive | `GoogleDriveService` | `/integrations/drive/*` + `/integrations/google/drive-folders` + `/integrations/drive/search?q=...&mode=name\|fulltext` + `/integrations/drive/files/:id/permissions[...]` | ✅ Folder tree view | ❌ | ✅ `DocumentsTool` (create/list/read/**share/unshare**), `ReportsTool`, `ContextTool` |
