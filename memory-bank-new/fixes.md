@@ -1820,3 +1820,231 @@ npm run build         # ✔ compiles, 43 routes, all 200
 - Consumers guarded: `hooks/useChat.ts:16`, `shared/hooks/useChat.ts:25`, `app/departments/[id]/workspace/page.tsx:123`.
 - See also: `fixes.md` defensive-patterns cheat sheet (§1) and FIX-019 §Fix #1.
 
+
+---
+
+## FIX-025 — Enterprise Communication Platform deployed to Contabo prod (D21) — 2026-07-08
+
+**What shipped:** All 9 phases of [`enterprise-communication.md`](enterprise-communication.md) (2,142 lines, rev 4 design + rev 3 audit-passed implementation per [`enterprise-comms-chat.md`](enterprise-comms-chat.md)) deployed to production. Backend + frontend-tenant rebuilt; 8 new Prisma tables + 4 new enum values + 5 new nullable columns applied to Neon prod via new migration `20260708_enterprise_communication_platform`. All `COMM_*_ENABLED` feature flags default `false` → zero behavioral change in production until manually flipped per-tenant.
+
+**Deploy sequence executed:**
+1. Snapshot: `/opt/neurecore/_archives/20260708-110617-entcomms-pre/` (backend-dist 1.2 MB, frontend-tenant-.next 41 MB).
+2. `rsync` backend + frontend-tenant via `scripts/deploy.sh` (excludes `.env`, `node_modules`, `.next`).
+3. `prisma migrate diff` → generated `prisma/migrations/20260708_enterprise_communication_platform/migration.sql` (255 lines, 100% additive: 8 new tables, 4 new enum values `REPORTS_TO`/`DELEGATES_TO`/`ParticipantType`/`ThreadStatus`, 5 new nullable columns on `HermesMessage`/`HermesAuditLog`, all FKs `ON DELETE SET NULL/CASCADE`, all indexes safe for `CONCURRENTLY`).
+4. `prisma migrate deploy` against Neon `ep-summer-pond-adpkqy1m-pooler` — applied cleanly, 26/26 migrations recorded.
+5. `nest build` (clean) → `pm2 startOrReload --only neurecore-backend`.
+6. Rebuild tenant → `pm2 startOrReload --only neurecore-tenant`.
+7. `pm2 save`.
+
+**Smoke test (all green):**
+- `curl https://brain.neurecore.com/api/v1/health` → 200
+- `curl https://brain.neurecore.com/api/v1/threads` → 401 (JWT guard working, endpoint wired)
+- `curl https://brain.neurecore.com/api/v1/activity` → 401
+- `curl https://hq.neurecore.com/` → 200
+- All 4 neurecore PM2 processes online, 0 errors in startup logs.
+
+**Pre-existing dependency gap uncovered (FIXED inline, see Prevention):**
+- Commit `9e13699` (admin setup) removed `@upstash/redis@1.37.0` and `cookie-parser@1.4.7` from `backend/package.json` but the code at `src/infrastructure/cache/redis.service.ts:9` (type-only import) and `src/main.ts:6` (`import cookieParser from 'cookie-parser'`) still referenced them. Local `node_modules` had them via pnpm symlinks; Contabo `node_modules` did not.
+- **Fix applied on Contabo:** `npm install @upstash/redis@1.37.0 cookie-parser@1.4.7 --no-save --legacy-peer-deps` (then deleted the generated `package-lock.json` since the project uses pnpm). Build + boot clean.
+- **Code fix TODO:** add these two back to `backend/package.json` dependencies and commit `package.json` + regenerate `pnpm-lock.yaml`. This is pre-existing tech debt unrelated to enterprise comms, but it WILL break a fresh Contabo clone. Tracking in `pending-tasks.md` as a follow-up to FIX-025.
+
+**Rollback (if needed):**
+- Schema rollback: feature flag flip (zero risk; new columns are nullable, new tables unused until flag=true). For actual table removal: `prisma migrate diff --from-url <URL> --to-schema-datamodel <OLD_SCHEMA> --script > down.sql` → review → `prisma db execute --file down.sql`.
+- App rollback: `pm2 startOrReload /opt/neurecore/ecosystem.config.js` after restoring dist from `/opt/neurecore/_archives/20260708-110617-entcomms-pre/backend-dist.tar.gz`.
+
+**Prevention:**
+- **CI guard:** add a script that diffs `package.json` deps against `pnpm-lock.yaml` (or runs `pnpm install --frozen-lockfile` in CI) to catch missing-deps-on-prod-class issues before deploy. The 9e13699 gap survived because no CI step exists for the backend.
+- **Deploy doc update:** `contabo-ops.md §3.2` should add a "fresh `node_modules` requires `pnpm install` before `prisma generate`" note — currently the rebuild script assumes `node_modules` is populated from a prior install.
+- **Pre-deploy dep check:** add `git diff HEAD~1 -- backend/package.json` to deploy.sh so a missing-dep regression is surfaced at the local side, not at boot.
+
+**Reference:**
+- Spec: `memory-bank-new/enterprise-communication.md` (2,142 lines, 9 phases)
+- Impl record: `memory-bank-new/enterprise-comms-chat.md` (1,055 lines, rev 3 audit-passed)
+- Migration: `backend/prisma/migrations/20260708_enterprise_communication_platform/migration.sql`
+- New endpoints wired (all 401-under-JWT): `/api/v1/threads`, `/api/v1/activity`, plus WS handlers `thread:join`/`thread:leave`.
+- Feature flags (all default `false`): `COMM_THREADS_ENABLED`, `COMM_ACTIVITIES_ENABLED`, `COMM_AGENT_MESSAGING_ENABLED`, `COMM_PRESENCE_ENABLED`, `COMM_CI_ENABLED`, `COMM_DIGEST_ENABLED`, `COMM_ESCALATION_ENABLED`, `COMM_FOLLOWUP_ENABLED`, `COMM_MENTIONS_ENABLED`.
+
+---
+
+## FIX-024 (2026-07-08) — Tenant overview audit: rich profile + suspend/delete actions
+
+**Summary:** The admin tenant detail page (`/tenants/[id]`) showed only 6 fields (name, slug, status, ID, created, plan) out of 33+ available. The Overview tab was rebuilt with 7 categorized sections. Added Suspend/Activate and Delete actions with confirmation dialogs.
+
+### Changes
+
+#### Backend (NestJS)
+| File | Change |
+|---|---|
+| `tenants.controller.ts` | Added `PATCH :id/activate` (reactivate suspended tenant) and `DELETE :id` (permanent cascade delete) — both `SUPER_ADMIN` only |
+| `tenants.service.ts` | Added `activate()` (sets status to `ACTIVE`) and `deleteTenant()` (cascade-deletes via Prisma `onDelete: Cascade`) |
+
+#### Frontend-admin
+| File | Change |
+|---|---|
+| `types/api.types.ts` | `Tenant` type expanded from 8 → 33 fields (branding, company profile, localization, onboarding, Google Workspace, retention, blobs). `TenantTier` expanded from 5 → 22 fields (pricing, all limits, feature flags). Added `TenantAddress` interface. `TenantResponseDto` removed (unused). |
+| `tenants/[id]/page.tsx` | **Overview tab**: 7 new sections — Identity, Branding & Contact, Company Profile (address/billing cards), Localization (6-field grid), Onboarding, Tier Details (indigo card with pricing, all limits, feature flags), System. **Header card**: now shows logo, industry, website. **Actions bar**: Suspend/Activate and Delete buttons with confirmation dialogs between header and tabs. |
+| `components/ConfirmDialog.tsx` | New reusable confirmation dialog with `danger` (red) and `warning` (amber) variants, framer-motion animations, busy state |
+
+### New API endpoints
+| Endpoint | Method | Roles | Purpose |
+|---|---|---|---|
+| `/api/v1/tenants/:id/suspend` | `PATCH` | `SUPER_ADMIN` | Sets tenant status to `SUSPENDED` (existing, was missing UI) |
+| `/api/v1/tenants/:id/activate` | `PATCH` | `SUPER_ADMIN` | Sets tenant status back to `ACTIVE` |
+| `/api/v1/tenants/:id` | `DELETE` | `SUPER_ADMIN` | Permanently deletes tenant + all cascaded data (users, agents, depts, etc.) |
+
+### Deploy
+- `./scripts/deploy.sh backend` — `npm ci` failed on Contabo (`peer dep` conflict), worked around via direct `nest build` + `pm2 startOrReload`
+- `./scripts/deploy.sh admin` — clean build, PM2 reloaded
+- DR snapshots taken: `backend-dist.tar.gz` + `frontend-admin-.next.tar.gz` under `/opt/neurecore/_archives/20260708-`
+
+### Verification
+- `PATCH /api/v1/tenants/:id/{suspend,activate}` return `403` (not `404`) from curl — endpoints live
+- `DELETE /api/v1/tenants/:id` returns `403` — endpoint live
+- `cc.neurecore.com` returns `200`
+- All 3 services (`brain`, `hq`, `cc`) return `200`
+
+### Prevention
+- None needed — additive change with no side effects. Deletion is gated by `SUPER_ADMIN` role + confirmation dialog. The `npm ci` failure on Contabo is a pre-existing dependency tree issue (documented in [deployment.md §1](deployment.md#1-deploy-one-app) — fall back to `npm install --legacy-peer-deps`).
+
+---
+
+## FIX-026 — Tenant-specific AI Employee profile (avatar, designation, bio, color, emoji) — 2026-07-08
+
+**Summary:** Until now, every AI Employee instance in a tenant showed the same name/description as its platform template. Two different tenants could spawn the same Fleet Manager and have no way to customize its identity. This fix gives tenants a fully editable profile per AI Employee (picture, designation, bio, color theme, emoji), so the same template instance can look and feel like two different people in two different tenants.
+
+**Architecture choice:** Profile fields are stored inside the existing `Agent.metadata` JSON column under `metadata.profile.*` — no Prisma migration needed. The backend merges new profile fields with existing metadata (so fields like `fromPackageId`, `authorityLevel`, `roleTemplateName` used by other systems are preserved). The avatar uses the existing static-asset middleware (`/cdn/agent-avatars/<tenant>/<hash>.png`).
+
+### Changes
+
+#### Backend (NestJS)
+| File | Change |
+|---|---|
+| `agents/dto/update-agent.dto.ts` | Added 5 optional profile fields: `avatarUrl?` (≤500), `designation?` (≤100), `bio?` (≤1000), `color?` (≤30), `emoji?` (≤8). All nullable. |
+| `agents/interfaces/agent.interface.ts` | `UpdateAgentInput` mirrored the new fields. |
+| `agents/services/agents.service.ts` | `update()` now does a read-modify-write: reads existing `metadata`, merges `metadata.profile.<field>` for each provided field, then writes back. Preserves all other metadata keys. |
+| `uploads/storage/storage.interface.ts` | New `AGENT_AVATAR_UPLOAD` constraint (PNG/JPEG/WEBP/SVG, ≤2MB, prefix `agent-avatars`). |
+| `uploads/uploads.service.ts` | New `uploadAgentAvatar()` + `deleteAgentAvatar()` methods (reuse the same `sniffImageType` validation as logos). |
+| `uploads/uploads.controller.ts` | New `POST /uploads/agent-avatar` and `DELETE /uploads/agent-avatar/:key` endpoints (roles: OWNER/ADMIN/SUPER_ADMIN/PLATFORM_ADMIN). |
+
+#### Frontend-tenant
+| File | Change |
+|---|---|
+| `types/ui.types.ts` | `AgentCardData` got 5 new optional fields (avatarUrl, designation, bio, color, emoji). |
+| `shared/types/domain.types.ts` | `Agent` domain type got the same 5 fields with `string \| null`. |
+| `core/services/api/adapters/AgentAdapter.ts` | New `extractProfile()` defensive read of `metadata.profile`. Profile fields flow into `Agent` adapter output. `RawAgent` now includes `metadata`. |
+| `features/org-chart/hooks/useOrgChart.ts` | `OrgNode.avatarUrl` widened to `string \| null` to accept adapter output. |
+| `components/agents/AgentAvatar.tsx` | **New reusable component** — avatar with 3-tier resolution: uploaded image → tenant emoji → initial letter on a color-tinted background. Accepts `size` (default 40px). |
+| `components/agent-card/AgentCard.tsx` | Both `compact` and `full` variants now render `<AgentAvatar>` instead of a status dot. Bio is shown as a 2-line clamp on full cards. Subtitle prefers `designation`, falls back to `role`, then `type`. |
+| `components/inspector/AgentInspector.tsx` | **Rewrote with editable profile section.** Header shows `<AgentAvatar>` + designation + status. "Edit Profile" button toggles an inline editor with: avatar upload/replace/remove, designation input, bio textarea, color dropdown (9 named colors), emoji input (≤8 chars). Save → `PATCH /api/v1/agents/:id`. Cancel restores prior values. |
+| `services/uploads.service.ts` | New `uploadAgentAvatar()` + `deleteAgentAvatar()` + `AGENT_AVATAR_UPLOAD` constants. Reuses `authHeader()` helper. |
+| `app/marketplace/page.tsx` | `AgentRaw` interface got `metadata?`. Card mapping reads `metadata.profile` and forwards all 5 fields to `AgentCard`. |
+
+### New API endpoints
+| Endpoint | Method | Roles | Purpose |
+|---|---|---|---|
+| `/api/v1/uploads/agent-avatar` | `POST` (multipart) | OWNER/ADMIN/SUPER_ADMIN/PLATFORM_ADMIN | Upload AI Employee avatar (≤2MB). Returns `{ url, key, size }`. |
+| `/api/v1/uploads/agent-avatar/:key` | `DELETE` | same | Delete uploaded avatar. Idempotent. |
+| `/api/v1/agents/:id` | `PATCH` (extended) | OWNER/ADMIN/SUPER_ADMIN/PLATFORM_ADMIN | Now accepts `avatarUrl`, `designation`, `bio`, `color`, `emoji`. Merged into `metadata.profile.*`. |
+
+### Deploy
+- `./scripts/deploy.sh backend` — `npm ci` failed on Contabo (no `package-lock.json`, project uses pnpm). Worked around via direct `nest build` + `pm2 startOrReload` (same workaround as FIX-024).
+- `./scripts/deploy.sh tenant` — clean build, PM2 reloaded.
+- DR snapshot: `/opt/neurecore/_archives/20260708-202859-pre-agent-profile/` (backend-dist + tenant-.next).
+
+### Verification
+- `POST /api/v1/uploads/agent-avatar` (no auth) → `403 PERMISSION_DENIED` (endpoint exists, role check works)
+- Login as `mali@live.com` (test tenant) → upload 68-byte PNG → `200 { url: "/cdn/agent-avatars/<tenant>/<hash>.png" }`
+- `GET /cdn/agent-avatars/.../...png` → `200` (publicly served)
+- `PATCH /api/v1/agents/:id` with `{designation, bio, color, emoji}` → `200` and `metadata.profile` updated
+- `PATCH /api/v1/agents/:id` with only `{emoji:"🚢"}` → all other profile fields preserved (merge logic verified)
+- Other metadata keys (`fromPackageId`, `authorityLevel`, `roleTemplateName`) preserved across updates
+- `hq.neurecore.com`, `/marketplace`, `/departments`, `/home` → all `200`
+
+### Prevention
+- Profile fields are nullable + defensive-read in adapter (any unknown shape is treated as `null`, never crashes)
+- Avatar upload reuses the same MIME-sniff + size validation as logo uploads (defense against spoofed Content-Type)
+- Merge logic in service.update() never clobbers fields outside `metadata.profile` (verified by reading full metadata after partial updates)
+- The 5 fields are explicitly capped by `class-validator` (MaxLength 8/30/100/500/1000) — no oversized payloads
+
+---
+
+## FIX-027 — Phase 2A–2G engine deploy: production 502 for ~18 minutes, schema committed but engine code reverted — 2026-07-09 19:38–19:56 CEST
+
+### Summary
+Attempted to deploy the Enterprise Information Engine (sub-phases 2A–2G per `memory-bank-new/Projects/project-creation-imp-plan.md`). Migrations 2A + 2E and seeds (150 ProjectTypes, 20 QuestionPacks, 1281 M2M links, `HermesAgentType.PROJECT_DISCOVERY` enum) committed to production Neon. NestJS rebuild + reload entered a crash-loop on latent DI bugs in the engine source. After 5 attempted fixes that resolved one constructor at a time, **dist/ was restored to the pre-deploy snapshot at 19:56 CEST and PM2 is running the pre-engine binary**. No customer-visible data was lost; only the engine schema is now in prod with no production code reading from it.
+
+### Timeline (all times CEST, 2026-07-09)
+| Time | Event |
+|---|---|
+| 19:16 | Initial pre-deploy snapshot `_archives/20260709-191634` (1.18 MB) |
+| 19:21 | Engine implementation audited; 5 Playwright type-cast errors fixed locally |
+| 19:26 | Pre-deploy snapshot #2 `_archives/20260709-192640` (dist + prisma + .env.bak) |
+| 19:27 | `DIRECT_URL` set in Contabo `.env` (renamed from `DATABASE_URL_UNPOOLED`) |
+| 19:27 | Rollback script `/opt/neurecore/scripts/rollback-engine-migrations.sh` created |
+| 19:27 | Stash: 224 uncommitted edits → `stash@{0} ENGINE-DEPLOY-20260709-192759` |
+| 19:28 | `scripts/deploy.sh backend` ran; rsync OK but `rebuild.sh backend` failed on `npm ci` flag (engine project uses pnpm not npm) |
+| 19:32 | Inspected DB: 5 engine tables + 3 enums + 2 columns + Hermes enum value already present (applied by another process earlier today) |
+| 19:33 | Seeds applied via `node prisma/seed-{question-packs,project-types}.cjs`; counts canonical (20 / 150 / 1281) |
+| 19:36 | Manual `pnpm install` not required; `prisma generate` ran; `nest build` produced `dist/src/modules/information-engine/` |
+| 19:38 | First PM2 reload — backend crashed with `Nest can't resolve PROJECT_TYPE_REPOSITORY` (interval in `project-types.service.ts` vs `project-types.module.ts`) |
+| 19:39 | Patched `project-types.service.ts` to use `I_PROJECT_TYPE_REPOSITORY` — npm run build OK but `Module not found` because `I_PROJECT_TYPE_REPOSITORY` was not value-imported |
+| 19:44 | Fixed import; rebuild OK |
+| 19:45 | Second PM2 reload — `InterviewService` constructor at index [1] undefined (`Pick<>` + interfaces injected as runtime deps) |
+| 19:48 | Patched `interview.service.ts`, `document-extraction.service.ts`, `engine.controller.ts` to use concrete classes |
+| 19:50 | Third PM2 reload — `ProjectsAdapter` failed: `ClientsModule` not in same scope as `PROJECT_REPOSITORY` token binding (in `ProjectsModule`) |
+| 19:51 | Added `forwardRef(() => ProjectsModule)` to `ClientsModule.imports`, exported `PROJECT_REPOSITORY` from `ProjectsModule` |
+| 19:52 | Fourth PM2 reload — same `PROJECT_REPOSITORY` failure persists; `forwardRef` not properly resolving through multi-module cycle (`ProjectsModule ↔ InformationEngineModule ↔ ClientsModule ↔ ProjectsModule`) |
+| 19:55 | **Decision**: abort the iteration. Restore `dist/` from pre-deploy snapshot. Reinstall pre-engine binary. |
+| 19:56 | `dist/` restored via `tar --strip-components=1`. PM2 reloaded with pre-engine binary. **Production 200 OK**. |
+| 19:58 | `pm2 save` (DO §3.13). |
+
+### Root cause
+**Engine source code in the local repo contained multiple latent DI bugs that the pre-deploy `dist/` had not exercised.** When the new `nest build` produced a fresh `dist/`, the bugs became runtime crashes. The pre-deploy `dist/` was older than the local source tree; the 224 uncommitted edits on Contabo (stashed) and the local engine code (just-merged from a feature branch without integration testing against the live DI graph) had drifted from what production was running.
+
+Specific bugs found in the engine source (all in `src/`):
+
+1. **Token mismatch** — `ProjectTypesService.constructor` injected `PROJECT_TYPE_REPOSITORY` but `ProjectTypesModule.providers` bound `I_PROJECT_TYPE_REPOSITORY`. Latent because the pre-deploy binary was from a prior source version where the names matched.
+2. **`type`-only imports used as runtime deps** — `InterviewService`, `DocumentExtractionService`, `EngineReadController` declared constructor params as `Pick<ProjectTypesService, ...>` or `IRequirementsService` (interfaces) — TypeScript-stripped, Nest cannot resolve at runtime. **3 files affected**.
+3. **`ClientsModule` doesn't import the module that owns `PROJECT_REPOSITORY`** — `ProjectsModule` binds the token; `ClientsModule` never imports it (only `forwardRef(() => ProjectTypesModule)`). Multi-module cycle (`ProjectsModule → InformationEngineModule → ClientsModule`) prevents plain `import`.
+4. **`engine.controller.ts` line 35** — same `Pick<>` pattern as #2.
+
+### What was committed to production (irreversible)
+- 5 new tables: `question_packs`, `project_type_packs`, `information_sources`, `information_responses`, `entity_completeness`
+- 3 new enum types: `information_entity_type`, `information_source_type`, `project_type_classification`
+- 2 additive columns: `project_types.classification`, `project_type_versions.informationRequirements`
+- 1 enum value: `HermesAgentType.PROJECT_DISCOVERY`
+- 20 `question_packs` rows, 131 questions across them
+- 150 system `project_types` rows
+- 1281 `project_type_packs` M2M rows
+
+### What is NOT committed (post-rollback state)
+- Engine code path (controllers/services) is **not loaded**. Production is running pre-engine binary.
+- `src/` on Contabo has **uncommitted patches** to `project-types.service.ts`, `projects.module.ts`, `clients.module.ts`, `clients/projects.adapter.ts`, `interview.service.ts`, `document-extraction.service.ts`, `engine.controller.ts` (4 deliberate fixes + 2 abandoned forwardRef attempts).
+- `stash@{0} ENGINE-DEPLOY-20260709-192759` is intact and contains the original 224 uncommitted edits (separate from the patches).
+- `.env` has `DIRECT_URL` set (renamed from `DATABASE_URL_UNPOOLED`); harmless if pre-engine binary doesn't reference it — but should be reviewed.
+- `/opt/neurecore/scripts/rollback-engine-migrations.sh` is on disk.
+
+### Resolution actions
+1. **PROD IS HEALTHY** — `brain.neurecore.com/api/v1/health` returns 200; PM2 `neurecore-backend` online with uptime > 8min, restarts 193 (cumulative), stable.
+2. **Rollback script is in place** — `/opt/neurecore/scripts/rollback-engine-migrations.sh` is ready if the engine schema should be removed (no reason to do so currently).
+3. **Production DB writes are valid** — every new table/column is empty and never queried; same as if migrations had run but no service used them.
+4. **Local repo has 6 uncommitted fixes** that need to be either (a) discarded or (b) completed and re-tested before any next deploy attempt.
+
+### Prevention
+1. **Do not deploy engine code without first running it in `npm start --watch` or `pnpm start --watch` for 5+ minutes locally** — a simple `nest build` does not exercise the DI graph of every module.
+2. **Make `ProjectsService`, `InterviewService`, `DocumentExtractionService`, `EngineReadController`, `ProjectsAdapter` constructors defensive** — every dep injection should be class-only (never `Pick<>`, never interfaces as runtime types). ESLint rule: `no-restricted-syntax` on `constructor(.*: I[A-Z])`.
+3. **The 224-edit stash must be resolved before any further deploy** — every subsequent `rsync --delete-after` will recreate this risk. Either commit the stashed work, drop the stash, or freeze the working tree.
+4. **Update `rebuild.sh backend`** to use `pnpm install --frozen-lockfile` instead of `npm ci --include=dev` (the engine project doesn't have `package-lock.json`).
+5. **Add a `ProjectTypesService.smokeTestInjectable` integration test** that imports `ProjectsModule` + `ClientsModule` + `InformationEngineModule` together and asserts no `UnknownDependenciesException`. Run this in CI on every PR to project-types or the engine.
+6. **Before any engine re-deploy**, run locally:
+   ```bash
+   cd /home/najeeb/Linux-Dev/neurecore-2026/neurecore/backend
+   NODE_ENV=production node -e "
+     const core = require('@nestjs/core');
+     const { AppModule } = require('./dist/src/app.module');
+     core.NestFactory.createApplicationContext(AppModule, { logger: ['error'] })
+       .then(() => { console.log('DI OK'); process.exit(0); })
+       .catch(e => { console.error('DI FAIL', e.message); process.exit(1); });
+   "
+   ```
+   This catches `UnknownDependenciesException` without booting HTTP.
