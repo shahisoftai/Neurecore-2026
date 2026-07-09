@@ -154,6 +154,7 @@ enum HermesAgentType {
   SECURITY
   OPERATIONS
   CUSTOMER_SUPPORT
+  PROJECT_DISCOVERY
   CUSTOM
 }
 
@@ -169,6 +170,47 @@ enum ToolPermissionLevel {
   READ_ONLY
   WRITE_ONLY
   APPROVAL_REQUIRED
+}
+
+// ─── Phase 2A: Enterprise Information Engine — enums ─────────────────────────
+
+/// Polymorphic over every entity that the engine can record information for.
+/// Used by InformationResponse.entityType and EntityCompleteness.entityType.
+enum InformationEntityType {
+  PROJECT
+  CUSTOMER
+  VENDOR
+  EMPLOYEE
+  COMPLIANCE_RECORD
+  ORGANIZATION
+  // future: GRANT, SUPPLIER, AI_AGENT
+
+  @@map("information_entity_type")
+}
+
+/// Provenance for every InformationResponse. Each response cites exactly one
+/// InformationSource of one of these types.
+enum InformationSourceType {
+  USER_INPUT
+  DOCUMENT_EXTRACTION
+  INTERVIEW
+  ERP
+  CRM
+  API
+  AI_INFERRED
+  SYSTEM
+
+  @@map("information_source_type")
+}
+
+/// Three-class taxonomy of ProjectType. Drives appliesWhen.classification
+/// filtering in the Question Engine.
+enum ProjectTypeClassification {
+  CLIENT_ENGAGEMENT
+  INTERNAL_INITIATIVE
+  OPERATIONAL_PROGRAM
+
+  @@map("project_type_classification")
 }
 
 enum HermesMemoryType {
@@ -190,6 +232,26 @@ enum MessageRole {
   SYSTEM
 }
 
+// ─── Communication enums (Phase 1) ──────────────────────────────────
+
+enum ParticipantType {
+  USER
+  AI_AGENT
+  SYSTEM
+  WORKFLOW
+  EXTERNAL
+
+  @@map("participant_type")
+}
+
+enum ThreadStatus {
+  ACTIVE
+  ARCHIVED
+  CLOSED
+
+  @@map("thread_status")
+}
+
 enum ApprovalWorkflowType {
   HIRE
   FIRE
@@ -199,6 +261,12 @@ enum ApprovalWorkflowType {
   VENDOR_PAYMENT
   DATA_ACCESS
   CUSTOM
+}
+
+enum ApprovalType {
+  INTERNAL
+  CLIENT_FACING
+  DUAL
 }
 
 enum MetricType {
@@ -404,6 +472,12 @@ model Tenant {
   goals    Goal[]
   projects Project[]
 
+  // Phase 1 — Projects v2: Customers
+  customers Customer[]
+
+  // Phase 2 — Projects v2: ProjectType
+  projectTypes ProjectType[]
+
   // EAOS-1 back-relations - Universal entity model
   entityStates        EntityState[]
   stateHistoryEntries StateHistory[]
@@ -428,6 +502,13 @@ model Tenant {
   // EAOS-5 back-relations - Solution Packs
   installedPacks    TenantInstalledPack[]
   packInstallations PackInstallation[]
+
+  // Enterprise Communication Platform — back-relations
+  communicationThreads CommunicationThread[]
+  activityEvents       ActivityEvent[]
+  workflowTemplates    WorkflowTemplate[]
+  notificationPrefs    NotificationPreference[]
+  retentionPolicies    RetentionPolicy[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -479,6 +560,7 @@ model User {
   sessions           Session[]
   auditLogs          AuditLog[]
   refreshTokens      RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
   agents             Agent[]
   tasksCreated       Task[]            @relation("TaskCreator")
   approvalsRequested ApprovalRequest[] @relation("ApprovalRequests")
@@ -561,6 +643,25 @@ model RefreshToken {
   @@index([tokenHash])
   @@index([familyId])
   @@map("refresh_tokens")
+}
+
+// ─── Password Reset Token ──────────────────────────────────────────────────
+// Stores sha256 of a one-time token emailed to the user. The plaintext token
+// is only present in the email link; the DB never sees it.
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model LoginAttempt {
@@ -765,7 +866,34 @@ model Task {
   createdById String?
   createdBy   User?   @relation("TaskCreator", fields: [createdById], references: [id])
 
-  executionLogs ExecutionLog[]
+  // Phase 3 — Goal linkage
+  goalId             String?
+  goal               Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  acceptanceCriteria String?   @db.Text
+
+  // Phase 3 — Expected output shape (per plan §2.2)
+  expectedOutputType  String?   // "tax_return", "proposal", "report", etc.
+  expectedOutputSchema Json?    // schema the output must match
+  inputContext        Json?    // prior task outputs, relevant memory
+
+  // Phase 3 — Agent-facing metadata
+  capabilityTags String[] @default([]) // tags used for routing/qualification
+  confidence     Int?     // 0-100, self-reported by agent
+
+  // Phase 3 — Output payload (kept for backward compatibility)
+  expectedOutput     Json?     @default("{}")
+
+  // Phase 3 — Project + Stage linkage (audit fix 2026-07-09)
+  stageId   String?
+  stage     ProjectStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  projectId String?
+  project   Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  // Phase 3 — Deliverable back-relation
+  deliverable       Deliverable?
+
+  executionLogs        ExecutionLog[]
+  executionLogEntries  TaskExecutionLogEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -775,7 +903,32 @@ model Task {
   @@index([workflowId])
   @@index([status])
   @@index([priority])
+  @@index([goalId])
+  @@index([stageId])
+  @@index([projectId])
   @@map("tasks")
+}
+
+// ─── Phase 4: Task Execution Log Entry — append-only ────────────────────────
+
+model TaskExecutionLogEntry {
+  id             String  @id @default(cuid())
+  taskId         String
+  task           Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  agentId        String?
+  action         String  // APPROVE | REJECT | ESCALATE | COMPLETE | REQUEST_INFO
+  actorType      String  @default("HUMAN") // HUMAN | AI | SYSTEM
+  actorId        String?
+  previousStepId String?
+  nextStepId     String?
+  notes          String? @db.Text
+  metadata       Json    @default("{}")
+  createdAt      DateTime @default(now())
+
+  @@index([taskId])
+  @@index([agentId])
+  @@index([action])
+  @@map("task_execution_log_entries")
 }
 
 // ─── Workflow ─────────────────────────────────────────────────────────────
@@ -1241,6 +1394,10 @@ model Invoice {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  // Phase 7 — Project linkage (audit fix 2026-07-09)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
   expenses      Expense[]
   billingEvents BillingEvent[]
 
@@ -1249,6 +1406,7 @@ model Invoice {
 
   @@index([tenantId])
   @@index([status])
+  @@index([projectId])
   @@map("invoices")
 }
 
@@ -1588,6 +1746,17 @@ model Goal {
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
+  // Phase 3 — Project linkage
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  // Phase 3 — Back-relations
+  tasks       Task[]
+  deliverables Deliverable[]
+
+  // Measurable success criteria (audit fix 2026-07-09)
+  measurableCriteria String? @db.Text
+
   // Dates
   targetDate  DateTime?
   completedAt DateTime?
@@ -1603,13 +1772,274 @@ model Goal {
   @@index([status])
   @@index([ownerAgentId])
   @@index([ownerUserId])
+  @@index([projectId])
   @@map("goals")
 }
 
 enum ProjectStatus {
+  LEAD
+  PROPOSAL_SENT
+  WON
+  LOST
   ACTIVE
+  ON_HOLD
+  REVIEW
   COMPLETED
   ARCHIVED
+}
+
+enum BudgetType {
+  FIXED_FEE
+  HOURLY
+  RETAINER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum StageStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  AT_RISK
+  COMPLETED
+  SKIPPED
+}
+
+enum ProjectRole {
+  PROJECT_DIRECTOR
+  PROJECT_MANAGER
+  RESEARCH_LEAD
+  QUALITY_LEAD
+  REVIEWER
+  COMPLIANCE_OFFICER
+  CLIENT_LIAISON
+  DOCUMENTATION_LEAD
+  KNOWLEDGE_MANAGER
+  CHIEF_OF_STAFF
+}
+
+enum ActorType {
+  HUMAN
+  AI
+  SYSTEM
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum DeliverableStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum RiskTier {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Customer {
+  id           String         @id @default(cuid())
+  tenantId     String
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  industry     String?
+  primaryEmail String?
+  primaryPhone String?
+  billingInfo  Json?
+  status       CustomerStatus @default(ACTIVE)
+  tags         String[]       @default([])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  projects Project[]
+  contacts CustomerContact[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("customers")
+}
+
+model CustomerContact {
+  id         String    @id @default(cuid())
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name       String
+  email      String
+  phone      String?
+  role       String?
+  isPrimary  Boolean   @default(false)
+  portalToken          String?
+  portalTokenExpiresAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([customerId])
+  @@map("customer_contacts")
+}
+
+// ─── Phase 2: ProjectType — versioned industry template ────────────────────────
+
+model ProjectType {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String   // "Tax Return (US 1040)", "Legal Matter", "Marketing Campaign"
+  industry  String?  // "accounting", "legal", "marketing"
+  isSystem  Boolean  @default(false) // system templates can't be deleted
+
+  // Phase 2A: 3-class taxonomy (NULL = legacy/uncategorised).
+  classification ProjectTypeClassification?
+
+  versions ProjectTypeVersion[]
+  projects Project[]
+  packs    ProjectTypePack[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("project_types")
+}
+
+// ─── Phase 2: ProjectTypeVersion — immutable snapshot per version ───────────────
+
+model ProjectTypeVersion {
+  id               String   @id @default(cuid())
+  projectTypeId    String
+  projectType      ProjectType @relation(fields: [projectTypeId], references: [id], onDelete: Cascade)
+  version          Int      @default(1)
+
+  // Field schema: [{key, label, type, required, options}]
+  // type: TEXT | NUMBER | DATE | SELECT | MULTI_SELECT
+  fieldSchema      Json     @default("[]")
+
+  // Stage template: [{name, order, defaultDurationDays}]
+  stageTemplate    Json     @default("[]")
+
+  // Approval template: [{stepOrder, approverRole, approvalType, riskTier[]}]
+  approvalTemplate Json     @default("[]")
+
+  goalTemplate     Json?    // [{title, measurableCriteria}]
+  roleTemplate    Json?    // [{role, agentType}]
+
+  // Phase 2A: polymorphic discovery schema consumed by RequirementsService.
+  // Shape: InformationRequirement[] (see information-engine/interfaces).
+  informationRequirements Json? @default("[]")
+
+  createdAt DateTime @default(now())
+
+  @@unique([projectTypeId, version])
+  @@index([projectTypeId])
+  @@map("project_type_versions")
+}
+
+// ─── Phase 2A: Enterprise Information Engine — polymorphic models ────────────
+
+/// Capability-based question catalogue (NOT industry-based).
+/// Examples of keys: "core", "healthcare", "compliance".
+/// A UNICEF Nutrition Assessment and a Hospital Accreditation are both
+/// "healthcare" but load different capability packs — packs scale;
+/// industry-packs do not.
+model QuestionPack {
+  id          String   @id @default(cuid())
+  key         String   @unique                  // "core", "healthcare", "compliance"
+  name        String
+  description String?
+  version     Int      @default(1)
+  isSystem    Boolean  @default(false)
+  // [{id, label, type, required, appliesWhen, mapsTo, skipIfConfidenceGte, askVia}]
+  questions   Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projectTypes ProjectTypePack[]
+
+  @@map("question_packs")
+}
+
+/// M2M: which capability packs a ProjectType loads, in what order.
+model ProjectTypePack {
+  projectTypeId  String
+  questionPackId String
+  sortOrder      Int          @default(0)
+  projectType    ProjectType  @relation(fields: [projectTypeId], references: [id], onDelete: Cascade)
+  questionPack   QuestionPack @relation(fields: [questionPackId], references: [id], onDelete: Restrict)
+
+  @@id([projectTypeId, questionPackId])
+  @@index([projectTypeId])
+  @@index([questionPackId])
+  @@map("project_type_packs")
+}
+
+/// First-class answer provenance. Every InformationResponse cites exactly one.
+/// refType / refId are polymorphic (Document, HermesSession, Integration,
+/// CRMContact, …) and resolved at the application layer.
+model InformationSource {
+  id         String               @id @default(cuid())
+  type       InformationSourceType
+  label      String
+  refType    String?
+  refId      String?
+  confidence Int                  // 0-100, snapshot at time of capture
+  verified   Boolean              @default(false)
+  verifiedBy String?
+  verifiedAt DateTime?
+  createdAt  DateTime             @default(now())
+
+  responses  InformationResponse[]
+
+  @@index([type])
+  @@index([refType, refId])
+  @@map("information_sources")
+}
+
+/// Polymorphic over InformationEntityType. NOT a Project-specific table.
+/// One row per (entity, question, current). Superseded answers chain via
+/// supersededById (self-referential, nullable, unique).
+model InformationResponse {
+  id             String                @id @default(cuid())
+  entityType     InformationEntityType
+  entityId       String                // not FK-enforced; resolved at app layer
+  questionId     String                // matches the requirement's question id
+  value          Json
+  sourceId       String
+  source         InformationSource     @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  confidence     Int                   // snapshot from source
+  supersededById String?               @unique
+  supersededBy   InformationResponse?  @relation("ResponseSupersedes", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes     InformationResponse?  @relation("ResponseSupersedes")
+  createdAt      DateTime              @default(now())
+
+  @@index([entityType, entityId])
+  @@index([entityType, entityId, questionId])
+  @@index([entityType, entityId, questionId, supersededById])
+  @@map("information_responses")
+}
+
+/// Polymorphic completeness score. Recomputed by CompletenessService on every
+/// InformationResponse write.
+model EntityCompleteness {
+  id             String                @id @default(cuid())
+  entityType     InformationEntityType
+  entityId       String
+  score          Int                   // 0-100
+  totalRequired  Int                   @default(0)
+  totalResolved  Int                   @default(0)
+  missingJson    Json                  @default("[]") // [{questionId, label, whyMissing, confidence, sourceTypes}]
+  lastAssessedAt DateTime              @default(now())
+
+  @@unique([entityType, entityId])
+  @@map("entity_completeness")
 }
 
 model Project {
@@ -1619,26 +2049,260 @@ model Project {
 
   name        String
   description String?       @db.Text
-  status      ProjectStatus @default(ACTIVE)
+  status      ProjectStatus @default(LEAD)
+
+  // Customer (Phase 1)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  // ProjectType (Phase 2)
+  projectTypeId      String?
+  projectType        ProjectType?  @relation(fields: [projectTypeId], references: [id], onDelete: SetNull)
+  projectTypeVersion Int?          // which version of the type was used
+
+  // Financials
+  budgetType     BudgetType?
+  budgetAmount   Decimal?    @db.Decimal(14, 2)
+  budgetCurrency String?     @default("USD")
 
   // Linking
-  goalIds      String[]    @default([]) // Related goals
+  // Deprecated (2026-07-09): Use Goal.projectId relation as single source of truth
+  goalIds      String[]    @default([])
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
+  // Hierarchy
+  parentProjectId     String?
+  parentProject       Project?  @relation("ProjectSubProjects", fields: [parentProjectId], references: [id], onDelete: SetNull)
+  subProjects         Project[] @relation("ProjectSubProjects")
+  clonedFromProjectId String?
+  clonedFromProject   Project?  @relation("ProjectClones", fields: [clonedFromProjectId], references: [id], onDelete: SetNull)
+  clones              Project[] @relation("ProjectClones")
+
+  // Status extended
+  lostReason String?
+
+  // Custom fields (validated against ProjectType.fieldSchema in Phase 2)
+  customFieldValues Json?
+
   // Dates
-  targetDate DateTime?
+  targetDate  DateTime?
+  startDate   DateTime?
+  completedAt DateTime?
 
   // Metadata
-  metadata Json @default("{}")
+  priority Priority? @default(MEDIUM)
+  tags     String[]  @default([])
+  metadata Json      @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  stages  ProjectStage[]
+  members ProjectMember[]
+  goals   Goal[]
+  deliverables Deliverable[]
+  invoices Invoice[]
+  tasks   Task[]
+  memories  ProjectMemory[]
+  decisions ProjectDecision[]
+  documents ProjectDocument[]
+  // Phase 4 — Project-scoped approval workflows (deliverable risk-tiered chains)
+  approvals ApprovalWorkflow[] @relation("ProjectApprovals")
+
   @@index([tenantId])
   @@index([status])
   @@index([departmentId])
+  @@index([customerId])
+  @@index([parentProjectId])
   @@map("projects")
+}
+
+model ProjectStage {
+  id          String      @id @default(cuid())
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  order       Int
+  status      StageStatus @default(NOT_STARTED)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  tasks       Task[]
+
+  @@unique([projectId, order])
+  @@index([projectId])
+  @@map("project_stages")
+}
+
+model ProjectMember {
+  id        String      @id @default(cuid())
+  projectId String
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actorId   String
+  actorType ActorType
+  role      ProjectRole
+  assignedAt DateTime   @default(now())
+
+  @@unique([projectId, actorId, role])
+  @@index([projectId])
+  @@index([actorId])
+  @@map("project_members")
+}
+
+// ─── Phase 3: Deliverables ────────────────────────────────────────────────────────
+
+model Deliverable {
+  id           String            @id @default(cuid())
+  projectId    String
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskId       String?           // task that produced this deliverable
+  task         Task?            @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@unique([taskId])
+  goalId       String?          // goal this deliverable satisfies
+  goal         Goal?            @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  name         String
+  description  String?          @db.Text
+  type         String?          // PROPOSAL | REPORT | CONTRACT | TAX_RETURN etc. (audit fix 2026-07-09)
+  status       DeliverableStatus @default(DRAFT)
+  clientFacing Boolean           @default(false)
+  riskTier     RiskTier?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  versions     DeliverableVersion[]
+
+  @@index([projectId])
+  @@index([taskId])
+  @@index([goalId])
+  @@index([status])
+  @@map("deliverables")
+}
+
+model DeliverableVersion {
+  id               String      @id @default(cuid())
+  deliverableId    String
+  deliverable      Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  version          Int         @default(1)
+  content          Json        @default("{}")
+
+  // Per plan §2.2: `summary` is the brief description of this version
+  summary          String?     @db.Text
+
+  // Per plan §2.2: `producedBy` is the agent/human ID that produced this version
+  producedBy       String?     // agent or human ID
+  // `producedByTaskId` links to the specific Task that produced this version (more specific than producedBy)
+  producedByTaskId String?     // task that produced this version
+
+  createdAt        DateTime    @default(now())
+
+  @@unique([deliverableId, version])
+  @@index([deliverableId])
+  @@map("deliverable_versions")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 7 — Client Portal: Document Upload
+// ═══════════════════════════════════════════════════════════════════════════
+// visibility field uses String ('CLIENT' | 'INTERNAL') — enum handled at app level
+
+model ProjectDocument {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  description String?  @db.Text
+  fileUrl     String
+  fileKey     String
+  fileSize    BigInt
+  mimeType    String
+  visibility  String   @default("CLIENT")
+  uploadedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([visibility])
+  @@map("project_documents")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 5 Models — Project Memory + Decision Registry
+// ═══════════════════════════════════════════════════════════════════════════
+
+model ProjectMemory {
+  id               String    @id @default(cuid())
+  projectId        String
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorId         String?
+  authorType       String    @default("HUMAN") // HUMAN | AI | SYSTEM
+  category         MemoryCategory    @default(NOTE)
+  content          String    @db.Text
+  sourceEntityType String?   // e.g. 'Task', 'Deliverable', 'ApprovalWorkflow'
+  sourceEntityId   String?
+  isPinned         Boolean   @default(false)
+  isAiGenerated    Boolean   @default(false)
+  supersededBy     String?   // id of the entry that supersedes this one
+  metadata         Json      @default("{}")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([projectId])
+  @@index([authorId])
+  @@index([category])
+  @@index([sourceEntityId])
+  @@map("project_memories")
+}
+
+enum MemoryCategory {
+  NOTE
+  INSIGHT
+  CONSTRAINT
+  RISK
+  OPPORTUNITY
+  LESSON
+}
+
+enum DecisionStatus {
+  PROPOSED
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+model ProjectDecision {
+  id               String         @id @default(cuid())
+  projectId        String
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?        @db.Text
+  status           DecisionStatus @default(PROPOSED)
+  decidedAt        DateTime?
+  approvedById     String?
+  approvedByType   String?         // HUMAN | AI
+  votesFor         Int            @default(0)
+  votesAgainst     Int            @default(0)
+  abstentions      Int            @default(0)
+  meetingNotes     String?        @db.Text
+  rationale        String?        @db.Text
+  effectiveDate    DateTime?
+  expiryDate       DateTime?
+  supersededBy     String?
+  linkedEntityType String?        // e.g. 'Task', 'Deliverable'
+  linkedEntityId   String?
+  metadata         Json           @default("{}")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+  @@index([approvedById])
+  @@index([linkedEntityId])
+  @@map("project_decisions")
 }
 
 model BudgetIncident {
@@ -1868,6 +2532,8 @@ enum RelationshipType {
   ASSIGNED_TO
   REFERENCES
   DEPENDS_ON
+  REPORTS_TO
+  DELEGATES_TO
 
   @@map("relationship_type")
 }
@@ -2588,9 +3254,25 @@ model HermesMessage {
   error       String?
   createdAt   DateTime    @default(now())
 
+  // Phase 1: thread + context references
+  threadId    String? @map("thread_id")
+  contextType String? @map("context_type")
+  contextId   String? @map("context_id")
+
+  // Phase 1: idempotency for A2A retry dedup
+  idempotencyKey String? @unique @map("idempotency_key")
+
+  // Phase 9c: @mentions
+  mentions Json? @default("[]")
+
+  // Back-relation to thread (optional)
+  thread CommunicationThread? @relation("ThreadMessages", fields: [threadId], references: [id], onDelete: SetNull)
+
   session HermesSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
+  @@index([threadId, createdAt])
+  @@index([contextType, contextId])
 }
 
 model HermesMemoryEntry {
@@ -2622,6 +3304,7 @@ model HermesAuditLog {
   hermesAgentId  String
   sessionId      String?
   taskId         String?
+  threadId       String?
   tenantId       String
   workspaceId    String?
   action         String
@@ -2642,6 +3325,195 @@ model HermesAuditLog {
   @@index([hermesAgentId, tenantId])
   @@index([tenantId, createdAt])
   @@index([action, tenantId])
+  @@index([threadId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Enterprise Communication Platform — Phase 1: Thread Model
+// ═══════════════════════════════════════════════════════════════════════════
+
+model CommunicationThread {
+  id       String @id @default(cuid())
+  tenantId String @map("tenantid")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  title       String
+  contextType String?      @map("contexttype")
+  contextId   String?      @map("contextid")
+  status      ThreadStatus @default(ACTIVE)
+
+  // Phase 4: A2A hop counter — authoritative, server-side
+  hopCount Int @default(0) @map("hopcount")
+
+  createdAt DateTime  @default(now()) @map("createdat")
+  updatedAt DateTime  @updatedAt @map("updatedat")
+  closedAt  DateTime? @map("closedat")
+
+  participants   ThreadParticipant[]
+  readStates     ThreadReadState[]
+  activityEvents ActivityEvent[]
+  messages       HermesMessage[]     @relation("ThreadMessages")
+
+  @@index([tenantId])
+  @@index([contextType, contextId])
+  @@index([status, tenantId])
+  @@map("communication_threads")
+}
+
+model ThreadParticipant {
+  id       String              @id @default(cuid())
+  threadId String              @map("threadid")
+  thread   CommunicationThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  participantType ParticipantType @map("participanttype")
+  participantId   String          @map("participantid")
+  role            String?
+  joinedAt        DateTime        @default(now()) @map("joinedat")
+  leftAt          DateTime?       @map("leftat")
+  isActive        Boolean         @default(true) @map("isactive")
+
+  @@unique([threadId, participantType, participantId])
+  @@index([participantType, participantId])
+  @@map("thread_participants")
+}
+
+model ThreadReadState {
+  id       String              @id @default(cuid())
+  threadId String              @map("threadid")
+  thread   CommunicationThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  participantType   ParticipantType @map("participanttype")
+  participantId     String          @map("participantid")
+  lastReadMessageId String?         @map("lastreadmessageid")
+  lastReadAt        DateTime        @default(now()) @map("lastreadat")
+
+  @@unique([threadId, participantType, participantId])
+  @@map("thread_read_states")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Enterprise Communication Platform — Phase 2: Canonical Activity Event Model
+// ═══════════════════════════════════════════════════════════════════════════
+
+model ActivityEvent {
+  id       String @id @default(cuid())
+  tenantId String @map("tenantid")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  actorType   ParticipantType @map("actortype")
+  actorId     String          @map("actorid")
+  type        String
+  title       String
+  description String?         @db.Text
+
+  threadId String?              @map("threadid")
+  thread   CommunicationThread? @relation(fields: [threadId], references: [id], onDelete: SetNull)
+
+  contextType String? @map("contexttype")
+  contextId   String? @map("contextid")
+  entityType  String? @map("entitytype")
+  entityId    String? @map("entityid")
+
+  payload    Json   @default("{}")
+  severity   String @default("info")
+  visibility String @default("tenant") // tenant | thread | direct
+
+  targetParticipantType ParticipantType? @map("targetparticipanttype")
+  targetParticipantId   String?          @map("targetparticipantid")
+
+  sourceEventId String?   @unique @map("sourceeventid")
+  dismissedAt   DateTime? @map("dismissedat")
+
+  expiresAt DateTime? @map("expiresat")
+  createdAt DateTime  @default(now()) @map("createdat")
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, actorType, actorId])
+  @@index([tenantId, type])
+  @@index([tenantId, threadId])
+  @@index([tenantId, visibility, targetParticipantId])
+  @@index([tenantId, entityType, entityId])
+  @@index([expiresAt])
+  @@map("activity_events")
+}
+
+model AdapterCursor {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenantid")
+  sourceName   String   @map("sourcename")
+  lastPolledAt DateTime @map("lastpolledat")
+  lastEventId  String?  @map("lasteventid")
+
+  @@unique([tenantId, sourceName])
+  @@map("adapter_cursors")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Enterprise Communication Platform — Phase 9: Workflow Templates + Prefs
+// ═══════════════════════════════════════════════════════════════════════════
+
+model WorkflowTemplate {
+  id       String @id @default(cuid())
+  tenantId String @map("tenantid")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String? @db.Text
+  cron        String
+  timezone    String  @default("UTC")
+
+  threadTitle         String  @map("threadtitle")
+  participantIds      Json    @default("[]") @map("participantids")
+  contextType         String? @map("contexttype")
+  contextId           String? @map("contextid")
+  firstMessageContent String? @map("firstmessagecontent") @db.Text
+
+  isActive  Boolean   @default(true) @map("isactive")
+  lastRunAt DateTime? @map("lastrunat")
+  nextRunAt DateTime? @map("nextrunat")
+
+  createdAt DateTime @default(now()) @map("createdat")
+  updatedAt DateTime @updatedAt @map("updatedat")
+
+  @@index([tenantId, isActive, nextRunAt])
+  @@map("workflow_templates")
+}
+
+model NotificationPreference {
+  id       String @id @default(cuid())
+  tenantId String @map("tenantid")
+  userId   String @map("userid")
+
+  threadId     String? @map("threadid")
+  activityType String? @map("activitytype")
+  minSeverity  String? @map("minseverity")
+
+  deliveryMode String @default("realtime") @map("deliverymode")
+
+  createdAt DateTime @default(now()) @map("createdat")
+  updatedAt DateTime @updatedAt @map("updatedat")
+  Tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, userId, threadId, activityType])
+  @@index([tenantId, userId])
+  @@map("notification_preferences")
+}
+
+model RetentionPolicy {
+  id       String @id @default(cuid())
+  tenantId String @unique @map("tenantid")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  activityEventTtlDays  Int @default(90) @map("activityeventttldays")
+  threadInactiveTtlDays Int @default(90) @map("threadinactivettldays")
+  threadArchiveTtlDays  Int @default(365) @map("threadarchivettldays")
+  auditLogTtlDays       Int @default(365) @map("auditlogttldays")
+  messageTtlDays        Int @default(730) @map("messagettldays")
+
+  createdAt DateTime @default(now()) @map("createdat")
+  updatedAt DateTime @updatedAt @map("updatedat")
+
+  @@map("retention_policies")
 }
 
 model ApprovalWorkflow {
@@ -2658,7 +3530,16 @@ model ApprovalWorkflow {
   workspaceId  String?
   routineRunId String?
 
-  steps ApprovalWorkflowStep[]
+  // Phase 4 — Approval chains
+  riskTier             RiskTier?  // required risk tier to trigger this workflow
+  targetDeliverableId  String?    // deliverable this workflow is approving
+
+  // Phase 4 — Project-level linking (plan §2.2)
+  projectId String?
+  project   Project? @relation("ProjectApprovals", fields: [projectId], references: [id], onDelete: SetNull)
+  type      ApprovalType @default(INTERNAL)
+
+  steps               ApprovalWorkflowStep[]
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -2667,6 +3548,8 @@ model ApprovalWorkflow {
   @@index([tenantId])
   @@index([status, tenantId])
   @@index([requesterId, tenantId])
+  @@index([projectId])
+  @@index([targetDeliverableId])
 }
 
 model ApprovalWorkflowStep {
@@ -2679,6 +3562,11 @@ model ApprovalWorkflowStep {
   decision           String?
   comment            String?
   decidedAt          DateTime?
+
+  // Phase 4 — Chain ordering + sequential blocking
+  chainStepOrder     Int           @default(0)   // position within the chain
+  chainStepTotal     Int           @default(1)   // total steps in this chain
+  blockedByPriorStep Boolean       @default(false) // cannot act until prior step approved
 
   approvalWorkflow ApprovalWorkflow @relation(fields: [approvalWorkflowId], references: [id], onDelete: Cascade)
 
