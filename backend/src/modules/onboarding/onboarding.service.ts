@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { UserRole } from '@prisma/client';
@@ -15,6 +16,7 @@ import type {
   OnboardingStatePayload,
 } from './interfaces/onboarding.interface';
 import { ChecklistService } from './checklist/checklist.service';
+import { ProjectTypeAllocatorService } from '../project-types/allocators/project-type-allocator.service';
 
 interface DeptTemplateStructureItem {
   name: string;
@@ -32,6 +34,8 @@ export class OnboardingService implements IOnboardingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly checklist: ChecklistService,
+    @Optional()
+    private readonly allocator?: ProjectTypeAllocatorService,
   ) {}
 
   async getState(tenantId: string): Promise<OnboardingStatePayload> {
@@ -328,6 +332,27 @@ export class OnboardingService implements IOnboardingService {
         onboardingStep: 'complete',
       },
     });
+
+    // Phase 2G: clone system ProjectTypes for this tenant's industry.
+    // Idempotent — on re-run, existing clones are skipped.
+    // Failure here does NOT abort onboarding (wrapped in try/catch).
+    if (this.allocator) {
+      try {
+        const result = await this.allocator.allocateForTenant(
+          tenantId,
+          tenant.industry,
+        );
+        this.logger.log(
+          `ProjectType allocation for tenant ${tenantId}: ` +
+            `allocated=${result.allocated} skipped=${result.skipped}`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `ProjectType allocation failed for tenant ${tenantId}: ` +
+            `${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
 
     // WS-2.1: Seed the progressive onboarding checklist. Idempotent — safe to
     // call on tenants that already have checklist rows (e.g. re-running

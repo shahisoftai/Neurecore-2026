@@ -26,6 +26,8 @@ export type Goal = {
   targetDate: Date | null;
   completedAt: Date | null;
   metrics: unknown;
+  // Phase 3 — Project linkage
+  projectId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -44,6 +46,8 @@ export interface CreateGoalInput {
   ownerUserId?: string;
   departmentId?: string;
   targetDate?: Date;
+  // Phase 3
+  projectId?: string;
 }
 
 export interface UpdateGoalInput {
@@ -66,6 +70,7 @@ export interface ListGoalsOptions {
   parentId?: string | null;
   ownerUserId?: string;
   ownerAgentId?: string;
+  projectId?: string;
   page?: number;
   limit?: number;
 }
@@ -83,6 +88,7 @@ export interface IGoalRepository {
   findAll(options: ListGoalsOptions, tenantId: string): Promise<{ data: Goal[]; total: number }>;
   findByParentId(parentId: string, tenantId: string): Promise<Goal[]>;
   findRootGoals(tenantId: string): Promise<Goal[]>;
+  findByProjectId(projectId: string, tenantId: string): Promise<Goal[]>;
   update(id: string, data: UpdateGoalInput): Promise<Goal>;
   delete(id: string, tenantId: string): Promise<void>;
   updateProgress(id: string, progress: number): Promise<Goal>;

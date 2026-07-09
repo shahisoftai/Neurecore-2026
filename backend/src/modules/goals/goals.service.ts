@@ -1,9 +1,9 @@
 /**
  * Goals Module - Business Logic Service
  *
- * Following SOLID principles:
- * - Single Responsibility: Only handles goal business logic
- * - Dependency Inversion: Uses IGoalRepository interface
+ * Phase 3: Goals + Tasks → Deliverables
+ * SOLID: Single responsibility — handles all goal business logic.
+ * Dependency Inversion: Uses IGoalRepository interface.
  */
 
 import {
@@ -13,6 +13,7 @@ import {
   BadRequestException,
   Inject,
 } from '@nestjs/common';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
 import type { IGoalRepository } from './interfaces/goal.interface';
 import type { Goal, GoalWithChildren } from './interfaces/goal.interface';
 import type {
@@ -29,6 +30,7 @@ export class GoalsService {
 
   constructor(
     @Inject(GOAL_REPOSITORY) private readonly repository: IGoalRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   async create(input: CreateGoalInput, tenantId: string) {
@@ -64,6 +66,10 @@ export class GoalsService {
       throw new NotFoundException(`Goal ${parentId} not found`);
     }
     return this.repository.findByParentId(parentId, tenantId);
+  }
+
+  async findByProjectId(projectId: string, tenantId: string) {
+    return this.repository.findByProjectId(projectId, tenantId);
   }
 
   async update(id: string, tenantId: string, input: UpdateGoalInput) {
@@ -114,6 +120,97 @@ export class GoalsService {
     return this.repository.updateProgress(id, progress);
   }
 
+  /**
+   * Recalculate goal progress from linked task completion.
+   * Phase 3: derived progress = completed tasks / total tasks × 100.
+   *
+   * If the goal has children (sub-goals), progress is the weighted average
+   * of child goal progress plus task-based progress for this goal.
+   */
+  async recalculateProgressFromTasks(id: string, tenantId: string): Promise<Goal> {
+    const goal = await this.repository.findById(id, tenantId);
+    if (!goal) {
+      throw new NotFoundException(`Goal ${id} not found`);
+    }
+
+    const tasks = await this.prisma.task.findMany({
+      where: { goalId: id, tenantId },
+      select: { id: true, status: true },
+    });
+
+    let taskBasedProgress = goal.progress;
+
+    if (tasks.length > 0) {
+      const completedCount = tasks.filter(
+        (t) => t.status === 'COMPLETED',
+      ).length;
+      taskBasedProgress = Math.round((completedCount / tasks.length) * 100);
+    }
+
+    const children = await this.repository.findByParentId(id, tenantId);
+
+    let finalProgress = taskBasedProgress;
+
+    if (children.length > 0) {
+      let totalChildProgress = 0;
+      let childWeight = 0;
+
+      for (const child of children) {
+        const childProgress = await this.deriveProgressForGoal(child.id, tenantId);
+        totalChildProgress += childProgress;
+        childWeight += 1;
+      }
+
+      if (childWeight > 0) {
+        finalProgress = Math.round(
+          (taskBasedProgress + totalChildProgress) / (childWeight + 1),
+        );
+      }
+    }
+
+    finalProgress = Math.min(100, Math.max(0, finalProgress));
+
+    const updated = await this.repository.updateProgress(id, finalProgress);
+    this.logger.debug(
+      `Goal ${id} progress recalculated: ${updated.progress}% (${tasks.length} tasks)`,
+    );
+    return updated;
+  }
+
+  /**
+   * Derive progress for a goal considering both its tasks and child goals.
+   * Does NOT persist — just computes.
+   */
+  async deriveProgressForGoal(id: string, tenantId: string): Promise<number> {
+    const goal = await this.repository.findById(id, tenantId);
+    if (!goal) return 0;
+
+    const tasks = await this.prisma.task.findMany({
+      where: { goalId: id, tenantId },
+      select: { status: true },
+    });
+
+    let taskProgress = goal.progress;
+    if (tasks.length > 0) {
+      const completedCount = tasks.filter(
+        (t) => t.status === 'COMPLETED',
+      ).length;
+      taskProgress = Math.round((completedCount / tasks.length) * 100);
+    }
+
+    const children = await this.repository.findByParentId(id, tenantId);
+    if (children.length === 0) return taskProgress;
+
+    let totalChildProgress = 0;
+    for (const child of children) {
+      totalChildProgress += await this.deriveProgressForGoal(child.id, tenantId);
+    }
+
+    return Math.round(
+      (taskProgress + totalChildProgress) / (children.length + 1),
+    );
+  }
+
   async getGoalTree(tenantId: string): Promise<GoalWithChildren[]> {
     const allGoals = await this.repository.findAll({ limit: 1000 }, tenantId);
 
@@ -142,26 +239,6 @@ export class GoalsService {
   }
 
   async calculateProgressWithChildren(id: string, tenantId: string): Promise<number> {
-    const goal = await this.repository.findById(id, tenantId);
-    if (!goal) {
-      throw new NotFoundException(`Goal ${id} not found`);
-    }
-
-    const children = await this.repository.findByParentId(id, tenantId);
-
-    if (children.length === 0) {
-      return goal.progress;
-    }
-
-    let totalProgress = goal.progress;
-    let weight = 1;
-
-    for (const child of children) {
-      const childProgress = await this.calculateProgressWithChildren(child.id, tenantId);
-      totalProgress += childProgress;
-      weight += 1;
-    }
-
-    return Math.round(totalProgress / weight);
+    return this.deriveProgressForGoal(id, tenantId);
   }
 }

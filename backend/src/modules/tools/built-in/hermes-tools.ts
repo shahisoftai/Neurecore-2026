@@ -202,6 +202,46 @@ export const HERMES_TOOL_SETS: Record<HermesAgentType, HermesToolDescriptor[]> =
         },
     ],
 
+    // Phase 2E — Project Discovery agent (Enterprise Information Engine).
+    // Exposes the conversational + document channels of the EIE to Hermes.
+    PROJECT_DISCOVERY: [
+        {
+            name: 'interview_ask_next',
+            description: 'Return the next discovery question + prompt for a project',
+            permission: ToolPermissionLevel.ALLOW,
+        },
+        {
+            name: 'interview_parse_reply',
+            description: 'Parse a free-form reply into InformationResponse rows',
+            permission: ToolPermissionLevel.ALLOW,
+        },
+        {
+            name: 'document_extract',
+            description: 'Extract candidate answers from an uploaded document',
+            permission: ToolPermissionLevel.ALLOW,
+        },
+        {
+            name: 'document_accept_candidates',
+            description: 'Persist user-accepted extraction candidates into the engine',
+            permission: ToolPermissionLevel.ALLOW,
+        },
+        {
+            name: 'completeness_get',
+            description: 'Read EntityCompleteness for a project',
+            permission: ToolPermissionLevel.READ_ONLY,
+        },
+        {
+            name: 'resolved_requirements_get',
+            description: 'Read the flat resolved question list for a project',
+            permission: ToolPermissionLevel.READ_ONLY,
+        },
+        {
+            name: 'record_response',
+            description: 'Record a single InformationResponse (one-question write)',
+            permission: ToolPermissionLevel.ALLOW,
+        },
+    ],
+
     CUSTOM: [
         { name: 'email', description: 'Email operations', permission: ToolPermissionLevel.ALLOW },
         { name: 'documents', description: 'Document operations', permission: ToolPermissionLevel.ALLOW },

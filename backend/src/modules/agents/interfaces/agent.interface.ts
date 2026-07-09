@@ -43,6 +43,13 @@ export interface UpdateAgentInput {
   emailDisplayName?: string;
   emailSignature?: string;
   googleDriveFolderId?: string | null;
+  departmentId?: string | null;
+  // Tenant-specific profile overrides — stored under metadata.profile.*
+  avatarUrl?: string | null;
+  designation?: string | null;
+  bio?: string | null;
+  color?: string | null;
+  emoji?: string | null;
 }
 
 export interface AgentFilter {

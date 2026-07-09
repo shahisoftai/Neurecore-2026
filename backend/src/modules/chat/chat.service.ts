@@ -3,6 +3,7 @@ import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { MiniMaxClient } from '../models/services/minimax-client.service';
 import { OfficialAgentGraph } from '../agents/langgraph/langgraph-official';
 import { SendChatMessageDto } from './dto/chat.dto';
+import { ActivityService } from '../hermes/services/activity.service';
 
 /**
  * Chat Service
@@ -26,11 +27,13 @@ export class ChatService {
     private readonly minimax: MiniMaxClient,
     private readonly prisma: PrismaService,
     private readonly agentGraph: OfficialAgentGraph,
+    private readonly activityService: ActivityService,
   ) {}
 
   async send(
     dto: SendChatMessageDto,
     tenantIdFromJwt?: string,
+    userIdFromJwt?: string,
   ): Promise<{
     reply: string;
     conversationId: string;
@@ -42,6 +45,23 @@ export class ChatService {
     const conversationId =
       dto.conversationId ??
       `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    // Fire-and-forget chat:user_message activity. Failures are logged but never
+    // break the chat flow — the ActivityEvent feed is observability, not a
+    // critical path.
+    this.recordChatActivitySafe({
+      tenantId: tenantIdFromJwt ?? null,
+      actorType: 'USER',
+      actorId: userIdFromJwt ?? 'anonymous',
+      type: 'chat:user_message',
+      title: dto.message.slice(0, 80),
+      contextId: conversationId,
+      payload: {
+        intent: this.detectIntent(dto.message),
+        historyLen: dto.history?.length ?? 0,
+      },
+      sourceEventId: `chat:${conversationId}:user`,
+    });
 
     if (!this.minimax.isConfigured()) {
       return {
@@ -89,6 +109,22 @@ export class ChatService {
             ? `Executed ${result.toolResults.length} tool(s).`
             : 'Action completed.');
 
+        this.recordChatActivitySafe({
+          tenantId,
+          actorType: 'AI_AGENT',
+          actorId: 'ai-assistant',
+          type: 'chat:assistant_reply',
+          title: (reply ?? '').slice(0, 80),
+          contextId: conversationId,
+          payload: {
+            intent: 'action',
+            model: 'MiniMax-Text-01',
+            toolResults: result.toolResults?.length ?? 0,
+            messages: messages.length,
+          },
+          sourceEventId: `chat:${conversationId}:assistant`,
+        });
+
         return {
           reply,
           conversationId,
@@ -99,8 +135,20 @@ export class ChatService {
         };
       } catch (err) {
         this.logger.error(`[chat] Agent graph failed: ${(err as Error).message}`);
+        const errReply = `I tried to execute that action but encountered an error: ${(err as Error).message}`;
+        this.recordChatActivitySafe({
+          tenantId,
+          actorType: 'SYSTEM',
+          actorId: 'chat-service',
+          type: 'chat:error',
+          title: errReply.slice(0, 80),
+          contextId: conversationId,
+          severity: 'error',
+          payload: { intent: 'action', error: (err as Error).message },
+          sourceEventId: `chat:${conversationId}:error`,
+        });
         return {
-          reply: `I tried to execute that action but encountered an error: ${(err as Error).message}`,
+          reply: errReply,
           conversationId,
           tokens: { input: 0, output: 0, total: 0 },
           model: 'MiniMax-Text-01',
@@ -142,16 +190,34 @@ export class ChatService {
         dto.maxTokens ?? 512,
       );
 
+      const tokens = response.usage
+        ? {
+            input: response.usage.inputTokens,
+            output: response.usage.outputTokens,
+            total: response.usage.totalTokens,
+          }
+        : { input: 0, output: 0, total: 0 };
+
+      this.recordChatActivitySafe({
+        tenantId: tenantIdFromJwt ?? null,
+        actorType: 'AI_AGENT',
+        actorId: 'minimax',
+        type: 'chat:assistant_reply',
+        title: (response.content ?? '').slice(0, 80),
+        contextId: conversationId,
+        payload: {
+          intent: 'query',
+          model: this.minimax.model,
+          provider: 'minimax',
+          tokens,
+        },
+        sourceEventId: `chat:${conversationId}:assistant`,
+      });
+
       return {
         reply: response.content,
         conversationId,
-        tokens: response.usage
-          ? {
-              input: response.usage.inputTokens,
-              output: response.usage.outputTokens,
-              total: response.usage.totalTokens,
-            }
-          : { input: 0, output: 0, total: 0 },
+        tokens,
         model: this.minimax.model,
         provider: 'minimax',
         liveData,
@@ -161,8 +227,20 @@ export class ChatService {
         `Chat invoke failed: ${(err as Error).message}`,
         ChatService.name,
       );
+      const errReply = `I received your query, but the MiniMax API returned an error: ${(err as Error).message}`;
+      this.recordChatActivitySafe({
+        tenantId: tenantIdFromJwt ?? null,
+        actorType: 'SYSTEM',
+        actorId: 'chat-service',
+        type: 'chat:error',
+        title: errReply.slice(0, 80),
+        contextId: conversationId,
+        severity: 'error',
+        payload: { intent: 'query', error: (err as Error).message },
+        sourceEventId: `chat:${conversationId}:error`,
+      });
       return {
-        reply: `I received your query, but the MiniMax API returned an error: ${(err as Error).message}`,
+        reply: errReply,
         conversationId,
         tokens: { input: 0, output: 0, total: 0 },
         model: this.minimax.model,
@@ -170,6 +248,45 @@ export class ChatService {
         liveData,
       };
     }
+  }
+
+  /**
+   * Fire-and-forget ActivityEvent recorder. Silently swallows failures so chat
+   * flows never break because observability is offline. Resolves input context
+   * (tenantId) is required to write the event; without it we skip.
+   */
+  private recordChatActivitySafe(params: {
+    tenantId: string | null;
+    actorType: 'USER' | 'AI_AGENT' | 'SYSTEM';
+    actorId: string;
+    type: string;
+    title: string;
+    contextId: string;
+    payload: Record<string, unknown>;
+    sourceEventId: string;
+    severity?: 'info' | 'error' | 'warning';
+  }): void {
+    if (!this.activityService || !params.tenantId) return;
+    this.activityService
+      .record({
+        tenantId: params.tenantId,
+        actorType: params.actorType,
+        actorId: params.actorId,
+        type: params.type,
+        title: params.title,
+        contextType: 'CHAT_CONVERSATION',
+        contextId: params.contextId,
+        payload: params.payload,
+        severity: params.severity ?? 'info',
+        visibility: 'tenant',
+        sourceEventId: params.sourceEventId,
+        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+      })
+      .catch((err) =>
+        this.logger.warn(
+          `Activity record failed for ${params.type}: ${String(err)}`,
+        ),
+      );
   }
 
   /**

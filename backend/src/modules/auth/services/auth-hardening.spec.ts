@@ -24,12 +24,18 @@ const TEST_REFRESH_HASH = crypto
 
 function makeJwtService() {
   return {
-    signAsync: jest.fn(async (payload: Record<string, unknown>, opts?: { expiresIn?: string }) => {
-      // Encode payload as a stable fake JWT-style string. Not a real JWT.
-      const encoded = Buffer.from(JSON.stringify({ ...payload, _exp: opts?.expiresIn ?? '15m' }))
-        .toString('base64url');
-      return `fake.${encoded}.sig`;
-    }),
+    signAsync: jest.fn(
+      async (
+        payload: Record<string, unknown>,
+        opts?: { expiresIn?: string },
+      ) => {
+        // Encode payload as a stable fake JWT-style string. Not a real JWT.
+        const encoded = Buffer.from(
+          JSON.stringify({ ...payload, _exp: opts?.expiresIn ?? '15m' }),
+        ).toString('base64url');
+        return `fake.${encoded}.sig`;
+      },
+    ),
     verifyAsync: jest.fn(async (token: string) => {
       const payload = JSON.parse(
         Buffer.from(token.split('.')[1], 'base64url').toString('utf8'),
@@ -65,7 +71,8 @@ function makePrisma(opts: {
   if (refreshToken && !refreshToken.tokenHash) {
     refreshToken = { ...refreshToken, tokenHash: TEST_REFRESH_HASH };
   }
-  const invalidateRef = opts.invalidateRef ?? jest.fn(async () => ({ count: 0 }));
+  const invalidateRef =
+    opts.invalidateRef ?? jest.fn(async () => ({ count: 0 }));
 
   return {
     refreshToken: {
@@ -76,7 +83,9 @@ function makePrisma(opts: {
         ...data.data,
       })),
       findUnique: jest.fn(async ({ where }: any) =>
-        where?.tokenHash && refreshToken && refreshToken.tokenHash === where.tokenHash
+        where?.tokenHash &&
+        refreshToken &&
+        refreshToken.tokenHash === where.tokenHash
           ? refreshToken
           : null,
       ),
@@ -252,18 +261,15 @@ describe('AuthService + TokenService (Batch 1 hardening)', () => {
         makeSecrets(),
       );
 
-      const out = await tokens.rotateRefreshToken(
-        TEST_REFRESH_TOKEN,
-        {
-          id: 'u1',
-          email: 'a@b.co',
-          firstName: 'A',
-          lastName: 'B',
-          role: 'USER' as any,
-          tenantId: null,
-          isActive: true,
-        },
-      );
+      const out = await tokens.rotateRefreshToken(TEST_REFRESH_TOKEN, {
+        id: 'u1',
+        email: 'a@b.co',
+        firstName: 'A',
+        lastName: 'B',
+        role: 'USER' as any,
+        tenantId: null,
+        isActive: true,
+      });
 
       expect(out.accessToken).toBeTruthy();
       expect(out.refreshToken).toBeTruthy();
@@ -283,7 +289,19 @@ describe('AuthService + TokenService (Batch 1 hardening)', () => {
         record: jest.fn(async () => undefined),
       } as any;
 
-      const svc = new AuthService(prisma, password, tokens, telemetry, cookieAuth, lockout);
+      const emailService = { send: jest.fn() } as any;
+      const config = { get: jest.fn(() => 'http://localhost:3001') } as any;
+
+      const svc = new AuthService(
+        prisma,
+        password,
+        tokens,
+        telemetry,
+        cookieAuth,
+        lockout,
+        emailService,
+        config,
+      );
 
       const result = await svc.validateUser('nobody@nowhere.com', 'x');
       expect(result).toBeNull();
@@ -308,7 +326,19 @@ describe('AuthService + TokenService (Batch 1 hardening)', () => {
         record: jest.fn(async () => undefined),
       } as any;
 
-      const svc = new AuthService(prisma, password, tokens, telemetry, cookieAuth, lockout);
+      const emailService = { send: jest.fn() } as any;
+      const config = { get: jest.fn(() => 'http://localhost:3001') } as any;
+
+      const svc = new AuthService(
+        prisma,
+        password,
+        tokens,
+        telemetry,
+        cookieAuth,
+        lockout,
+        emailService,
+        config,
+      );
 
       await expect(
         svc.login('a@b.co', 'pw', { ipAddress: '1.1.1.1', userAgent: 'jest' }),
@@ -354,9 +384,23 @@ describe('AuthService + TokenService (Batch 1 hardening)', () => {
       const lockout = {} as any;
       const password = makePasswordService();
 
-      const svc = new AuthService(prisma, password, tokens, telemetry, cookieAuth, lockout);
+      const emailService = { send: jest.fn() } as any;
+      const config = { get: jest.fn(() => 'http://localhost:3001') } as any;
 
-      await expect(svc.refresh('OLD_TOKEN')).rejects.toThrow(/password change/i);
+      const svc = new AuthService(
+        prisma,
+        password,
+        tokens,
+        telemetry,
+        cookieAuth,
+        lockout,
+        emailService,
+        config,
+      );
+
+      await expect(svc.refresh('OLD_TOKEN')).rejects.toThrow(
+        /password change/i,
+      );
     });
   });
 });
@@ -379,7 +423,9 @@ describe('AccountLockoutService', () => {
       get: jest.fn(async () => '99'),
       del: jest.fn(async () => undefined),
     } as any;
-    const tokens = { revokeAllRefreshTokens: jest.fn(async () => undefined) } as any;
+    const tokens = {
+      revokeAllRefreshTokens: jest.fn(async () => undefined),
+    } as any;
 
     const svc = new AccountLockoutService(prisma, redis, tokens);
 

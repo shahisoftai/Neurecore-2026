@@ -41,11 +41,27 @@ import { InboxModule } from './modules/inbox/inbox.module';
 import { GoalsModule } from './modules/goals/goals.module';
 import { SecurityModule } from './modules/security/security.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { ProjectStagesModule } from './modules/project-stages/project-stages.module';
+import { ProjectMembersModule } from './modules/project-members/project-members.module';
+import { ProjectTypesModule } from './modules/project-types/project-types.module';
+import { DeliverablesModule } from './modules/deliverables/deliverables.module';
+import { ExecutionLogModule } from './modules/execution-log/execution-log.module';
+import { ApprovalChainsModule } from './modules/approval-chains/approval-chains.module';
+// Phase 5 — Project Memory + Decision Registry
+import { ProjectMemoryModule } from './modules/project-memory/project-memory.module';
+import { ProjectDecisionsModule } from './modules/project-decisions/project-decisions.module';
+// Phase 6 — Health Score + BI Dashboards
+import { ProjectHealthModule } from './modules/project-health/project-health.module';
+// Phase 7 — Client Portal
+import { PortalModule } from './modules/portal/portal.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
 // Phase 3 — EAOS-1 entity workspace
 import { EntitiesModule } from './modules/entities/entities.module';
 import { MissionFeedModule } from './modules/mission-feed/mission-feed.module';
 import { AIActionsModule } from './modules/ai-actions/ai-actions.module';
+import { ActivityModule } from './modules/activity/activity.module';
+import { ThreadsModule } from './modules/threads/threads.module';
 // Phase 5 pre-req — Observability (Prometheus metrics)
 import { MetricsModule } from './modules/metrics/metrics.module';
 // Phase 5 pre-req — Feature flag system (kill-switch)
@@ -171,6 +187,18 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
 
     // Phase 5 — Paperclip Projects
     ProjectsModule,
+    CustomersModule,
+    ProjectStagesModule,
+    ProjectMembersModule,
+    ProjectTypesModule,
+    DeliverablesModule,
+    ExecutionLogModule,
+    ApprovalChainsModule,
+    ProjectMemoryModule,
+    ProjectDecisionsModule,
+    ProjectHealthModule,
+    // Phase 7 — Client Portal
+    PortalModule,
 
     // Phase 5 — Workflows (EAOS-2 / Paperclip)
     WorkflowsModule,
@@ -179,6 +207,8 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     EntitiesModule,
     MissionFeedModule,
     AIActionsModule,
+    ActivityModule,
+    ThreadsModule,
 
     // Phase 5 pre-req — Observability (Prometheus + Grafana)
     MetricsModule,

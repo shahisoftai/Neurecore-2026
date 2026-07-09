@@ -7,6 +7,7 @@ import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
 import { TokenService } from './services/token.service';
 import { PasswordService } from './services/password.service';
+import { PlatformEmailService } from './services/platform-email.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -46,6 +47,7 @@ import { jwtExpiresIn } from '../../common/utils/config-getter';
     TokenService,
     SecretProviderService,
     PasswordService,
+    PlatformEmailService,
     JwtStrategy,
     LocalStrategy,
     JwtAuthGuard,

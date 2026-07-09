@@ -44,14 +44,14 @@ export class ChatController {
   @Post('chat/messages')
   @HttpCode(HttpStatus.OK)
   async sendMessage(@Body() dto: SendChatMessageDto, @Req() req: AuthedRequest) {
-    return this.chat.send(dto, req.user?.tenantId);
+    return this.chat.send(dto, req.user?.tenantId, req.user?.sub);
   }
 
   /** Core ConversationalAIService entry point */
   @Post('ai/chat')
   @HttpCode(HttpStatus.OK)
   async aiChat(@Body() dto: SendChatMessageDto, @Req() req: AuthedRequest) {
-    return this.chat.send(dto, req.user?.tenantId);
+    return this.chat.send(dto, req.user?.tenantId, req.user?.sub);
   }
 
   /** Stub history endpoint — keeps existing frontend integration stable */

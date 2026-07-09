@@ -49,6 +49,11 @@ export class CreateGoalDto {
   @IsOptional()
   @IsDateString()
   targetDate?: string;
+
+  // Phase 3
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
 }
 
 export class UpdateGoalDto {
@@ -120,6 +125,11 @@ export class ListGoalsDto {
   @IsUUID()
   ownerAgentId?: string;
 
+  // Phase 3
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
+
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -148,4 +158,6 @@ export class GoalResponseDto {
   createdAt!: Date;
   updatedAt!: Date;
   children?: GoalResponseDto[];
+  // Phase 3
+  projectId?: string | null;
 }

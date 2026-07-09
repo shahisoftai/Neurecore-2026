@@ -42,7 +42,14 @@ export interface AuthResult {
 
 export type GoogleSignInResult =
   | { status: 'ok'; user: ValidatedUser; tokens: TokenPair }
-  | { status: 'existing_unlinked'; email: string; firstName: string; lastName: string; googlePicture?: string; googleId: string }
+  | {
+      status: 'existing_unlinked';
+      email: string;
+      firstName: string;
+      lastName: string;
+      googlePicture?: string;
+      googleId: string;
+    }
   | { status: 'conflict'; email: string; message: string };
 
 export interface ValidatedUser {

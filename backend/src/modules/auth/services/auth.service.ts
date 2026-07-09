@@ -8,8 +8,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import { randomBytes, createHash } from 'node:crypto';
+import { ConfigService } from '@nestjs/config';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
+import { PlatformEmailService } from './platform-email.service';
 import { TelemetryService } from '../../observability/services/telemetry.service';
 import { AccountLockoutService } from '../../security/services/account-lockout.service';
 import {
@@ -25,12 +28,12 @@ import { TokenPair } from '../interfaces/token.interface';
 import { UserRole } from '@prisma/client';
 import { CookieAuthService } from '../../../common/auth/cookie-auth.service';
 
-// Single Responsibility: orchestrate registration, login, refresh and logout flows.
-// Dependency Inversion: depends on abstractions (PrismaService, PasswordService,
-// TokenService, AccountLockoutService). All implementations injected.
+// Single Responsibility: orchestrate registration, login, refresh, logout, and
+// password-reset flows.
 @Injectable()
 export class AuthService implements IAuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly tenantFrontendUrl: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -39,7 +42,12 @@ export class AuthService implements IAuthService {
     private readonly telemetry: TelemetryService,
     private readonly cookieAuth: CookieAuthService,
     private readonly lockout: AccountLockoutService,
-  ) {}
+    private readonly emailService: PlatformEmailService,
+    config: ConfigService,
+  ) {
+    this.tenantFrontendUrl =
+      config.get<string>('TENANT_FRONTEND_URL') || 'http://localhost:3001';
+  }
 
   /**
    * F8 — constant-time user validation.
@@ -76,7 +84,10 @@ export class AuthService implements IAuthService {
       return null;
     }
 
-    const valid = await this.passwordService.compare(password, user.passwordHash);
+    const valid = await this.passwordService.compare(
+      password,
+      user.passwordHash,
+    );
     if (!valid) return null;
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
@@ -369,6 +380,81 @@ export class AuthService implements IAuthService {
       `User registered via Google: ${user.email} tenant=${tenant.id}`,
     );
     return { status: 'ok', user: validated, tokens };
+  }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const normalised = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalised },
+    });
+
+    // Always succeed to the caller — don't reveal whether the email exists.
+    if (!user || !user.passwordHash || !user.isActive) {
+      return;
+    }
+
+    // Invalidate any existing unused reset tokens for this user.
+    await this.prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null, expiresAt: { gte: new Date() } },
+      data: { expiresAt: new Date(0) },
+    });
+
+    const plain = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(plain).digest('hex');
+
+    await this.prisma.passwordResetToken.create({
+      data: {
+        tokenHash,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+      },
+    });
+
+    const resetLink = `${this.tenantFrontendUrl}/reset-password?token=${plain}`;
+
+    await this.emailService.send({
+      to: normalised,
+      subject: 'Reset your NeureCore password',
+      html: `
+        <p>Hello ${user.firstName},</p>
+        <p>We received a request to reset your NeureCore password.</p>
+        <p><a href="${resetLink}">Reset your password</a></p>
+        <p>This link expires in 1 hour. If you did not request this, ignore this email.</p>
+        <p>— NeureCore</p>
+      `,
+    });
+
+    this.logger.log(`Password reset requested for ${normalised}`);
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+
+    const record = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!record || record.usedAt || record.expiresAt < new Date()) {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
+    const passwordHash = await this.passwordService.hash(newPassword);
+
+    await this.prisma.$transaction([
+      this.prisma.passwordResetToken.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.user.update({
+        where: { id: record.user.id },
+        data: { passwordHash, passwordChangedAt: new Date() },
+      }),
+    ]);
+
+    await this.tokenService.revokeAllRefreshTokens(record.user.id);
+
+    this.logger.log(`Password reset completed for ${record.user.email}`);
   }
 
   private toValidatedUser(user: {

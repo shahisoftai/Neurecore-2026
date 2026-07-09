@@ -28,9 +28,9 @@ import { LockoutDecision, LockoutPolicy } from '../interfaces/lockout.interface'
 import { v4 as uuidv4 } from 'uuid';
 
 const DEFAULT_POLICY: LockoutPolicy = {
-  windowSeconds: 10 * 60,
+  windowSeconds: 60,
   failureThreshold: 5,
-  lockoutSeconds: 15 * 60,
+  lockoutSeconds: 15,
 };
 
 @Injectable()

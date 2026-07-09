@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Post, Body, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
 import { ApiCommon } from '../../common/decorators/api-common.decorator';
 import { DeploymentService } from './services/deployment.service';
 import {
@@ -9,6 +9,8 @@ import {
 } from './dto/deployment.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import type { JwtPayload } from '../auth/interfaces/token.interface';
 import { UserRole } from '@prisma/client';
 
@@ -25,6 +27,7 @@ import { UserRole } from '@prisma/client';
  */
 @Controller({ path: 'deploy', version: '1' })
 @ApiCommon('agents')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class DeploymentController {
   constructor(private readonly deploymentService: DeploymentService) {}
 

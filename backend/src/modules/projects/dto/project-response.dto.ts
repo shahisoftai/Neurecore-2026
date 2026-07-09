@@ -1,6 +1,5 @@
 /**
  * ProjectResponseDto — wire-shape for Project entities.
- * Phase 1, Task 1.10 (per EAOS-api-contract.md §5.1).
  */
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -16,7 +15,7 @@ export class ProjectResponseDto {
   @Expose()
   name!: string;
 
-  @ApiProperty({ required: false, nullable: true })
+  @ApiPropertyOptional({ nullable: true })
   @Expose()
   description?: string | null;
 
@@ -24,13 +23,79 @@ export class ProjectResponseDto {
   @Expose()
   status!: ProjectStatus;
 
-  @ApiProperty({ format: 'uuid', required: false, nullable: true })
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
   @Expose()
   departmentId?: string | null;
 
-  @ApiProperty({ required: false, nullable: true })
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @Expose()
+  customerId?: string | null;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @Expose()
+  projectTypeId?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Expose()
+  projectTypeVersion?: number | null;
+
+  @ApiPropertyOptional({
+    enum: ['FIXED_FEE', 'HOURLY', 'RETAINER'],
+    nullable: true,
+  })
+  @Expose()
+  budgetType?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Expose()
+  budgetAmount?: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Expose()
+  budgetCurrency?: string | null;
+
+  @ApiPropertyOptional({
+    enum: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'],
+    nullable: true,
+  })
+  @Expose()
+  priority?: string | null;
+
+  @ApiProperty({ type: [String] })
+  @Expose()
+  tags!: string[];
+
+  @ApiPropertyOptional({ nullable: true })
   @Expose()
   targetDate?: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Expose()
+  startDate?: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Expose()
+  completedAt?: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Expose()
+  lostReason?: string | null;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @Expose()
+  parentProjectId?: string | null;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @Expose()
+  clonedFromProjectId?: string | null;
+
+  @ApiProperty({ type: [String] })
+  @Expose()
+  goalIds!: string[];
+
+  @ApiPropertyOptional({ nullable: true })
+  @Expose()
+  customFieldValues?: Record<string, unknown> | null;
 
   @ApiProperty({ format: 'uuid' })
   @Expose()
@@ -43,4 +108,8 @@ export class ProjectResponseDto {
   @ApiProperty()
   @Expose()
   updatedAt!: Date;
+
+  @ApiPropertyOptional({ type: Object })
+  @Expose()
+  customer?: { id: string; name: string } | null;
 }

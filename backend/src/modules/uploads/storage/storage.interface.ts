@@ -53,3 +53,39 @@ export const LOGO_UPLOAD = {
   /** Storage prefix. */
   prefix: 'logos',
 } as const;
+
+/**
+ * Agent avatar upload constraints. Same image set as logos (PNG/JPEG/WEBP/SVG),
+ * but tighter size limit since avatars are rendered at small sizes and a 5 MB
+ * avatar would slow every page that lists agents.
+ */
+export const AGENT_AVATAR_UPLOAD = {
+  allowedTypes: [
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/svg+xml',
+  ] as const,
+  maxBytes: 2 * 1024 * 1024,
+  prefix: 'agent-avatars',
+} as const;
+
+/**
+ * Client document upload constraints for the portal.
+ * Allows common document formats with a 20 MB limit.
+ */
+export const DOCUMENT_UPLOAD = {
+  allowedTypes: [
+    'application/pdf',
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+  ] as const,
+  maxBytes: 20 * 1024 * 1024,
+  prefix: 'portal-documents',
+} as const;

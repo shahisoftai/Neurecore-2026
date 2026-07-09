@@ -21,6 +21,14 @@ export class HermesTenantGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = request.user;
+    const userRole = (user as { role?: string } | undefined)?.role;
+
+    // SUPER_ADMIN bypasses tenant scoping — they are the only role
+    // authorized to inspect across tenants.
+    if (userRole === 'SUPER_ADMIN') {
+      return true;
+    }
+
     const tenantId =
       (request.params as Record<string, string>).tenantId ?? user?.tenantId;
 
@@ -33,7 +41,8 @@ export class HermesTenantGuard implements CanActivate {
     const params = request.params as Record<string, string>;
     const body = request.body as Record<string, unknown>;
     const hermesAgentId =
-      params.hermesAgentId ?? (body?.hermesAgentId as string | undefined);
+      params.hermesAgentId ?? params.agentId ??
+      (body?.hermesAgentId as string | undefined);
     if (hermesAgentId) {
       const agent = await this.prisma.hermesAgent.findUnique({
         where: { id: hermesAgentId },

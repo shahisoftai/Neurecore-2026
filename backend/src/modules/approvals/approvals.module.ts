@@ -2,23 +2,26 @@
  * src/modules/approvals/approvals.module.ts
  *
  * NestJS module for approvals feature
- * SOLID: OCP - Extensible without modification
+ * SOLID:
+ * - OCP: Extensible without modification
+ * - DIP: Binds IApprovalRepository to PrismaApprovalRepository via token
  */
 
 import { Module } from '@nestjs/common';
 import { ApprovalsService } from './services/approvals.service';
 import { ApprovalsController } from './controllers/approvals.controller';
+import { PrismaApprovalRepository } from './repositories/prisma-approval.repository';
+import { APPROVAL_REPOSITORY } from './interfaces/approval.interface';
 
-/**
- * ApprovalsModule
- *
- * SOLID:
- * - OCP: New services added without modifying this module
- * - DIP: All providers injected via module system
- */
 @Module({
     controllers: [ApprovalsController],
-    providers: [ApprovalsService],
+    providers: [
+        ApprovalsService,
+        {
+            provide: APPROVAL_REPOSITORY,
+            useClass: PrismaApprovalRepository,
+        },
+    ],
     exports: [ApprovalsService],
 })
 export class ApprovalsModule { }

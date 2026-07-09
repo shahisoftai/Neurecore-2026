@@ -5,17 +5,26 @@
  * Lists tenant-wide AI-prioritized items needing user attention. Items
  * are dismissable per-user. Phase 5 wires AI prioritization (currently
  * items are seeded manually via the create endpoint).
+ *
+ * Phase 2 (Enterprise Communication): write-through adapter — every
+ * create() also records an ActivityEvent so the unified feed works
+ * without polling. ActivityService is injected via @Optional to
+ * preserve backward compatibility with existing tests.
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import type { IActivityService } from '../../hermes/interfaces/IActivityService';
 import type { CreateMissionFeedItemDto } from '../dto/mission-feed.dto';
 import type { Prisma } from '@prisma/client';
 
 @Injectable()
 export class MissionFeedService {
+  private readonly logger = new Logger(MissionFeedService.name);
+
   constructor(
     private readonly prisma: PrismaService,
+    @Optional() private readonly activityService?: IActivityService,
   ) {}
 
   async list(options: {
@@ -90,7 +99,7 @@ export class MissionFeedService {
       if (existing) return existing;
     }
 
-    return this.prisma.missionFeedItem.create({
+    const item = await this.prisma.missionFeedItem.create({
       data: {
         tenantId,
         category: dto.category,
@@ -103,5 +112,27 @@ export class MissionFeedService {
         sourceEventId: dto.sourceEventId,
       },
     });
+
+    // Write-through to canonical ActivityEvent (no polling needed).
+    if (this.activityService) {
+      this.activityService
+        .record({
+          tenantId,
+          actorType: 'SYSTEM',
+          actorId: 'mission-feed',
+          type: `mission.${dto.category.toLowerCase()}`,
+          title: dto.title,
+          description: dto.description ?? undefined,
+          entityType: dto.entityType ?? undefined,
+          entityId: dto.entityId ?? undefined,
+          sourceEventId: item.sourceEventId ?? item.id,
+          createdAt: item.createdAt,
+        })
+        .catch((err) =>
+          this.logger.warn(`Activity record failed: ${String(err)}`),
+        );
+    }
+
+    return item;
   }
 }

@@ -181,6 +181,35 @@ export class AgentsService implements IAgentService {
     tenantId: string,
   ): Promise<unknown> {
     await this.assertOwnership(id, tenantId);
+
+    // ─── Merge tenant-specific profile overrides into metadata.profile ─────
+    // We do this with a read+write so we never clobber existing metadata fields
+    // (e.g. performance, currentTask, queue) used by the orchestration board.
+    const hasProfileField =
+      input.avatarUrl !== undefined ||
+      input.designation !== undefined ||
+      input.bio !== undefined ||
+      input.color !== undefined ||
+      input.emoji !== undefined;
+
+    let mergedMetadata: Record<string, unknown> | undefined;
+    if (hasProfileField) {
+      const current = await this.prisma.agent.findFirst({
+        where: { id, tenantId },
+        select: { metadata: true },
+      });
+      const base = (current?.metadata as Record<string, unknown>) ?? {};
+      const existingProfile =
+        (base.profile as Record<string, unknown> | undefined) ?? {};
+      const profile = { ...existingProfile };
+      if (input.avatarUrl !== undefined) profile.avatarUrl = input.avatarUrl;
+      if (input.designation !== undefined) profile.designation = input.designation;
+      if (input.bio !== undefined) profile.bio = input.bio;
+      if (input.color !== undefined) profile.color = input.color;
+      if (input.emoji !== undefined) profile.emoji = input.emoji;
+      mergedMetadata = { ...base, profile };
+    }
+
     return this.prisma.agent.update({
       where: { id },
       data: {
@@ -202,6 +231,7 @@ export class AgentsService implements IAgentService {
         ...(input.permissions && { permissions: input.permissions as never }),
         ...(input.config && { config: input.config as never }),
         ...(input.metadata && { metadata: input.metadata as never }),
+        ...(mergedMetadata && { metadata: mergedMetadata as never }),
         ...(input.isActive !== undefined && { isActive: input.isActive }),
         ...(input.emailAlias !== undefined && { emailAlias: input.emailAlias }),
         ...(input.emailProvider !== undefined && {
@@ -212,6 +242,9 @@ export class AgentsService implements IAgentService {
         }),
         ...(input.emailSignature !== undefined && {
           emailSignature: input.emailSignature,
+        }),
+        ...(input.departmentId !== undefined && {
+          departmentId: input.departmentId,
         }),
         ...(input.googleDriveFolderId !== undefined && {
           googleDriveFolderId: input.googleDriveFolderId,

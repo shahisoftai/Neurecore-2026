@@ -285,6 +285,22 @@ export class TenantsService {
     });
   }
 
+  async activate(id: string) {
+    await this.findOne(id);
+    return this.prisma.tenant.update({
+      where: { id },
+      data: { status: TenantStatus.ACTIVE },
+    });
+  }
+
+  async deleteTenant(id: string) {
+    await this.findOne(id);
+    // All related data is cascade-deleted by Prisma (onDelete: Cascade)
+    // on every child relation. This single delete cascades to users,
+    // sessions, agents, departments, audit logs, etc.
+    return this.prisma.tenant.delete({ where: { id } });
+  }
+
   private isMissingColumnError(error: unknown): boolean {
     if (!(error instanceof Error)) return false;
     const code = (error as { code?: string }).code;

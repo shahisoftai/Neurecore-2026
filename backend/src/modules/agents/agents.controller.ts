@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { AgentsService } from './services/agents.service';
 import { AgentExecutorService } from './services/agent-executor.service';
@@ -18,6 +19,8 @@ import { UpdateAgentDto } from './dto/update-agent.dto';
 import { DispatchTaskDto } from './dto/dispatch-task.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 import { assertSameTenant } from '../../common/utils/assert-same-tenant';
 import { EntityOwnerGuard } from '../../common/guards/entity-owner.guard';
@@ -49,6 +52,7 @@ class UpdatePermissionsDto {
 
 @Controller({ path: 'agents', version: '1' })
 @ApiCommon('agents')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AgentsController {
   constructor(
     private readonly agentsService: AgentsService,
@@ -124,12 +128,18 @@ export class AgentsController {
 
   @Patch(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.ADMIN)
-  update(
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateAgentDto,
+    @Body() dto: UpdateAgentDto & { tenantId?: string },
     @CurrentUser() user: JwtPayload,
   ) {
-    if (!user.tenantId) throw new Error('Tenant ID required');
+    if (!user.tenantId) {
+      if (PLATFORM_ROLES_AGENTS.has(user.role as UserRole)) {
+        if (!dto.tenantId) throw new Error('Tenant ID required for platform admins');
+        return this.agentsService.update(id, dto, dto.tenantId);
+      }
+      throw new Error('Tenant ID required');
+    }
     return this.agentsService.update(id, dto, user.tenantId);
   }
 

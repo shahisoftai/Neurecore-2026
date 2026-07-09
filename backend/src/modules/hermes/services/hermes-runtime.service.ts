@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { IHermesRuntime } from '../interfaces/hermes-runtime.interface';
 import type {
   HermesExecutionContext,
@@ -10,7 +10,11 @@ import { ToolGatewayService } from './tool-gateway.service';
 import { HermesSessionService } from './hermes-session.service';
 import { HermesMemoryService } from './hermes-memory.service';
 import { HermesContextService } from './hermes-context.service';
-import { HermesEventBusService } from './hermes-event-bus.service';
+import {
+  HERMES_EVENT_BUS,
+  type IHermesEventBus,
+} from '../interfaces/hermes-event-bus.interface';
+import { PresenceService } from './presence.service';
 import { OfficialAgentGraph } from '../../agents/langgraph/langgraph-official';
 import type { StepResult } from '../../agents/interfaces/agent-executor.interface';
 
@@ -25,7 +29,8 @@ export class HermesRuntimeService implements IHermesRuntime {
     private readonly session: HermesSessionService,
     private readonly memory: HermesMemoryService,
     private readonly context: HermesContextService,
-    private readonly eventBus: HermesEventBusService,
+    @Inject(HERMES_EVENT_BUS) private readonly eventBus: IHermesEventBus,
+    private readonly presence: PresenceService,
     private readonly officialGraph: OfficialAgentGraph,
   ) {}
 
@@ -76,6 +81,14 @@ export class HermesRuntimeService implements IHermesRuntime {
         data: { task, tenantId: execCtxInner.tenantId },
         timestamp: Date.now(),
       });
+
+      await this.presence.setStatus(
+        'AI_AGENT',
+        hermesAgentId,
+        'working',
+        execCtxInner.tenantId,
+        { currentTask: task, currentSession: sessionId },
+      );
 
       await this.session.addMessage(sessionId, 'USER', task);
 
@@ -152,6 +165,13 @@ export class HermesRuntimeService implements IHermesRuntime {
                   data: { toolName: toolCall.name },
                   timestamp: Date.now(),
                 });
+                await this.presence.setStatus(
+                  'AI_AGENT',
+                  hermesAgentId,
+                  'waiting_approval',
+                  execCtxInner.tenantId,
+                  { currentTask: task, currentSession: sessionId },
+                );
               }
             }
           }
@@ -201,6 +221,13 @@ export class HermesRuntimeService implements IHermesRuntime {
         timestamp: Date.now(),
       });
 
+      await this.presence.setStatus(
+        'AI_AGENT',
+        hermesAgentId,
+        'idle',
+        execCtxInner.tenantId,
+      );
+
       return {
         success: !hasError,
         output: finalOutput,
@@ -219,6 +246,13 @@ export class HermesRuntimeService implements IHermesRuntime {
         data: { error: errMsg },
         timestamp: Date.now(),
       });
+
+      await this.presence.setStatus(
+        'AI_AGENT',
+        hermesAgentId,
+        'blocked',
+        execCtxInner.tenantId,
+      ).catch(() => undefined);
 
       return {
         success: false,

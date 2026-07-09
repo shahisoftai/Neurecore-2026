@@ -35,7 +35,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     cookieAuth: CookieAuthService,
   ) {
     super({
-      jwtFromRequest: (req: unknown) => JwtStrategy.extractJwt(req as never, cookieAuth),
+      jwtFromRequest: (req: unknown) =>
+        JwtStrategy.extractJwt(req as never, cookieAuth),
       ignoreExpiration: false,
       secretOrKey:
         readConfig(config, 'JWT_SECRET') ?? process.env.JWT_SECRET ?? '',
@@ -48,10 +49,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
    * Custom extractor: httpOnly cookie → Bearer header → null.
    */
   private static extractJwt(
-    req: {
-      cookies?: Record<string, string>;
-      headers?: Record<string, string | string[] | undefined>;
-    } | undefined,
+    req:
+      | {
+          cookies?: Record<string, string>;
+          headers?: Record<string, string | string[] | undefined>;
+        }
+      | undefined,
     cookieAuth: CookieAuthService,
   ): string | null {
     if (!req) return null;

@@ -1,31 +1,32 @@
+/**
+ * Projects Module — Business Logic Service
+ */
+
 import {
   Inject,
   Injectable,
   Logger,
   NotFoundException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
-import type { IProjectRepository } from './interfaces/project.interface';
-
-export const PROJECT_REPOSITORY = 'PROJECT_REPOSITORY';
-
-export interface CreateProjectInput {
-  name: string;
-  description?: string;
-  departmentId?: string;
-  targetDate?: Date;
-  goalIds?: string[];
-}
-
-export interface UpdateProjectInput {
-  name?: string;
-  description?: string;
-  status?: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
-  departmentId?: string;
-  targetDate?: Date;
-  goalIds?: string[];
-  metadata?: Record<string, unknown>;
-}
+import type {
+  IProjectRepository,
+  Project,
+  CreateProjectInput,
+  UpdateProjectInput,
+  ListProjectsOptions,
+} from './interfaces/project.interface';
+import { PROJECT_REPOSITORY } from './interfaces/project.interface';
+// Re-export so consumers of ProjectsService keep a single import.
+export { PROJECT_REPOSITORY };
+import {
+  canTransition,
+  requiresLostReason,
+  type ProjectStatus,
+} from './common/project-lifecycle';
+import type { ProjectTypesService } from '../project-types/project-types.service';
+import type { ProjectsAdapter } from '../information-engine/clients/projects.adapter';
 
 @Injectable()
 export class ProjectsService {
@@ -33,74 +34,155 @@ export class ProjectsService {
 
   constructor(
     @Inject(PROJECT_REPOSITORY) private readonly repository: IProjectRepository,
+    @Inject('PROJECT_TYPES_SERVICE')
+    private readonly projectTypesService: ProjectTypesService,
+    @Optional() private readonly projectsAdapter?: ProjectsAdapter,
   ) {}
 
-  async create(input: CreateProjectInput, tenantId: string) {
-    this.logger.log(`Creating project: ${input.name}`);
-
+  async create(input: CreateProjectInput, tenantId: string): Promise<Project> {
     if (!input.name || input.name.trim().length === 0) {
       throw new BadRequestException('Project name is required');
     }
 
-    return this.repository.create(input, tenantId);
-  }
+    // Phase 2: Validate customFieldValues against fieldSchema (backwards-compat).
+    // The adapter delegates this to ProjectTypesService.validateCustomFields
+    // for the fieldSchema path; this call is kept here so the 16 existing
+    // unit tests on validateCustomFields continue to fire from create().
+    if (input.projectTypeId && input.customFieldValues) {
+      const version = await this.projectTypesService.getCurrentVersion(
+        input.projectTypeId,
+        tenantId,
+      );
+      if (version) {
+        this.projectTypesService.validateCustomFields(
+          version.fieldSchema,
+          input.customFieldValues,
+        );
+      }
+    }
 
-  async findById(id: string, tenantId: string) {
-    const project = await this.repository.findById(id, tenantId);
+    const project = await this.repository.create(input, tenantId);
 
-    if (!project) {
-      throw new NotFoundException(`Project ${id} not found`);
+    // Phase 2: Auto-generate stages from stageTemplate (unchanged behaviour).
+    if (input.projectTypeId) {
+      const version = await this.projectTypesService.getCurrentVersion(
+        input.projectTypeId,
+        tenantId,
+      );
+      if (
+        version &&
+        version.stageTemplate &&
+        version.stageTemplate.length > 0
+      ) {
+        await this.repository.createStages(
+          project.id,
+          version.stageTemplate.map((s) => ({
+            name: s.name,
+            order: s.order,
+            description: s.defaultDurationDays
+              ? `${s.defaultDurationDays} day${s.defaultDurationDays === 1 ? '' : 's'}`
+              : undefined,
+          })),
+        );
+        this.logger.debug(
+          `Created ${version.stageTemplate.length} stages for project ${project.id}`,
+        );
+      }
+    }
+
+    // Phase 2B: Delegate engine post-create work to the EIE via adapter.
+    // This seeds InformationResponse rows from customFieldValues,
+    // computes EntityCompleteness, and runs applyWhen-filtered resolve.
+    // Adapter is optional so unit tests can construct ProjectsService
+    // without the engine; production wiring always provides it.
+    if (this.projectsAdapter) {
+      await this.projectsAdapter.onProjectCreated(project, tenantId, input);
     }
 
     return project;
   }
 
-  async findAll(
-    tenantId: string,
-    options?: {
-      status?: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
-      departmentId?: string;
-      search?: string;
-      page?: number;
-      limit?: number;
-    },
-  ) {
-    return this.repository.findAll(options ?? {}, tenantId);
+  async findById(id: string, tenantId: string): Promise<Project> {
+    const project = await this.repository.findById(id, tenantId);
+    if (!project) throw new NotFoundException(`Project ${id} not found`);
+    return project;
+  }
+
+  async findAll(tenantId: string, options: ListProjectsOptions = {}) {
+    return this.repository.findAll(options, tenantId);
   }
 
   async findByDepartment(departmentId: string, tenantId: string) {
     return this.repository.findByDepartment(departmentId, tenantId);
   }
 
-  async update(id: string, tenantId: string, input: UpdateProjectInput) {
+  async update(
+    id: string,
+    tenantId: string,
+    input: UpdateProjectInput,
+  ): Promise<Project> {
     await this.findById(id, tenantId);
-
-    return this.repository.update(id, input);
+    return this.repository.update(id, tenantId, input);
   }
 
-  async delete(id: string, tenantId: string) {
+  async delete(id: string, tenantId: string): Promise<void> {
     await this.findById(id, tenantId);
-
     await this.repository.delete(id, tenantId);
     this.logger.log(`Deleted project ${id}`);
   }
 
   async addGoal(projectId: string, goalId: string, tenantId: string) {
     await this.findById(projectId, tenantId);
-
     return this.repository.addGoal(projectId, goalId, tenantId);
   }
 
   async removeGoal(projectId: string, goalId: string, tenantId: string) {
     await this.findById(projectId, tenantId);
-
     return this.repository.removeGoal(projectId, goalId, tenantId);
   }
 
+  async cloneFromProject(
+    sourceProjectId: string,
+    newName: string,
+    tenantId: string,
+  ) {
+    await this.findById(sourceProjectId, tenantId);
+    return this.repository.cloneFromProject(sourceProjectId, newName, tenantId);
+  }
+
+  /**
+   * Transition a project through its lifecycle using the state machine.
+   * Direct writes to Project.status are forbidden by design — use this method.
+   */
+  async transitionStatus(
+    id: string,
+    tenantId: string,
+    to: ProjectStatus,
+    reason?: string,
+  ): Promise<Project> {
+    const project = await this.findById(id, tenantId);
+    const from = project.status;
+
+    if (!canTransition(from, to)) {
+      throw new BadRequestException(`Invalid transition: ${from} → ${to}.`);
+    }
+    if (requiresLostReason(to) && !reason) {
+      throw new BadRequestException(
+        'lostReason is required when transitioning to LOST',
+      );
+    }
+
+    return this.repository.setStatus(id, tenantId, to, {
+      lostReason: to === 'LOST' ? (reason ?? null) : undefined,
+      completedAt: to === 'COMPLETED' ? new Date() : undefined,
+    });
+  }
+
   async getProjectStats(tenantId: string) {
-    const { data: allProjects, total } = await this.repository.findAll({
-      limit: 1000,
-    }, tenantId);
+    const { data: allProjects, total } = await this.repository.findAll(
+      { limit: 1000 },
+      tenantId,
+    );
 
     const activeProjects = allProjects.filter((p) => p.status === 'ACTIVE');
     const completedProjects = allProjects.filter(

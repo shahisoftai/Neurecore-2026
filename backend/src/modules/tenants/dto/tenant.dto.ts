@@ -72,6 +72,6 @@ export class UpdateTenantDto {
 }
 
 export class ChangeTierDto {
-  @IsUUID()
+  @IsString()
   tierId!: string;
 }

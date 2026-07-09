@@ -62,4 +62,34 @@ export class UpdateAgentDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  departmentId?: string | null;
+
+  // Tenant-specific profile overrides (stored under metadata.profile.*)
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  avatarUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  designation?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  bio?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  color?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  emoji?: string | null;
 }

@@ -11,6 +11,7 @@ export interface HermesExecutionContext {
     userId?: string;
     threadId: string;
     agentId?: string;
+    hopCount?: number;
   };
   /** If true and agentId is provided, auto-create HermesAgent if missing */
   autoLink?: boolean;

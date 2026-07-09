@@ -1,16 +1,12 @@
 /**
- * Projects Module - Controller
- *
- * Following SOLID:
- * - Single Responsibility: HTTP request handling only
- * - Controller receives data, delegates to service
+ * Projects Module — Controller
  */
 
 import {
   Controller,
   Get,
   Post,
-  Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -26,6 +22,8 @@ import {
   CreateProjectDto,
   UpdateProjectDto,
   ListProjectsDto,
+  TransitionProjectStatusDto,
+  CloneProjectDto,
 } from './dto/project.dto';
 import { PaginatedResponse } from '../../common/responses/paginated.response';
 import { ActionResult } from '../../common/responses/action-result.response';
@@ -42,29 +40,68 @@ export class ProjectsController {
 
   @Post()
   async create(@CurrentUser() user: JwtPayload, @Body() dto: CreateProjectDto) {
-    return this.projectsService.create({
-      name: dto.name,
-      description: dto.description,
-      departmentId: dto.departmentId,
-      targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
-      goalIds: dto.goalIds,
-    }, user.tenantId!);
+    return this.projectsService.create(
+      {
+        name: dto.name,
+        description: dto.description,
+        departmentId: dto.departmentId,
+        customerId: dto.customerId,
+        projectTypeId: dto.projectTypeId,
+        projectTypeVersion: dto.projectTypeVersion,
+        budgetType: dto.budgetType,
+        budgetAmount: dto.budgetAmount,
+        budgetCurrency: dto.budgetCurrency,
+        priority: dto.priority,
+        tags: dto.tags,
+        goalIds: dto.goalIds,
+        targetDate: dto.targetDate,
+        startDate: dto.startDate,
+        customFieldValues: dto.customFieldValues,
+      },
+      user.tenantId!,
+    );
+  }
+
+  @Post('clone')
+  async clone(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CloneProjectDto,
+  ): Promise<ActionResult<ProjectResponseDto>> {
+    const project = await this.projectsService.cloneFromProject(
+      dto.sourceProjectId,
+      dto.newName,
+      user.tenantId!,
+    );
+    return {
+      success: true,
+      message: `Project cloned from ${dto.sourceProjectId}`,
+      data: project as unknown as ProjectResponseDto,
+    };
   }
 
   @Get()
-  async findAll(@CurrentUser() user: JwtPayload, @Query() query: ListProjectsDto): Promise<PaginatedResponse<ProjectResponseDto>> {
+  async findAll(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: ListProjectsDto,
+  ): Promise<PaginatedResponse<ProjectResponseDto>> {
     const page = query.page ? Number(query.page) : 1;
     const limit = query.limit ? Number(query.limit) : 20;
     const { data, total } = await this.projectsService.findAll(user.tenantId!, {
       status: query.status,
       departmentId: query.departmentId,
+      customerId: query.customerId,
       search: query.search,
       page,
       limit,
     });
     return {
       items: data as unknown as ProjectResponseDto[],
-      pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
     };
   }
 
@@ -74,7 +111,10 @@ export class ProjectsController {
   }
 
   @Get('department/:departmentId')
-  async findByDepartment(@CurrentUser() user: JwtPayload, @Param('departmentId') departmentId: string) {
+  async findByDepartment(
+    @CurrentUser() user: JwtPayload,
+    @Param('departmentId') departmentId: string,
+  ) {
     return this.projectsService.findByDepartment(departmentId, user.tenantId!);
   }
 
@@ -84,7 +124,7 @@ export class ProjectsController {
     return this.projectsService.findById(id, user.tenantId!);
   }
 
-  @Put(':id')
+  @Patch(':id')
   async update(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -93,12 +133,41 @@ export class ProjectsController {
     return this.projectsService.update(id, user.tenantId!, {
       name: dto.name,
       description: dto.description,
-      status: dto.status,
       departmentId: dto.departmentId,
-      targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
+      customerId: dto.customerId,
+      projectTypeId: dto.projectTypeId,
+      projectTypeVersion: dto.projectTypeVersion,
+      budgetType: dto.budgetType,
+      budgetAmount: dto.budgetAmount,
+      budgetCurrency: dto.budgetCurrency,
+      priority: dto.priority,
+      tags: dto.tags,
+      targetDate: dto.targetDate,
+      startDate: dto.startDate,
       goalIds: dto.goalIds,
+      customFieldValues: dto.customFieldValues,
+      lostReason: dto.lostReason,
       metadata: dto.metadata,
     });
+  }
+
+  @Patch(':id/status')
+  async transitionStatus(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: TransitionProjectStatusDto,
+  ): Promise<ActionResult<ProjectResponseDto>> {
+    const project = await this.projectsService.transitionStatus(
+      id,
+      user.tenantId!,
+      dto.status,
+      dto.reason,
+    );
+    return {
+      success: true,
+      message: `Project transitioned to ${dto.status}`,
+      data: project as unknown as ProjectResponseDto,
+    };
   }
 
   @Delete(':id')
@@ -113,7 +182,11 @@ export class ProjectsController {
     @Param('id') id: string,
     @Param('goalId') goalId: string,
   ): Promise<ActionResult<ProjectResponseDto>> {
-    const project = await this.projectsService.addGoal(id, goalId, user.tenantId!);
+    const project = await this.projectsService.addGoal(
+      id,
+      goalId,
+      user.tenantId!,
+    );
     return {
       success: true,
       message: 'Goal added to project',

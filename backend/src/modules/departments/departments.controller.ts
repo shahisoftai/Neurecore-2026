@@ -107,9 +107,14 @@ export class DepartmentsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: JwtPayload,
-    @Body() dto: UpdateDepartmentDto,
+    @Body() dto: UpdateDepartmentDto & { tenantId?: string },
   ) {
+    const PLATFORM_ROLES: readonly string[] = ['SUPER_ADMIN', 'PLATFORM_ADMIN'];
     if (!user.tenantId) {
+      if (PLATFORM_ROLES.includes(user.role)) {
+        if (!dto.tenantId) throw new Error('Tenant ID is required for platform admins');
+        return this.departmentsService.update(id, dto, dto.tenantId);
+      }
       throw new Error('Tenant ID is required to update a department');
     }
     return this.departmentsService.update(id, dto, user.tenantId);

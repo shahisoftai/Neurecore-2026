@@ -6,6 +6,11 @@ export interface JwtPayload {
   email: string;
   role: UserRole;
   tenantId: string | null;
+  /**
+   * Project-scoped access for client portal users.
+   * When set, the token grants read access to a specific project only.
+   */
+  projectId?: string;
   jti: string; // token ID for blacklisting
   /**
    * F15: UNIX seconds of the user's last password change.

@@ -45,6 +45,7 @@ export class GoalsController {
       ownerUserId: dto.ownerUserId,
       departmentId: dto.departmentId,
       targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
+      projectId: dto.projectId,
     }, user.tenantId!);
   }
 
@@ -67,6 +68,11 @@ export class GoalsController {
   @Get('roots')
   async findRoots(@CurrentUser() user: JwtPayload) {
     return this.goalsService.findRootGoals(user.tenantId!);
+  }
+
+  @Get('project/:projectId')
+  async findByProject(@CurrentUser() user: JwtPayload, @Param('projectId') projectId: string) {
+    return this.goalsService.findByProjectId(projectId, user.tenantId!);
   }
 
   @Get(':id')
@@ -100,6 +106,11 @@ export class GoalsController {
     @Body('progress') progress: number,
   ) {
     return this.goalsService.updateProgress(id, user.tenantId!, progress);
+  }
+
+  @Post(':id/recalculate-progress')
+  async recalculateProgress(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.goalsService.recalculateProgressFromTasks(id, user.tenantId!);
   }
 
   @Delete(':id')

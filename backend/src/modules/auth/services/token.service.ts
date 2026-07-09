@@ -22,11 +22,7 @@
  * the existing contract.
  * Dependency Inversion: all dependencies are injected.
  */
-import {
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
@@ -171,11 +167,7 @@ export class TokenService {
         data: { isRevoked: true },
       });
 
-      const newPair = await this.issueTokenPairInTx(
-        tx,
-        user,
-        stored.familyId,
-      );
+      const newPair = await this.issueTokenPairInTx(tx, user, stored.familyId);
 
       // Point the old row at the new one for audit/forensics.
       await tx.refreshToken.update({

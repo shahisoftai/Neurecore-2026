@@ -37,6 +37,7 @@ export class PrismaGoalRepository implements IGoalRepository {
         ownerUserId: data.ownerUserId,
         departmentId: data.departmentId,
         targetDate: data.targetDate ? new Date(data.targetDate) : undefined,
+        projectId: data.projectId ?? null,
       },
     });
   }
@@ -48,7 +49,7 @@ export class PrismaGoalRepository implements IGoalRepository {
   }
 
   async findAll(options: ListGoalsOptions, tenantId: string) {
-    const { status, level, parentId, ownerUserId, ownerAgentId } =
+    const { status, level, parentId, ownerUserId, ownerAgentId, projectId } =
       options;
     const page = options.page ?? 1;
     const limit = options.limit ?? 20;
@@ -60,6 +61,7 @@ export class PrismaGoalRepository implements IGoalRepository {
     if (level) where.level = level;
     if (ownerUserId) where.ownerUserId = ownerUserId;
     if (ownerAgentId) where.ownerAgentId = ownerAgentId;
+    if (projectId) where.projectId = projectId;
 
     // Handle parentId filtering
     if (parentId === 'root') {
@@ -95,6 +97,13 @@ export class PrismaGoalRepository implements IGoalRepository {
   async findRootGoals(tenantId: string) {
     return this.prisma.goal.findMany({
       where: { tenantId, parentId: null },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async findByProjectId(projectId: string, tenantId: string) {
+    return this.prisma.goal.findMany({
+      where: { projectId, tenantId },
       orderBy: { createdAt: 'asc' },
     });
   }

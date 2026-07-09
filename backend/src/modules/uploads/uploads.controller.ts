@@ -20,7 +20,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ApiCommon } from '../../common/decorators/api-common.decorator';
 import type { JwtPayload } from '../auth/interfaces/token.interface';
 import { UploadsService } from './uploads.service';
-import { LOGO_UPLOAD } from './storage/storage.interface';
+import { LOGO_UPLOAD, AGENT_AVATAR_UPLOAD } from './storage/storage.interface';
 
 @ApiTags('uploads')
 @Controller({ path: 'uploads', version: '1' })
@@ -79,6 +79,53 @@ export class UploadsController {
     // Service idempotently no-ops if the key is missing.
     this.requireTenant(user);
     await this.uploads.deleteLogo(key);
+    return { ok: true };
+  }
+
+  @Post('agent-avatar')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: AGENT_AVATAR_UPLOAD.maxBytes },
+    }),
+  )
+  @ApiOperation({
+    summary: 'Upload an AI Employee avatar (PNG/JPEG/WEBP/SVG, ≤2MB)',
+  })
+  async uploadAgentAvatar(
+    @CurrentUser() user: JwtPayload,
+    @UploadedFile() file: { buffer: Buffer; mimetype: string; size: number },
+  ) {
+    if (!file) throw new BadRequestException('Missing file field "file"');
+    const result = await this.uploads.uploadAgentAvatar(
+      this.requireTenant(user),
+      file.buffer,
+      file.mimetype,
+    );
+    return { url: result.url, key: result.key, size: result.size };
+  }
+
+  @Delete('agent-avatar/:key')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a previously-uploaded agent avatar' })
+  async deleteAgentAvatar(
+    @CurrentUser() user: JwtPayload,
+    @Param('key') key: string,
+  ) {
+    this.requireTenant(user);
+    await this.uploads.deleteAgentAvatar(key);
     return { ok: true };
   }
 }

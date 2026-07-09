@@ -4,6 +4,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -131,6 +132,32 @@ export class TenantsController {
       success: true,
       message: 'Tenant suspended',
       data: tenant as unknown as TenantResponseDto | null,
+    };
+  }
+
+  @Patch(':id/activate')
+  @Roles(UserRole.SUPER_ADMIN)
+  async activate(
+    @Param('id') id: string,
+  ): Promise<ActionResult<TenantResponseDto | null>> {
+    const tenant = await this.tenantsService.activate(id);
+    return {
+      success: true,
+      message: 'Tenant activated',
+      data: tenant as unknown as TenantResponseDto | null,
+    };
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.SUPER_ADMIN)
+  async remove(
+    @Param('id') id: string,
+  ): Promise<ActionResult<null>> {
+    await this.tenantsService.deleteTenant(id);
+    return {
+      success: true,
+      message: 'Tenant and all associated data permanently deleted',
+      data: null,
     };
   }
 

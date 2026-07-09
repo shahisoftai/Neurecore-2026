@@ -74,6 +74,49 @@ export class FeatureFlagService implements OnModuleInit {
         'HERMES_SESSION_LOGGING',
         bool(this.config.get<string>('HERMES_SESSION_LOGGING')),
       ],
+      // Enterprise Communication Platform flags (Phases 1-9)
+      [
+        'COMM_THREADS_ENABLED',
+        bool(this.config.get<string>('COMM_THREADS_ENABLED')),
+      ],
+      [
+        'COMM_ACTIVITIES_ENABLED',
+        bool(this.config.get<string>('COMM_ACTIVITIES_ENABLED')),
+      ],
+      [
+        'AGENT_MESSAGING_ENABLED',
+        bool(this.config.get<string>('AGENT_MESSAGING_ENABLED')),
+      ],
+      [
+        'COMM_AGENT_MESSAGING_ENABLED',
+        bool(this.config.get<string>('COMM_AGENT_MESSAGING_ENABLED')),
+      ],
+      [
+        'COMM_PRESENCE_ENABLED',
+        bool(this.config.get<string>('COMM_PRESENCE_ENABLED')),
+      ],
+      [
+        'COMM_CONVERSATION_INTELLIGENCE_ENABLED',
+        bool(
+          this.config.get<string>('COMM_CONVERSATION_INTELLIGENCE_ENABLED'),
+        ),
+      ],
+      [
+        'COMM_DIGEST_ENABLED',
+        bool(this.config.get<string>('COMM_DIGEST_ENABLED')),
+      ],
+      [
+        'COMM_ESCALATION_ENABLED',
+        bool(this.config.get<string>('COMM_ESCALATION_ENABLED')),
+      ],
+      [
+        'COMM_FOLLOWUP_ENABLED',
+        bool(this.config.get<string>('COMM_FOLLOWUP_ENABLED')),
+      ],
+      [
+        'COMM_MENTIONS_ENABLED',
+        bool(this.config.get<string>('COMM_MENTIONS_ENABLED')),
+      ],
     ];
     for (const [key, value] of knownFlags) {
       const previous = this.cache.get(key);

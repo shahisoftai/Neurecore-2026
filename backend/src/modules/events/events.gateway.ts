@@ -12,7 +12,10 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import { RedisService } from '../../infrastructure/cache/redis.service';
-import { CookieAuthService, ACCESS_TOKEN_COOKIE } from '../../common/auth/cookie-auth.service';
+import {
+  CookieAuthService,
+  ACCESS_TOKEN_COOKIE,
+} from '../../common/auth/cookie-auth.service';
 
 /**
  * EventsGateway — Phase 9 update (Auth Hardening).
@@ -152,6 +155,39 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.emit('pong', { timestamp: Date.now() });
   }
 
+  /**
+   * Phase 1: let clients subscribe to a thread room to receive
+   * `thread:message`, `thread:activity`, `thread:participant_added`,
+   * `thread:mention` events for that thread.
+   *
+   * Auth: the socket was authenticated at handshake time, so we trust
+   * `client.data.userId` / `tenantId`. Tenant isolation is enforced by
+   * the calling service on every emit (no 'all' rooms exist).
+   */
+  @SubscribeMessage('thread:join')
+  async handleThreadJoin(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { threadId?: string },
+  ): Promise<{ joined: boolean; room?: string }> {
+    const threadId = typeof body?.threadId === 'string' ? body.threadId : null;
+    if (!threadId) return { joined: false };
+    const room = `thread:${threadId}`;
+    await client.join(room);
+    return { joined: true, room };
+  }
+
+  @SubscribeMessage('thread:leave')
+  async handleThreadLeave(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { threadId?: string },
+  ): Promise<{ left: boolean; room?: string }> {
+    const threadId = typeof body?.threadId === 'string' ? body.threadId : null;
+    if (!threadId) return { left: false };
+    const room = `thread:${threadId}`;
+    await client.leave(room);
+    return { left: true, room };
+  }
+
   // Emit to all sockets of a specific user
   emitToUser(userId: string, event: string, data: unknown): void {
     this.server.to(`user:${userId}`).emit(event, data);
@@ -160,6 +196,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // Emit to all sockets in a tenant room
   emitToTenant(tenantId: string, event: string, data: unknown): void {
     this.server.to(`tenant:${tenantId}`).emit(event, data);
+  }
+
+  // Emit to an arbitrary room (e.g. thread:<id>)
+  emitToRoom(room: string, event: string, data: unknown): void {
+    this.server.to(room).emit(event, data);
   }
 
   // ── Phase 2 typed helpers ──────────────────────────────────

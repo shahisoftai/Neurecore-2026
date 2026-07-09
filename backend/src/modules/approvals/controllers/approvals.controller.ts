@@ -18,8 +18,8 @@ import {
     UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ApprovalsService } from '../services/approvals.service';
-// import { HermesTenantGuard } from '../../hermes/guards/hermes-tenant.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/token.interface';
 import type {
@@ -27,25 +27,13 @@ import type {
     ApprovalFeedback,
 } from '../../../shared/types/approvals.types';
 
-/**
- * ApprovalsController
- * Provides approvals REST endpoints
- * SOLID: SRP - Only routing and validation
- */
 @ApiTags('Approvals')
 @ApiBearerAuth()
 @Controller({ path: 'approvals', version: '1' })
+@UseGuards(JwtAuthGuard)
 export class ApprovalsController {
     constructor(private readonly approvalsService: ApprovalsService) { }
 
-    /**
-     * Get stratified approvals
-     * SOLID: SRP - Only routing
-     *
-     * @param user - Current user from JWT
-     * @param status - Filter by status (PENDING, APPROVED, REJECTED)
-     * @returns Stratified approvals response
-     */
     @Get('stratified')
     @ApiOperation({
         summary: 'Get stratified approvals',
@@ -67,13 +55,6 @@ export class ApprovalsController {
         );
     }
 
-    /**
-     * Submit feedback for approval decision
-     * SOLID: SRP - Only routing and validation
-     *
-     * @param user - Current user from JWT
-     * @param feedback - Feedback data
-     */
     @Post('feedback')
     @ApiOperation({
         summary: 'Submit approval feedback',
@@ -97,13 +78,6 @@ export class ApprovalsController {
         };
     }
 
-    /**
-     * Approve an approval request
-     * SOLID: SRP - Only routing
-     *
-     * @param user - Current user from JWT
-     * @param approvalId - Approval ID
-     */
     @Post(':approvalId/approve')
     @ApiOperation({
         summary: 'Approve a request',
@@ -125,13 +99,6 @@ export class ApprovalsController {
         };
     }
 
-    /**
-     * Reject an approval request
-     * SOLID: SRP - Only routing
-     *
-     * @param user - Current user from JWT
-     * @param approvalId - Approval ID
-     */
     @Post(':approvalId/reject')
     @ApiOperation({
         summary: 'Reject a request',

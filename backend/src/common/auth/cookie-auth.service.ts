@@ -75,7 +75,7 @@ export class CookieAuthService {
     const common = {
       httpOnly: true,
       secure: this.isProduction,
-      sameSite: 'none' as const,
+      sameSite: 'lax' as const,
       path: '/',
       ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
     };

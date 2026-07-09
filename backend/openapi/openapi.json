@@ -3368,6 +3368,487 @@
         ]
       }
     },
+    "/api/v1/integrations/sheets": {
+      "post": {
+        "operationId": "IntegrationsController_createSpreadsheet",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/sheets/{spreadsheetId}/metadata": {
+      "get": {
+        "operationId": "IntegrationsController_getSheetMetadata",
+        "parameters": [
+          {
+            "name": "spreadsheetId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/sheets/{spreadsheetId}/values/{range}": {
+      "get": {
+        "operationId": "IntegrationsController_readSheetRange",
+        "parameters": [
+          {
+            "name": "spreadsheetId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "range",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "IntegrationsController_writeSheetRange",
+        "parameters": [
+          {
+            "name": "spreadsheetId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "range",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/sheets/{spreadsheetId}/values/{range}/append": {
+      "post": {
+        "operationId": "IntegrationsController_appendSheetRows",
+        "parameters": [
+          {
+            "name": "spreadsheetId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "range",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/sheets/{spreadsheetId}/values/{range}/clear": {
+      "post": {
+        "operationId": "IntegrationsController_clearSheetRange",
+        "parameters": [
+          {
+            "name": "spreadsheetId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "range",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/drive/search": {
+      "get": {
+        "operationId": "IntegrationsController_searchDriveFiles",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mimeType",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mode",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/drive/files/{fileId}/permissions": {
+      "post": {
+        "operationId": "IntegrationsController_shareDriveFile",
+        "parameters": [
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "IntegrationsController_listDriveFilePermissions",
+        "parameters": [
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/drive/files/{fileId}/permissions/{permissionId}": {
+      "delete": {
+        "operationId": "IntegrationsController_revokeDriveFilePermission",
+        "parameters": [
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "permissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/google/platform-status": {
+      "get": {
+        "operationId": "IntegrationsController_getPlatformGoogleStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/admin/google/{tenantId}/disconnect": {
+      "post": {
+        "operationId": "IntegrationsController_adminDisconnectGoogle",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "NotificationsController_findAll",
@@ -4968,6 +5449,82 @@
         ]
       }
     },
+    "/api/v1/hermes/explain/{agentId}/decisions": {
+      "get": {
+        "operationId": "ExplainabilityController_getDecisions",
+        "parameters": [
+          {
+            "name": "agentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/compliance/export/thread/{threadId}": {
+      "get": {
+        "operationId": "ComplianceController_exportThread",
+        "parameters": [
+          {
+            "name": "threadId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/compliance/export/decisions": {
+      "get": {
+        "operationId": "ComplianceController_exportDecisions",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/knowledge": {
       "get": {
         "operationId": "KnowledgeController_list",
@@ -5450,6 +6007,126 @@
         },
         "tags": [
           "knowledge"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/mission-feed": {
+      "get": {
+        "operationId": "MissionFeedController_list",
+        "summary": "List Mission Feed items for the current user/tenant",
+        "parameters": [
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "priority",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "mission-feed"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "MissionFeedController_create",
+        "summary": "Create a Mission Feed item (admin/seed)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMissionFeedItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "mission-feed"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/mission-feed/{itemId}/dismiss": {
+      "post": {
+        "operationId": "MissionFeedController_dismiss",
+        "summary": "Dismiss a Mission Feed item",
+        "parameters": [
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "mission-feed"
         ],
         "security": [
           {
@@ -14628,126 +15305,6 @@
         ]
       }
     },
-    "/api/v1/mission-feed": {
-      "get": {
-        "operationId": "MissionFeedController_list",
-        "summary": "List Mission Feed items for the current user/tenant",
-        "parameters": [
-          {
-            "name": "page",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "priority",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "mission-feed"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      },
-      "post": {
-        "operationId": "MissionFeedController_create",
-        "summary": "Create a Mission Feed item (admin/seed)",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateMissionFeedItemDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "mission-feed"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/mission-feed/{itemId}/dismiss": {
-      "post": {
-        "operationId": "MissionFeedController_dismiss",
-        "summary": "Dismiss a Mission Feed item",
-        "parameters": [
-          {
-            "name": "itemId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "mission-feed"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
     "/api/v1/ai-actions/available": {
       "get": {
         "operationId": "AIActionsController_listAvailable",
@@ -14929,6 +15486,203 @@
             "Idempotency-Key": []
           }
         ]
+      }
+    },
+    "/api/v1/activity": {
+      "get": {
+        "operationId": "ActivityController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "severity",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/threads": {
+      "get": {
+        "operationId": "ThreadsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "ThreadsController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/threads/unread/count": {
+      "get": {
+        "operationId": "ThreadsController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/threads/{id}": {
+      "get": {
+        "operationId": "ThreadsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "ThreadsController_close",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/threads/{id}/messages": {
+      "get": {
+        "operationId": "ThreadsController_messages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/threads/{id}/participants": {
+      "post": {
+        "operationId": "ThreadsController_addParticipant",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/threads/{id}/read": {
+      "post": {
+        "operationId": "ThreadsController_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
       }
     },
     "/api/v1/feature-flags": {
@@ -18081,6 +18835,13 @@
           },
           "scopes": {
             "type": "string"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "tenant",
+              "admin"
+            ]
           }
         }
       },
@@ -18841,6 +19602,61 @@
             "maxLength": 16
           }
         }
+      },
+      "CreateMissionFeedItemDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "APPROVAL_REQUIRED",
+              "ANOMALY_DETECTED",
+              "HEALTH_DEGRADED",
+              "AI_INSIGHT",
+              "COST_ALERT",
+              "LIFECYCLE_BLOCKED",
+              "COLLABORATION_REQUEST",
+              "SYSTEM",
+              "PACK_INSTALLED",
+              "ONBOARDING_TASK"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "actionPayload": {
+            "type": "object",
+            "description": "Action payload (deep link target etc.)"
+          },
+          "sourceEventId": {
+            "type": "string",
+            "description": "Source event id for idempotency"
+          }
+        },
+        "required": [
+          "category",
+          "title"
+        ]
       },
       "PaginatedResponse": {
         "type": "object",
@@ -20374,61 +21190,6 @@
       "Function": {
         "type": "object",
         "properties": {}
-      },
-      "CreateMissionFeedItemDto": {
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string",
-            "enum": [
-              "APPROVAL_REQUIRED",
-              "ANOMALY_DETECTED",
-              "HEALTH_DEGRADED",
-              "AI_INSIGHT",
-              "COST_ALERT",
-              "LIFECYCLE_BLOCKED",
-              "COLLABORATION_REQUEST",
-              "SYSTEM",
-              "PACK_INSTALLED",
-              "ONBOARDING_TASK"
-            ]
-          },
-          "priority": {
-            "type": "string",
-            "enum": [
-              "LOW",
-              "MEDIUM",
-              "HIGH",
-              "CRITICAL"
-            ]
-          },
-          "title": {
-            "type": "string",
-            "maxLength": 200
-          },
-          "description": {
-            "type": "string",
-            "maxLength": 2000
-          },
-          "entityType": {
-            "type": "string"
-          },
-          "entityId": {
-            "type": "string"
-          },
-          "actionPayload": {
-            "type": "object",
-            "description": "Action payload (deep link target etc.)"
-          },
-          "sourceEventId": {
-            "type": "string",
-            "description": "Source event id for idempotency"
-          }
-        },
-        "required": [
-          "category",
-          "title"
-        ]
       },
       "ExecuteAIActionDto": {
         "type": "object",

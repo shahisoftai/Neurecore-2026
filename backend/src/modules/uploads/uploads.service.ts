@@ -19,6 +19,7 @@ import {
 import {
   IUploadStorage,
   LOGO_UPLOAD,
+  AGENT_AVATAR_UPLOAD,
   UploadResult,
 } from './storage/storage.interface';
 
@@ -121,5 +122,51 @@ export class UploadsService {
   async deleteLogo(key: string): Promise<void> {
     await this.storage.delete(key);
     this.logger.log(`Logo deleted: ${key}`);
+  }
+
+  /**
+   * Validate + persist an agent avatar upload for `tenantId`. Mirrors
+   * uploadLogo but uses the tighter AGENT_AVATAR_UPLOAD limits.
+   */
+  async uploadAgentAvatar(
+    tenantId: string,
+    buffer: Buffer,
+    declaredType: string | undefined,
+  ): Promise<UploadResult> {
+    if (buffer.length > AGENT_AVATAR_UPLOAD.maxBytes) {
+      throw new PayloadTooLargeException(
+        `Avatar exceeds ${AGENT_AVATAR_UPLOAD.maxBytes / (1024 * 1024)} MB limit`,
+      );
+    }
+    const sniffed = sniffImageType(buffer);
+    if (!sniffed) {
+      throw new BadRequestException(
+        'Unsupported image type. Allowed: PNG, JPEG, WEBP, SVG.',
+      );
+    }
+    if (
+      declaredType &&
+      declaredType !== sniffed &&
+      !(declaredType === 'image/svg+xml' && sniffed === 'image/svg+xml')
+    ) {
+      throw new BadRequestException(
+        `Declared Content-Type (${declaredType}) does not match file signature (${sniffed}).`,
+      );
+    }
+    const result = await this.storage.put(
+      tenantId,
+      AGENT_AVATAR_UPLOAD.prefix,
+      buffer,
+      sniffed,
+    );
+    this.logger.log(
+      `Agent avatar uploaded for tenant ${tenantId}: ${result.key} (${result.size}B, ${sniffed})`,
+    );
+    return result;
+  }
+
+  async deleteAgentAvatar(key: string): Promise<void> {
+    await this.storage.delete(key);
+    this.logger.log(`Agent avatar deleted: ${key}`);
   }
 }

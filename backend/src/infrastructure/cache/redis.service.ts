@@ -6,10 +6,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
-import type UpstashRedisType from '@upstash/redis';
-let UpstashRedis: typeof UpstashRedisType | null = null;
+// @upstash/redis is an optional dependency. The class is loaded dynamically
+// so projects without the package can still build.
+type UpstashRedisClass = new (opts: { url: string; token: string }) => unknown;
+let UpstashRedis: UpstashRedisClass | null = null;
 try {
-  // dynamically require so projects without the package won't crash at import time
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   UpstashRedis = require('@upstash/redis').Redis;
 } catch (e) {
@@ -27,7 +28,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private upstashClient: any = null;
   private isConnected = false;
 
-  constructor(private readonly config?: ConfigService) { }
+  constructor(private readonly config?: ConfigService) {}
 
   onModuleInit(): void {
     const redisUrl = this.config
@@ -70,7 +71,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     // Prefer Upstash REST client in serverless (Vercel) environments when provided
     if (upstashRestUrl && upstashRestToken && UpstashRedis) {
       this.logger.log('Using Upstash REST client for Redis');
-      // @ts-expect-error - Upstash client typing imported dynamically
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       this.upstashClient = new UpstashRedis({
         url: upstashRestUrl,
         token: upstashRestToken,
@@ -188,6 +189,47 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     await this.client.expire(key, ttlSeconds);
+  }
+
+  /**
+   * SCAN-based key discovery. Cursor-based, non-blocking — safe for
+   * large multi-tenant keyspaces. Returns up to `count` keys per call
+   * and a cursor the caller must pass back. When `cursor === '0'` the
+   * iteration is complete.
+   *
+   * Upstash REST has no SCAN, so we degrade to a single KEYS call.
+   * Acceptable because Upstash Redis keyspaces are typically small and
+   * this is only used by background sweep jobs.
+   */
+  async scan(
+    cursor: string,
+    match: string,
+    count: number,
+  ): Promise<[string, string[]]> {
+    if (this.upstashClient) {
+      const keys = await this.upstashClient.keys(match);
+      return ['0', (keys as string[] | undefined) ?? []];
+    }
+    const result = (await this.client.scan(
+      cursor,
+      'MATCH',
+      match,
+      'COUNT',
+      count,
+    )) as [string, string[]];
+    return result;
+  }
+
+  /**
+   * KEYS-based lookup. WARNING: blocks Redis O(N). Use `scan()` instead
+   * for production code paths. Provided for small/test keyspaces only.
+   */
+  async keys(pattern: string): Promise<string[]> {
+    if (this.upstashClient) {
+      const keys = await this.upstashClient.keys(pattern);
+      return (keys as string[] | undefined) ?? [];
+    }
+    return this.client.keys(pattern);
   }
 
   async setJson<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {

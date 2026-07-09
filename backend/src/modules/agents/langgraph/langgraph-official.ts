@@ -197,7 +197,9 @@ export class OfficialAgentGraph {
     workflow.addEdge(EXECUTOR_NODE as any, TOOL_NODE as any);
     workflow.addEdge(TOOL_NODE as any, EVALUATOR_NODE as any);
 
-    // Conditional routing after planner
+    // Conditional routing after planner.
+    // shouldExecuteTool returns: 'executor' (if planner set tool calls) or 'end'.
+    // pathMap values must match the Node constants.
     workflow.addConditionalEdges(
       PLANNER_NODE as any,
       this.shouldExecuteTool.bind(this),
@@ -207,7 +209,8 @@ export class OfficialAgentGraph {
       } as any,
     );
 
-    // Conditional routing after evaluator
+    // Conditional routing after evaluator.
+    // shouldContinue returns: 'executor' (when toolCalls remained) or 'end'.
     workflow.addConditionalEdges(
       EVALUATOR_NODE as any,
       this.shouldContinue.bind(this),
@@ -560,17 +563,18 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
   };
 
   /**
-   * Conditional edge: determine if we should execute a tool or end
-   * After planner, check if LLM returned tool calls
+   * Conditional edge: determine if we should hand off to the executor or end.
+   * After planner, check if LLM returned tool calls.
+   * Returns values that map via pathMap keys: 'executor' → EXECUTOR_NODE, 'end' → END.
    */
   private shouldExecuteTool(state: AgentGraphState): string {
     if (state.error) {
       return END as string;
     }
 
-    // If LLM returned tool calls, execute them
+    // If LLM returned tool calls, route to executor which will run them via tool_node
     if (state.toolCalls && state.toolCalls.length > 0) {
-      return TOOL_NODE;
+      return EXECUTOR_NODE as string;
     }
 
     // No tool calls - LLM responded with text, we're done
@@ -592,9 +596,9 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
       return END as string;
     }
 
-    // If LLM returned more tool calls, execute them
+    // If LLM returned more tool calls, route back through executor
     if (state.toolCalls && state.toolCalls.length > 0) {
-      return TOOL_NODE;
+      return EXECUTOR_NODE as string;
     }
 
     return END as string;

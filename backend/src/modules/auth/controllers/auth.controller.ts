@@ -18,6 +18,8 @@ import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { GoogleSignInDto } from '../dto/google-signin.dto';
+import { ForgotPasswordDto } from '../dto/forgot-password.dto';
+import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Public } from '../../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -53,13 +55,19 @@ export class AuthController {
     private readonly configService: ConfigService,
     private readonly cookieAuth: CookieAuthService,
   ) {
-    this.googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID', '');
+    this.googleClientId = this.configService.get<string>(
+      'GOOGLE_CLIENT_ID',
+      '',
+    );
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 5, ttl: 15_000 } })
   @Post('register')
-  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.register({
       email: dto.email,
       password: dto.password,
@@ -73,7 +81,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 15_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -153,6 +161,32 @@ export class AuthController {
     return user;
   }
 
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 15_000 } })
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    // Always return the same message regardless of whether the email exists
+    // — prevents email enumeration.
+    await this.authService.requestPasswordReset(dto.email);
+    return {
+      message: 'If that email is registered, a reset link has been sent.',
+    };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
+    await this.authService.resetPassword(dto.token, dto.newPassword);
+    return { message: 'Password has been reset. You can now sign in.' };
+  }
+
   /** Alias for /me — satisfies spec requirement for GET /auth/profile */
   @UseGuards(JwtAuthGuard)
   @Get('profile')
@@ -176,7 +210,9 @@ export class AuthController {
     });
   }
 
-  private async verifyGoogleToken(idToken: string): Promise<GoogleTokenPayload> {
+  private async verifyGoogleToken(
+    idToken: string,
+  ): Promise<GoogleTokenPayload> {
     const res = await fetch(
       `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`,
     );
