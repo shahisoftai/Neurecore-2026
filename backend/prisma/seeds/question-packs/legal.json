@@ -1,0 +1,50 @@
+{
+  "key": "legal",
+  "name": "Legal",
+  "description": "Legal engagement specifics: matter, counsel, jurisdiction.",
+  "questions": [
+    {
+      "id": "matterType",
+      "label": "Matter type",
+      "type": "SELECT",
+      "required": true,
+      "options": ["LITIGATION", "TRANSACTION", "REGULATORY", "EMPLOYMENT", "IP", "COMPLIANCE", "OTHER"],
+      "mapsTo": { "field": "customFieldValues.matterType" }
+    },
+    {
+      "id": "jurisdiction",
+      "label": "Jurisdiction",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.jurisdiction" }
+    },
+    {
+      "id": "leadCounsel",
+      "label": "Lead counsel / firm",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.leadCounsel" }
+    },
+    {
+      "id": "privileged",
+      "label": "Attorney-client privileged?",
+      "type": "BOOLEAN",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.privileged" }
+    },
+    {
+      "id": "conflictCheck",
+      "label": "Conflict-of-interest check completed?",
+      "type": "BOOLEAN",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.conflictCheck" }
+    },
+    {
+      "id": "statuteOfLimitations",
+      "label": "Statute of limitations date",
+      "type": "DATE",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.statuteOfLimitations" }
+    }
+  ]
+}

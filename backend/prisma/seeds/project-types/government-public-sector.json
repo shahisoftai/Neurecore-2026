@@ -1,0 +1,616 @@
+{
+  "industry": "government-public-sector",
+  "industryName": "Government & Public Sector",
+  "types": [
+    {
+      "name": "Policy Reform Initiative",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "research",
+        "legal"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Scoping",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Methodology",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Execution",
+          "order": 2,
+          "defaultDurationDays": 60
+        },
+        {
+          "name": "Reporting",
+          "order": 3,
+          "defaultDurationDays": 14
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Public Procurement",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "procurement",
+        "legal"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Citizen Service Modernisation",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "software",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Regulatory Inspection Programme",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "legal"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Crisis Response Mission",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "field-mission"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Public-Private Partnership",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "customer",
+        "legal",
+        "procurement"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Elections Operations",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "field-mission"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inter-agency Coordination",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Civic Engagement Campaign",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "research"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Scoping",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Methodology",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Execution",
+          "order": 2,
+          "defaultDurationDays": 60
+        },
+        {
+          "name": "Reporting",
+          "order": 3,
+          "defaultDurationDays": 14
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Infrastructure Modernisation",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "construction",
+        "procurement"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Permitting",
+          "order": 0,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Procurement",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Build",
+          "order": 2,
+          "defaultDurationDays": 90
+        },
+        {
+          "name": "Inspection",
+          "order": 3,
+          "defaultDurationDays": 7
+        },
+        {
+          "name": "Handover",
+          "order": 4,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    }
+  ]
+}

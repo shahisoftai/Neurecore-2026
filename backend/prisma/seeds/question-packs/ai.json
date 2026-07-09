@@ -1,0 +1,36 @@
+{
+  "key": "ai",
+  "name": "AI",
+  "description": "AI / ML project specifics: model, data sources, evaluation, safety.",
+  "questions": [
+    {
+      "id": "modelFamily",
+      "label": "Model family",
+      "type": "SELECT",
+      "required": false,
+      "options": ["OPENAI_GPT", "ANTHROPIC_CLAUDE", "GOOGLE_GEMINI", "META_LLAMA", "MISTRAL", "CUSTOM", "NONE"],
+      "mapsTo": { "field": "customFieldValues.modelFamily" }
+    },
+    {
+      "id": "trainingDataSources",
+      "label": "Training data sources",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.trainingDataSources" }
+    },
+    {
+      "id": "evaluationMethod",
+      "label": "Evaluation method",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.evaluationMethod" }
+    },
+    {
+      "id": "humanInLoop",
+      "label": "Human-in-the-loop required?",
+      "type": "BOOLEAN",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.humanInLoop" }
+    }
+  ]
+}

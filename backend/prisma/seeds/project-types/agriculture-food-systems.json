@@ -1,0 +1,627 @@
+{
+  "industry": "agriculture-food-systems",
+  "industryName": "Agriculture & Food Systems",
+  "types": [
+    {
+      "name": "Crop Production Cycle",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "field-mission",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Food Safety Inspection",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "field-mission"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Supply Chain Programme",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "procurement",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "R&D Field Trial",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "research",
+        "field-mission"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Scoping",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Methodology",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Execution",
+          "order": 2,
+          "defaultDurationDays": 60
+        },
+        {
+          "name": "Reporting",
+          "order": 3,
+          "defaultDurationDays": 14
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Farm Modernisation",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "construction",
+        "procurement"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Permitting",
+          "order": 0,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Procurement",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Build",
+          "order": 2,
+          "defaultDurationDays": 90
+        },
+        {
+          "name": "Inspection",
+          "order": 3,
+          "defaultDurationDays": 7
+        },
+        {
+          "name": "Handover",
+          "order": 4,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sustainability Certification",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "research"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Scoping",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Methodology",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Execution",
+          "order": 2,
+          "defaultDurationDays": 60
+        },
+        {
+          "name": "Reporting",
+          "order": 3,
+          "defaultDurationDays": 14
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Distribution Launch",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "customer",
+        "procurement"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Market Access Programme",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "research"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Scoping",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Methodology",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Execution",
+          "order": 2,
+          "defaultDurationDays": 60
+        },
+        {
+          "name": "Reporting",
+          "order": 3,
+          "defaultDurationDays": 14
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Recall Coordination",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "legal"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Aquaculture Build-Out",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "customer",
+        "construction"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Permitting",
+          "order": 0,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Procurement",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Build",
+          "order": 2,
+          "defaultDurationDays": 90
+        },
+        {
+          "name": "Inspection",
+          "order": 3,
+          "defaultDurationDays": 7
+        },
+        {
+          "name": "Handover",
+          "order": 4,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,647 @@
+{
+  "industry": "technology-digital-services",
+  "industryName": "Technology & Digital Services",
+  "types": [
+    {
+      "name": "SaaS Product Build",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "customer",
+        "software",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Platform Migration",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "software",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Incident Postmortem Programme",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "software"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "AI Feature Development",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "software",
+        "ai",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Enterprise Integration",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "customer",
+        "software",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Security Hardening",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "software"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mobile App Launch",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "customer",
+        "software",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Data Lake Build-Out",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "data",
+        "software"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vendor Procurement",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "procurement",
+        "software"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SRE Reliability Programme",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "software"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    }
+  ]
+}

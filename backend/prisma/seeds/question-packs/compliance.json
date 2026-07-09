@@ -1,0 +1,65 @@
+{
+  "key": "compliance",
+  "name": "Compliance",
+  "description": "Regulatory frameworks, certifications, and audit obligations.",
+  "questions": [
+    {
+      "id": "regulatoryFrameworks",
+      "label": "Regulatory frameworks",
+      "type": "MULTI_SELECT",
+      "required": false,
+      "options": ["GDPR", "HIPAA", "SOX", "PCI_DSS", "ISO_27001", "SOC_2", "FedRAMP", "CCPA"],
+      "mapsTo": { "field": "customFieldValues.regulatoryFrameworks" }
+    },
+    {
+      "id": "dataClassification",
+      "label": "Data classification",
+      "type": "SELECT",
+      "required": true,
+      "options": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"],
+      "mapsTo": { "field": "customFieldValues.dataClassification" }
+    },
+    {
+      "id": "piiInvolved",
+      "label": "PII involved?",
+      "type": "BOOLEAN",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.piiInvolved" }
+    },
+    {
+      "id": "phiInvolved",
+      "label": "PHI involved?",
+      "type": "BOOLEAN",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.phiInvolved" }
+    },
+    {
+      "id": "auditLogRequired",
+      "label": "Audit log required?",
+      "type": "BOOLEAN",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.auditLogRequired" }
+    },
+    {
+      "id": "retentionPeriod",
+      "label": "Data retention period (months)",
+      "type": "NUMBER",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.retentionPeriod" }
+    },
+    {
+      "id": "dpoContact",
+      "label": "DPO / compliance contact",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.dpoContact" }
+    },
+    {
+      "id": "deletionProcedure",
+      "label": "Deletion procedure",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.deletionProcedure" }
+    }
+  ]
+}

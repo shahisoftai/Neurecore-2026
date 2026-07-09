@@ -1,0 +1,78 @@
+{
+  "key": "healthcare",
+  "name": "Healthcare",
+  "description": "Healthcare delivery, clinical research, and patient-data specifics.",
+  "questions": [
+    {
+      "id": "careSetting",
+      "label": "Care setting",
+      "type": "SELECT",
+      "required": false,
+      "options": ["HOSPITAL", "CLINIC", "LAB", "HOME_HEALTH", "TELEHEALTH", "FIELD"],
+      "mapsTo": { "field": "customFieldValues.careSetting" }
+    },
+    {
+      "id": "patientPopulation",
+      "label": "Patient population",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.patientPopulation" }
+    },
+    {
+      "id": "clinicalLead",
+      "label": "Clinical lead",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.clinicalLead" }
+    },
+    {
+      "id": "phiHandling",
+      "label": "PHI handling procedure",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.phiHandling" }
+    },
+    {
+      "id": "deviceOrDrug",
+      "label": "Device or drug reference",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.deviceOrDrug" }
+    },
+    {
+      "id": "fdaPathway",
+      "label": "FDA / regulatory pathway",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.fdaPathway" }
+    },
+    {
+      "id": "clinicalTrialId",
+      "label": "Clinical trial ID",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.clinicalTrialId" }
+    },
+    {
+      "id": "consentProcess",
+      "label": "Informed consent process",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.consentProcess" }
+    },
+    {
+      "id": "adverseEventReporting",
+      "label": "Adverse event reporting plan",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.adverseEventReporting" }
+    },
+    {
+      "id": "infectionControl",
+      "label": "Infection-control measures",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.infectionControl" }
+    }
+  ]
+}

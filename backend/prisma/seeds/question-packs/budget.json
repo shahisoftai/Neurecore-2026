@@ -1,0 +1,51 @@
+{
+  "key": "budget",
+  "name": "Budget & Finance",
+  "description": "Budget, currency, cost-centre, and approval routing.",
+  "questions": [
+    {
+      "id": "budgetType",
+      "label": "Budget type",
+      "type": "SELECT",
+      "required": true,
+      "options": ["FIXED_FEE", "HOURLY", "RETAINER", "NON_BILLABLE"],
+      "mapsTo": { "field": "customFieldValues.budgetType" }
+    },
+    {
+      "id": "budgetAmount",
+      "label": "Budget amount",
+      "type": "CURRENCY",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.budgetAmount" }
+    },
+    {
+      "id": "currency",
+      "label": "Currency",
+      "type": "SELECT",
+      "required": true,
+      "options": ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR", "SGD", "AED"],
+      "mapsTo": { "field": "customFieldValues.currency" }
+    },
+    {
+      "id": "costCentre",
+      "label": "Cost centre",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.costCentre" }
+    },
+    {
+      "id": "purchaseOrder",
+      "label": "Purchase order number",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.purchaseOrder" }
+    },
+    {
+      "id": "billingMilestones",
+      "label": "Billing milestones",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.billingMilestones" }
+    }
+  ]
+}

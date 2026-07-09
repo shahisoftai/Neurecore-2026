@@ -1,0 +1,44 @@
+{
+  "key": "deliverables",
+  "name": "Deliverables",
+  "description": "Concrete outputs the project must produce.",
+  "questions": [
+    {
+      "id": "primaryDeliverable",
+      "label": "Primary deliverable",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.primaryDeliverable" }
+    },
+    {
+      "id": "deliverableFormat",
+      "label": "Deliverable format",
+      "type": "SELECT",
+      "required": false,
+      "options": ["DOCUMENT", "PRESENTATION", "SOFTWARE", "PHYSICAL", "SERVICE"],
+      "mapsTo": { "field": "customFieldValues.deliverableFormat" }
+    },
+    {
+      "id": "acceptanceCriteria",
+      "label": "Acceptance criteria",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.acceptanceCriteria" }
+    },
+    {
+      "id": "reviewCadence",
+      "label": "Review cadence",
+      "type": "SELECT",
+      "required": false,
+      "options": ["ON_DELIVERY", "WEEKLY", "BIWEEKLY", "AT_MILESTONE"],
+      "mapsTo": { "field": "customFieldValues.reviewCadence" }
+    },
+    {
+      "id": "versioning",
+      "label": "Versioning scheme",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.versioning" }
+    }
+  ]
+}

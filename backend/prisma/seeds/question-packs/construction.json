@@ -1,0 +1,63 @@
+{
+  "key": "construction",
+  "name": "Construction",
+  "description": "Construction / engineering project specifics.",
+  "questions": [
+    {
+      "id": "siteAddress",
+      "label": "Site address",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.siteAddress" }
+    },
+    {
+      "id": "permitNumbers",
+      "label": "Permit numbers",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.permitNumbers" }
+    },
+    {
+      "id": "generalContractor",
+      "label": "General contractor",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.generalContractor" }
+    },
+    {
+      "id": "safetyPlan",
+      "label": "Safety plan reference",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.safetyPlan" }
+    },
+    {
+      "id": "materialSpecs",
+      "label": "Material specifications",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.materialSpecs" }
+    },
+    {
+      "id": "inspectionSchedule",
+      "label": "Inspection schedule",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.inspectionSchedule" }
+    },
+    {
+      "id": "insuranceCertificate",
+      "label": "Insurance certificate",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.insuranceCertificate" }
+    },
+    {
+      "id": "siteLogistics",
+      "label": "Site logistics plan",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.siteLogistics" }
+    }
+  ]
+}

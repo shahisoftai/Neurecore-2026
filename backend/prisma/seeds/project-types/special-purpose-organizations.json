@@ -1,0 +1,614 @@
+{
+  "industry": "special-purpose-organizations",
+  "industryName": "Special Purpose Organizations",
+  "types": [
+    {
+      "name": "Foundational Grant Cycle",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "grant"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Policy Advocacy Initiative",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "research",
+        "legal"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Scoping",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Methodology",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Execution",
+          "order": 2,
+          "defaultDurationDays": 60
+        },
+        {
+          "name": "Reporting",
+          "order": 3,
+          "defaultDurationDays": 14
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Membership Drive",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Annual Conference",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Standards Development",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "research"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Scoping",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Methodology",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Execution",
+          "order": 2,
+          "defaultDurationDays": 60
+        },
+        {
+          "name": "Reporting",
+          "order": 3,
+          "defaultDurationDays": 14
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Coalition Building",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "legal"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fellowship Programme",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "hr",
+        "training"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Research Publication",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "research",
+        "grant"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Scoping",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Methodology",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Execution",
+          "order": 2,
+          "defaultDurationDays": 60
+        },
+        {
+          "name": "Reporting",
+          "order": 3,
+          "defaultDurationDays": 14
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Strategic Planning Cycle",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "research"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Scoping",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Methodology",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Execution",
+          "order": 2,
+          "defaultDurationDays": 60
+        },
+        {
+          "name": "Reporting",
+          "order": 3,
+          "defaultDurationDays": 14
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Member Service Launch",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "customer",
+        "software"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    }
+  ]
+}

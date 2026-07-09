@@ -1,0 +1,620 @@
+{
+  "industry": "retail-commerce-consumer",
+  "industryName": "Retail, Commerce & Consumer",
+  "types": [
+    {
+      "name": "Store Opening",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "construction"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Permitting",
+          "order": 0,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Procurement",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Build",
+          "order": 2,
+          "defaultDurationDays": 90
+        },
+        {
+          "name": "Inspection",
+          "order": 3,
+          "defaultDurationDays": 7
+        },
+        {
+          "name": "Handover",
+          "order": 4,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Seasonal Campaign",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Loyalty Programme",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "customer",
+        "data",
+        "software"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Supply Chain Optimisation",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "data",
+        "procurement"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Private Label Launch",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "customer",
+        "procurement",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Store Closure",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "hr",
+        "legal"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "E-commerce Platform Refresh",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "software",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Design",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Build",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Test",
+          "order": 2,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Deploy",
+          "order": 3,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vendor Negotiation",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "procurement",
+        "legal"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer Experience Redesign",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "customer",
+        "research"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Scoping",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Methodology",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Execution",
+          "order": 2,
+          "defaultDurationDays": 60
+        },
+        {
+          "name": "Reporting",
+          "order": 3,
+          "defaultDurationDays": 14
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inventory Audit",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": [
+        "core",
+        "stakeholders",
+        "budget",
+        "timeline",
+        "deliverables",
+        "compliance",
+        "risk",
+        "data"
+      ],
+      "fieldSchema": [],
+      "stageTemplate": [
+        {
+          "name": "Plan",
+          "order": 0,
+          "defaultDurationDays": 14
+        },
+        {
+          "name": "Execute",
+          "order": 1,
+          "defaultDurationDays": 30
+        },
+        {
+          "name": "Close",
+          "order": 2,
+          "defaultDurationDays": 7
+        }
+      ],
+      "approvalTemplate": [
+        {
+          "stepOrder": 0,
+          "approverRole": "PROJECT_MANAGER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "LOW"
+          ]
+        },
+        {
+          "stepOrder": 1,
+          "approverRole": "DEPARTMENT_HEAD",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "MEDIUM"
+          ]
+        },
+        {
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "PLAN",
+          "riskTier": [
+            "HIGH"
+          ]
+        }
+      ]
+    }
+  ]
+}

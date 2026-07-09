@@ -1,0 +1,44 @@
+{
+  "key": "data",
+  "name": "Data",
+  "description": "Data engineering / analytics project specifics.",
+  "questions": [
+    {
+      "id": "dataSources",
+      "label": "Data sources",
+      "type": "MULTI_SELECT",
+      "required": false,
+      "options": ["OLTP_DB", "DATA_WAREHOUSE", "DATA_LAKE", "SAAS_API", "STREAMING", "FILES"],
+      "mapsTo": { "field": "customFieldValues.dataSources" }
+    },
+    {
+      "id": "dataVolume",
+      "label": "Estimated data volume (GB)",
+      "type": "NUMBER",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.dataVolume" }
+    },
+    {
+      "id": "refreshCadence",
+      "label": "Refresh cadence",
+      "type": "SELECT",
+      "required": false,
+      "options": ["REAL_TIME", "HOURLY", "DAILY", "WEEKLY", "MONTHLY"],
+      "mapsTo": { "field": "customFieldValues.refreshCadence" }
+    },
+    {
+      "id": "warehouse",
+      "label": "Warehouse / lake",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.warehouse" }
+    },
+    {
+      "id": "lineageTracking",
+      "label": "Lineage tracking required?",
+      "type": "BOOLEAN",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.lineageTracking" }
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "key": "core",
+  "name": "Core",
+  "description": "Universal questions every project needs answered before kickoff.",
+  "questions": [
+    {
+      "id": "projectName",
+      "label": "Project name",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.projectName" }
+    },
+    {
+      "id": "projectDescription",
+      "label": "Project description",
+      "helpText": "A short paragraph that explains the why and what.",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.projectDescription" }
+    },
+    {
+      "id": "startDate",
+      "label": "Start date",
+      "type": "DATE",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.startDate" }
+    },
+    {
+      "id": "targetEndDate",
+      "label": "Target end date",
+      "type": "DATE",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.targetEndDate" }
+    },
+    {
+      "id": "priority",
+      "label": "Priority",
+      "type": "SELECT",
+      "required": true,
+      "options": ["LOW", "MEDIUM", "HIGH", "URGENT"],
+      "mapsTo": { "field": "customFieldValues.priority" }
+    },
+    {
+      "id": "ownerRole",
+      "label": "Primary owner role",
+      "type": "SELECT",
+      "required": true,
+      "options": ["PROJECT_MANAGER", "DEPARTMENT_HEAD", "TENANT_OWNER", "EXTERNAL_CONSULTANT"],
+      "mapsTo": { "field": "customFieldValues.ownerRole" }
+    },
+    {
+      "id": "successCriteria",
+      "label": "How will you know this project succeeded?",
+      "helpText": "Define measurable outcomes.",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.successCriteria" }
+    },
+    {
+      "id": "scopeIn",
+      "label": "In scope",
+      "type": "MULTI_SELECT",
+      "required": false,
+      "options": ["research", "design", "build", "rollout", "measurement"],
+      "mapsTo": { "field": "customFieldValues.scopeIn" }
+    },
+    {
+      "id": "scopeOut",
+      "label": "Out of scope",
+      "type": "MULTI_SELECT",
+      "required": false,
+      "options": ["research", "design", "build", "rollout", "measurement"],
+      "mapsTo": { "field": "customFieldValues.scopeOut" }
+    },
+    {
+      "id": "primaryMetric",
+      "label": "Primary success metric",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.primaryMetric" }
+    },
+    {
+      "id": "secondaryMetric",
+      "label": "Secondary success metric",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.secondaryMetric" }
+    },
+    {
+      "id": "riskTier",
+      "label": "Risk tier",
+      "helpText": "Drives approval chain selection.",
+      "type": "SELECT",
+      "required": true,
+      "options": ["LOW", "MEDIUM", "HIGH"],
+      "mapsTo": { "field": "customFieldValues.riskTier" }
+    }
+  ]
+}

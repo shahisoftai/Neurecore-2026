@@ -1,0 +1,51 @@
+{
+  "key": "procurement",
+  "name": "Procurement",
+  "description": "Vendor sourcing, RFP, contract terms.",
+  "questions": [
+    {
+      "id": "rfpRequired",
+      "label": "RFP required?",
+      "type": "BOOLEAN",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.rfpRequired" }
+    },
+    {
+      "id": "preferredVendors",
+      "label": "Preferred vendors",
+      "type": "MULTI_SELECT",
+      "required": false,
+      "options": ["internal", "preferred", "open_market"],
+      "mapsTo": { "field": "customFieldValues.preferredVendors" }
+    },
+    {
+      "id": "contractType",
+      "label": "Contract type",
+      "type": "SELECT",
+      "required": true,
+      "options": ["FIXED_PRICE", "T_AND_M", "RETAINER", "MSA", "SOW"],
+      "mapsTo": { "field": "customFieldValues.contractType" }
+    },
+    {
+      "id": "evaluationCriteria",
+      "label": "Evaluation criteria",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.evaluationCriteria" }
+    },
+    {
+      "id": "slaRequirements",
+      "label": "SLA requirements",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.slaRequirements" }
+    },
+    {
+      "id": "terminationClauses",
+      "label": "Termination clauses",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.terminationClauses" }
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+{
+  "industry": "healthcare-life-sciences",
+  "industryName": "Healthcare & Life Sciences",
+  "types": [
+    {
+      "name": "Patient Care Initiative",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": ["core", "customer", "stakeholders", "budget", "timeline", "deliverables", "healthcare", "compliance"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Intake", "order": 0, "defaultDurationDays": 7 },
+        { "name": "Care Plan", "order": 1, "defaultDurationDays": 14 },
+        { "name": "Delivery", "order": 2, "defaultDurationDays": 30 },
+        { "name": "Follow-up", "order": 3, "defaultDurationDays": 14 },
+        { "name": "Closure", "order": 4, "defaultDurationDays": 7 }
+      ],
+      "approvalTemplate": [
+        { "stepOrder": 0, "approverRole": "PROJECT_MANAGER", "approvalType": "PLAN", "riskTier": ["LOW"] },
+        { "stepOrder": 1, "approverRole": "DEPARTMENT_HEAD", "approvalType": "PLAN", "riskTier": ["MEDIUM", "HIGH"] },
+        { "stepOrder": 2, "approverRole": "TENANT_OWNER", "approvalType": "PLAN", "riskTier": ["HIGH"] }
+      ]
+    },
+    {
+      "name": "Clinical Research Study",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "research", "healthcare", "compliance"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Protocol", "order": 0, "defaultDurationDays": 30 },
+        { "name": "IRB Review", "order": 1, "defaultDurationDays": 60 },
+        { "name": "Recruitment", "order": 2, "defaultDurationDays": 90 },
+        { "name": "Data Collection", "order": 3, "defaultDurationDays": 180 },
+        { "name": "Analysis", "order": 4, "defaultDurationDays": 60 },
+        { "name": "Publication", "order": 5, "defaultDurationDays": 30 }
+      ],
+      "approvalTemplate": [
+        { "stepOrder": 0, "approverRole": "DEPARTMENT_HEAD", "approvalType": "PLAN", "riskTier": ["LOW", "MEDIUM", "HIGH"] },
+        { "stepOrder": 1, "approverRole": "TENANT_OWNER", "approvalType": "PLAN", "riskTier": ["HIGH"] }
+      ]
+    },
+    {
+      "name": "Hospital Accreditation",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "healthcare", "compliance"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Gap Analysis", "order": 0, "defaultDurationDays": 30 },
+        { "name": "Remediation", "order": 1, "defaultDurationDays": 120 },
+        { "name": "Mock Survey", "order": 2, "defaultDurationDays": 14 },
+        { "name": "Survey", "order": 3, "defaultDurationDays": 5 },
+        { "name": "Follow-up", "order": 4, "defaultDurationDays": 60 }
+      ],
+      "approvalTemplate": [
+        { "stepOrder": 0, "approverRole": "TENANT_OWNER", "approvalType": "PLAN", "riskTier": ["LOW", "MEDIUM", "HIGH"] }
+      ]
+    },
+    {
+      "name": "Medical Device Implementation",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": ["core", "customer", "stakeholders", "budget", "timeline", "deliverables", "procurement", "healthcare", "compliance"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Procurement", "order": 0, "defaultDurationDays": 60 },
+        { "name": "Installation", "order": 1, "defaultDurationDays": 30 },
+        { "name": "Validation", "order": 2, "defaultDurationDays": 30 },
+        { "name": "Training", "order": 3, "defaultDurationDays": 14 },
+        { "name": "Go-Live", "order": 4, "defaultDurationDays": 7 }
+      ],
+      "approvalTemplate": [
+        { "stepOrder": 0, "approverRole": "DEPARTMENT_HEAD", "approvalType": "PLAN", "riskTier": ["LOW"] },
+        { "stepOrder": 1, "approverRole": "TENANT_OWNER", "approvalType": "PLAN", "riskTier": ["MEDIUM", "HIGH"] }
+      ]
+    },
+    {
+      "name": "Public Health Campaign",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "research", "healthcare"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Planning", "order": 0, "defaultDurationDays": 30 },
+        { "name": "Outreach", "order": 1, "defaultDurationDays": 60 },
+        { "name": "Evaluation", "order": 2, "defaultDurationDays": 30 }
+      ],
+      "approvalTemplate": [
+        { "stepOrder": 0, "approverRole": "DEPARTMENT_HEAD", "approvalType": "PLAN", "riskTier": ["LOW", "MEDIUM", "HIGH"] }
+      ]
+    },
+    {
+      "name": "Diagnostic Lab Setup",
+      "classification": "INTERNAL_INITIATIVE",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "procurement", "compliance"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Design", "order": 0, "defaultDurationDays": 30 },
+        { "name": "Build", "order": 1, "defaultDurationDays": 60 },
+        { "name": "Validation", "order": 2, "defaultDurationDays": 30 },
+        { "name": "Go-Live", "order": 3, "defaultDurationDays": 14 }
+      ],
+      "approvalTemplate": [
+        { "stepOrder": 0, "approverRole": "TENANT_OWNER", "approvalType": "PLAN", "riskTier": ["LOW", "MEDIUM", "HIGH"] }
+      ]
+    },
+    {
+      "name": "Telemedicine Program",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": ["core", "customer", "stakeholders", "budget", "timeline", "deliverables", "software", "healthcare", "compliance"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Scoping", "order": 0, "defaultDurationDays": 14 },
+        { "name": "Pilot", "order": 1, "defaultDurationDays": 60 },
+        { "name": "Rollout", "order": 2, "defaultDurationDays": 90 }
+      ],
+      "approvalTemplate": [
+        { "stepOrder": 0, "approverRole": "DEPARTMENT_HEAD", "approvalType": "PLAN", "riskTier": ["LOW"] },
+        { "stepOrder": 1, "approverRole": "TENANT_OWNER", "approvalType": "PLAN", "riskTier": ["MEDIUM", "HIGH"] }
+      ]
+    },
+    {
+      "name": "Mental Health Program",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "healthcare", "compliance"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Design", "order": 0, "defaultDurationDays": 30 },
+        { "name": "Pilot", "order": 1, "defaultDurationDays": 60 },
+        { "name": "Evaluate", "order": 2, "defaultDurationDays": 30 }
+      ],
+      "approvalTemplate": [
+        { "stepOrder": 0, "approverRole": "DEPARTMENT_HEAD", "approvalType": "PLAN", "riskTier": ["LOW", "MEDIUM"] },
+        { "stepOrder": 1, "approverRole": "TENANT_OWNER", "approvalType": "PLAN", "riskTier": ["HIGH"] }
+      ]
+    },
+    {
+      "name": "Pharmaceutical Trial",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "research", "healthcare", "compliance", "legal"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Phase I", "order": 0, "defaultDurationDays": 90 },
+        { "name": "Phase II", "order": 1, "defaultDurationDays": 180 },
+        { "name": "Phase III", "order": 2, "defaultDurationDays": 365 },
+        { "name": "Filing", "order": 3, "defaultDurationDays": 180 }
+      ],
+      "approvalTemplate": [
+        { "stepOrder": 0, "approverRole": "TENANT_OWNER", "approvalType": "PLAN", "riskTier": ["LOW", "MEDIUM", "HIGH"] }
+      ]
+    },
+    {
+      "name": "Home Healthcare Service",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": ["core", "customer", "stakeholders", "budget", "timeline", "deliverables", "healthcare", "compliance"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Assessment", "order": 0, "defaultDurationDays": 7 },
+        { "name": "Care Plan", "order": 1, "defaultDurationDays": 14 },
+        { "name": "Delivery", "order": 2, "defaultDurationDays": 90 },
+        { "name": "Review", "order": 3, "defaultDurationDays": 30 }
+      ],
+      "approvalTemplate": [
+        { "stepOrder": 0, "approverRole": "DEPARTMENT_HEAD", "approvalType": "PLAN", "riskTier": ["LOW", "MEDIUM"] },
+        { "stepOrder": 1, "approverRole": "TENANT_OWNER", "approvalType": "PLAN", "riskTier": ["HIGH"] }
+      ]
+    }
+  ]
+}

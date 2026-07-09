@@ -1,0 +1,42 @@
+{
+  "key": "hr",
+  "name": "HR",
+  "description": "Human-resources / people-ops project specifics.",
+  "questions": [
+    {
+      "id": "headcountImpact",
+      "label": "Headcount impact",
+      "type": "NUMBER",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.headcountImpact" }
+    },
+    {
+      "id": "policyChanges",
+      "label": "Policy changes",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.policyChanges" }
+    },
+    {
+      "id": "compensationImpact",
+      "label": "Compensation impact",
+      "type": "CURRENCY",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.compensationImpact" }
+    },
+    {
+      "id": "unionInvolved",
+      "label": "Union / works council involved?",
+      "type": "BOOLEAN",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.unionInvolved" }
+    },
+    {
+      "id": "noticePeriod",
+      "label": "Notice / consultation period (days)",
+      "type": "NUMBER",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.noticePeriod" }
+    }
+  ]
+}

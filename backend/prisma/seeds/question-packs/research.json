@@ -1,0 +1,50 @@
+{
+  "key": "research",
+  "name": "Research",
+  "description": "Research methods, sample sizes, and publication plans.",
+  "questions": [
+    {
+      "id": "researchType",
+      "label": "Research type",
+      "type": "SELECT",
+      "required": true,
+      "options": ["QUALITATIVE", "QUANTITATIVE", "MIXED_METHODS", "DESK_RESEARCH"],
+      "mapsTo": { "field": "customFieldValues.researchType" }
+    },
+    {
+      "id": "sampleSize",
+      "label": "Sample size",
+      "type": "NUMBER",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.sampleSize" }
+    },
+    {
+      "id": "methodology",
+      "label": "Methodology",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.methodology" }
+    },
+    {
+      "id": "publicationPlan",
+      "label": "Publication / dissemination plan",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.publicationPlan" }
+    },
+    {
+      "id": "ethicsApprovalRequired",
+      "label": "Ethics approval required?",
+      "type": "BOOLEAN",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.ethicsApprovalRequired" }
+    },
+    {
+      "id": "irbReference",
+      "label": "IRB / ethics reference",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.irbReference" }
+    }
+  ]
+}

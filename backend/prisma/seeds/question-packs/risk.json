@@ -1,0 +1,43 @@
+{
+  "key": "risk",
+  "name": "Risk",
+  "description": "Risk register and mitigation planning.",
+  "questions": [
+    {
+      "id": "topRisks",
+      "label": "Top 3 risks",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.topRisks" }
+    },
+    {
+      "id": "riskMitigation",
+      "label": "Mitigation plan",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.riskMitigation" }
+    },
+    {
+      "id": "riskOwner",
+      "label": "Risk owner",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.riskOwner" }
+    },
+    {
+      "id": "contingencyBudget",
+      "label": "Contingency budget",
+      "type": "CURRENCY",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.contingencyBudget" }
+    },
+    {
+      "id": "reviewFrequency",
+      "label": "Risk review frequency",
+      "type": "SELECT",
+      "required": false,
+      "options": ["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY"],
+      "mapsTo": { "field": "customFieldValues.reviewFrequency" }
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "key": "customer",
+  "name": "Customer",
+  "description": "Customer-specific fields. Required only when the project has a customer.",
+  "questions": [
+    {
+      "id": "customerName",
+      "label": "Customer name",
+      "type": "TEXT",
+      "required": true,
+      "appliesWhen": { "hasCustomer": true },
+      "mapsTo": { "field": "customFieldValues.customerName" }
+    },
+    {
+      "id": "customerContact",
+      "label": "Primary contact",
+      "type": "TEXT",
+      "required": true,
+      "appliesWhen": { "hasCustomer": true },
+      "mapsTo": { "field": "customFieldValues.customerContact" }
+    },
+    {
+      "id": "customerEmail",
+      "label": "Contact email",
+      "type": "TEXT",
+      "required": true,
+      "appliesWhen": { "hasCustomer": true },
+      "mapsTo": { "field": "customFieldValues.customerEmail" }
+    },
+    {
+      "id": "billingAddress",
+      "label": "Billing address",
+      "type": "TEXT",
+      "required": false,
+      "appliesWhen": { "hasCustomer": true },
+      "mapsTo": { "field": "customFieldValues.billingAddress" }
+    },
+    {
+      "id": "paymentTerms",
+      "label": "Payment terms",
+      "type": "SELECT",
+      "required": false,
+      "options": ["NET_15", "NET_30", "NET_45", "NET_60", "DUE_ON_RECEIPT"],
+      "appliesWhen": { "hasCustomer": true },
+      "mapsTo": { "field": "customFieldValues.paymentTerms" }
+    },
+    {
+      "id": "customerTaxId",
+      "label": "Tax ID",
+      "type": "TEXT",
+      "required": false,
+      "appliesWhen": { "hasCustomer": true },
+      "mapsTo": { "field": "customFieldValues.customerTaxId" }
+    }
+  ]
+}

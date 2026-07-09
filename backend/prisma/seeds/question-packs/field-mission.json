@@ -1,0 +1,64 @@
+{
+  "key": "field-mission",
+  "name": "Field Mission",
+  "description": "Field-deployment / on-site mission specifics.",
+  "questions": [
+    {
+      "id": "missionLocation",
+      "label": "Mission location",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.missionLocation" }
+    },
+    {
+      "id": "missionStartDate",
+      "label": "Mission start date",
+      "type": "DATE",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.missionStartDate" }
+    },
+    {
+      "id": "missionEndDate",
+      "label": "Mission end date",
+      "type": "DATE",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.missionEndDate" }
+    },
+    {
+      "id": "teamSize",
+      "label": "Team size",
+      "type": "NUMBER",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.teamSize" }
+    },
+    {
+      "id": "securityClearance",
+      "label": "Security clearance level",
+      "type": "SELECT",
+      "required": false,
+      "options": ["NONE", "BASIC", "CONFIDENTIAL", "SECRET", "TOP_SECRET"],
+      "mapsTo": { "field": "customFieldValues.securityClearance" }
+    },
+    {
+      "id": "logisticsPlan",
+      "label": "Logistics plan",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.logisticsPlan" }
+    },
+    {
+      "id": "emergencyContacts",
+      "label": "Emergency contacts",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.emergencyContacts" }
+    },
+    {
+      "id": "extractionPlan",
+      "label": "Extraction / evacuation plan",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.extractionPlan" }
+    }
+  ]
+}

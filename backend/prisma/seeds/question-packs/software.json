@@ -1,0 +1,78 @@
+{
+  "key": "software",
+  "name": "Software",
+  "description": "Software development specifics: stack, repos, deploy targets, testing strategy.",
+  "questions": [
+    {
+      "id": "primaryLanguage",
+      "label": "Primary language",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.primaryLanguage" }
+    },
+    {
+      "id": "framework",
+      "label": "Framework",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.framework" }
+    },
+    {
+      "id": "repository",
+      "label": "Repository URL",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.repository" }
+    },
+    {
+      "id": "deploymentTarget",
+      "label": "Deployment target",
+      "type": "SELECT",
+      "required": false,
+      "options": ["AWS", "GCP", "AZURE", "VERCEL", "ON_PREMISE", "MOBILE_STORE", "DESKTOP"],
+      "mapsTo": { "field": "customFieldValues.deploymentTarget" }
+    },
+    {
+      "id": "testCoverageTarget",
+      "label": "Test coverage target (%)",
+      "type": "NUMBER",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.testCoverageTarget" }
+    },
+    {
+      "id": "ciCd",
+      "label": "CI/CD pipeline",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.ciCd" }
+    },
+    {
+      "id": "monitoring",
+      "label": "Monitoring / observability",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.monitoring" }
+    },
+    {
+      "id": "techDebtOwners",
+      "label": "Tech-debt owners",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.techDebtOwners" }
+    },
+    {
+      "id": "rollbackPlan",
+      "label": "Rollback plan",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.rollbackPlan" }
+    },
+    {
+      "id": "productionAccessPolicy",
+      "label": "Production access policy",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.productionAccessPolicy" }
+    }
+  ]
+}

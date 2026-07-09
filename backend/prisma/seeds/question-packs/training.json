@@ -1,0 +1,36 @@
+{
+  "key": "training",
+  "name": "Training",
+  "description": "Training delivery, audience, certification.",
+  "questions": [
+    {
+      "id": "trainingFormat",
+      "label": "Format",
+      "type": "SELECT",
+      "required": true,
+      "options": ["INSTRUCTOR_LED", "SELF_PACED", "BLENDED", "COACHING"],
+      "mapsTo": { "field": "customFieldValues.trainingFormat" }
+    },
+    {
+      "id": "audienceSize",
+      "label": "Audience size",
+      "type": "NUMBER",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.audienceSize" }
+    },
+    {
+      "id": "learningObjectives",
+      "label": "Learning objectives",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.learningObjectives" }
+    },
+    {
+      "id": "certificationOffered",
+      "label": "Certification offered?",
+      "type": "BOOLEAN",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.certificationOffered" }
+    }
+  ]
+}

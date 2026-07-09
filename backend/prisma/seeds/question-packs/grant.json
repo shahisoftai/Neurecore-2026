@@ -1,0 +1,64 @@
+{
+  "key": "grant",
+  "name": "Grant",
+  "description": "Grant-funded project specifics: funder, award, reporting cadence.",
+  "questions": [
+    {
+      "id": "funderName",
+      "label": "Funder",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.funderName" }
+    },
+    {
+      "id": "awardNumber",
+      "label": "Award / grant number",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.awardNumber" }
+    },
+    {
+      "id": "totalAward",
+      "label": "Total award amount",
+      "type": "CURRENCY",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.totalAward" }
+    },
+    {
+      "id": "indirectRate",
+      "label": "Indirect cost rate (%)",
+      "type": "NUMBER",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.indirectRate" }
+    },
+    {
+      "id": "reportingCadence",
+      "label": "Reporting cadence",
+      "type": "SELECT",
+      "required": true,
+      "options": ["MONTHLY", "QUARTERLY", "SEMI_ANNUALLY", "ANNUALLY", "AT_MILESTONE"],
+      "mapsTo": { "field": "customFieldValues.reportingCadence" }
+    },
+    {
+      "id": "matchRequirement",
+      "label": "Match / cost-share requirement",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.matchRequirement" }
+    },
+    {
+      "id": "noCostExtensionPlan",
+      "label": "No-cost-extension plan",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.noCostExtensionPlan" }
+    },
+    {
+      "id": "closeoutDeliverables",
+      "label": "Closeout deliverables",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.closeoutDeliverables" }
+    }
+  ]
+}

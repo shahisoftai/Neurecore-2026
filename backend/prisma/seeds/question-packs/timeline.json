@@ -1,0 +1,35 @@
+{
+  "key": "timeline",
+  "name": "Timeline",
+  "description": "Milestones, dependencies, and deadline drivers.",
+  "questions": [
+    {
+      "id": "kickoffDate",
+      "label": "Kickoff date",
+      "type": "DATE",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.kickoffDate" }
+    },
+    {
+      "id": "milestones",
+      "label": "Milestone list (free form)",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.milestones" }
+    },
+    {
+      "id": "hardDeadline",
+      "label": "Is there a hard external deadline?",
+      "type": "BOOLEAN",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.hardDeadline" }
+    },
+    {
+      "id": "deadlineDriver",
+      "label": "Deadline driver",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.deadlineDriver" }
+    }
+  ]
+}

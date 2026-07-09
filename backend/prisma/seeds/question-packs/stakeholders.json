@@ -1,0 +1,44 @@
+{
+  "key": "stakeholders",
+  "name": "Stakeholders",
+  "description": "Internal and external stakeholders who need to be informed or involved.",
+  "questions": [
+    {
+      "id": "executiveSponsor",
+      "label": "Executive sponsor",
+      "type": "TEXT",
+      "required": true,
+      "mapsTo": { "field": "customFieldValues.executiveSponsor" }
+    },
+    {
+      "id": "sponsorEmail",
+      "label": "Sponsor email",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.sponsorEmail" }
+    },
+    {
+      "id": "keyStakeholders",
+      "label": "Key stakeholders (free form)",
+      "helpText": "Comma-separated list of names + roles.",
+      "type": "TEXT",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.keyStakeholders" }
+    },
+    {
+      "id": "communicationCadence",
+      "label": "Update cadence",
+      "type": "SELECT",
+      "required": true,
+      "options": ["DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY", "ON_MILESTONE"],
+      "mapsTo": { "field": "customFieldValues.communicationCadence" }
+    },
+    {
+      "id": "steeringCommittee",
+      "label": "Steering committee exists?",
+      "type": "BOOLEAN",
+      "required": false,
+      "mapsTo": { "field": "customFieldValues.steeringCommittee" }
+    }
+  ]
+}
