@@ -35,6 +35,7 @@ export type ItemId =
     | 'routines'
     | 'goals'
     | 'projects'
+    | 'customers'
     | 'marketplace'
     | 'agents'
     | 'connectors'

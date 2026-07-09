@@ -47,6 +47,12 @@ export interface AgentCardData {
   department?: string;      // department name for display
   model?: string;           // LLM model identifier
   updatedAt?: string;       // ISO timestamp of last update
+  // Tenant-specific profile overrides (read from metadata.profile)
+  avatarUrl?: string | null;
+  designation?: string | null;
+  bio?: string | null;
+  color?: string | null;
+  emoji?: string | null;
 }
 
 // ─── Charts ───────────────────────────────────────────────────────────────────

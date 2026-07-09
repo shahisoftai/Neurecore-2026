@@ -14,7 +14,7 @@ import { useKeyboardShortcuts } from "@/shared/hooks/useKeyboardShortcuts";
 import { authService } from "@/auth";
 import { connectSocket, disconnectSocket } from "@/services/socket";
 
-const UNAUTHENTICATED_ROUTES = ["/login", "/register", "/forgot-password"];
+const UNAUTHENTICATED_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password"];
 
 export function AppInitializer() {
   const pathname = usePathname();

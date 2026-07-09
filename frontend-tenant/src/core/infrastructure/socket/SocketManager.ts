@@ -24,6 +24,7 @@ export class SocketManager implements ISocketManager {
 
     this.socket = io(this.url, {
       auth: { token: this.tokenManager.getAccessToken() },
+      withCredentials: true,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,

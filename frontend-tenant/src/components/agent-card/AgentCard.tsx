@@ -1,21 +1,19 @@
 'use client';
-// ─── Agent Card ───────────────────────────────────────────────────────────────
-// O — Open/Closed: three variants via props, new variants add without changing core logic
-// S — Single Responsibility: card rendering + emitting actions up only
-
+// AgentCard - renders an agent card with avatar + actions
 import { motion } from 'framer-motion';
 import { useInspectorStore } from '@/stores/inspectorStore';
 import { STATUS_BADGE_CLASS, STATUS_COLOR_MAP } from '@/types/ui.types';
 import type { AgentCardProps, AgentCardAction } from '@/types/ui.types';
+import { AgentAvatar } from '@/components/agents/AgentAvatar';
 
 const STATUS_DOT: Record<string, string> = {
-  RUNNING:  'bg-status-ops animate-pulse-slow',
-  ACTIVE:   'bg-status-profit animate-pulse-slow',
-  IDLE:     'bg-status-neutral',
-  PAUSED:   'bg-status-warn',
-  FAILED:   'bg-status-risk',
-  ERROR:    'bg-status-risk',
-  STOPPED:  'bg-surface-muted',
+  RUNNING: 'bg-status-ops animate-pulse-slow',
+  ACTIVE: 'bg-status-profit animate-pulse-slow',
+  IDLE: 'bg-status-neutral',
+  PAUSED: 'bg-status-warn',
+  FAILED: 'bg-status-risk',
+  ERROR: 'bg-status-risk',
+  STOPPED: 'bg-surface-muted',
 };
 
 function WorkloadBar({ pct, color }: { pct: number; color: string }) {
@@ -31,7 +29,6 @@ function WorkloadBar({ pct, color }: { pct: number; color: string }) {
   );
 }
 
-// L — Liskov: compact/full/inspector all satisfy AgentCardProps contract
 export function AgentCard({ agent, variant = 'full', onAction, selected = false, className = '' }: AgentCardProps) {
   const { openInspector } = useInspectorStore();
   const statusColor = STATUS_COLOR_MAP[agent.status] ?? 'neutral';
@@ -49,7 +46,6 @@ export function AgentCard({ agent, variant = 'full', onAction, selected = false,
     onAction?.(action, agent.id);
   };
 
-  // ─── Compact variant ─────────────────────────────────────────────────────
   if (variant === 'compact') {
     return (
       <motion.div
@@ -58,8 +54,13 @@ export function AgentCard({ agent, variant = 'full', onAction, selected = false,
         className={`flex items-center gap-3 p-3 rounded-xl border border-surface-border bg-surface-raised hover:bg-surface-overlay cursor-pointer transition-colors ${selected ? 'ring-1 ring-status-ops' : ''} ${className}`}
         onClick={() => handleAction('inspect')}
       >
-        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClass}`} />
-        <span className="text-sm font-medium text-zinc-200 truncate flex-1">{agent.name}</span>
+        <AgentAvatar name={agent.name} avatarUrl={agent.avatarUrl} emoji={agent.emoji} color={agent.color} size={28} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-zinc-200 truncate">{agent.name}</p>
+          {agent.designation && (
+            <p className="text-[10px] text-zinc-500 truncate">{agent.designation}</p>
+          )}
+        </div>
         {agent.workloadPct !== undefined && (
           <span className="text-xs text-zinc-500">{agent.workloadPct}%</span>
         )}
@@ -67,7 +68,6 @@ export function AgentCard({ agent, variant = 'full', onAction, selected = false,
     );
   }
 
-  // ─── Full variant (grid card) ─────────────────────────────────────────────
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -75,13 +75,14 @@ export function AgentCard({ agent, variant = 'full', onAction, selected = false,
       transition={{ duration: 0.2 }}
       className={`rounded-2xl border border-surface-border bg-surface-raised p-5 flex flex-col gap-3 hover:border-surface-muted transition-colors ${selected ? 'ring-1 ring-status-ops' : ''} ${className}`}
     >
-      {/* Header */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotClass}`} />
+        <div className="flex items-center gap-3 min-w-0">
+          <AgentAvatar name={agent.name} avatarUrl={agent.avatarUrl} emoji={agent.emoji} color={agent.color} size={40} />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-zinc-100 truncate">{agent.name}</p>
-            {agent.role && <p className="text-xs text-zinc-500 truncate">{agent.role}</p>}
+            <p className="text-xs text-zinc-500 truncate">
+              {agent.designation || agent.role || agent.type}
+            </p>
           </div>
         </div>
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_BADGE_CLASS[statusColor]}`}>
@@ -89,7 +90,10 @@ export function AgentCard({ agent, variant = 'full', onAction, selected = false,
         </span>
       </div>
 
-      {/* Type badge + tenant */}
+      {agent.bio && (
+        <p className="text-xs text-zinc-400 line-clamp-2">{agent.bio}</p>
+      )}
+
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs px-2 py-0.5 rounded bg-surface-muted text-zinc-400">{agent.type}</span>
         {agent.tenantName && (
@@ -97,7 +101,6 @@ export function AgentCard({ agent, variant = 'full', onAction, selected = false,
         )}
       </div>
 
-      {/* Workload */}
       {agent.workloadPct !== undefined && (
         <div className="flex flex-col gap-1">
           <div className="flex justify-between text-xs text-zinc-500">
@@ -108,7 +111,6 @@ export function AgentCard({ agent, variant = 'full', onAction, selected = false,
         </div>
       )}
 
-      {/* Stats row */}
       <div className="grid grid-cols-3 gap-2 text-center">
         {agent.successRate !== undefined && (
           <div>
@@ -132,7 +134,6 @@ export function AgentCard({ agent, variant = 'full', onAction, selected = false,
         )}
       </div>
 
-      {/* Actions */}
       <div className="flex gap-2 pt-1 border-t border-surface-border">
         <button
           className="flex-1 text-xs py-1.5 rounded-lg bg-surface-muted hover:bg-surface-overlay text-zinc-300 transition-colors"

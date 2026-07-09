@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { authService } from '@/services/auth.service';
 import { routeAfterAuth } from '@/services/auth-redirect.service';
 import { useAuthStore } from '@/stores/authStore';
+import { PasswordInput } from '@/components/ui/password-input';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -70,10 +71,15 @@ export default function RegisterPage() {
               className="rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:ring-2 focus:ring-blue-500"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label htmlFor="password" className="flex flex-col gap-1 text-sm font-medium">
             Password
-            <input type="password" autoComplete="new-password" required minLength={8} value={form.password} onChange={update('password')}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:ring-2 focus:ring-blue-500"
+            <PasswordInput
+              id="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              value={form.password}
+              onChange={update('password')}
             />
           </label>
           <button type="submit" disabled={loading}

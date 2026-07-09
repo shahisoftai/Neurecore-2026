@@ -16,9 +16,34 @@ export interface TenantTier {
   id: string;
   slug: string;
   name: string;
+  description?: string;
+  isActive?: boolean;
+  isDefault?: boolean;
+  sortOrder?: number;
+  monthlyPrice?: number | string;
+  yearlyPrice?: number | string;
+  currency?: string;
+  maxUsers: number;
   maxAgents: number;
   maxDepartments: number;
-  monthlyPrice?: number;
+  maxStorageGB?: number;
+  maxApiCalls?: number;
+  maxConversationMessages?: number;
+  maxFileSizeMB?: number;
+  allowCustomBranding?: boolean;
+  allowApiAccess?: boolean;
+  allowSso?: boolean;
+  allowAuditExport?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TenantAddress {
+  street?: string;
+  city?: string;
+  region?: string;
+  postal?: string;
+  country?: string;
 }
 
 export interface Tenant {
@@ -33,4 +58,46 @@ export interface Tenant {
   /** Phase 6 billing-tier rollup; preferred over `plan` / `agentLimit`. */
   tier?: TenantTier;
   createdAt: string;
+
+  // Branding / Contact
+  logoUrl?: string | null;
+  website?: string | null;
+  industry?: string | null;
+  phone?: string | null;
+  supportEmail?: string | null;
+
+  // Company Profile
+  sizeBucket?: string | null;
+  foundedYear?: number | null;
+  businessType?: string | null;
+  addressJson?: TenantAddress | null;
+  billingProfileJson?: Record<string, unknown> | null;
+  defaultsJson?: Record<string, unknown> | null;
+
+  // Localization
+  locale?: string | null;
+  timezone?: string | null;
+  currency?: string | null;
+  dateFormat?: string | null;
+  timeFormat?: string | null;
+  fiscalYearStart?: string | null;
+
+  // Onboarding state
+  onboardingCompletedAt?: string | null;
+  onboardingStep?: string | null;
+  checklistDismissedAt?: string | null;
+
+  // Google Workspace
+  googleDriveRootFolderId?: string | null;
+  googleCalendarId?: string | null;
+
+  // Retention
+  retentionDays?: number;
+
+  // Flexible blobs
+  settings?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+
+  // Timestamps
+  updatedAt: string;
 }

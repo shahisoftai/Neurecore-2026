@@ -1,4 +1,4 @@
-// services/uploads.service.ts — Tenant logo (and future asset) uploads.
+// services/uploads.service.ts — Tenant logo + AI Employee avatar uploads.
 // Uses raw axios because we need to send multipart/form-data with a real
 // progress event chain — the standard api wrapper (services/api.ts) does
 // JSON-only.
@@ -19,6 +19,18 @@ export const LOGO_UPLOAD = {
   allowedTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'] as const,
 } as const;
 
+// Tighter limits than logos — avatars are rendered at small sizes and a 5 MB
+// avatar would slow every page that lists agents.
+export const AGENT_AVATAR_UPLOAD = {
+  maxBytes: 2 * 1024 * 1024,
+  allowedTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'] as const,
+} as const;
+
+function authHeader(): Record<string, string> {
+  const token = tokenManager.getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export const uploadsService = {
   async uploadLogo(file: File): Promise<UploadLogoResult> {
     if (file.size > LOGO_UPLOAD.maxBytes) {
@@ -33,15 +45,11 @@ export const uploadsService = {
     const form = new FormData();
     form.append('file', file);
 
-    const token = tokenManager.getAccessToken();
     const res = await axios.post<{ data: UploadLogoResult }>(
       `${API_URL}/uploads/logo`,
       form,
       {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
       },
     );
     return res.data.data;
@@ -49,9 +57,37 @@ export const uploadsService = {
 
   async deleteLogo(key: string): Promise<void> {
     await axios.delete(`${API_URL}/uploads/logo/${encodeURIComponent(key)}`, {
-      headers: {
-        Authorization: `Bearer ${tokenManager.getAccessToken() ?? ''}`,
-      },
+      headers: authHeader(),
     });
+  },
+
+  async uploadAgentAvatar(file: File): Promise<UploadLogoResult> {
+    if (file.size > AGENT_AVATAR_UPLOAD.maxBytes) {
+      throw new Error(
+        `Avatar exceeds ${AGENT_AVATAR_UPLOAD.maxBytes / (1024 * 1024)} MB limit`,
+      );
+    }
+    if (!(AGENT_AVATAR_UPLOAD.allowedTypes as readonly string[]).includes(file.type)) {
+      throw new Error(`Unsupported image type: ${file.type || 'unknown'}`);
+    }
+
+    const form = new FormData();
+    form.append('file', file);
+
+    const res = await axios.post<{ data: UploadLogoResult }>(
+      `${API_URL}/uploads/agent-avatar`,
+      form,
+      {
+        headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
+      },
+    );
+    return res.data.data;
+  },
+
+  async deleteAgentAvatar(key: string): Promise<void> {
+    await axios.delete(
+      `${API_URL}/uploads/agent-avatar/${encodeURIComponent(key)}`,
+      { headers: authHeader() },
+    );
   },
 };

@@ -62,7 +62,7 @@ export class RestClient implements IApiClient {
     this.axios = axios.create({
       baseURL: baseUrl,
       headers: { 'Content-Type': 'application/json' },
-      withCredentials: false,
+      withCredentials: true,
       timeout: 30_000,
     });
 

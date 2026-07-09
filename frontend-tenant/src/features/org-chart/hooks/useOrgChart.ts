@@ -16,7 +16,7 @@ export interface OrgNode {
   parentId?:  string;
   status?:    string;
   mood?:      string;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   workloadGauge?: number;
   /** Computed children (agents under this dept) */
   children?:  OrgNode[];

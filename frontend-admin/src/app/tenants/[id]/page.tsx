@@ -22,6 +22,7 @@ import { unwrapItem, unwrapList } from '@/services/unwrap';
 import { deptTemplatesService, type DepartmentTemplate, type BulkAgentDeployItem } from '@/services/deptTemplates.service';
 import { agentTemplatesService, type AgentTemplate } from '@/services/agentTemplates.service';
 import { packagesService, type Package, type DeployPackagePreview, type DeployPackageOutcome } from '@/services/packages.service';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { Tenant } from '@/types/api.types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -104,6 +105,11 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
   const [deployingSingleDept, setDeployingSingleDept] = useState(false);
   const [singleDeptResult, setSingleDeptResult] = useState<{ id: string; name: string; agents?: number } | null>(null);
   const [singleDeptError, setSingleDeptError] = useState<string | null>(null);
+
+  // Tenant actions
+  const [suspendOpen, setSuspendOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
 
   // ─── Fetch tenant ──────────────────────────────────────────────────────────
 
@@ -273,6 +279,45 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
+  // ─── Tenant actions: Suspend / Activate / Delete ────────────────────────────
+
+  async function handleSuspend() {
+    setActionBusy(true);
+    try {
+      await api.patch(`/tenants/${tenantId}/suspend`);
+      setTenant((prev) => prev ? { ...prev, status: 'SUSPENDED' } : prev);
+      setSuspendOpen(false);
+    } catch {
+      // error handled by interceptor
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function handleActivate() {
+    setActionBusy(true);
+    try {
+      await api.patch(`/tenants/${tenantId}/activate`);
+      setTenant((prev) => prev ? { ...prev, status: 'ACTIVE' } : prev);
+    } catch {
+      // error handled by interceptor
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function handleDelete() {
+    setActionBusy(true);
+    try {
+      await api.delete(`/tenants/${tenantId}`);
+      router.push('/tenants');
+    } catch {
+      setDeleteOpen(false);
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
   // ─── Render ────────────────────────────────────────────────────────────────
 
   if (!user) return null;
@@ -291,9 +336,23 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
           <div className="h-20 rounded-xl bg-surface-raised animate-pulse" />
         ) : tenant ? (
           <div className="rounded-xl border border-surface-border bg-surface-raised p-5 flex flex-wrap gap-6 items-start">
-            <div>
-              <h1 className="text-xl font-semibold text-zinc-100">{tenant.name}</h1>
-              <div className="text-sm text-zinc-500 mt-0.5 font-mono">{tenant.slug}</div>
+            <div className="flex items-start gap-4">
+              {tenant.logoUrl && (
+                <img src={tenant.logoUrl} alt="" className="h-12 w-12 rounded-xl object-cover border border-surface-border flex-shrink-0" />
+              )}
+              <div>
+                <h1 className="text-xl font-semibold text-zinc-100">{tenant.name}</h1>
+                <div className="text-sm text-zinc-500 mt-0.5 font-mono">{tenant.slug}</div>
+                {tenant.industry && (
+                  <div className="text-xs text-zinc-600 mt-1">{tenant.industry}</div>
+                )}
+                {tenant.website && (
+                  <a href={tenant.website} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2 mt-0.5 inline-block">
+                    {tenant.website.replace(/^https?:\/\//, '')}
+                  </a>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap gap-3 items-center ml-auto">
               <Stat label="Plan" value={tenant.tier?.name ?? tenant.tier?.slug ?? tenant.plan ?? '—'} />
@@ -305,6 +364,27 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
           </div>
         ) : (
           <div className="py-10 text-center text-zinc-500">Tenant not found.</div>
+        )}
+
+        {/* ── Tenant Actions ── */}
+        {tenant && (
+          <div className="flex items-center justify-end gap-2">
+            {tenant.status === 'SUSPENDED' ? (
+              <button onClick={handleActivate} disabled={actionBusy}
+                className="px-3 py-1.5 rounded-lg border border-green-800/40 text-xs text-green-400 hover:bg-green-950/30 transition disabled:opacity-50">
+                Activate
+              </button>
+            ) : (
+              <button onClick={() => setSuspendOpen(true)} disabled={actionBusy}
+                className="px-3 py-1.5 rounded-lg border border-amber-800/40 text-xs text-amber-400 hover:bg-amber-950/30 transition disabled:opacity-50">
+                Suspend
+              </button>
+            )}
+            <button onClick={() => setDeleteOpen(true)} disabled={actionBusy}
+              className="px-3 py-1.5 rounded-lg border border-red-800/40 text-xs text-red-400 hover:bg-red-950/30 transition disabled:opacity-50">
+              Delete
+            </button>
+          </div>
         )}
 
         {/* ── Tabs ── */}
@@ -324,19 +404,153 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
 
         <AnimatePresence mode="wait">
           {/* ══ Overview ══ */}
-          {tab === 'overview' && (
+          {tab === 'overview' && tenant && (
             <motion.div key="overview" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-4"
+              className="space-y-6"
             >
-              {tenant && (
-                <>
-                  <StatCard label="ID" value={tenant.id.slice(0, 8) + '…'} />
-                  <StatCard label="Plan" value={tenant.tier?.name ?? tenant.tier?.slug ?? tenant.plan ?? '—'} />
-                  <StatCard label="Agent Limit" value={String(tenant.tier?.maxAgents ?? tenant.agentLimit ?? '—')} />
-                  <StatCard label="Departments" value={String(tenant.tier?.maxDepartments ?? '—')} />
-                  <StatCard label="Created" value={new Date(tenant.createdAt).toLocaleDateString()} />
-                </>
+              {/* ── Section: Identity ── */}
+              <Section title="Identity">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <InfoCard label="ID" value={tenant.id.slice(0, 8) + '…'} />
+                  <InfoCard label="Status" value={tenant.status}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[tenant.status] ?? 'bg-zinc-800 text-zinc-400'}`}>
+                      {tenant.status}
+                    </span>
+                  </InfoCard>
+                  <InfoCard label="Created" value={new Date(tenant.createdAt).toLocaleDateString()} />
+                  <InfoCard label="Updated" value={new Date(tenant.updatedAt).toLocaleDateString()} />
+                </div>
+              </Section>
+
+              {/* ── Section: Branding & Contact ── */}
+              <Section title="Branding &amp; Contact">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <InfoCard label="Website" value={tenant.website ?? '—'} href={tenant.website ?? undefined} />
+                  <InfoCard label="Industry" value={tenant.industry ?? '—'} />
+                  <InfoCard label="Phone" value={tenant.phone ?? '—'} />
+                  <InfoCard label="Support Email" value={tenant.supportEmail ?? '—'} href={tenant.supportEmail ? `mailto:${tenant.supportEmail}` : undefined} />
+                </div>
+                {tenant.logoUrl && (
+                  <div className="mt-3 flex items-center gap-3">
+                    <span className="text-xs text-zinc-500">Logo:</span>
+                    <img src={tenant.logoUrl} alt={`${tenant.name} logo`} className="h-10 w-10 rounded-lg object-cover border border-surface-border" />
+                  </div>
+                )}
+              </Section>
+
+              {/* ── Section: Company Profile ── */}
+              <Section title="Company Profile">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <InfoCard label="Size" value={tenant.sizeBucket ? tenant.sizeBucket.charAt(0) + tenant.sizeBucket.slice(1).toLowerCase() : '—'} />
+                  <InfoCard label="Founded" value={tenant.foundedYear ? String(tenant.foundedYear) : '—'} />
+                  <InfoCard label="Business Type" value={tenant.businessType ?? '—'} />
+                </div>
+                {tenant.addressJson && (
+                  <div className="mt-4 rounded-lg border border-surface-border bg-surface-overlay/50 p-4">
+                    <div className="text-xs text-zinc-500 mb-2 font-medium">Address</div>
+                    <div className="text-sm text-zinc-300">
+                      {[tenant.addressJson.street, tenant.addressJson.city, tenant.addressJson.region, tenant.addressJson.postal, tenant.addressJson.country].filter(Boolean).join(', ') || '—'}
+                    </div>
+                  </div>
+                )}
+                {tenant.billingProfileJson && Object.keys(tenant.billingProfileJson).length > 0 && (
+                  <div className="mt-3 rounded-lg border border-surface-border bg-surface-overlay/50 p-4">
+                    <div className="text-xs text-zinc-500 mb-2 font-medium">Billing Profile</div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                      {Object.entries(tenant.billingProfileJson).map(([k, v]) => (
+                        <div key={k} className="flex justify-between">
+                          <span className="text-zinc-500 text-xs capitalize">{k.replace(/([A-Z])/g, ' $1').trim()}</span>
+                          <span className="text-zinc-300">{String(v ?? '—')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Section>
+
+              {/* ── Section: Localization ── */}
+              <Section title="Localization">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <InfoCard label="Locale" value={tenant.locale ?? '—'} />
+                  <InfoCard label="Timezone" value={tenant.timezone ?? '—'} />
+                  <InfoCard label="Currency" value={tenant.currency ?? '—'} />
+                  <InfoCard label="Date Format" value={tenant.dateFormat ?? '—'} />
+                  <InfoCard label="Time Format" value={tenant.timeFormat ?? '—'} />
+                  <InfoCard label="Fiscal Year Start" value={tenant.fiscalYearStart ?? '—'} />
+                </div>
+              </Section>
+
+              {/* ── Section: Onboarding ── */}
+              <Section title="Onboarding">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <InfoCard label="Step" value={tenant.onboardingStep ? tenant.onboardingStep.charAt(0).toUpperCase() + tenant.onboardingStep.slice(1) : '—'} />
+                  <InfoCard label="Completed" value={tenant.onboardingCompletedAt ? new Date(tenant.onboardingCompletedAt).toLocaleDateString() : '—'} />
+                  <InfoCard label="Checklist Dismissed" value={tenant.checklistDismissedAt ? new Date(tenant.checklistDismissedAt).toLocaleDateString() : '—'} />
+                </div>
+              </Section>
+
+              {/* ── Section: Tier Details ── */}
+              {tenant.tier && (
+                <Section title="Tier Details">
+                  <div className="rounded-xl border border-indigo-500/20 bg-indigo-950/20 p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-zinc-100">{tenant.tier.name}</h3>
+                        {tenant.tier.description && (
+                          <p className="text-sm text-zinc-500 mt-0.5">{tenant.tier.description}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl font-bold text-zinc-100">
+                          {tenant.tier.monthlyPrice && Number(tenant.tier.monthlyPrice) > 0
+                            ? `${tenant.tier.currency ?? '$'}${tenant.tier.monthlyPrice}/mo`
+                            : 'Free'}
+                        </div>
+                        {tenant.tier.yearlyPrice && Number(tenant.tier.yearlyPrice) > 0 && (
+                          <div className="text-xs text-zinc-500">
+                            {tenant.tier.currency ?? '$'}{tenant.tier.yearlyPrice}/yr
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <TierStat label="Max Agents" value={String(tenant.tier.maxAgents)} />
+                      <TierStat label="Max Departments" value={String(tenant.tier.maxDepartments)} />
+                      <TierStat label="Max Users" value={String(tenant.tier.maxUsers)} />
+                      <TierStat label="Storage" value={tenant.tier.maxStorageGB ? `${tenant.tier.maxStorageGB} GB` : '—'} />
+                      <TierStat label="API Calls" value={tenant.tier.maxApiCalls ? tenant.tier.maxApiCalls.toLocaleString() : '—'} />
+                      <TierStat label="Messages" value={tenant.tier.maxConversationMessages ? tenant.tier.maxConversationMessages.toLocaleString() : '—'} />
+                      <TierStat label="File Size" value={tenant.tier.maxFileSizeMB ? `${tenant.tier.maxFileSizeMB} MB` : '—'} />
+                      <TierStat label="Price" value={tenant.tier.monthlyPrice && Number(tenant.tier.monthlyPrice) > 0 ? `${tenant.tier.currency ?? '$'}${tenant.tier.monthlyPrice}/mo` : 'Free'} />
+                    </div>
+                    <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-indigo-500/10">
+                      <FeatureTag enabled={tenant.tier.allowCustomBranding} label="Custom Branding" />
+                      <FeatureTag enabled={tenant.tier.allowApiAccess} label="API Access" />
+                      <FeatureTag enabled={tenant.tier.allowSso} label="SSO" />
+                      <FeatureTag enabled={tenant.tier.allowAuditExport} label="Audit Export" />
+                    </div>
+                  </div>
+                </Section>
               )}
+
+              {/* ── Section: Google Workspace ── */}
+              {(tenant.googleDriveRootFolderId || tenant.googleCalendarId) && (
+                <Section title="Google Workspace">
+                  <div className="grid grid-cols-2 gap-4">
+                    <InfoCard label="Drive Root Folder ID" value={tenant.googleDriveRootFolderId ?? '—'} />
+                    <InfoCard label="Calendar ID" value={tenant.googleCalendarId ?? '—'} />
+                  </div>
+                </Section>
+              )}
+
+              {/* ── Section: Settings & Metadata ── */}
+              <Section title="System">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <InfoCard label="Retention" value={tenant.retentionDays ? `${tenant.retentionDays} days` : '—'} />
+                  <InfoCard label="Settings Keys" value={tenant.settings ? `${Object.keys(tenant.settings).length}` : '0'} />
+                  <InfoCard label="Metadata Keys" value={tenant.metadata ? `${Object.keys(tenant.metadata).length}` : '0'} />
+                </div>
+              </Section>
             </motion.div>
           )}
 
@@ -735,6 +949,38 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── Confirmation dialogs ── */}
+        <ConfirmDialog
+          open={suspendOpen}
+          variant="warning"
+          title={tenant?.status === 'SUSPENDED' ? 'Activate tenant?' : 'Suspend tenant?'}
+          description={
+            <span>
+              This will <strong>{tenant?.status === 'SUSPENDED' ? 'reactivate' : 'suspend'}</strong>{' '}
+              <strong>{tenant?.name}</strong>. No data will be lost.
+              {tenant?.status !== 'SUSPENDED' && ' Users will be unable to access the platform until reactivated.'}
+            </span>
+          }
+          confirmLabel={tenant?.status === 'SUSPENDED' ? 'Activate' : 'Suspend'}
+          busy={actionBusy}
+          onCancel={() => setSuspendOpen(false)}
+          onConfirm={handleSuspend}
+        />
+        <ConfirmDialog
+          open={deleteOpen}
+          variant="danger"
+          title="Delete tenant?"
+          description={
+            <span>
+              This will permanently delete <strong>{tenant?.name}</strong> and <strong>all</strong> associated data — users, agents, departments, conversations, settings, and history. This action <strong>cannot be undone</strong>.
+            </span>
+          }
+          confirmLabel="Delete Everything"
+          busy={actionBusy}
+          onCancel={() => setDeleteOpen(false)}
+          onConfirm={handleDelete}
+        />
       </div>
     </AdminShell>
   );
@@ -751,11 +997,55 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+// ─── Overview helpers ─────────────────────────────────────────────────────────
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-surface-border bg-surface-raised p-4">
+    <div>
+      <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function InfoCard({ label, value, children, href }: {
+  label: string;
+  value?: string;
+  children?: React.ReactNode;
+  href?: string;
+}) {
+  const content = children ?? (
+    href ? (
+      <a href={href} target="_blank" rel="noopener noreferrer"
+        className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 truncate block">
+        {value}
+      </a>
+    ) : (
+      <span className="text-zinc-100 truncate block">{value}</span>
+    )
+  );
+  return (
+    <div className="rounded-xl border border-surface-border bg-surface-raised p-4 min-w-0">
       <div className="text-xs text-zinc-500 mb-1">{label}</div>
-      <div className="text-lg font-semibold text-zinc-100 truncate">{value}</div>
+      <div className="text-sm font-medium">{content}</div>
+    </div>
+  );
+}
+
+function TierStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="text-sm font-semibold text-zinc-100 mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+function FeatureTag({ enabled, label }: { enabled?: boolean; label: string }) {
+  return (
+    <div className={`flex items-center gap-1.5 text-xs ${enabled ? 'text-indigo-300' : 'text-zinc-600'}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${enabled ? 'bg-indigo-400' : 'bg-zinc-700'}`} />
+      {label}
     </div>
   );
 }

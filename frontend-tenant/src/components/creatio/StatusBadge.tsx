@@ -40,6 +40,8 @@ const STATUS_MAP: Record<string, BadgeVariant> = {
   COMPLETED: 'success',
   PAID: 'success',
   HEALTHY: 'success',
+  WARNING: 'warning',
+  CRITICAL: 'danger',
   PASS: 'success',
   SUCCESS: 'success',
   ENABLED: 'success',
@@ -55,6 +57,7 @@ const STATUS_MAP: Record<string, BadgeVariant> = {
   INACTIVE: 'warning',
   IDLE: 'warning',
   DISABLED: 'warning',
+  IN_REVIEW: 'warning',
 
   // Danger states
   ERROR: 'danger',
@@ -65,12 +68,14 @@ const STATUS_MAP: Record<string, BadgeVariant> = {
   RISK: 'danger',
   BLOCKED: 'danger',
   OVERDUE: 'danger',
+  REJECTED: 'danger',
 
   // Info states
   INFO: 'info',
   PROCESSING: 'info',
   REVIEW: 'info',
   TRIAL: 'info',
+  APPROVED: 'success',
 
   // Neutral states (default)
   UNKNOWN: 'neutral',

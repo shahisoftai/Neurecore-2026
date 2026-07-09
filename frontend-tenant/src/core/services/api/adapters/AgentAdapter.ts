@@ -21,6 +21,7 @@ export interface RawAgent {
   createdAt: string;
   updatedAt?: string;
   lastActivity?: string;
+  metadata?: Record<string, unknown> | null;
   _count?: { tasks?: number; executions?: number };
   metrics?: {
     successRate?: number;
@@ -35,6 +36,7 @@ export interface RawAgent {
 
 export class AgentAdapter implements IBatchAdapter<RawAgent, Agent> {
   adapt(raw: RawAgent): Agent {
+    const profile = this.extractProfile(raw.metadata);
     return {
       id: raw.id,
       name: raw.name,
@@ -48,7 +50,11 @@ export class AgentAdapter implements IBatchAdapter<RawAgent, Agent> {
       departmentId: raw.departmentId,
       departmentName: raw.department?.name,
       performance: this.mapPerformance(raw),
-      avatarUrl: raw.avatarUrl,
+      avatarUrl: profile.avatarUrl ?? raw.avatarUrl ?? null,
+      designation: profile.designation ?? null,
+      bio: profile.bio ?? null,
+      color: profile.color ?? null,
+      emoji: profile.emoji ?? null,
       workloadGauge: this.calculateWorkload(raw),
       tags: raw.tags ?? [],
       createdAt: raw.createdAt,
@@ -109,6 +115,32 @@ export class AgentAdapter implements IBatchAdapter<RawAgent, Agent> {
   private calculateWorkload(raw: RawAgent): number {
     const inProgress = raw.metrics?.tasksInProgress ?? 0;
     return Math.min(100, inProgress * 25); // 4+ tasks = 100%
+  }
+
+  /**
+   * Defensive read of tenant-specific profile overrides stored under
+   * `metadata.profile`. Backend stores profile fields at metadata.profile.*
+   * for tenant-specific avatar/name/bio/color/emoji overrides.
+   */
+  private extractProfile(
+    metadata: Record<string, unknown> | null | undefined,
+  ): {
+    avatarUrl: string | null;
+    designation: string | null;
+    bio: string | null;
+    color: string | null;
+    emoji: string | null;
+  } {
+    const profile =
+      (metadata?.profile as Record<string, unknown> | undefined) ?? {};
+    return {
+      avatarUrl: typeof profile.avatarUrl === 'string' ? profile.avatarUrl : null,
+      designation:
+        typeof profile.designation === 'string' ? profile.designation : null,
+      bio: typeof profile.bio === 'string' ? profile.bio : null,
+      color: typeof profile.color === 'string' ? profile.color : null,
+      emoji: typeof profile.emoji === 'string' ? profile.emoji : null,
+    };
   }
 }
 

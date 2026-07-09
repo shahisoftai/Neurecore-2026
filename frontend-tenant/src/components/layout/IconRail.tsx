@@ -45,6 +45,7 @@ import {
   Repeat,
   Target,
   Briefcase,
+  UserCircle,
   DollarSign,
   BarChart3,
   Plug,
@@ -105,6 +106,7 @@ export const RAIL_SECTIONS: RailSection[] = [
         { id: 'routines',     label: 'Routines',    href: '/departments?tab=routines', icon: Repeat },
         { id: 'goals',        label: 'Goals',       href: '/departments?tab=goals', icon: Target },
         { id: 'projects',     label: 'Projects',    href: '/departments?tab=projects', icon: Briefcase },
+        { id: 'customers',    label: 'Customers',   href: '/customers',                icon: UserCircle },
       ],
     },
     {

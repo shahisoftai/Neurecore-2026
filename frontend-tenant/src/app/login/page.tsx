@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, FormEvent, useEffect, useCallback, useRef } from "react";
+import { useState, FormEvent, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, AuthError } from "@/auth";
 import { routeAfterAuth } from "@/services/auth-redirect.service";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
@@ -116,7 +117,7 @@ function GoogleSignInButton({ onError }: { onError: (msg: string) => void }) {
 // Post-auth redirect logic moved to services/auth-redirect.service.ts so both
 // /login and /register use the same code path.
 
-function LoginForm() {
+function LoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
   const router = useRouter();
   const { login, state } = useAuth();
   const [email, setEmail] = useState("");
@@ -180,6 +181,11 @@ function LoginForm() {
         <div className="flex justify-center mb-4">
           <GoogleSignInButton onError={handleGoogleError} />
         </div>
+        {resetSuccess && !error && (
+          <div className="mb-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">
+            Password reset successful. You can now sign in.
+          </div>
+        )}
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
             {error}
@@ -205,17 +211,25 @@ function LoginForm() {
               className="rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:ring-2 focus:ring-blue-500"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Password
-              <input
-              type="password"
+          <div className="flex flex-col gap-1 text-sm font-medium">
+            <div className="flex items-center justify-between">
+              <label htmlFor="password">Password</label>
+              <Link
+                href="/forgot-password"
+                className="text-xs font-normal text-blue-600 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <PasswordInput
+              id="password"
+              name="password"
               autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:ring-2 focus:ring-blue-500"
             />
-          </label>
+          </div>
           <button
             type="submit"
             disabled={loading}
@@ -274,10 +288,17 @@ function LoginForm() {
   );
 }
 
+function LoginPageInner() {
+  const searchParams = useSearchParams();
+  return <LoginForm resetSuccess={searchParams.get("reset") === "ok"} />;
+}
+
 export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <LoginForm />
+      <Suspense fallback={<LoginForm />}>
+        <LoginPageInner />
+      </Suspense>
     </main>
   );
 }

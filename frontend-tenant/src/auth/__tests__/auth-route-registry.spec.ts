@@ -10,6 +10,7 @@ describe('AuthRouteRegistry (tenant)', () => {
     expect(reg.isUnauthenticatedRoute('/login')).toBe(true);
     expect(reg.isUnauthenticatedRoute('/register')).toBe(true);
     expect(reg.isUnauthenticatedRoute('/forgot-password')).toBe(true);
+    expect(reg.isUnauthenticatedRoute('/reset-password')).toBe(true);
     expect(reg.isUnauthenticatedRoute('/privacy')).toBe(true);
     expect(reg.isUnauthenticatedRoute('/terms')).toBe(true);
     expect(reg.isUnauthenticatedRoute('/onboarding/setup')).toBe(true);

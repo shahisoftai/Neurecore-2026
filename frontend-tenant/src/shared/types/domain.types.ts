@@ -78,11 +78,16 @@ export interface Agent {
   departmentId?: EntityId;
   departmentName?: string;
   performance: AgentPerformance;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   workloadGauge: number;      // 0–100 (visual meter)
   tags: string[];
   createdAt: ISODateString;
   lastActiveAt?: ISODateString;
+  // Tenant-specific profile overrides — read from metadata.profile
+  designation?: string | null;
+  bio?: string | null;
+  color?: string | null;
+  emoji?: string | null;
 }
 
 // ─── Task ─────────────────────────────────────────────────────────────────────

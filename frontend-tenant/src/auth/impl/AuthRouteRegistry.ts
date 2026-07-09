@@ -7,6 +7,7 @@ const UNAUTHENTICATED_ROUTE_PATTERNS = [
   /^\/login$/,
   /^\/register$/,
   /^\/forgot-password$/,
+  /^\/reset-password$/,
   /^\/privacy$/,
   /^\/terms$/,
   /^\/onboarding\/.*/,

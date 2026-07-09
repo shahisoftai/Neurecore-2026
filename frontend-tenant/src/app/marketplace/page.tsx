@@ -75,6 +75,7 @@ interface AgentRaw {
   department?: { id?: string; name?: string };
   model?: { name?: string };
   templateId?: string | null;
+  metadata?: Record<string, unknown> | null;
   _count?: { tasks: number };
 }
 
@@ -388,27 +389,37 @@ function MyAgentsTab({
         </div>
       ) : (
         <div className={`grid gap-3 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1 max-w-3xl'}`}>
-          {visible.map((agent) => (
-            <AgentCard
-              key={agent.id}
-              agent={{
-                id: agent.id,
-                name: agent.name,
-                type: agent.type as never,
-                status: agent.status as never,
-                department: agent.department?.name,
-                model: agent.model?.name ?? 'gpt-4o',
-                workload: Math.min(100, Math.round(((agent._count?.tasks ?? 0) / 10) * 100)),
-                taskCount: agent._count?.tasks ?? 0,
-                successRate: agent.status === 'ACTIVE' || agent.status === 'RUNNING' ? Math.min(100, Math.round(((agent._count?.tasks ?? 0) / Math.max((agent._count?.tasks ?? 0) + 1, 1)) * 100)) : 0,
-                budgetUsed: agent.budgetUsed ?? 0,
-                budgetTotal: agent.monthlyBudget ?? 100,
-                lastActiveAt: agent.updatedAt,
-              }}
-              variant={viewMode === 'grid' ? 'full' : 'compact'}
-              onAction={handleAction}
-            />
-          ))}
+          {visible.map((agent) => {
+            const meta = (agent.metadata as Record<string, unknown> | null) ?? null;
+            const profile =
+              (meta?.profile as Record<string, unknown> | undefined) ?? {};
+            return (
+              <AgentCard
+                key={agent.id}
+                agent={{
+                  id: agent.id,
+                  name: agent.name,
+                  type: agent.type as never,
+                  status: agent.status as never,
+                  department: agent.department?.name,
+                  model: agent.model?.name ?? 'gpt-4o',
+                  workload: Math.min(100, Math.round(((agent._count?.tasks ?? 0) / 10) * 100)),
+                  taskCount: agent._count?.tasks ?? 0,
+                  successRate: agent.status === 'ACTIVE' || agent.status === 'RUNNING' ? Math.min(100, Math.round(((agent._count?.tasks ?? 0) / Math.max((agent._count?.tasks ?? 0) + 1, 1)) * 100)) : 0,
+                  budgetUsed: agent.budgetUsed ?? 0,
+                  budgetTotal: agent.monthlyBudget ?? 100,
+                  lastActiveAt: agent.updatedAt,
+                  avatarUrl: typeof profile.avatarUrl === 'string' ? profile.avatarUrl : null,
+                  designation: typeof profile.designation === 'string' ? profile.designation : null,
+                  bio: typeof profile.bio === 'string' ? profile.bio : null,
+                  color: typeof profile.color === 'string' ? profile.color : null,
+                  emoji: typeof profile.emoji === 'string' ? profile.emoji : null,
+                }}
+                variant={viewMode === 'grid' ? 'full' : 'compact'}
+                onAction={handleAction}
+              />
+            );
+          })}
         </div>
       )}
     </div>

@@ -15,6 +15,7 @@ export function getSocket(): Socket {
   if (!socket) {
     socket = io(SOCKET_URL, {
       auth: { token: tokenManager.getAccessToken() },
+      withCredentials: true,
       // Polling-only transport: the OpenLiteSpeed → Next.js → NestJS path
       // can't reliably proxy the WebSocket upgrade (HTTP/2 downgrade + missing
       // Connection: Upgrade on the response), which causes noisy
