@@ -6,7 +6,7 @@
 
 import { InterviewService } from './interview.service';
 import type { ResolvedQuestion } from '../requirements/interfaces/requirements.interface';
-import type { IRequirementsService } from '../requirements/interfaces/requirements.interface';
+import { RequirementsService } from '../requirements/requirements.service';
 import type { IAdaptiveQuestioningService } from '../requirements/interfaces/requirements.interface';
 import type { IResponseRepository, InformationResponse } from '../responses/interfaces/response.interface';
 import type { ICompletenessRepository } from '../completeness/interfaces/completeness.interface';
@@ -54,10 +54,10 @@ function makePrisma(project: ReturnType<typeof makeProject> | null) {
   } as unknown as PrismaService;
 }
 
-function makeRequirements(): IRequirementsService {
+function makeRequirements(): RequirementsService {
   return {
     resolveForProjectType: jest.fn().mockResolvedValue(SAMPLE_QUESTIONS),
-  } as unknown as IRequirementsService;
+  } as unknown as RequirementsService;
 }
 
 function makeAdaptive(next: ResolvedQuestion | null) {
@@ -139,7 +139,7 @@ function build(opts: {
   const requirements = opts.emptyResolved
     ? ({
         resolveForProjectType: jest.fn().mockResolvedValue([]),
-      } as unknown as IRequirementsService)
+      } as unknown as RequirementsService)
     : makeRequirements();
   const adaptive = makeAdaptive(opts.next ?? SAMPLE_QUESTIONS[0]);
   const projectTypes = makeProjectTypes(
