@@ -1,6 +1,6 @@
 # Contabo Operations — DOs and DONTs
 
-**Last verified:** 2026-07-07 16:30 PKT (FIX-019 deployed + FIX-020 auth refactor plan written — see [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md))
+**Last verified:** 2026-07-08 23:11 PKT (FIX-026 deployed — tenant-specific AI Employee profiles. Backend: extended `PATCH /agents/:id` + new `POST /uploads/agent-avatar`. Tenant UI: editable profile section in `AgentInspector`, avatar component in `AgentCard`.)
 **Audience:** Anyone working on the Contabo box (`vmi2954830.contaboserver.net`, `109.123.248.253`).
 **Sibling docs:** [system-state.md](system-state.md) · [operations.md](operations.md) · [backend.md](backend.md) · [frontend-admin.md](frontend-admin.md) · [frontend-tenant.md](frontend-tenant.md)
 

@@ -1,6 +1,6 @@
 # Frontend-Tenant (NeureCore tenant app)
 
-**Last verified:** 2026-07-07 20:00 PKT (FIX-020 SHIPPED + deployed — see §20 below; **DO NOT corrupt** the new auth architecture — see [`int-features/auth-architecture.md`](../int-features/auth-architecture.md))
+**Last verified:** 2026-07-08 23:11 PKT (FIX-026 SHIPPED + deployed — tenant-specific AI Employee profiles; see §21 below)
 **Live URL:** `https://hq.neurecore.com`
 **Internal port:** 3005
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant/`
@@ -707,6 +707,57 @@ Failing patterns:
 - `window.location.href = '/login'` outside `src/auth/`
 - `useAuthStore.getState().setUser/clearUser` outside `src/auth/impl/ZustandUserRepository.ts`
 - `SecureStorageKey` / `setSecureToken` / `getSecureToken` (all dead legacy helpers)
+
+---
+
+## 21. Tenant-specific AI Employee profiles (FIX-026, shipped 2026-07-08)
+
+> **See also:** [fixes.md §FIX-026](fixes.md#fix-026--tenant-specific-ai-employee-profile-avatar-designation-bio-color-emoji--2026-07-08) — full change log + deploy notes.
+
+Tenants can now fully customize each AI Employee's profile. Two tenants spawning the same Fleet Manager template can have completely different avatar, name, designation, bio, color theme, and emoji.
+
+### Data model
+
+| Field | Source | Default | Notes |
+|---|---|---|---|
+| `avatarUrl` | `metadata.profile.avatarUrl` | `null` | URL returned by `POST /uploads/agent-avatar` |
+| `designation` | `metadata.profile.designation` | `null` | ≤100 chars (e.g. "Sales Lead") |
+| `bio` | `metadata.profile.bio` | `null` | ≤1000 chars, multi-line |
+| `color` | `metadata.profile.color` | `null` | One of 9 named colors (blue/purple/green/red/orange/pink/teal/indigo/gray) |
+| `emoji` | `metadata.profile.emoji` | `null` | ≤8 chars (single emoji or short string) |
+
+Backend stores profile fields under `metadata.profile.*` and merges on every update — no Prisma migration was needed. All other metadata keys (`fromPackageId`, `authorityLevel`, `roleTemplateName`, etc.) are preserved across updates.
+
+### API endpoints (added/changed)
+
+| Endpoint | Method | Roles | Purpose |
+|---|---|---|---|
+| `/api/v1/agents/:id` | `PATCH` (extended) | OWNER/ADMIN/SUPER_ADMIN/PLATFORM_ADMIN | Now accepts `avatarUrl`, `designation`, `bio`, `color`, `emoji`. Merged into `metadata.profile.*`. |
+| `/api/v1/uploads/agent-avatar` | `POST` (multipart) | same | Upload avatar (PNG/JPEG/WEBP/SVG, ≤2MB). Returns `{ url, key, size }`. |
+| `/api/v1/uploads/agent-avatar/:key` | `DELETE` | same | Delete uploaded avatar. Idempotent. |
+
+### Frontend components (added/changed)
+
+| File | Purpose |
+|---|---|
+| `src/components/agents/AgentAvatar.tsx` | **New reusable avatar renderer.** 3-tier resolution: uploaded image → tenant emoji → initial letter on color-tinted background. |
+| `src/components/agent-card/AgentCard.tsx` | Both `compact` and `full` variants now render `<AgentAvatar>`. Bio shown as 2-line clamp on full cards. Subtitle prefers `designation`, falls back to `role`, then `type`. |
+| `src/components/inspector/AgentInspector.tsx` | Rewrote with editable profile section. "Edit Profile" button toggles an inline editor with avatar upload/replace/remove + designation + bio + color + emoji inputs. Save calls `PATCH /api/v1/agents/:id`. Cancel restores prior values. |
+| `src/services/uploads.service.ts` | Added `uploadAgentAvatar()`, `deleteAgentAvatar()`, and `AGENT_AVATAR_UPLOAD` constants (mirrors `LOGO_UPLOAD`). |
+| `src/core/services/api/adapters/AgentAdapter.ts` | New `extractProfile()` defensive read of `metadata.profile`. Profile fields flow into `Agent` adapter output. |
+| `src/types/ui.types.ts` | `AgentCardData` got 5 new optional fields. |
+| `src/shared/types/domain.types.ts` | `Agent` domain type got the same 5 fields with `string \| null`. |
+| `src/app/marketplace/page.tsx` | `AgentRaw` got `metadata?`. Card mapping forwards all profile fields to `AgentCard`. |
+
+### Defensive patterns
+- Adapter's `extractProfile()` does `typeof === 'string'` checks on every field — corrupted `metadata.profile` shape falls back to `null`, never crashes
+- Avatar upload reuses the same MIME-sniff + size validation as logo uploads (defense against spoofed Content-Type)
+- Backend merge logic never clobbers fields outside `metadata.profile`
+
+### Render resolution order (visual priority)
+1. **`avatarUrl`** (uploaded image) — shown as `<img>` in a circular crop
+2. **`emoji`** — shown as the emoji character on a color-tinted circle
+3. **Initial letter** of `name` on a color-tinted circle (uses `color` if set, else zinc-700)
 
 ---
 

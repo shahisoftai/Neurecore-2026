@@ -1,7 +1,7 @@
 # Pending Tasks & Issues
 
-> Source: comprehensive review of `memory-bank-new/` (15 .md files) on 2026-07-04.
-> Last updated: 2026-07-07 16:10 PKT — Defensive patterns shipped (FIX-019): Zustand `merge` for all persisted stores, `Array.isArray` guards in 9 components, `/help` page, socket URL from `window.location`, pre-existing build error fixed. Runbook §3.1-3.2, deployment.md §10, operations.md §6.5 updated with new diagnostics + lessons.
+> Source: comprehensive review of `memory-bank-new/` (16 .md files) on 2026-07-08.
+> Last updated: 2026-07-08 14:20 PKT — **D21 DEPLOYED to Contabo prod** (see D21 row + [`fixes.md` FIX-025](fixes.md#fix-025--enterprise-communication-platform-deployed-to-contabo-prod-d21--2026-07-08)). Phases 1-9 live on `brain.neurecore.com`; all `COMM_*_ENABLED` flags default `false`; smoke tests green (health 200, /threads 401, /activity 401). Pre-deploy snapshot: `/opt/neurecore/_archives/20260708-110617-entcomms-pre/`. New Prisma migration `20260708_enterprise_communication_platform` applied to Neon prod (8 new tables, 4 new enum values, 5 new nullable columns, 100% additive). Uncovered pre-existing dep gap (commit 9e13699 removed `@upstash/redis` + `cookie-parser` from `package.json` but code still imports them) — fixed inline on Contabo via `npm install --no-save`. Follow-up: add these deps back to `package.json` and regenerate `pnpm-lock.yaml` so a fresh clone deploys clean.
 > This document consolidates every outstanding task, known issue, and doc-drift item
 > across Hermes, the tenant/admin UIs, the platform backend, and operations.
 
@@ -48,6 +48,7 @@ Status legend: 🔴 Not started · 🟡 In progress / partial / scaffold only ·
 | D12.11 | **AIChatPanel initialMessage prop** | ✅ Extended 2026-07-05 | Added optional `initialMessage?: string` to `AIChatPanelProps`. When the home hero prompt sends a message, the panel opens with the input pre-filled. Consumed once on mount via `useEffect`. |
 | D13 | **Auth Hardening Batch 1a — 10 auth bugs fixed (FIX-016)** | ✅ Shipped 2026-07-05 | **Critical:** 401 interceptor refresh-loop on auth endpoint failures (all 3 API clients). **Critical:** Contabo tenant stale build (`localhost:3000` hardcoded). **High:** Error extraction fragile, admin rewrite dead code, RestClient no-op setTokens. **Medium:** Duplicate cookie-clearing, admin hardcoded redirect. **Low:** Doc drift, unwrapItem fragility. Verified: curl (login, refresh, reuse-detection, lockout), Playwright (both frontends), `tsc --noEmit` clean all projects. See [`fixes.md` FIX-016](fixes.md). |
 | D14 | **Chat systems deployed + production-verified (FIX-017)** | ✅ Verified 2026-07-06 16:15 PKT | Deployed C4 fix (`chat.service.ts` maps `query` → `message` for backend DTO). npm ci peer-dep failure → `npm install --legacy-peer-deps`. Both ConversationPanel (💬) and AIChatPanel (✦ Ask AI) tested end-to-end via Playwright on Contabo. MiniMax API key confirmed, backend returns 200 with token counts. `chat-bots.md` fully updated with resolution status + production verification section. See [`fixes.md` FIX-017](fixes.md). |
+| D21 | **Enterprise Communication Platform — Phases 1-9 implemented + audit-passed (rev 2 + rev 3)** | ✅ Implemented 2026-07-08 (pending deploy + flag flip) | All 9 phases of [`enterprise-communication.md`](enterprise-communication.md) implemented as additive-only changes. **Rev 2 audit (10 spec gaps closed)** — see [`enterprise-comms-chat.md §17`](enterprise-comms-chat.md#17-audit-pass--spec-vs-implementation-rev-2). **Rev 3 deep-audit (17 runtime/DI/WS gaps closed, 13:35 PKT)** — see [`enterprise-comms-chat.md §18`](enterprise-comms-chat.md#18-audit-pass--rev-3-2026-07-08-runtime--di--ws). Rev-3 key fixes: (a) `ActivityModule` no longer redeclares `ActivityService` (was creating shadow provider without `EventsGateway` access); (b) `HermesModule` now imports `EventsModule`; (c) 6 services (`HermesSessionService`, `HermesRuntimeService`, `EnterpriseEventBusService`, `ParticipantResolver`, `AgentMessagingService`, `EscalationService`, `FollowUpService`, `WorkflowTemplateService`, `ThreadSummarizationService`) converted from broken `import type <Interface>` DI to working `@Inject(<SYMBOL_TOKEN>)` + `useExisting` aliases; (d) `thread:participant_added` room-name typo fixed (`emitToRoom(threadId,…)` → `` emitToRoom(`thread:${threadId}`,…) ``); (e) new `thread:join`/`thread:leave` WS subscribe handlers in `EventsGateway` so clients can actually receive per-thread broadcasts; (f) `useActivityFeed` backfill uses new `since` query param (was `before:undefined` → re-fetched same page); (g) 3 orphan test specs deleted (`hermes-event-bus.service.spec.ts`, `hermes-router.service.spec.ts`, `finance-hermes-agent.spec.ts`). **New Prisma models (8):** `CommunicationThread`, `ThreadParticipant`, `ThreadReadState`, `ActivityEvent`, `AdapterCursor`, `WorkflowTemplate`, `NotificationPreference`, `RetentionPolicy`. **Modified:** `HermesMessage` (+threadId/context*/idempotencyKey/mentions), `HermesAuditLog` (+threadId), `Tenant` (+5 back-relations), `RelationshipType` (+REPORTS_TO, +DELEGATES_TO). **New backend services (20):** ThreadService, ActivityService, EnterpriseEventBusService, ParticipantResolver, AgentMessagingService+Guard, PresenceService, ConversationIntelligenceService, EntityGraphService, DependencyGraphService, ThreadSummarizationService, DigestService, EntityHealthRollupService, CostCenterService, RiskDetectionService, EscalationService, FollowUpService, WorkflowTemplateService, NotificationPreferenceService, RetentionJobService. **New controllers (4):** ActivityController, ExplainabilityController, ComplianceController, ThreadsController. **New interface contracts (9)** including `IDependencyGraph`. **New modules (2):** ActivityModule, ThreadsModule. **Deleted:** legacy `HermesEventBusService` (replaced by `EnterpriseEventBusService`; runtime injects `IHermesEventBus` interface — DIP compliant) + 3 orphan test specs. **New frontend:** `activityFeedService`, `useActivityFeed` hook (REST + WS + `since`-based backfill-on-reconnect), `LiveFeedWidget` rewired. **D21 row replaced** — original rev-2 narrative preserved inside [`enterprise-comms-chat.md §17`](enterprise-comms-chat.md#17-audit-pass--spec-vs-implementation-rev-2). |, `RetentionPolicy`. **Modified:** `HermesMessage` (+threadId/context*/idempotencyKey/mentions), `HermesAuditLog` (+threadId), `Tenant` (+5 back-relations), `RelationshipType` (+REPORTS_TO, +DELEGATES_TO). **New backend services (21):** ThreadService, ActivityService, EnterpriseEventBusService, ParticipantResolver, AgentMessagingService+Guard, PresenceService, ConversationIntelligenceService, EntityGraphService, DependencyGraphService, ThreadSummarizationService, DigestService, EntityHealthRollupService, CostCenterService, RiskDetectionService, EscalationService, FollowUpService, WorkflowTemplateService, NotificationPreferenceService, RetentionJobService. **New controllers (4):** ActivityController, ExplainabilityController, ComplianceController, ThreadsController. **New interface contracts (9)** including `IDependencyGraph`. **New modules (2):** ActivityModule, ThreadsModule. **Deleted:** legacy `HermesEventBusService` (replaced by `EnterpriseEventBusService`; runtime now injects `IHermesEventBus` interface — DIP compliant). **New frontend:** `activityFeedService`, `useActivityFeed` hook (REST + WS + backfill-on-reconnect), `LiveFeedWidget` rewired. **Audit-pass fixes (rev 2):** `HermesSessionService.createWithThread()` auto-creates threads; `AgentMessagingGuard` reads spec-mandated `AGENT_MESSAGING_ENABLED` flag (legacy alias kept); `AgentMessagingService.send()` auto-adds both agents as thread participants; `@Mention` fan-out via `thread:mention` WS events; `ThreadSummarizationService` for §16.3.3; `DependencyGraphService` + dependency-aware alerts (§16.4.2); `ConversationIntelligenceService.ask({ scopeDepartmentId })` for cross-dept Q&A (§16.4.3); `ThreadsController` REST surface; `LiveFeedWidget` rewired to canonical feed. **`FeatureFlagService` registers 11 flags** (10 `COMM_*` + `AGENT_MESSAGING_ENABLED` per spec §6.4). **All flag-gated — zero production behavior change until flags flipped.** **Verification (rev 2):** `tsc --noEmit` 0 errors (backend + frontend-tenant + frontend-admin); `nest build` clean; `next build` clean; ESLint clean for all new files. **Final counts:** 57 modules, 61 controllers, 139 services, 83 Prisma models, 9 interfaces. Reference: [`enterprise-comms-chat.md`](enterprise-comms-chat.md) (implementation reference, rev 2). **TODO before deploy:** generate 5 Prisma migrations (`20260708_thread_model`, `20260708_activity_events`, `20260708_notification_preferences`, `20260708_workflow_templates`, `20260708_retention_policies`), apply each against a Neon branch first, then deploy to Contabo. **TODO per-tenant rollout:** flip flags in `COMM_THREADS_ENABLED → COMM_ACTIVITIES_ENABLED → COMM_PRESENCE_ENABLED → COMM_DIGEST_ENABLED` order, then individual Phase 9 flags. **NEVER flip `AGENT_MESSAGING_ENABLED` globally** — verify guard against runaway test first. **Out-of-scope / deferred:** frontend `AgentInboxPanel`/`ThreadView`/`PresenceBadge` UIs, unit/integration tests, embeddings/RAG vector search — see `enterprise-comms-chat.md §15`. |
 
 > **Verification summary (D12 fix session, 2026-07-05 12:30 PKT):**
 >   - `npx tsc --noEmit` clean (backend + frontend-tenant + frontend-admin)
@@ -304,3 +305,100 @@ Completed in Phase A + B + C by Kilo (no prod deploys; all changes verified loca
 - Onboarding plan: `plans/onboarding-progressive-wizard.md`
 - Admin composition plan: `plans/admin-business-composition.md`
 - This document source of truth for: "what was done, what's pending"
+---
+
+## 15. Pre-Existing Technical Debt — Repo-Wide Audit (2026-07-08 14:25 PKT, Kilo)
+
+**Triggered by:** FIX-025 deploy uncovered that `@upstash/redis` + `cookie-parser` were imported by code but missing from `backend/package.json`. Surfaced a deeper category of pre-existing issues. **None of these block production** — they're catalogued for prioritization.
+
+### 15.1 Dependency & build
+
+| ID | Severity | Issue | Files | Fix sketch |
+|---|---|---|---|---|
+| PD-01 | 🔴 **High** | `backend/package.json` is missing `@upstash/redis@1.37.0` and `cookie-parser@1.4.7` despite code imports. Surfaced at deploy: build emits `Cannot find module 'cookie-parser'`; type-check emits `Cannot find module '@upstash/redis'`. Removed in commit `9e13699` ("admin setup") by mistake. | `backend/package.json` (missing deps); `backend/src/main.ts:6` (imports cookieParser); `backend/src/infrastructure/cache/redis.service.ts:9` (type-only import) | `cd backend && pnpm add @upstash/redis@1.37.0 cookie-parser@1.4.7 && pnpm install --frozen-lockfile` (regenerate pnpm-lock.yaml); commit. Live fix applied on Contabo via `npm install --no-save` — sufficient for this deploy but not durable. |
+| PD-02 | 🟡 Med | `backend/.gitignore` excludes `.env` but NOT `.env.development` / `.env.production` / `.env.test`. Risk: committing a `.env.production` accidentally would leak prod DB URL. | `backend/.gitignore:31` | Add `--exclude .env.development` etc. OR rename to `.env.development.example` and gitignore the real ones. |
+| PD-03 | 🟡 Med | `backend/package.json` lists `pnpm` as the lockfile manager (`pnpm-lock.yaml` only, no `package-lock.json` or `yarn.lock`). `rebuild.sh` calls `npm ci --legacy-peer-deps` which requires package-lock.json — fails on Contabo. | `backend/rebuild.sh:35,57,69`; `backend/package.json` (no packageManager field) | Either (a) generate `package-lock.json` via `npm i`, commit it, switch rebuild to `npm ci`; or (b) install pnpm@9.15.9 on Contabo (per contabo-ops §4.3 — already validated) and rewrite rebuild.sh to use `pnpm install --frozen-lockfile`. |
+| PD-04 | 🟢 Low | `backend/.env.development` (8.5KB) was inspected during deploy — uncommitted, but un-gitignored. Same for `.env.production.example`. Low risk since examples are meant to be checked in, but the file names are misleading. | `backend/.env.development`, `.env.production.example` | Rename to `.env.development.example` and add to `.gitignore`. |
+
+### 15.2 Schema, migrations, DB
+
+| ID | Severity | Issue | Files | Fix sketch |
+|---|---|---|---|---|
+| PD-10 | 🟡 Med | `prisma/migrations/tier-agent-pool-backfill.sql` is a manually-named file in the migrations directory. Prisma convention is `<YYYYMMDDHHMMSS>_<name>/migration.sql`. Prisma silently ignored this file (didn't break deploy) but a future `prisma migrate dev` could mis-interpret it. | `backend/prisma/migrations/tier-agent-pool-backfill.sql` | Rename to a timestamped folder + `migration.sql`, or move to `prisma/sql/` outside the migrations dir. |
+| PD-11 | 🟡 Med | Production DB at `ep-summer-pond` is in sync with `prisma/schema.prisma` TODAY, but several historical schema changes were applied directly to prod without a corresponding migration file: e.g. `TierTemplate` backrelation, WS-2.1 Tenant fields. Verified today via `prisma migrate diff --from-url ... --to-schema-datamodel ... --script` → empty result. The migration history IS clean (`20260704_ws21_onboarding_checklist` does have WS-2.1 columns — was added; no drift detected), but the *practice* of past manual SQL writes is a latent risk. | `backend/prisma/migrations/*`, prod DB | Add a CI step: `prisma migrate diff` against a Neon branch to catch any future drift before prod. Document in `contabo-ops.md §3.2`. |
+| PD-12 | 🟢 Low | `prisma/schema.prisma` is 1.3 MB / 2.5K+ lines and growing fast (was 2,225 → 2,460 after FIX-025). No enforced split into `schema/base.prisma` + `schema/extensions/*.prisma`. Adding new domains requires merging into one file. | `backend/prisma/schema.prisma` | Long-term: split into `schema/core.prisma`, `schema/hermes.prisma`, `schema/communication.prisma`, etc. via Prisma's `--schema` flag or `prisma-schema-dsl`. Track in future-plans. |
+
+### 15.3 Code style & dead code
+
+| ID | Severity | Issue | Files | Fix sketch |
+|---|---|---|---|---|
+| PD-20 | 🟡 Med | **22 `console.log/error/warn` calls in backend code** instead of NestJS `Logger`. ESLint `no-console: error` flagged **4,741 problems** (4,519 errors). Currently lint is not enforced in CI for backend. | `backend/src/main.ts` (5 calls); `backend/src/infrastructure/tracing/tracing.ts:80,86,90` (3); `backend/src/modules/tools/tools.module.ts:30,33` (2); `backend/src/modules/approvals/services/approvals.service.ts:5,237,245,250,255` (5); `backend/src/modules/settings/settings.service.ts:53` (1) | Add `no-console: ["error", { allow: ["warn", "error"] }]` to ESLint config (already there in spirit) and bulk-replace with `new Logger(ServiceName).log/error/warn`. |
+| PD-21 | 🟢 Low | **10 `TODO`/`FIXME`/`HACK` markers** in src/ (excluding specs). Notable: `<PLACEHOLDER>` TODOs in OAuth adapters (`salesforce.adapter.ts:7`, `hubspot.adapter.ts:13`, `pipedrive.adapter.ts:13`) — these adapters stub OAuth flows and silently fail at runtime. | `backend/src/modules/connectors/adapters/{salesforce,hubspot,pipedrive}.adapter.ts:7-13`; `backend/src/modules/workflows/services/workflows.service.ts:311`; `backend/src/modules/governance/governance.controller.ts:113,138`; `backend/src/modules/widgets/widgets.service.ts:206`; `backend/src/modules/security/services/security-event.service.ts:266`; `backend/src/modules/agents/security/security-audit-logger.service.ts:126` | Convert each `// TODO` to a tracked entry here. Block production usage of stubbed OAuth adapters via a `// PRODUCTION-BLOCKED: <ticket>` warning and a runtime check. |
+| PD-22 | 🟢 Low | Several controllers have **no auth guard decorator** (verified by grep — `@UseGuards`, `@Public`, `isPublic`, `@SkipAuth` markers absent). These are guarded globally via `app.useGlobalGuards(JwtAuthGuard)` in `main.ts` (per FIX-020 audit), so it's defense-in-depth missing, not an exposure. List of 10: `command-center`, `security`, `approvals`, `audit`, `orchestration`, `memory`, `governance`, `observability`, `settings`, `notifications`. | 10 controllers under `backend/src/modules/*/controllers/` or `.controller.ts` | Add `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles(...)` on each endpoint. Cosmetic / defense-in-depth. |
+
+### 15.4 Process environment
+
+| ID | Severity | Issue | Files | Fix sketch |
+|---|---|---|---|---|
+| PD-30 | 🟡 Med | **Env `frontera-quote` bug:** `.env` line 93 starts `gpt-4-turbo-preview: ...` — bash tries to execute it during `set -a && . ./.env && set +a`. Currently masked because rebuild.sh swallows it under `2>&1`. But subsequent shell scripts that `.env` will fail. Discovered when running `prisma generate` on Contabo during FIX-025. | `backend/.env:93` | Quote the value: `OPENAI_DEFAULT_MODEL="gpt-4-turbo-preview"` (already in some places, inconsistent). Add a `.env` lint script to CI: `grep -nE '^[A-Z_]+:' .env | grep -v '="` |
+| PD-31 | 🟢 Low | `process.env.X` used in 6 places without `ConfigService` (raw reads instead of DI-injected ConfigService). Mixing both styles means a typo in `.env` returns `undefined` silently at runtime. | `backend/src/infrastructure/cache/redis.service.ts:35,39,42`; `backend/src/modules/settings/*.ts` (mostly legitimate); `backend/src/modules/drive-cleanup/*.ts`; `backend/src/modules/integrations/hubspot/*.ts`; `backend/src/modules/integrations/shopify*.ts`; `backend/src/modules/billing/*.ts` | Migrate remaining reads to `ConfigService.get(...)`. Low-priority since the env vars are static. |
+| PD-32 | 🟢 Low | `Temp/` directory at workspace root has uncommitted work from previous sessions. Reviewed `git status --ignored Temp` confirms these are intentional scratch (not `node_modules`). | `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/Temp/` | Already in `.gitignore` (defensive). Periodically clean `find Temp/ -mtime +7 -delete`. |
+
+### 15.5 Tests
+
+| ID | Severity | Issue | Files | Fix sketch |
+|---|---|---|---|---|
+| PD-40 | 🟡 Med | Backend test suite has **38 failing unit tests** (all in `analytics.service.spec.ts` and a few in others — verified pre-existing, unrelated to enterprise comms). These were failing BEFORE FIX-025 deploy and are not blocking prod (we ship despite red tests), but a healthy CI should fail-fast. | `backend/test/unit/analytics.service.spec.ts:122` and ~37 others | Audit failures — likely TenantContextService.run(...) scoping vs method param change. Fix or xfail with `@skipped.it` + linked tracking entry. |
+| PD-41 | 🟢 Low | Source/test ratio is poor: **583 src .ts files vs 34 test files** (~5.8% coverage by file count). Many new services from FIX-020 (auth) and FIX-025 (enterprise-comms: 20 services) shipped without tests. | `backend/test/**/*.{spec,integration-spec}.ts` | Enforce minimum coverage per service (e.g. 70% lines) in CI. See spec §15.2 — those test plans are documented but unbuilt. |
+| PD-42 | 🟢 Low | `jest.config.js` uses deprecated `--testPathPattern` flag (got a warning during the run). | `backend/jest.config.js` | Switch to `--testPathPatterns` (Jest 30+ flag). |
+
+### 15.6 CI / Quality gates missing
+
+| ID | Severity | Issue | Files | Fix sketch |
+|---|---|---|---|---|
+| PD-50 | 🟡 Med | **No CI** for backend. ESLint reports 4,519 errors but no job blocks merges. `tsc --noEmit` is clean, but no automated run. | repo root (no `.github/workflows/` for backend) | Add `.github/workflows/backend-ci.yml` with: install → `pnpm install --frozen-lockfile` → `prisma generate` → `nest build` → `npm test` → `prisma migrate diff` against a fresh Neon branch. |
+| PD-51 | 🟡 Med | **No pre-commit hook** for: lint, type-check, or spec guards (e.g. `grep -L "merge:" frontend-tenant/src/stores/*`). Manual enforcement only. | repo root (no `.husky/`) | Add Husky pre-commit: `pnpm lint && pnpm type-check && bash scripts/auth-lint.sh`. |
+| PD-52 | 🟢 Low | `contabo-ops.md` §3.10 says "record production fixes in fixes.md the same day" — process is followed manually, not enforced. | docs | No automation needed; tracking process via the doc itself is sufficient. |
+
+### 15.7 Memory-bank drift
+
+| ID | Severity | Issue | Files | Fix sketch |
+|---|---|---|---|---|
+| PD-60 | 🟢 Low | `system-state.md` says "Last verified 2026-07-08 13:35 PKT" before FIX-025 deploy. Not yet updated to reflect D21 deployment (will be stale until next memory-bank update — already noted in FIX-025 to update). | `memory-bank-new/system-state.md:3` | Update `Last verified` line to 14:25 PKT and reference FIX-025. Trivial. |
+| PD-61 | 🟢 Low | `frontend-tenant/codebase-analysis` (`FRONTEND_TENANT_CODEBASE_ANALYSIS.md`) and 7 large `.png` files in workspace root are pre-FIX-020 and pre-D21 screenshots — stale historical reference but harmless. | repo root screenshots + `.md` file | Move to `memory-bank-ARCHIVED/` for now, or delete if no longer needed. |
+
+### 15.8 Recommended fix order
+
+| Priority | Bundle | Estimated effort | Risk |
+|---|---|---|---|
+| **1 — must do soon** | PD-01 (commit dep fix), PD-30 (.env quoting), PD-50 (CI), PD-51 (pre-commit) | 1 day | 🟢 Low — additive/lint-only |
+| **2 — should do this week** | PD-03 (lockfile parity), PD-10 (orphan migration file), PD-20 (replace console), PD-40 (fix tests) | 1–2 days | 🟢 Low |
+| **3 — nice-to-have** | PD-02, PD-04, PD-11 (CI drift guard), PD-12 (split schema), PD-21 (stubbed adapters), PD-22 (per-controller guards), PD-31 (ConfigService migration), PD-41–42, PD-60–61 | 3–5 days across a sprint | 🟡 Med (PD-21 needs product sign-off — stubbed connectors are intentional MVP scope) |
+
+### 15.9 Verification snapshot
+
+```bash
+# 1. Reproduce dep gap (build)
+cd backend && ./node_modules/.bin/nest build
+# → builds clean locally because node_modules has @upstash/redis via pnpm symlink;
+#   on a fresh clone (no pnpm install yet) it FAILS at @upstash/redis import.
+#   On Contabo (which lost the symlink in past npm i runs) it ALSO fails.
+
+# 2. Confirm schema ↔ DB parity
+DATABASE_URL=... ./node_modules/.bin/prisma migrate diff \
+  --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script
+# → "-- This is an empty migration." (clean)
+
+# 3. Reproduce .env bash-execute bug
+bash -c 'set -a && . ./.env'
+# → "gpt-4-turbo-preview: command not found" (line 93 of .env)
+
+# 4. Find stubbed OAuth adapters
+grep -l "TODO.*OAuth" backend/src/modules/connectors/adapters/*.ts
+# → salesforce.adapter.ts, hubspot.adapter.ts, pipedrive.adapter.ts
+```
+
+---
+
+**Pre-Existing Audit Owner:** Kilo (FIX-025 post-deploy review).
+**Re-audit cadence:** Recommended after each major deploy (D-series items) or monthly, whichever comes first.

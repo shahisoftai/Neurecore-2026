@@ -1,6 +1,16 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-07 20:00 PKT (FIX-020 SHIPPED + DEPLOYED — full 10-phase auth hardening refactor. New `IAuthService` facade with 7 SOLID interfaces, 7 implementations, DI container. Shipped to Contabo 2026-07-07. Live `https://hq.neurecore.com` and `https://cc.neurecore.com` on new builds; backend auth-hardening 8/8 still pass; 9 Playwright prod smoke tests green. New entrypoint: [`int-features/auth-architecture.md`](int-features/auth-architecture.md) — DO NOT corrupt.)
+**Last verified:** 2026-07-08 22:49 PKT (Tenant overview audit deployed — expanded profile (33 fields, 7 sections) in admin Overview tab + Suspend/Activate + Delete actions with confirmation dialogs. New backend endpoints: `PATCH :id/activate` + `DELETE :id`. Types expanded — `Tenant` (8→33 fields), `TenantTier` (5→22 fields). `next build` + `nest build` clean. Deployed to Contabo: `neurecore-backend` + `neurecore-admin` online.)
+
+**One-line TL;DR:** The Enterprise Communication Platform (9 phases, 20 backend services, 4 controllers, 2 new modules, 8 new Prisma models, 9 interface contracts, 11 feature flags, replaced 3 disconnected feed/message systems) is implemented, audited, and feature-flagged off — zero prod impact until `COMM_*` / `AGENT_MESSAGING_ENABLED` flags are flipped per-tenant.
+
+> - Full spec at [`enterprise-communication.md`](enterprise-communication.md) Rev 4. Implementation reference at [`enterprise-comms-chat.md`](enterprise-comms-chat.md) rev 3 (with §17 rev-2 audit pass + §18 rev-3 deep-audit pass).
+
+> - **New backend services (20):** `ThreadService`, `ActivityService`, `EnterpriseEventBusService` (replaces legacy in-memory `HermesEventBusService`), `ParticipantResolver`, `AgentMessagingService` + `AgentMessagingGuard` (circuit breaker), `PresenceService` (Redis-backed with SCAN sweep), `ConversationIntelligenceService` (map-reduce summarization + RAG with `scopeDepartmentId`), `EntityGraphService`, `DependencyGraphService`, `ThreadSummarizationService`, `DigestService`, `EntityHealthRollupService`, `CostCenterService`, `RiskDetectionService`, `EscalationService`, `FollowUpService`, `WorkflowTemplateService`, `NotificationPreferenceService`, `RetentionJobService`. All services live under `backend/src/modules/hermes/services/`, follow SRP (one concern each), and have a corresponding interface under `backend/src/modules/hermes/interfaces/`. After rev-3 audit, interface-based DI uses symbol tokens (`@Inject(HERMES_EVENT_BUS)`, `@Inject(THREAD_SERVICE)`, `@Inject(ACTIVITY_SERVICE)`, `@Inject(HERMES_RUNTIME)`, `@Inject(AGENT_MESSAGING_GUARD)`, `@Inject(PARTICIPANT_RESOLVER)`) wired via `useExisting` aliases in `HermesModule.providers`.
+
+> - **New frontend (`frontend-tenant`):** `activityFeedService` + `useActivityFeed` hook (REST + WS `activity:new` + `since`-based backfill-on-reconnect after rev-3 fix); `LiveFeedWidget` rewired to consume the canonical feed (no more mock data). New WS subscribe protocol: clients call `socket.emit('thread:join', { threadId })` to receive per-thread broadcasts (added rev 3 — see `enterprise-comms-chat.md §9.1`).
+
+> - **Out of scope / deferred to follow-up PRs:** frontend `AgentInboxPanel`/`ThreadView`/`PresenceBadge` UIs; unit/integration tests per spec §15.2 + §16.6; vector-search in `ConversationIntelligenceService.search/ask` (ILIKE fallback works); `HealthSeverity` warning-level notifications in escalation; HermesRouter extension for "Who Should I Ask" (§16.4.1). Full list: `enterprise-comms-chat.md §15`.
 
 > **2026-07-07 19:55 PKT — FIX-020 SHIPPED + DEPLOYED TO CONTABO (Kilo):**
 > - **Auth hardening refactor** complete across 10 phases. See [`plans/auth-hardening-refactor.md`](plans/auth-hardening-refactor.md) (now fully ✅ across all 10 phases) and [`int-features/auth-architecture.md`](int-features/auth-architecture.md) (the new authoritative reference).
@@ -352,6 +362,13 @@ All three vhosts add CORS headers (`Access-Control-Allow-Methods/Headers/Max-Age
 
 ## 6. Recent commits / snapshots
 
+- **2026-07-08 22:49 PKT — FIX-024 deployed (Tenant overview audit + suspend/delete)**
+  - Backend: `PATCH :id/activate` + `DELETE :id` endpoints added
+  - Admin: expanded Overview (33 fields, 7 sections) + Suspend/Activate/Delete buttons with confirmation dialogs
+  - Types: `Tenant` (8→33 fields), `TenantTier` (5→22 fields), new `TenantAddress`
+  - Files: `tenants.controller.ts`, `tenants.service.ts`, `tenants/[id]/page.tsx`, `types/api.types.ts`, `components/ConfirmDialog.tsx`
+  - Build: `next build` + `nest build` — zero errors
+  - DR snapshots: `/opt/neurecore/_archives/20260708-` (backend dist + admin .next)
 - Backend HEAD: `c5c05ec perf(backend): dashboard load 12-14s → 1.5-2s`
 - Last backend `dist/` snapshot: `/tmp/dist-backup-20260704-083554.tar.gz` (904 KB)
 - Last full DR snapshot: `/opt/neurecore/_archives/20260704-084322/` (~70 MB: backend dist + both .next builds + 3 configs)

@@ -565,7 +565,10 @@ If a user reports "auth got corrupted" or "I got logged out randomly":
 2. **Check the served JS bundle** on the prod URL: `curl -sk https://hq.neurecore.com/_next/static/chunks/$(curl -sk https://hq.neurecore.com/ | grep -oE 'main-app-[a-z0-9]+\.js' | head -1) | grep -c "authService"`. Should be > 0. The reverse — if the new bundle doesn't reference `authService`, the deploy didn't go through or the build cache is stale.
 3. **Check `__Host-nc_at` cookie**. If it's gone but the user is on a protected page, `killSession()` was called. Inspect the PM2 log for `[AuthSessionLifecycle]` (if added) or just `pm2 logs neurecore-tenant --lines 200 | grep -i auth`.
 4. **Run `npx playwright test prod-auth-smoke --project=chromium`** (lives in `frontend-tenant/tests/e2e/`). 4 tests cover the live prod URLs. They assert: login form renders, no console errors, no hard-redirect-loop.
-5. **Reference:** the full audit (now historical): [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md).
+5. **Full-page navigation logs user out — `doInitialize` HttpOnly blind spot (FIXED 2026-07-08):**  
+   The `__Host-nc_at` access-token cookie is `HttpOnly`, so `document.cookie` can't read it. On a full page reload (e.g. navigating to `/departments` via URL bar), `BaseAuthService.doInitialize()` previously called `this.tokenRepository.getAccessToken()` which returned `null` for the HttpOnly cookie. This caused the `!cookie && cachedUser` branch to clear the user from localStorage and redirect to `/login`.  
+   **Fix:** `doInitialize()` now calls `this.tokenRepository.getCsrfToken()` instead — the CSRF cookie (`__Host-nc_csrf`) is NOT HttpOnly, so it's readable via JS. If a CSRF cookie exists AND a cached user exists in the Zustand store, the session is treated as valid (refetch runs in background to validate).
+6. **Reference:** the full audit (now historical): [plans/auth-hardening-refactor.md](plans/auth-hardening-refactor.md).
 
 ### 16.4 What `useTenantAuth` / `useAdminAuth` do now
 
@@ -584,9 +587,10 @@ The shims are still exported (for the 21 tenant pages + 24 admin pages that impo
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Browser shows "Network Error" on login | OLS CORS strip; frontend using `withCredentials: true` to cross-origin API | Verify `next.config.js` rewrites exist; `NEXT_PUBLIC_API_URL` not set in `.env.production`; backend at `NEXT_INTERNAL_API_URL` reachable from Next.js process |
-| `Login failed` immediately with no network log | Frontend axios baseURL fell back to hardcoded `http://localhost:3000` | Check that the new build replaced all webpack persistent cache; verify `services/api.ts` source has `'/api/v1'` |
+| API calls go to `localhost:3000` instead of relative `/api/v1` | `.env.local` has `NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1` which gets inlined at build time | Change `.env.local` to `NEXT_PUBLIC_API_URL=/api/v1` and rebuild. Next.js inlines `process.env.NEXT_PUBLIC_*` at build time. |
 | 401 on every protected endpoint | Token issued before backend's `passwordChangedAt` bump (or token in blacklist Redis after logout) | Re-login |
 | 429 after a few bad attempts | AccountLockoutService threshold hit (5/10min) → surface `<LockoutScreen />` | Reset `lockedUntil` and Redis keys (Section 12); the user will see the lockout timer in the UI |
+| Full-page navigation logs user out (redirects to /login) | `BaseAuthService.doInitialize()` used `getAccessToken()` (HttpOnly → null) instead of `getCsrfToken()` (non-HttpOnly) to detect session | Fixed in 2026-07-08: `doInitialize()` uses `getCsrfToken()` to check session presence. Rebuild and redeploy; ensure server has new chunk hash. |
 | User stuck on "Restoring session..." splash | State stuck in `initializing` — usually means the persist hydration promise never resolved | Check `ZustandUserRepository.onHydrationComplete()` — it falls back to `queueMicrotask` if `persist.hasHydrated()` already returned true. If the issue persists, run `pm2 restart neurecore-tenant` (clears in-memory state). |
 | Backend `INVALID_REQUEST` with no useful message | Class-validator 400; an old issue fixed by F8 update of `GlobalExceptionFilter` | Verify the deployed global exception filter has `extractGenericBadRequestHint` (Section F8 in fixes) |
 | Access token returns 401 right after refresh | Refresh-failed → refresh-reuse detected → account tokens were revoked | Verify it's not a real compromise via `audit_logs` (Section 12); otherwise have user re-login |

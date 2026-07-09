@@ -1,6 +1,6 @@
 # NeureCore — Memory Bank (Single-Page Index)
 
-**Last updated:** 2026-07-07 16:10 PKT (FIX-019: Defensive patterns shipped — Zustand `merge` for all persisted stores, `Array.isArray` guards in 9 components, `/help` page created, socket URL derives from `window.location`, pre-existing `command-center` build error fixed. **Always run `next build` before rsync** — lint misses missing destructures. See [`fixes.md FIX-019`](fixes.md) and [`frontend-tenant.md §19`](frontend-tenant.md#19-defensive-patterns-zustand-merge--ui-guards-fix-019).)
+**Last updated:** 2026-07-08 13:35 PKT (Enterprise Communication Platform Phases 1-9 IMPLEMENTED + AUDIT-PASSED — additive-only, feature-flagged, NOT YET DEPLOYED. 10 spec gaps closed in rev 2 audit, 17 runtime/DI/WS gaps closed in rev 3 deep-audit. All 10 `COMM_*` flags + `AGENT_MESSAGING_ENABLED` default `false`. `tsc` + `nest build` + `next build` + ESLint clean across backend, frontend-tenant, frontend-admin; backend boots cleanly; all 5 new endpoints wired and serve 401 under JWT guard. Reference: [`enterprise-comms-chat.md`](enterprise-comms-chat.md) rev 3 (with §17 + §18 audit passes).)
 **Audience:** Anyone (human or AI) needing the current state of the NeureCore platform.
 **TL;DR:** Three services on a single Contabo VPS, no Vercel, no other cloud. PM2 + OpenLiteSpeed + Neon Postgres. See `system-state.md` for the full inventory. **Master Package Pool:** 68 `Package` rows seeded 2026-07-05; **15 with full composition** (Accounting & Audit Services, 2026-07-05) — see [`pools-taxonomy.md`](pools-taxonomy.md). **Auth:** cookie-only via `__Host-nc_at/_rt/csrf`; refresh-families with reuse detection; per-account lockout (5/10min); same-origin via Next.js rewrites — see [`auth.md`](auth.md). **UI (Phase 6 + 6.5):** New home page (`/home`) with 3-column layout, glossy left sidebar (dynamic icons), glassmorphic glasspanels, 5 real-time widgets (live feed, stats, tasks, approvals, quick actions), background/widget preferences modal — see [`frontend-tenant.md §13A`](frontend-tenant.md#13a-phase-6--3-column-home-page-architecture). **`lucide-react` pinned to `0.460.0`** — lockfile previously drifted to a broken `1.22.0`; do not bump without re-validating `next dev` end-to-end (see [`fixes.md FIX-020`](fixes.md)).
 
@@ -28,12 +28,14 @@ This is the **master index**. Every doc below has a one-paragraph summary so you
 | Doc | One-line summary | When to read |
 |---|---|---|
 | [README.md](README.md) | This file — single-page index | Always start here |
-| **[system-state.md](system-state.md)** | Live inventory: 4 PM2 processes, 3 hostnames, ports 3003/3005/3020/3004, Neon DB, Redis, observability stack, 37 backend modules, env keys, git state, disk usage | When you need a number (port, id, path, env key) |
-| **[backend.md](backend.md)** | NestJS API deep dive: 37 modules, 35 controllers, 67 services, 39 Prisma models, **18 migrations**, all REST routes, RBAC roles, JWT, env var groups | Working on the backend; need to know an endpoint, env var, or module structure |
+| **[system-state.md](system-state.md)** | Live inventory: 4 PM2 processes, 3 hostnames, ports 3003/3005/3020/3004, Neon DB, Redis, observability stack, 57 backend modules (local), env keys, git state, disk usage | When you need a number (port, id, path, env key) |
+| **[backend.md](backend.md)** | NestJS API deep dive: 57 modules, 61 controllers, 139 services, 83 Prisma models (local; prod lags — see §13), **18 migrations applied**, all REST routes, RBAC roles, JWT, env var groups | Working on the backend; need to know an endpoint, env var, or module structure |
 | **[frontend-admin.md](frontend-admin.md)** | Admin console: 18 routes, 5 stores, 11 hooks, 10 component groups, `.env.production` keys, OLS rewrite rules | Working on admin UI (`/admin/*`); need route/store/env info |
 | **[frontend-tenant.md](frontend-tenant.md)** | Tenant app: 18+ routes, 10 stores, 13 hooks, components, Phase 1-5 history, env keys | Working on tenant UI (`/command-center`, `/service-desk`, etc.) |
 | **[pools-taxonomy.md](pools-taxonomy.md)** | Source of truth for the **six business-composition pools** (AI Employees, Departments, Industries, Tiers, Features, Packages). Pool counts, seeders, migrations. *Includes the Master Package Pool* (68 packages: 15 with composition for Accounting, 53 empty). | Working on Industry/Tier/Package/Department/Agent/Feature data |
 | **[auth.md](auth.md)** | **Authoritative reference for the cookie-only auth system**: token model, refresh-token families with reuse detection, same-origin rewrites, account lockout, CSRF double-submit, password-change invalidation, env vars, schema, ops runbook, troubleshooting | Touching /auth/login, /api/v1/auth/*, cookies, JWT, OAuth, MFA, audit |
+| **[enterprise-communication.md](enterprise-communication.md)** | **Design spec** for the Enterprise Communication Platform (Phases 1-9) — Threads, Activity, A2A messaging, Presence, Conversation Intelligence, Compliance | Working on thread/activity/presence/chat infrastructure |
+| **[enterprise-comms-chat.md](enterprise-comms-chat.md)** | **Implementation reference** for the Enterprise Communication Platform — what shipped, file manifest, schema diffs, feature flags, security model, deploy + rollout plan | Implementing, deploying, or operating the comm platform |
 
 ### Operations
 
@@ -118,8 +120,8 @@ This is the **master index**. Every doc below has a one-paragraph summary so you
 | CORS proxy | 3004 |
 | PM2 ecosystem file | `/opt/neurecore/ecosystem.config.js` |
 | Rebuild script | `/opt/neurecore/rebuild.sh` |
-| Backend modules | 37 |
-| Backend Prisma models | 39 |
+| Backend modules | 57 (local) / 37 (prod — local-vs-prod drift, see backend.md §13) |
+| Backend Prisma models | 83 (local) / 39 (prod) |
 | Backend env keys | 112 |
 | Tenant/Admin pages | 18+ each |
 | Disk free | 45 GB of 96 GB |

@@ -327,7 +327,55 @@ Browser → backend: `NEXT_PUBLIC_API_URL` defaults to `http://localhost:3000` (
 
 ---
 
-## 12. Known issues & gaps
+## 12. Tenant detail page — profile & actions
+
+The tenant detail view at `/tenants/[id]` has 4 tabs: Overview, Departments, Agents, Deploy.
+
+### Overview tab — full tenant profile (7 sections)
+
+| Section | Fields displayed |
+|---|---|
+| **Identity** | ID (truncated), Status (colored badge), Created, Updated |
+| **Branding & Contact** | Website (link), Industry, Phone, Support Email (mailto), Logo (image if set) |
+| **Company Profile** | Size bucket, Founded year, Business type, Address card (street/city/region/postal/country), Billing profile (dynamic key-value) |
+| **Localization** | Locale, Timezone, Currency, Date format, Time format, Fiscal year start |
+| **Onboarding** | Step, Completed date, Checklist dismissed date |
+| **Tier Details** | Indigo-themed card with tier name, description, monthly/yearly pricing, all limits grid (agents, depts, users, storage, API calls, messages, file size), feature flags (SSO, API access, branding, audit export) |
+| **System** | Retention days, Settings key count, Metadata key count |
+
+Google Workspace section shown conditionally when Drive/Calendar IDs exist.
+
+### Actions bar
+
+Between the header card and tabs — always visible:
+
+| Button | Color | Action |
+|---|---|---|
+| **Suspend** / **Activate** | Amber | Toggles tenant between `ACTIVE` and `SUSPENDED`. Confirmation dialog explains no data loss. |
+| **Delete** | Red | Permanently deletes tenant + all cascaded data. Confirmation dialog warns of irreversible data loss, confirm label: "Delete Everything". |
+
+Both require `SUPER_ADMIN` role. Confirmation uses `ConfirmDialog` component (`src/components/ConfirmDialog.tsx`) with framer-motion animations and `danger`/`warning` variants.
+
+### Key files
+
+| File | Purpose |
+|---|---|
+| `src/app/tenants/[id]/page.tsx` | Tenant detail page (4 tabs, full Overview, actions bar) |
+| `src/components/ConfirmDialog.tsx` | Reusable confirmation dialog (danger/warning variants) |
+| `src/types/api.types.ts` | Full `Tenant` (33 fields) + `TenantTier` (22 fields) + `TenantAddress` interfaces |
+
+### Backend API consumed
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/v1/tenants/:id` | GET | Fetch tenant detail |
+| `/api/v1/tenants/:id/suspend` | PATCH | Suspend tenant |
+| `/api/v1/tenants/:id/activate` | PATCH | Reactivate tenant |
+| `/api/v1/tenants/:id` | DELETE | Delete tenant + all data |
+
+---
+
+## 13. Known issues & gaps
 
 1. **No tests** — manual verification only. (Phase 10 shipped 6 backend service specs — see [backend.md](backend.md). Frontend still has no React tests.) See [future-plans.md §3.4](future-plans.md).
 2. **Next.js API routes duplicate backend endpoints** — currently unused (admin uses absolute brain URL). Either delete or document as intended for server-side enrichment.
@@ -338,7 +386,7 @@ Browser → backend: `NEXT_PUBLIC_API_URL` defaults to `http://localhost:3000` (
 
 ---
 
-## 13. Quick health checks
+## 14. Quick health checks
 
 ```bash
 # From Contabo

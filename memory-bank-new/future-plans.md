@@ -1,8 +1,8 @@
 # Future Plans & Feature Roadmap
 
-**Last updated:** 2026-07-07 19:55 PKT (FIX-020 SHIPPED — see [int-features/auth-architecture.md](int-features/auth-architecture.md) for the new single source of truth. The 10-phase plan from §12 is ✅ done; do not revert any of it.)
+**Last updated:** 2026-07-08 13:35 PKT (Enterprise Communication Platform Phases 1-9 IMPLEMENTED + AUDIT-PASSED — see [enterprise-comms-chat.md](enterprise-comms-chat.md) rev 3 for the implementation reference. Rev 2 closed 10 spec gaps; rev 3 deep-audit closed 17 runtime/DI/WS gaps (ActivityModule shadow provider, HermesModule missing EventsModule import, 6 services with broken `import type` interface DI converted to symbol-based `@Inject(...)` + `useExisting` aliases, `thread:participant_added` room-name typo, missing `thread:join`/`thread:leave` WS handlers, `useActivityFeed` backfill fixed with new `since` param, 3 orphan test specs deleted). All 10 `COMM_*` feature flags + `AGENT_MESSAGING_ENABLED` default `false` — zero prod behavior change until flags flipped.)
 **Audience:** Product + engineering — what's coming next.
-**Sibling docs:** [fixes.md](fixes.md) · [backend.md](backend.md) · [frontend-tenant.md](frontend-tenant.md) · [frontend-admin.md](frontend-admin.md) · [contabo-ops.md](contabo-ops.md)
+**Sibling docs:** [fixes.md](fixes.md) · [backend.md](backend.md) · [frontend-tenant.md](frontend-tenant.md) · [frontend-admin.md](frontend-admin.md) · [contabo-ops.md](contabo-ops.md) · [enterprise-comms-chat.md](enterprise-comms-chat.md)
 
 ---
 
