@@ -2048,3 +2048,68 @@ Specific bugs found in the engine source (all in `src/`):
    "
    ```
    This catches `UnknownDependenciesException` without booting HTTP.
+
+---
+
+## FIX-027 follow-up (2026-07-09 23:43 PKT) — DI fixes verified, prevention test added
+
+### Status (closed follow-up to the 19:38-19:56 outage above)
+
+All 4 latent DI bugs that crashed production on 2026-07-09 were already
+fixed in commit `a8259d0` (engine Phase 2B–2G) but never tested at the
+end-to-end DI graph level. The fixes were applied during initial
+implementation; they just couldn't be exercised until a complete service
+graph was loaded.
+
+### Verified in commit `d655187`
+
+Added `backend/src/modules/information-engine/__tests__/information-engine.di.spec.ts`
+(13 tests, all passing) — service-level DI smoke test that constructs
+each engine service directly with mocked repositories. Mirrors the
+proven `projects-engine.integration.spec.ts` pattern.
+
+Also fixed `backend/src/modules/information-engine/interview/interview.service.spec.ts`:
+the spec's mock factories (`makeRequirements`, `makeAdaptive`) typed their
+return as the interface `IRequirementsService` / `IAdaptiveQuestioningService`
+because the original `InterviewService` ctor did too. After FIX-027 the
+ctor takes the concrete classes, so the spec's mocks were wrong-typed.
+Updated both factories to cast to the concrete classes (`RequirementsService`,
+`AdaptiveQuestioningService`). 7/7 interview tests pass after the fix.
+
+### Test counts (2026-07-09 23:43)
+
+| Suite | Tests | Pass | Fail |
+|---|---|---|---|
+| `information-engine/` (engine module) | 111 | 111 | 0 |
+| `projects/tests/` (projects integration) | 4 | 4 | 0 |
+| `project-types/` (allocators) | varies | all | 0 |
+| full backend | 755 | 717 | 38 (pre-existing, unchanged) |
+| `tsc --noEmit` | — | exit 0 | — |
+| `npm run lint` | — | exit 0 | — |
+
+The 38 failures are the pre-existing `test/unit/*.spec.ts` set (hermes,
+token, cookie-auth, etc.) confirmed via `git stash` baseline in this
+incident — NOT caused by FIX-027.
+
+### Next step before any engine production reload
+
+The engine source code in the local repo (`/home/najeeb/Linux-Dev/neurecore-2026/neurecore`,
+branch `004-ent-comm`, commit `d655187`) now passes:
+  - 111/111 engine DI smoke tests
+  - the proven 4/4 `ProjectsService.create — engine integration`
+  - 7/7 interview service tests
+  - full `tsc --noEmit` clean
+  - `npm run lint` clean
+
+Engine code is **safe to reload on Contabo** via the standard
+`scripts/deploy.sh backend` flow. Schema + seeds are already live
+(see §9.5 / §9.3 of project-creation-imp-plan.md, and the resolution
+actions above). Engine forwardRef cycle between ClientsModule ↔
+ProjectsModule is already handled in the source.
+
+Pre-deploy verification on local:
+```bash
+cd /home/najeeb/Linux-Dev/neurecore-2026/neurecore/backend
+npm test -- --testPathPatterns=information-engine   # 111/111 must pass
+npx tsc --noEmit                                    # exit 0
+```
