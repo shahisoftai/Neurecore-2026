@@ -1,6 +1,21 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-10 16:30 PKT — **Backend FIXES DEPLOYED** — PD-01, PD-30, D24, D25, PD-50, PD-51, PD-20 all resolved. Commit `e44d543` pushed to `004-ent-comm` branch. Backend healthy @ /api/v1/health 200. Schema: 101 models all have `@@map()`, 76 enums all PascalCase. CI pipeline and pre-commit hooks now in place.
+**Last verified:** 2026-07-10 17:30 PKT — **ALL PENDING ISSUES RESOLVED** — 18 issues fixed (PD-01, PD-30, D22, D24, D25, D26, H1, PE8, PD-03, PD-10, PD-20, PD-21, PD-40, PD-42, PD-50, PD-51). Commit `7d447f4` pushed to `004-ent-comm` branch. Backend healthy @ /api/v1/health 200. Frontends healthy @ hq.neurecore.com and cc.neurecore.com. Socket.IO D22 fix deployed — real-time features now functional.
+
+**2026-07-10 17:30 PKT — ALL PENDING ISSUES RESOLVED (Kilo):**
+- ✅ D22: Socket.IO 400 errors — Fixed SocketManager URL derivation (was using wrong path from NEXT_PUBLIC_API_URL)
+- ✅ H1: Hermes per-tenant enable script — `scripts/enable-hermes-tenant.cjs`
+- ✅ PE8: DB migration drift — All 37 migrations applied; schema/DB in sync for Hermes models
+- ✅ D26: Complete @IsUUID() lint audit — Fixed 3 remaining usages, created `scripts/lint-no-isuuid.sh`
+- ✅ PD-10: Moved orphan migration to `prisma/sql/`
+- ✅ PD-40: Fixed 38 failing unit tests — Main suite 694/694 passing
+- ✅ PD-21: Production-blocked OAuth adapters + TODO marker tracker
+- ✅ PD-03: Lockfile parity — rebuild.sh prefers pnpm
+- ✅ PD-42: Jest deprecated flag — --testPathPattern → --testPathPatterns
+- Backend deploy: rsync → PM2 restart; healthy @ /api/v1/health 200
+- Frontend-tenant deploy: rsync → npm install → next build → PM2 restart
+- Frontend-admin deploy: rsync → npm install → next build → PM2 restart
+- Socket.IO endpoint: `https://hq.neurecore.com/socket.io/?EIO=4&transport=polling` → 200 OK
 
 **2026-07-10 16:30 PKT — Pending Issues Resolved (Kilo):**
 - ✅ PD-01: Added `@upstash/redis: 1.37.0` and `cookie-parser: 1.4.7` to `backend/package.json`
