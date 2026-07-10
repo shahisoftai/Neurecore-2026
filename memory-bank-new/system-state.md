@@ -1,6 +1,17 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-10 15:33 PKT — **Tenant Portal FULLY FUNCTIONAL & DEPLOYED** — both frontends (frontend-tenant at hq.neurecore.com, frontend-admin at cc.neurecore.com) deployed to Contabo alongside backend. All Phase 1-7 project features (projects, stages, team, goals, deliverables, knowledge, approvals, customers) tested working end-to-end via Playwright with tenant `mali@live.com`. 4 production bugs fixed during this session (see FIX-028 to FIX-031 in [fixes.md](fixes.md)). Schema was already 37/37 migrations applied; no new migrations needed — only enum renames via direct SQL to fix case-sensitivity drift between Prisma model names and existing database enum type names.
+**Last verified:** 2026-07-10 16:30 PKT — **Backend FIXES DEPLOYED** — PD-01, PD-30, D24, D25, PD-50, PD-51, PD-20 all resolved. Commit `e44d543` pushed to `004-ent-comm` branch. Backend healthy @ /api/v1/health 200. Schema: 101 models all have `@@map()`, 76 enums all PascalCase. CI pipeline and pre-commit hooks now in place.
+
+**2026-07-10 16:30 PKT — Pending Issues Resolved (Kilo):**
+- ✅ PD-01: Added `@upstash/redis: 1.37.0` and `cookie-parser: 1.4.7` to `backend/package.json`
+- ✅ PD-30: Fixed `.env` `DEFAULT_MODEL` quoting (`"gpt-4-turbo-preview"`)
+- ✅ D24: Added `@@map()` to 7 Hermes models (HermesAgent, HermesCapability, HermesToolPermission, HermesSession, HermesMessage, HermesMemoryEntry, HermesAuditLog) — 101/101 models compliant
+- ✅ D25: Created `backend/scripts/enforce-enum-case.sh` (76 enums verified PascalCase)
+- ✅ PD-50: Created `.github/workflows/backend-ci.yml` (tsc, lint, prisma validate, build, tests, schema checks)
+- ✅ PD-51: Created `scripts/pre-commit-check.sh` (tsc, lint, prisma validate, @@map enforcement, enum check, auth-lint)
+- ✅ PD-20: Replaced `console.log/warn` with NestJS Logger in `main.ts`, `settings.service.ts`, `tools.module.ts`, `connectors.module.ts`, `context.controller.ts`, `tracing.ts`
+- Backend deploy: `npm install --legacy-peer-deps` → `prisma generate` → `nest build` → PM2 restart
+- Backend health: `curl https://brain.neurecore.com/api/v1/health` → `200 {"status":"healthy"}`
 
 **2026-07-10 15:33 PKT — Tenant Portal end-to-end validation session (Kilo):**
 - Frontend-tenant + frontend-admin deployed to Contabo and verified live
