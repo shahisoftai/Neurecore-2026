@@ -1,9 +1,9 @@
 # Backend (NeureCore NestJS API)
 
-**Last verified:** 2026-07-05 01:25 PKT
+**Last verified:** 2026-07-10 15:33 PKT
 **Live URL:** `https://brain.neurecore.com/api/v1/`
 **Internal port:** 3003
-**Repo:** `git@github.com:Shahikhail01/neurecore.git` @ `c5c05ec`
+**Repo:** `git@github.com:Shahikhail01/neurecore.git` @ `c5c05ec` (working tree has 20+ uncommitted files from FIX-028..031 — see [pending-tasks.md D23](pending-tasks.md))
 **Sibling docs:** [system-state.md](system-state.md) · [operations.md](operations.md) · [frontend-tenant.md](frontend-tenant.md) · [contabo-ops.md](contabo-ops.md) · [pools-taxonomy.md](pools-taxonomy.md)
 
 ---
@@ -383,6 +383,107 @@ for path in agents-pool departments-pool industries tier-templates features pack
   echo "GET /api/v1/$path …"
   curl -sk -o /dev/null -w "  %{http_code}\n" https://brain.neurecore.com/api/v1/$path   # 401 expected
 done
+```
+
+---
+
+## 15. 2026-07-10 — Tenant Portal validation fixes (Kilo)
+
+Four backend bugs were found and fixed during the end-to-end tenant portal test session. All fixes are rsynced to Contabo and live in production, but the **git working tree has not been committed yet** (see [pending-tasks.md D23](pending-tasks.md)).
+
+### FIX-028 — `@IsUUID()` on CUID fields (15 DTOs)
+
+**Symptom:** `POST /api/v1/goals` returned 400 with `projectId must be a UUID`. Goals/Deliverables/Users/etc. all blocked at the `class-validator` layer.
+
+**Root cause:** NeureCore uses Prisma's `@default(cuid())` for all primary keys (e.g. `cmreogz8r000811yugjh7zjv8`). Several DTOs decorated ID fields with `@IsUUID()` instead of `@IsString()`, rejecting the CUIDs.
+
+**Fix:** Replaced `@IsUUID()` with `@IsString()` in **15 DTO files**:
+- `modules/goals/dto/goal.dto.ts` (3 DTOs, 13 decorators)
+- `modules/departments/dto/department.dto.ts`
+- `modules/finance/dto/invoice.dto.ts`, `expense.dto.ts`, `billing-filter.dto.ts`
+- `modules/orchestration/dto/task.dto.ts`
+- `modules/users/dto/user.dto.ts`
+- `modules/packages/dto/create-package.dto.ts`, `package-composition.dto.ts`, `package-deployment.dto.ts`
+- `modules/connectors/dto/connector.dto.ts`
+- `modules/entities/dto/entity.dto.ts`
+- `modules/agents/dto/create-agent.dto.ts`, `deployment.dto.ts`
+- `modules/costs/dto/cost.dto.ts`
+- `modules/routines/dto/routine.dto.ts`
+- `modules/tenants/dto/tenant.dto.ts`
+- `modules/tier-templates/dto/create-tier-template.dto.ts`, `update-tier-template.dto.ts`
+
+Use `sed` for bulk replacement + manual cleanup of broken imports in `package-composition.dto.ts`. Then `npm run build` + `pm2 restart neurecore-backend`.
+
+**See:** [fixes.md FIX-028](fixes.md#fix-028--goals-creation-400-bad-request-isuuid-on-cuid-fields).
+
+### FIX-029 — Missing `@@map()` on `ApprovalWorkflow` / `ApprovalWorkflowStep`
+
+**Symptom:** `GET /api/v1/approval-chains/pending` returned 500 `The column ApprovalWorkflow.riskTier does not exist in the current database`.
+
+**Root cause:** The models lacked `@@map()` directives. Prisma mapped `model ApprovalWorkflow` to PascalCase `ApprovalWorkflow` table, but the actual DB table is snake_case `approval_workflows` (created by migration `20260709_aaa_prereq_create_approval_workflow_tables`). Compare with `model Project` which correctly has `@@map("projects")`.
+
+**Fix:** Added `@@map("approval_workflows")` and `@@map("approval_workflow_steps")` to the two models in `backend/prisma/schema.prisma`. Regenerated Prisma client (`npx prisma generate`), rebuilt, restarted.
+
+**See:** [fixes.md FIX-029](fixes.md#fix-029--approval-workflow-column-does-not-exist-missing-map-on-prisma-models).
+
+### FIX-030 — `IN_PROGRESS` not in `ApprovalStatus` enum
+
+**Symptom:** After FIX-029, `GET /api/v1/approval-chains/pending` failed with `PrismaClientValidationError: Invalid value for argument 'in'. Expected ApprovalStatus.` The query was passing `status: { in: ["PENDING", "IN_PROGRESS"] }`.
+
+**Root cause:** `ApprovalStatus` enum in the database only has `PENDING | APPROVED | REJECTED | CANCELLED | EXPIRED`. There is no `IN_PROGRESS`. The author confused `ApprovalStatus` (workflow) with `ProjectStatus` (project stage) which does have `IN_PROGRESS`.
+
+**Fix:** Changed `modules/approval-chains/approval-chains.service.ts:142` from `['PENDING', 'IN_PROGRESS']` to just `['PENDING']`. The DTO's `@IsIn([...])` validator was left as-is (it's a filter; an invalid value would just return no results).
+
+**See:** [fixes.md FIX-030](fixes.md#fix-030--approval-workflow-invalid-value-for-argument-in-in_progress-not-in-approvalstatus-enum).
+
+### FIX-031 — Lowercase enum types renamed to PascalCase (6 enums)
+
+**Symptom:** `POST /deliverables` → `type "public.DeliverableStatus" does not exist`; `POST /project-memory` → `type "public.MemoryCategory" does not exist`; `POST /project-decisions` → similar for `DecisionStatus`. Plus 3 more (`risk_tier`, `approval_type`, `thread_status`) found via audit.
+
+**Root cause:** Earlier migrations created some enum types in lowercase snake_case (e.g. `memory_category`) instead of the PascalCase names Prisma expects (e.g. `MemoryCategory`). PostgreSQL enum type names are case-sensitive when quoted, so Prisma queries using PascalCase fail against the lowercase actual names.
+
+**Fix:** Direct SQL via `psql` (no Prisma migration needed — schema is already correct, only DB-side names were wrong):
+
+```sql
+ALTER TYPE deliverable_status RENAME TO "DeliverableStatus";
+ALTER TYPE memory_category    RENAME TO "MemoryCategory";
+ALTER TYPE decision_status    RENAME TO "DecisionStatus";
+ALTER TYPE risk_tier          RENAME TO "RiskTier";
+ALTER TYPE approval_type      RENAME TO "ApprovalType";
+ALTER TYPE thread_status      RENAME TO "ThreadStatus";
+```
+
+Idempotent (rename only, preserves values + dependencies). No application code changes required.
+
+**See:** [fixes.md FIX-031](fixes.md#fix-031--lowercase-postgres-enum-types-drift-from-prisma-pascalcase-names) and [deployment.md §12](deployment.md#12-database-schema-drift-enum-case--missing-map).
+
+### Verification (2026-07-10 15:33 PKT)
+
+| Endpoint | Before | After |
+|---|---|---|
+| `POST /api/v1/goals` | 400 INVALID_REQUEST | 201 Created |
+| `GET /api/v1/approval-chains/pending` | 500 (column does not exist → enum) | 200 `{"data":[]}` |
+| `POST /api/v1/deliverables` | 500 (enum not found) | 201 Created |
+| `POST /api/v1/project-memory` | 500 (enum not found) | 201 Created |
+| `POST /api/v1/project-decisions` | 500 (enum not found) | 201 Created |
+
+### What to commit next session
+
+```bash
+cd /home/najeeb/Linux-Dev/neurecore-2026/neurecore
+git status                                       # confirm 15 DTO files + 1 service + 1 schema + 1 inspector
+git add backend/src/modules/{goals,departments,users,agents,finance,orchestration,packages,connectors,entities,costs,routines,tenants,tier-templates}/dto/ \
+        backend/src/modules/approval-chains/approval-chains.service.ts \
+        backend/prisma/schema.prisma \
+        frontend-tenant/src/components/inspector/ProjectInspector.tsx
+git commit -m "fix(FIX-028..031): UUID→String validation, Prisma @@map, enum case fixes
+
+- FIX-028: replace @IsUUID() with @IsString() in 15 DTOs (CUID PKs)
+- FIX-029: add @@map() to ApprovalWorkflow + ApprovalWorkflowStep
+- FIX-030: remove IN_PROGRESS from ApprovalStatus query (doesn't exist)
+- FIX-031: renamed 6 lowercase enum types to PascalCase in prod DB
+- also: Array.isArray guard in ProjectInspector health.signals"
+git push origin 004-ent-comm
 ```
 
 ---

@@ -9,7 +9,7 @@ import {
   ValidateNested,
   Min,
   MaxLength,
-  IsUUID,
+
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -29,7 +29,7 @@ export class LineItemDto {
 
 export class CreateInvoiceDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   tenantId?: string;
 
   @IsOptional()
@@ -58,12 +58,12 @@ export class CreateInvoiceDto {
 
 export class IssueInvoiceDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   tenantId?: string;
 }
 
 export class MarkPaidDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   tenantId?: string;
 }

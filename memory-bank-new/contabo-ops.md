@@ -12,28 +12,30 @@
 
 **4 PM2 processes** (all online):
 
-| Process | Port | What |
-|---|---|---|
-| `neurecore-backend` (id 37) | 3003 | NestJS API |
-| `neurecore-tenant` (id 40) | 3005 | Next.js, `hq.neurecore.com` |
-| `neurecore-admin` (id 42) | 3020 | Next.js, `cc.neurecore.com` |
-| `neurecore-cors-proxy` (id 7) | 3004 | dev CORS sidecar → 3003 |
+| Process | ID | Port | What |
+|---|---|---|---|
+| `neurecore-backend` | 10 | 3003 | NestJS API — **Projects Phases 1–7 + EIE deployed 2026-07-09** |
+| `neurecore-tenant` | 12 | 3005 | Next.js, `hq.neurecore.com` — **PRE-PROJECTS code (not yet rebuilt)** |
+| `neurecore-admin` | 9 | 3020 | Next.js, `cc.neurecore.com` — **PRE-PROJECTS code (not yet rebuilt)** |
+| `neurecore-cors-proxy` | 7 | 3004 | dev CORS sidecar → 3003 |
+
+> ⚠️ **Frontend deploy pending:** `neurecore-tenant` (id 12) and `neurecore-admin` (id 9) have NOT been rebuilt with the Projects code. All new routes (`/projects`, `/projects/new`, `/customers`, `/portal`, `/project-types`, `/question-packs`, `/customers-pool`) will 404 until the frontends are rebuilt and restarted.
 
 **3 public hostnames** (TLS via Let's Encrypt, all healthy):
 
 | Hostname | Upstream | Status |
 |---|---|---|
-| `brain.neurecore.com` | 127.0.0.1:3003 | 200 on `/api/v1/health` |
-| `hq.neurecore.com` | 127.0.0.1:3005 | 200 on `/` |
-| `cc.neurecore.com` | 127.0.0.1:3020 | 200 on `/` |
+| `brain.neurecore.com` | 127.0.0.1:3003 | 200 on `/api/v1/health` — **Projects backend live** |
+| `hq.neurecore.com` | 127.0.0.1:3005 | 200 on `/` — **PRE-PROJECTS (pending rebuild)** |
+| `cc.neurecore.com` | 127.0.0.1:3020 | 200 on `/` — **PRE-PROJECTS (pending rebuild)** |
 
 **Other tenants** on the box (NOT neurecore): `app-frontend` (GUV, port 3001/3100), `gfcportal`, `shahisoft-nextjs`, `lifeosa-backend`, `ecoearthshop-backend` (cluster), `cookie-refresher`, `gfcportal`. Don't break these.
 
 **Database:** Neon PostgreSQL (managed cloud, `ep-summer-pond-adpkqy1m-pooler.c-2.us-east-1.aws.neon.tech`).
-**Cache:** Redis on `127.0.0.1:6379` (host-installed).
+**Cache:** Redis on `127.0.0.1:6379` (host-installed). **Note:** Upstash (`lasting-gobbler-72608.upstash.io`) returns `ENOTFOUND` — non-fatal, backend still healthy.
 **Observability:** Prometheus `:9090`, Alertmanager `:9093`, Grafana `:3200` (all containers under `/opt/neurecore/observability/`).
 
-**Most recent DR snapshot:** `/opt/neurecore/_archives/20260704-084322/` (~70 MB).
+**Most recent DR snapshot:** `/opt/neurecore/_archives/20260709-212750/` (pre-Projects-frontend-deploy).
 
 ---
 
@@ -106,6 +108,39 @@ ssh contabo 'mkdir -p /opt/neurecore/_archives/$(date +%Y%m%d-%H%M%S) && \
 ```
 
 The full DR recipe is in [disaster-recovery.md §2](disaster-recovery.md).
+
+### 3.3b Projects frontend deploy checklist (2026-07-09 — PENDING)
+
+Both frontends need rebuilding with the Projects code. Backend is already live.
+
+```bash
+# 1. Snapshot frontends BEFORE rebuilding
+ssh contabo 'SNAP=/opt/neurecore/_archives/$(date +%Y%m%d-%H%M%S)-pre-projects-fe
+mkdir -p $SNAP
+cd /opt/neurecore/frontend-tenant && tar -czf $SNAP/frontend-tenant-.next.tar.gz .next/
+cd /opt/neurecore/frontend-admin && tar -czf $SNAP/frontend-admin-.next.tar.gz .next/
+cp /opt/neurecore/ecosystem.config.js $SNAP/ecosystem.config.js'
+
+# 2. Deploy frontend-tenant (NEURECORE PROJECT WORKSPACE at /home/najeeb/Linux-Dev/neurecore-2026/neurecore/)
+cd /home/najeeb/Linux-Dev/neurecore-2026/neurecore
+./scripts/deploy.sh tenant   # rsync → pnpm install → next build → pm2 restart
+
+# 3. Deploy frontend-admin
+./scripts/deploy.sh admin    # rsync → pnpm install → next build → pm2 restart
+
+# 4. Verify health
+curl https://hq.neurecore.com/api/v1/health   # should still be 200 via OLS proxy
+curl https://brain.neurecore.com/api/v1/health  # backend health
+
+# 5. Browser smoke tests (new routes)
+# https://hq.neurecore.com/projects         → 7-column kanban (was 404)
+# https://hq.neurecore.com/projects/new     → creation wizard (was 404)
+# https://hq.neurecore.com/customers        → customer list (was 404)
+# https://hq.neurecore.com/portal/[id]     → client portal (was 404)
+# https://cc.neurecore.com/project-types    → admin pool (was 404)
+# https://cc.neurecore.com/question-packs   → question pack admin (was 404)
+# https://cc.neurecore.com/customers-pool   → cross-tenant (was 404)
+```
 
 ### 3.4 DO check OLS config syntax before restart
 

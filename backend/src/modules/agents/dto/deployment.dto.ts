@@ -1,5 +1,5 @@
 import {
-  IsUUID,
+
   IsString,
   IsOptional,
   IsNumber,
@@ -23,12 +23,12 @@ export class SpawnAgentFromTemplateDto {
   name!: string;
 
   /** Target tenant to receive the new agent */
-  @IsUUID()
+  @IsString()
   tenantId!: string;
 
   /** Optional department assignment */
   @IsOptional()
-  @IsUUID()
+  @IsString()
   departmentId?: string;
 
   /** Override daily spend cap */
@@ -50,14 +50,14 @@ export class SpawnAgentFromTemplateDto {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class BulkAgentDeployItem {
-  @IsUUID()
+  @IsString()
   templateId!: string;
 
   @IsString()
   name!: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   departmentId?: string;
 
   @IsOptional()
@@ -84,7 +84,7 @@ export class BulkDeployAgentsDto {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class DeployDeptTemplateDto {
-  @IsUUID()
+  @IsString()
   templateId!: string;
 
   /** When true, also creates agents for each dept item using matching platform agent templates */
@@ -98,7 +98,7 @@ export class DeployDeptTemplateDto {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class DeploySingleDepartmentDto {
-  @IsUUID()
+  @IsString()
   templateId!: string;
 
   /** Index into the template's `structure` JSON array (0-based) */
@@ -107,7 +107,7 @@ export class DeploySingleDepartmentDto {
   itemIndex!: number;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   parentDepartmentId?: string;
 
   @IsOptional()

@@ -1,4 +1,4 @@
-import { IsUUID, IsBoolean, IsOptional, IsString, IsIn } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsIn } from 'class-validator';
 
 /**
  * POST /api/v1/packages/deploy
@@ -9,11 +9,11 @@ import { IsUUID, IsBoolean, IsOptional, IsString, IsIn } from 'class-validator';
  */
 export class DeployPackageDto {
   /** Package row id (Pool #6 composite root) */
-  @IsUUID()
+  @IsString()
   packageId!: string;
 
   /** Target tenant */
-  @IsUUID()
+  @IsString()
   tenantId!: string;
 
   /**
@@ -46,10 +46,10 @@ export class DeployPackageDto {
  * writing anything.
  */
 export class PreviewPackageDeployDto {
-  @IsUUID()
+  @IsString()
   packageId!: string;
 
-  @IsUUID()
+  @IsString()
   tenantId!: string;
 
   @IsOptional()

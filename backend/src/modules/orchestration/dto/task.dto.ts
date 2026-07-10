@@ -4,7 +4,7 @@ import {
   IsEnum,
   IsObject,
   IsDateString,
-  IsUUID,
+
   MaxLength,
 } from 'class-validator';
 import { TaskPriority } from '@prisma/client';
@@ -27,11 +27,11 @@ export class CreateTaskDto {
   input?: Record<string, unknown>;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   agentId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   workflowId?: string;
 
   @IsOptional()
@@ -49,6 +49,6 @@ export class UpdateTaskDto {
   input?: Record<string, unknown>;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   agentId?: string;
 }

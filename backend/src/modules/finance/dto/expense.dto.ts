@@ -5,7 +5,7 @@ import {
   IsOptional,
   Min,
   IsObject,
-  IsUUID,
+
   MaxLength,
 } from 'class-validator';
 
@@ -20,15 +20,15 @@ export enum ExpenseCategoryDto {
 
 export class RecordExpenseDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   tenantId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   agentId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   invoiceId?: string;
 
   @IsEnum(ExpenseCategoryDto)

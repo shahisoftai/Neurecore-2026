@@ -321,3 +321,75 @@ If any check fails, **do not deploy**. Fix the issue first.
 | Build on Contabo fails: `Type error: Cannot find name 'X'` | Pre-existing TypeScript error in source — `npm run lint` did not catch it | **Run `npm run build` locally BEFORE rsync** — see [§10 Pre-deploy checklist](deployment.md#10-pre-deploy-checklist). The build catches missing destructures, wrong generics, etc. that lint misses. |
 | Browser console: `TypeError: can't access property "length", n is undefined` on a tenant page | Zustand `persist` middleware hydrated a non-array from corrupted `localStorage` | See [runbook.md §3.1](runbook.md#31-tenant-cant-access-property-length-crash) and [frontend-tenant.md §19](frontend-tenant.md#19-defensive-patterns-zustand-merge--ui-guards-fix-019) |
 | `wss://brain.neurecore.com/socket.io/` connection failure | WebSocket URL fallback to dev `localhost:3000` (FIX-019) | See [runbook.md §3.2](runbook.md#32-tenant-websocket-connection-failure) |
+| 500 `PrismaClientValidationError: Invalid value for argument 'in'. Expected <EnumName>.` | Code is querying an enum value that does not exist in the actual Postgres enum (e.g. `IN_PROGRESS` not in `ApprovalStatus`) | See [fixes.md FIX-030](fixes.md#fix-030--approval-workflow-invalid-value-for-argument-in-in_progress-not-in-approvalstatus-enum). Cross-check enum values: `psql ... -c "SELECT enumlabel FROM pg_enum WHERE pg_enum.enumtypid = '<EnumName>'::regtype;"` |
+| 500 `PrismaClientKnownRequestError: The column <Model>.<field> does not exist` OR `relation <Model> does not exist` | Prisma schema is mapping the model to a different table name than the database uses. Likely `@@map()` is missing or wrong on the model | See [fixes.md FIX-029](fixes.md#fix-029--approval-workflow-column-does-not-exist-missing-map-on-prisma-models). Verify with: `SELECT tablename FROM pg_tables WHERE tablename ILIKE '%<modelname>%';` and add `@@map("<actual_table>")` to the model |
+| 500 `PrismaClientUnknownRequestError: type "public.<EnumName>" does not exist` | DB has the enum but with a different case (e.g. lowercase `memory_category` vs Prisma's PascalCase `MemoryCategory`) | See [fixes.md FIX-031](fixes.md#fix-031--lowercase-postgres-enum-types-drift-from-prisma-pascalcase-names). Rename in-place: `ALTER TYPE <lowercase_name> RENAME TO "<PascalCaseName>";` |
+| 400 `INVALID_REQUEST: <field> must be a UUID` from any DTO endpoint | DTO uses `@IsUUID()` but the field value is a CUID (NeureCore uses `@default(cuid())` everywhere, not UUIDs) | See [fixes.md FIX-028](fixes.md#fix-028--goals-creation-400-bad-request-isuuid-on-cuid-fields). Replace `@IsUUID()` with `@IsString()` in the DTO. Audit all DTOs for the same pattern |
+| 500 `Socket.IO ... 400` errors in browser console (real-time features silently broken) | Likely OLS vhost missing `RewriteRule` for `/socket.io/` path, or backend WebSocketGateway not configured for CORS | Compare OLS config with D12.5 example. Check `pm2 logs neurecore-backend` for WebSocket connection errors. See [pending-tasks.md D22](pending-tasks.md) |
+
+---
+
+## 12. Database schema drift: enum case + missing `@@map()`
+
+**Audience:** Anyone who hits a Prisma error about a missing column, missing relation, or missing enum type, and is unsure whether to fix the schema or the database.
+
+NeureCore uses Prisma's `@default(cuid())` for all primary keys. The schema defines enum types (e.g. `DeliverableStatus`, `MemoryCategory`) using `enum` blocks, and Prisma expects those types to exist in Postgres with **PascalCase names matching the schema**.
+
+Over time, several migrations have created enum types in the database with **lowercase snake_case names** instead of PascalCase. This causes 500 errors on any endpoint that uses those enums (e.g. `POST /deliverables` → `type "public.DeliverableStatus" does not exist`).
+
+A second related issue: when a model is added to the Prisma schema **without `@@map()`**, Prisma assumes the table name is the PascalCase model name (e.g. `model ApprovalWorkflow` → table `ApprovalWorkflow`). If a migration created the table as `approval_workflows` (snake_case), Prisma queries the wrong table and 500s.
+
+### Detection
+
+```sql
+-- 1. List all enum types in the database (casing should match Prisma schema)
+SELECT typname FROM pg_type
+WHERE typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+AND typtype = 'e'
+ORDER BY typname;
+
+-- 2. Check which enums are lowercase (these need renaming)
+SELECT typname FROM pg_type
+WHERE typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+AND typtype = 'e' AND typname ~ '^[a-z]'
+ORDER BY typname;
+
+-- 3. Check which tables don't match their Prisma model names
+-- (compare against grep '^model ' prisma/schema.prisma)
+```
+
+### Fix procedure (for enum case drift)
+
+Apply `ALTER TYPE ... RENAME TO` directly to the database via `psql` or `pgAdmin`. **This is reversible** (rename only, no data loss) and does not require a Prisma migration:
+
+```bash
+# From any host with psql + DATABASE_URL
+PGPASSWORD=... psql -h <host> -U <user> -d <db> <<'SQL'
+BEGIN;
+ALTER TYPE deliverable_status RENAME TO "DeliverableStatus";
+ALTER TYPE memory_category    RENAME TO "MemoryCategory";
+ALTER TYPE decision_status    RENAME TO "DecisionStatus";
+ALTER TYPE risk_tier          RENAME TO "RiskTier";
+ALTER TYPE approval_type      RENAME TO "ApprovalType";
+ALTER TYPE thread_status      RENAME TO "ThreadStatus";
+COMMIT;
+SQL
+```
+
+No `prisma migrate` is needed; the schema is already correct. No application code changes are required. Just restart `pm2 restart neurecore-backend` after the rename.
+
+### Fix procedure (for missing `@@map()`)
+
+Add `@@map()` to the model in `prisma/schema.prisma`, then:
+
+```bash
+npx prisma generate     # regenerate client
+npm run build           # rebuild
+pm2 restart neurecore-backend
+```
+
+### Prevention
+
+- **Pre-commit hook:** fail the commit if any `model X` in `prisma/schema.prisma` doesn't have a `@@map()` directive. See [pending-tasks.md D24](pending-tasks.md).
+- **CI step:** `prisma db pull` → diff against `prisma/schema.prisma`; any enum name case mismatch fails. See [pending-tasks.md D25](pending-tasks.md).
+- **Migration review:** every new migration that creates an enum type or table must use the exact case Prisma expects (PascalCase for enum types matching the `enum` block; PascalCase or snake_case for tables matching the `@@map` directive).

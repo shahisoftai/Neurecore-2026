@@ -7,7 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  IsUUID,
+
   Length,
   Matches,
   Min,
@@ -46,6 +46,6 @@ export class CreateTierTemplateDto {
   sortOrder?: number;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsString()
   defaultBillingTierId?: string;
 }

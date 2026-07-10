@@ -2,7 +2,7 @@ import {
   IsString,
   IsOptional,
   IsEnum,
-  IsUUID,
+
   MinLength,
   MaxLength,
   Matches,
@@ -25,7 +25,7 @@ export class CreateTenantDto {
   slug!: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   tierId?: string;
 
   @IsOptional()

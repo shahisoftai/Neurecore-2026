@@ -91,3 +91,21 @@ export interface IApprovalChainRepository {
 }
 
 export const APPROVAL_CHAIN_REPOSITORY = 'APPROVAL_CHAIN_REPOSITORY';
+
+export interface IApprovalChainsService {
+  resolveChain(
+    deliverableId: string,
+    projectTypeVersionId: string,
+    riskTier: string,
+  ): Promise<ApprovalChainResolution>;
+  advanceChain(workflowId: string): Promise<void>;
+  isStepBlocked(stepId: string): Promise<boolean>;
+  findPendingWorkflows(
+    tenantId: string,
+    riskTier?: string,
+  ): Promise<(ApprovalWorkflow & { steps: ApprovalWorkflowStep[] })[]>;
+  getCurrentStep(
+    workflowId: string,
+  ): Promise<ApprovalWorkflowStepWithChain | null>;
+}
+

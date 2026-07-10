@@ -7,7 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  IsUUID,
+
   Length,
   Matches,
   Min,
@@ -40,9 +40,9 @@ export class CreatePackageDto {
   @Min(0)
   sortOrder?: number;
 
-  @IsUUID('4')
+  @IsString()
   industryId!: string;
 
-  @IsUUID('4')
+  @IsString()
   tierTemplateId!: string;
 }

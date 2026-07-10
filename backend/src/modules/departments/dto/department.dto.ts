@@ -1,18 +1,18 @@
-import { IsString, IsOptional, IsEnum, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsEnum,  } from 'class-validator';
 import { DepartmentStatus } from '@prisma/client';
 
 export class CreateDepartmentDto {
   @IsString() name!: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsEnum(DepartmentStatus) status?: DepartmentStatus;
-  @IsOptional() @IsUUID() headAgentId?: string;
-  @IsOptional() @IsUUID() parentId?: string;
+  @IsOptional() @IsString() headAgentId?: string;
+  @IsOptional() @IsString() parentId?: string;
 }
 
 export class UpdateDepartmentDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsEnum(DepartmentStatus) status?: DepartmentStatus;
-  @IsOptional() @IsUUID() headAgentId?: string;
-  @IsOptional() @IsUUID() parentId?: string;
+  @IsOptional() @IsString() headAgentId?: string;
+  @IsOptional() @IsString() parentId?: string;
 }

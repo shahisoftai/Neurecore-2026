@@ -1,8 +1,11 @@
 /**
- * Clients — Module (Phase 2E)
+ * Clients — Module (Phase 2B)
  *
- * Wires the ProjectsAdapter that bridges ProjectsService → EIE.
- * OnboardingAdapter ships in sub-phase 2G.
+ * Wires the engine-side adapters that bridge external domain services
+ * (Projects, Onboarding) into the information engine. Today only the
+ * ProjectsAdapter ships; the onboarding flow is wired via the dedicated
+ * ProjectTypeAllocatorService in `project-types/allocators/` which is
+ * a single-responsibility helper, not a polymorphic adapter.
  */
 
 import { Module, forwardRef } from '@nestjs/common';

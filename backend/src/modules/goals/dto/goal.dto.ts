@@ -13,7 +13,6 @@ import {
   Min,
   Max,
   IsDateString,
-  IsUUID,
 } from 'class-validator';
 
 import { GoalLevel, GoalStatus } from '@prisma/client';
@@ -31,19 +30,19 @@ export class CreateGoalDto {
   level?: GoalLevel;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   parentId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   ownerAgentId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   ownerUserId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   departmentId?: string;
 
   @IsOptional()
@@ -52,7 +51,7 @@ export class CreateGoalDto {
 
   // Phase 3
   @IsOptional()
-  @IsUUID()
+  @IsString()
   projectId?: string;
 }
 
@@ -80,19 +79,19 @@ export class UpdateGoalDto {
   progress?: number;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   parentId?: string | null;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   ownerAgentId?: string | null;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   ownerUserId?: string | null;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   departmentId?: string | null;
 
   @IsOptional()
@@ -114,20 +113,20 @@ export class ListGoalsDto {
   level?: GoalLevel;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   parentId?: string | 'root';
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   ownerUserId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   ownerAgentId?: string;
 
   // Phase 3
   @IsOptional()
-  @IsUUID()
+  @IsString()
   projectId?: string;
 
   @IsOptional()

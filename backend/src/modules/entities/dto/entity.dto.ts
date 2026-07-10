@@ -5,7 +5,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
-  IsUUID,
+
 } from 'class-validator';
 import { UniversalStateValue } from '@prisma/client';
 
@@ -55,7 +55,7 @@ export class EntityTypeParamDto {
 
 export class EntityIdParamDto extends EntityTypeParamDto {
   @ApiProperty({ description: 'Entity UUID' })
-  @IsUUID()
+  @IsString()
   id!: string;
 }
 

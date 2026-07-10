@@ -2113,3 +2113,260 @@ cd /home/najeeb/Linux-Dev/neurecore-2026/neurecore/backend
 npm test -- --testPathPatterns=information-engine   # 111/111 must pass
 npx tsc --noEmit                                    # exit 0
 ```
+
+---
+
+## FIX-028 — Goals creation 400 Bad Request: `@IsUUID()` on CUID fields
+
+**Date:** 2026-07-10
+**Severity:** medium
+**Component:** backend
+**Status:** fixed
+**Reporter:** Kilo (session testing tenant portal features with `mali@live.com`)
+**Resolver:** Kilo
+
+### Symptom
+
+Adding a goal to a project via the `GoalsModal` (frontend-tenant) returned `400 Bad Request` with body `{"code":"INVALID_REQUEST","message":"projectId must be a UUID"}`. All Goal CRUD from the UI was broken.
+
+### Root cause
+
+`backend/src/modules/goals/dto/goal.dto.ts` decorated all optional ID fields (`parentId`, `ownerAgentId`, `ownerUserId`, `departmentId`, `projectId`) with `@IsUUID()`. NeureCore uses Prisma's `@default(cuid())` for primary keys (e.g. `cmreogz8r000811yugjh7zjv8`), not UUIDs. The `class-validator` `@IsUUID()` rejected the CUID strings.
+
+The bug was latent because:
+- Goals were never created via the tenant UI in prior sessions
+- Direct API testing of goals (with manually-constructed UUID test data) had succeeded
+- The deliverables DTO (which works) uses `@IsString()` and was used as a template
+
+### Fix
+
+Replaced all `@IsUUID()` with `@IsString()` in `backend/src/modules/goals/dto/goal.dto.ts` (3 DTOs: `CreateGoalDto`, `UpdateGoalDto`, `ListGoalsDto`, 13 total decorators).
+
+Also audited and fixed the same pattern across **13 other DTO files** that had `@IsUUID()` on CUID fields:
+- `src/modules/departments/dto/department.dto.ts`
+- `src/modules/finance/dto/invoice.dto.ts`, `expense.dto.ts`, `billing-filter.dto.ts`
+- `src/modules/orchestration/dto/task.dto.ts`
+- `src/modules/users/dto/user.dto.ts`
+- `src/modules/packages/dto/create-package.dto.ts`, `package-composition.dto.ts`, `package-deployment.dto.ts`
+- `src/modules/connectors/dto/connector.dto.ts`
+- `src/modules/entities/dto/entity.dto.ts`
+- `src/modules/agents/dto/create-agent.dto.ts`, `deployment.dto.ts`
+- `src/modules/costs/dto/cost.dto.ts`
+- `src/modules/routines/dto/routine.dto.ts`
+- `src/modules/tenants/dto/tenant.dto.ts`
+- `src/modules/tier-templates/dto/create-tier-template.dto.ts`, `update-tier-template.dto.ts`
+- `src/modules/goals/dto/goal.dto.ts` (the original)
+
+Used `sed` to replace `@IsUUID()` with `@IsString()` and clean up imports. After the bulk replacement, fixed broken `IsString` import in `package-composition.dto.ts`.
+
+Synced to Contabo via `rsync -az src/ contabo:/opt/neurecore/backend/backend/src/`, rebuilt with `npm run build`, restarted with `pm2 restart neurecore-backend`.
+
+### Verification
+
+```bash
+# Direct API test
+curl -X POST .../api/v1/goals -H 'Content-Type: application/json' -H 'X-CSRF-Token: ...' \
+  -d '{"title":"Increase brand awareness by 50%","projectId":"cmreom2ib000s11yur5dey9mo"}'
+# → 201 Created with goal ID cmrercscd0001sfs6zh40586i
+
+# UI test
+# GoalsModal "Add Goal" button → goal "Increase brand awareness by 50%" appears in project inspector
+```
+
+### Prevention
+
+- **Use `@IsString()` as the default** for ID fields in DTOs unless the table truly uses UUID PKs. Document the choice in the DTO file header.
+- **The DTO template should match the database** — when adding a new model, copy an existing model that uses the same PK generator (cuid vs uuid).
+- Add a pre-commit grep for `@IsUUID()` in new DTOs and require justification comment.
+
+---
+
+## FIX-029 — Approval workflow `column does not exist`: missing `@@map` on Prisma models
+
+**Date:** 2026-07-10
+**Severity:** high
+**Component:** backend + db
+**Status:** fixed
+**Reporter:** Kilo (opened Approval modal on project page → 500 error)
+**Resolver:** Kilo
+
+### Symptom
+
+`GET /api/v1/approval-chains/pending` returned 500 with Prisma error: `The column ApprovalWorkflow.riskTier does not exist in the current database`. This crashed the Approvals modal in the project page. All approval-chains read paths were broken.
+
+### Root cause
+
+`backend/prisma/schema.prisma` declared `model ApprovalWorkflow` and `model ApprovalWorkflowStep` **without `@@map()` directives**. By default, Prisma maps `model ApprovalWorkflow` to the table name `ApprovalWorkflow` (PascalCase, no underscore). But the database has tables named `approval_workflows` and `approval_workflow_steps` (snake_case, lowercase), created by a pre-existing migration.
+
+The migration `20260709_aaa_prereq_create_approval_workflow_tables` correctly created the tables with snake_case names matching the CUID convention used by the rest of the database, but the Prisma schema was never updated to point to those tables. The pre-deploy `dist/` worked because it was from an older commit where the schema matched.
+
+Compare with `model Project` which correctly has `@@map("projects")` at the bottom.
+
+### Fix
+
+Added `@@map()` directives to both models in `backend/prisma/schema.prisma`:
+
+```prisma
+model ApprovalWorkflow {
+  // ...
+  @@index([tenantId])
+  @@index([status, tenantId])
+  @@map("approval_workflows")        // ← added
+}
+
+model ApprovalWorkflowStep {
+  // ...
+  @@unique([approvalWorkflowId, stepOrder])
+  @@index([approvalWorkflowId])
+  @@map("approval_workflow_steps")    // ← added
+}
+```
+
+Regenerated Prisma client: `npx prisma generate`. Synced `prisma/schema.prisma` to Contabo, regenerated there too, rebuilt with `npm run build`, restarted with `pm2 restart neurecore-backend`.
+
+### Verification
+
+```bash
+# After fix
+curl .../api/v1/approval-chains/pending
+# → 200 {"status":"success","data":[],"meta":{...}}
+# (Empty array — no pending approvals for the tenant, which is correct.)
+
+# UI test: Approvals modal on project page no longer triggers 500
+```
+
+### Prevention
+
+- **Every model in the Prisma schema must have `@@map()`** to make the table name explicit. Add a pre-commit hook that fails if `grep -L '@@map' prisma/schema.prisma | grep -q 'model '` finds any model without one.
+- **Make `prisma migrate status` part of the pre-deploy checklist** (already done) — and add a follow-up `prisma validate` that compares the schema against the live DB and warns if any `@@map` is missing for a model whose inferred table name doesn't exist.
+
+---
+
+## FIX-030 — Approval workflow `Invalid value for argument 'in'`: `IN_PROGRESS` not in `ApprovalStatus` enum
+
+**Date:** 2026-07-10
+**Severity:** high
+**Component:** backend
+**Status:** fixed
+**Reporter:** Kilo (exposed by FIX-029 investigation)
+**Resolver:** Kilo
+
+### Symptom
+
+After FIX-029 restored the connection, `GET /api/v1/approval-chains/pending` failed again with `PrismaClientValidationError: Invalid 'prisma.approvalWorkflow.findMany()' invocation. Invalid value for argument 'in'. Expected ApprovalStatus.`
+
+The Prisma error showed the query contained `status: { in: ["PENDING", "IN_PROGRESS"] }` — but the `ApprovalStatus` enum in the database only has: `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`, `EXPIRED`. There is no `IN_PROGRESS` value.
+
+### Root cause
+
+`backend/src/modules/approval-chains/approval-chains.service.ts:142` passed `status: ['PENDING', 'IN_PROGRESS']` to `findPendingWorkflows()`, copied from the schema-level enum definition or a stale spec. The author may have confused `ApprovalStatus` with `ProjectStatus` (which does have `IN_PROGRESS`).
+
+The DTO at `src/modules/approvals/dto/approval.dto.ts:18` also has `@IsIn(['PENDING', 'APPROVED', 'REJECTED', 'IN_PROGRESS'])` which would silently accept `IN_PROGRESS` for filtering and then crash at the Prisma layer.
+
+### Fix
+
+Changed `approval-chains.service.ts` to use only the valid enum values:
+
+```typescript
+async findPendingWorkflows(tenantId: string, riskTier?: string) {
+  return this.repository.findWorkflows(tenantId, {
+    status: ['PENDING'],   // was: ['PENDING', 'IN_PROGRESS']
+    riskTier,
+  });
+}
+```
+
+Left the DTO's `@IsIn` alone (it's a filter-validation layer; an invalid value would just return no results from the DB query that already validates).
+
+Synced to Contabo, rebuilt, restarted.
+
+### Verification
+
+```bash
+curl .../api/v1/approval-chains/pending
+# → 200 {"status":"success","data":[]}
+```
+
+### Prevention
+
+- **Cross-check enum values used in code against the actual DB enum** before merging: `psql ... -c "SELECT enumlabel FROM pg_enum WHERE pg_enum.enumtypid = '<enum_name>'::regtype;"`.
+- Use Prisma-generated TypeScript enum imports (`import { ApprovalStatus } from '@prisma/client'`) and reference `ApprovalStatus.PENDING` instead of string literals where possible — TypeScript will fail compilation if the enum value doesn't exist.
+- Add a test that calls each `findX` method and asserts no Prisma validation error.
+
+---
+
+## FIX-031 — Lowercase Postgres enum types drift from Prisma PascalCase names
+
+**Date:** 2026-07-10
+**Severity:** high
+**Component:** db
+**Status:** fixed
+**Reporter:** Kilo (multiple 500 errors during session testing)
+**Resolver:** Kilo
+
+### Symptom
+
+Three 500 errors during feature testing:
+1. `POST /api/v1/deliverables` → `type "public.DeliverableStatus" does not exist` (FIX during this session, before the numbered fixes)
+2. `POST /api/v1/project-memory` → `type "public.MemoryCategory" does not exist`
+3. `POST /api/v1/project-decisions` → same pattern for `DecisionStatus`
+
+Plus the same error pattern showed up in fewer-impact paths for `risk_tier`, `approval_type`, `thread_status`.
+
+### Root cause
+
+At some point, the Prisma migrations created several enum types in the database with **lowercase snake_case** names (`deliverable_status`, `memory_category`, `decision_status`, `risk_tier`, `approval_type`, `thread_status`) instead of the PascalCase names Prisma expects by default (`DeliverableStatus`, `MemoryCategory`, `DecisionStatus`, `RiskTier`, `ApprovalType`, `ThreadStatus`).
+
+Inconsistent enum casing: some enums (e.g. `GoalStatus`, `StageStatus`) are correctly PascalCase, others (`deliverable_status`, `memory_category`) are lowercase. This indicates a past case-sensitivity issue in the migration tooling or a manually-applied migration that didn't match Prisma's defaults.
+
+PostgreSQL enum type names are case-sensitive when quoted, so Prisma's queries (which use the PascalCase form) fail with `does not exist` errors against the lowercase actual names.
+
+### Fix
+
+Renamed 6 enum types in-place on Neon prod via direct SQL (idempotent, no data loss — `ALTER TYPE ... RENAME TO` only renames the type, preserves values and dependencies):
+
+```sql
+ALTER TYPE deliverable_status RENAME TO "DeliverableStatus";
+ALTER TYPE memory_category    RENAME TO "MemoryCategory";
+ALTER TYPE decision_status    RENAME TO "DecisionStatus";
+ALTER TYPE risk_tier          RENAME TO "RiskTier";
+ALTER TYPE approval_type      RENAME TO "ApprovalType";
+ALTER TYPE thread_status      RENAME TO "ThreadStatus";
+```
+
+Confirmed with:
+```sql
+SELECT typname FROM pg_type WHERE typnamespace = 'public' AND typtype = 'e' ORDER BY typname;
+```
+
+No new Prisma migration was needed — the schema was already correct; only the DB-side names were wrong. No application code changes required.
+
+### Verification
+
+```bash
+# After fix
+curl -X POST .../api/v1/deliverables -d '{"projectId":"cmreom2ib...","name":"Brand Strategy Document"}'
+# → 201 Created
+
+curl -X POST .../api/v1/project-memory -d '{"projectId":"cmreom2ib...","category":"NOTE","content":"..."}'
+# → 201 Created
+
+curl -X POST .../api/v1/project-decisions -d '{"projectId":"cmreom2ib...","title":"...","status":"PROPOSED"}'
+# → 201 Created
+```
+
+All three features now create records successfully via the UI as well.
+
+### Prevention
+
+- **Standardize enum casing in the database** — all Prisma-generated enums should use PascalCase matching the schema. Add a pre-deploy check: `prisma db pull` and diff against `prisma/schema.prisma`; any case mismatch fails the deploy.
+- **Audit all enum types** for casing consistency:
+  ```sql
+  SELECT typname FROM pg_type
+  WHERE typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+  AND typtype = 'e' ORDER BY typname;
+  ```
+  Any lowercase enum that's referenced by a Prisma model needs renaming.
+- Add a CI step that runs `prisma generate` against a fresh DB and verifies all `findX/createX/updateX` calls succeed without case-sensitivity errors.
+
+---

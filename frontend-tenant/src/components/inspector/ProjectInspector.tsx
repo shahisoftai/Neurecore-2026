@@ -95,7 +95,7 @@ export function ProjectInspector({ id }: { id: string }) {
     setHealthLoading(true);
     projectHealthService
       .getHealth(id)
-      .then((h) => { if (h) setHealth(h); })
+      .then((h) => { if (h && Array.isArray(h.signals)) setHealth(h); })
       .catch(() => { /* health is optional */ })
       .finally(() => setHealthLoading(false));
   }, [id]);
@@ -184,13 +184,13 @@ export function ProjectInspector({ id }: { id: string }) {
               setHealthLoading(true);
               try {
                 const h = await projectHealthService.recalculateHealth(id);
-                setHealth(h);
+                if (h && Array.isArray(h.signals)) setHealth(h);
               } finally {
                 setHealthLoading(false);
               }
             }}
           />
-          {health && (
+          {health && Array.isArray(health.signals) && (
             <>
               <HealthScoreBar health={health} />
               <div className="space-y-1">

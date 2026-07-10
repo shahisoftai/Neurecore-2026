@@ -139,7 +139,7 @@ export class ApprovalChainsService {
    */
   async findPendingWorkflows(tenantId: string, riskTier?: string) {
     return this.repository.findWorkflows(tenantId, {
-      status: ['PENDING', 'IN_PROGRESS'],
+      status: ['PENDING'],
       riskTier,
     });
   }

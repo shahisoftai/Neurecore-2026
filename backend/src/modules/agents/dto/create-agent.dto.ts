@@ -6,7 +6,7 @@ import {
   IsArray,
   IsObject,
   MaxLength,
-  IsUUID,
+
   Min,
   Max,
 } from 'class-validator';
@@ -14,7 +14,7 @@ import { AgentType } from '@prisma/client';
 
 export class CreateAgentDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   tenantId?: string;
 
   @IsString()

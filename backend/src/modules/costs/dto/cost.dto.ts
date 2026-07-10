@@ -15,7 +15,7 @@ import {
   IsInt,
   Min,
   Max,
-  IsUUID,
+
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
@@ -61,7 +61,7 @@ export class CostQueryDto {
   endDate?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   agentId?: string;
 
   @IsOptional()
@@ -152,7 +152,7 @@ export class CreateBudgetPolicyDto {
   action?: BudgetAction = BudgetAction.ALERT;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   departmentId?: string;
 }
 
@@ -180,7 +180,7 @@ export class UpdateBudgetPolicyDto {
   action?: BudgetAction;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   departmentId?: string;
 }
 

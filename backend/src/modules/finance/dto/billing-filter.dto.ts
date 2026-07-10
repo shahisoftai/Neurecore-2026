@@ -3,14 +3,14 @@ import {
   IsInt,
   Min,
   Max,
-  IsUUID,
+
   IsString,
   IsISO8601,
 } from 'class-validator';
 
 export class BillingFilterDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   tenantId?: string;
 
   @IsOptional()

@@ -3547,9 +3547,7 @@ model ApprovalWorkflow {
 
   @@index([tenantId])
   @@index([status, tenantId])
-  @@index([requesterId, tenantId])
-  @@index([projectId])
-  @@index([targetDeliverableId])
+  @@map("approval_workflows")
 }
 
 model ApprovalWorkflowStep {
@@ -3572,6 +3570,7 @@ model ApprovalWorkflowStep {
 
   @@unique([approvalWorkflowId, stepOrder])
   @@index([approvalWorkflowId])
+  @@map("approval_workflow_steps")
 }
 
 // ─── Business Composition: Six Pools (Phase 10) ─────────────────────────

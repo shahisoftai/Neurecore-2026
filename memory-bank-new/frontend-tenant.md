@@ -1,6 +1,6 @@
 # Frontend-Tenant (NeureCore tenant app)
 
-**Last verified:** 2026-07-08 23:11 PKT (FIX-026 SHIPPED + deployed — tenant-specific AI Employee profiles; see §21 below)
+**Last verified:** 2026-07-10 15:33 PKT (Tenant Portal end-to-end validation session — both frontends deployed to Contabo; 12 features tested end-to-end with `mali@live.com`; 4 backend bugs fixed; 1 frontend guard added. See §22 below.)
 **Live URL:** `https://hq.neurecore.com`
 **Internal port:** 3005
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant/`
@@ -758,6 +758,106 @@ Backend stores profile fields under `metadata.profile.*` and merges on every upd
 1. **`avatarUrl`** (uploaded image) — shown as `<img>` in a circular crop
 2. **`emoji`** — shown as the emoji character on a color-tinted circle
 3. **Initial letter** of `name` on a color-tinted circle (uses `color` if set, else zinc-700)
+
+---
+
+## 22. 2026-07-10 — Tenant Portal end-to-end validation (Kilo)
+
+Deployed frontend-tenant to Contabo and tested 12 features end-to-end with `mali@live.com`. All features are now functional. One defensive guard was added to the project page component; the other 4 fixes are backend-side (FIX-028, FIX-029, FIX-030, FIX-031 — see [backend.md §15](backend.md#15-2026-07-10--tenant-portal-validation-fixes-kilo)).
+
+### Deploy steps used (2026-07-10)
+
+```bash
+# From local workspace root
+cd /home/najeeb/Linux-Dev/neurecore-2026/neurecore
+
+# 1. Build locally (NOT just lint — catches what lint misses)
+cd frontend-tenant && rm -rf .next && npm run build && cd ..
+#   # → 31 routes compiled, no errors
+
+# 2. Sync to Contabo
+rsync -az --delete frontend-tenant/.next/ contabo:/opt/neurecore/frontend-tenant/.next/
+#   # Important: --delete to clear stale chunks
+
+# 3. Restart PM2 process
+ssh contabo "pm2 restart neurecore-tenant"
+#   # → neurecore-tenant online, port 3005, ready in ~10s
+
+# 4. Verify
+curl -sk -o /dev/null -w "  hq    %{http_code}\n" https://hq.neurecore.com/
+curl -sk -o /dev/null -w "  hq api %{http_code}\n" https://hq.neurecore.com/api/v1/health
+```
+
+### Defensive guard added — `ProjectInspector.tsx`
+
+**File:** `frontend-tenant/src/components/inspector/ProjectInspector.tsx`
+
+The project page crashed with `TypeError: Cannot read properties of undefined (reading 'map')` at `health.signals.map` whenever the `getHealth` API returned an object with `signals: undefined` (which happens when the project has no health record yet — the DB returns `data: null` → `unwrapItem` returns `null` → but edge cases can leak a malformed object).
+
+**Before:**
+```tsx
+{health && (
+  <>
+    <HealthScoreBar health={health} />
+    <div className="space-y-1">
+      {health.signals.map((s) => (    // ← crashes if signals is undefined
+        <SignalRow key={s.name} signal={s} />
+      ))}
+    </div>
+    ...
+  </>
+)}
+```
+
+**After:**
+```tsx
+{health && Array.isArray(health.signals) && (
+  <>
+    <HealthScoreBar health={health} />
+    <div className="space-y-1">
+      {health.signals.map((s) => (
+        <SignalRow key={s.name} signal={s} />
+      ))}
+    </div>
+    ...
+  </>
+)}
+```
+
+Same guard added to the `recalculateHealth` callback so a malformed response can't `setHealth` with an invalid object.
+
+This follows the **FIX-019 defensive patterns** ([fixes.md](fixes.md#defensive-patterns-cheat-sheet-from-fix-018--fix-019)): every consumer of API data must defensively guard even though the `unwrapItem` function in `services/unwrap.ts` should ideally catch null data first.
+
+### Features tested end-to-end (2026-07-10)
+
+| # | Feature | Result | Notes |
+|---|---|---|---|
+| 1 | Project page load | ✅ | No crash, all 3 projects load |
+| 2 | Status transitions (LEAD→PROPOSAL_SENT→WON→ACTIVE) | ✅ | Gamma Brand Campaign Q3 full pipeline |
+| 3 | Stages management (add new stage) | ✅ | "Review" stage added |
+| 4 | Team assignment | ✅ | REVIEWER AI user_mali_test assigned |
+| 5 | Goals (create) | ✅ | Required FIX-028 (UUID validation) |
+| 6 | Deliverables (create) | ✅ | "Brand Strategy Document" DRAFT |
+| 7 | Knowledge → Memory (create) | ✅ | Required FIX-031 (enum rename) |
+| 8 | Knowledge → Decisions (create) | ✅ | Required FIX-031 (enum rename) |
+| 9 | Approvals modal load | ✅ | Required FIX-029 + FIX-030 |
+| 10 | Customer list + detail | ✅ | All 3 customers navigable |
+| 11 | Dashboard / Home page | ✅ | Creatio-style 3-column with LiveFeed, KPIs, Quick Actions |
+| 12 | Project creation wizard (3 steps) + deletion | ✅ | Created "Test Project for Deletion" then deleted it |
+
+### Known browser console issues (pre-existing)
+
+- **`Socket.IO 400 errors`** on every page (`/socket.io/?EIO=4&transport=polling&sid=...` returns 400). Real-time features (Activity Feed push, Live presence, Approvals WS) are silently broken. See [pending-tasks.md D22](pending-tasks.md).
+
+### Files modified (frontend-tenant) — needs git commit
+
+```bash
+git status frontend-tenant/
+# modified: src/components/inspector/ProjectInspector.tsx
+# modified: src/services/unwrap.ts  (earlier session — was an issue with null data envelopes)
+```
+
+Sync to Contabo was via `rsync -az --delete` to the `.next/` output. The source files in `frontend-tenant/src/` are **not yet committed** (see [pending-tasks.md D23](pending-tasks.md)).
 
 ---
 

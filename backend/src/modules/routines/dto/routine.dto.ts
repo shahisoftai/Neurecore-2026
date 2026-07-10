@@ -19,7 +19,7 @@ import {
   Min,
   Max,
   IsNotEmpty,
-  IsUUID,
+
   Matches,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
@@ -76,11 +76,11 @@ export class RoutineConditionalEdgeDto {
 // ─── Node & Config DTOs (Depend on RetryPolicyDto) ─────────────────────────────
 
 export class NodeConfigDto {
-  @IsUUID()
+  @IsString()
   @IsOptional()
   agentId?: string;
 
-  @IsUUID()
+  @IsString()
   @IsOptional()
   toolId?: string;
 
@@ -309,7 +309,7 @@ export class ExecuteRoutineDto {
   @IsOptional()
   input?: Record<string, unknown>;
 
-  @IsUUID()
+  @IsString()
   @IsOptional()
   agentId?: string;
 }
@@ -359,7 +359,7 @@ export class ListRoutinesQueryDto {
   order?: 'asc' | 'desc';
 
   // Phase 1 Gap 1 — filter routines by owner agent (used by workspace tab)
-  @IsUUID()
+  @IsString()
   @IsOptional()
   ownerAgentId?: string;
 

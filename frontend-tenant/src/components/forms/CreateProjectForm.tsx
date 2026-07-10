@@ -48,9 +48,13 @@ export function CreateProjectForm({
     setError(null);
     try {
       // Backwards-compat: payload shape mirrors CreateProjectDto.
-      const project = await projectsService.create(
+      const project = await createProject(
         payload as Parameters<typeof projectsService.create>[0],
       );
+      if (!project) {
+        setError('Failed to create project');
+        return;
+      }
       const id = project.id ?? '';
       setProjectId(id);
       setProjectName((project.name as string | undefined) ?? '');
@@ -58,7 +62,6 @@ export function CreateProjectForm({
         const pt = await projectTypesService.get(payload.projectTypeId as string);
         setProjectTypeName(pt?.name);
       }
-      await createProject(payload as Parameters<typeof projectsService.create>[0]);
       await fetchCompleteness(id);
       setStep('discovery');
     } catch (e) {

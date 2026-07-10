@@ -28,8 +28,22 @@ export function unwrapItem(res: any): any | null {
   // Direct: axios response is { data: { status: "success", data: {...} } }
   const body = res?.data ?? res;
 
+  // Error responses — return null so callers can treat as "not found"
+  if (body && typeof body === 'object' && body.status === 'error') {
+    return null;
+  }
+
   // Backend wraps success responses: { status: "success", data: {...} }
-  if (body && typeof body === 'object' && body.status === 'success' && 'data' in body && body.data) {
+  // Must check for non-null/undefined data explicitly so we don't fall through
+  // and return the wrapper itself when data is null.
+  if (
+    body &&
+    typeof body === 'object' &&
+    body.status === 'success' &&
+    'data' in body &&
+    body.data !== null &&
+    body.data !== undefined
+  ) {
     return body.data;
   }
 
@@ -40,7 +54,14 @@ export function unwrapItem(res: any): any | null {
   // Handle nested data object (e.g., { status, data: { user, tokens } })
   if (data?.data && !Array.isArray(data.data)) return data.data;
   // Handle flat data object (e.g., { user, tokens } at top level of response)
-  if (typeof data === "object" && data !== null && !Array.isArray(data))
+  // But only if it doesn't look like a wrapped envelope (has status/meta)
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    !Array.isArray(data) &&
+    !('status' in data) &&
+    !('meta' in data)
+  )
     return data;
   return null;
 }

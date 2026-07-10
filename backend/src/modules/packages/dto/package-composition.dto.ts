@@ -12,26 +12,26 @@ import {
   IsArray,
   IsInt,
   IsOptional,
-  IsUUID,
+  IsString,
   Min,
 } from 'class-validator';
 
 export class UpdatePackageCompositionDto {
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsString({ each: true })
   @ArrayMaxSize(200)
   departmentIds?: string[];
 
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsString({ each: true })
   @ArrayMaxSize(200)
   aiAgentIds?: string[];
 
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsString({ each: true })
   @ArrayMaxSize(100)
   featureIds?: string[];
 
@@ -47,25 +47,25 @@ export class UpdatePackageCompositionDto {
 }
 
 export class PackagePreviewDto {
-  @IsUUID('4')
+  @IsString()
   industryId!: string;
 
-  @IsUUID('4')
+  @IsString()
   tierTemplateId!: string;
 
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsString({ each: true })
   departmentIds?: string[];
 
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsString({ each: true })
   @Type(() => String)
   aiAgentIds?: string[];
 
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsString({ each: true })
   featureIds?: string[];
 }

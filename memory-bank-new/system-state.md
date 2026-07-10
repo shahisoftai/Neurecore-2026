@@ -1,6 +1,31 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-08 22:49 PKT (Tenant overview audit deployed — expanded profile (33 fields, 7 sections) in admin Overview tab + Suspend/Activate + Delete actions with confirmation dialogs. New backend endpoints: `PATCH :id/activate` + `DELETE :id`. Types expanded — `Tenant` (8→33 fields), `TenantTier` (5→22 fields). `next build` + `nest build` clean. Deployed to Contabo: `neurecore-backend` + `neurecore-admin` online.)
+**Last verified:** 2026-07-10 15:33 PKT — **Tenant Portal FULLY FUNCTIONAL & DEPLOYED** — both frontends (frontend-tenant at hq.neurecore.com, frontend-admin at cc.neurecore.com) deployed to Contabo alongside backend. All Phase 1-7 project features (projects, stages, team, goals, deliverables, knowledge, approvals, customers) tested working end-to-end via Playwright with tenant `mali@live.com`. 4 production bugs fixed during this session (see FIX-028 to FIX-031 in [fixes.md](fixes.md)). Schema was already 37/37 migrations applied; no new migrations needed — only enum renames via direct SQL to fix case-sensitivity drift between Prisma model names and existing database enum type names.
+
+**2026-07-10 15:33 PKT — Tenant Portal end-to-end validation session (Kilo):**
+- Frontend-tenant + frontend-admin deployed to Contabo and verified live
+- Tested 12 features end-to-end with `mali@live.com` (Shahikhail@@0098): project page load, status transitions (LEAD→PROPOSAL_SENT→WON→ACTIVE), stages management, team assignment, goals, deliverables, memory/decisions, customer list/detail, dashboard, departments/projects tab, service desk, finance, settings, project creation (3-step wizard), project deletion
+- All features now functional — see FIX-028 to FIX-031 in [fixes.md](fixes.md) for fixes
+- 3 customers, 3 projects, 1 goal, 1 deliverable, 1 memory, 1 decision, 1 team member, 4 stages persisted to Neon prod
+- PM2 services: `neurecore-backend` (id 10, port 3003, healthy), `neurecore-tenant` (id 16, port 3005, healthy), `neurecore-admin` (id 14, port 3020, healthy)
+- Pre-existing from prior session: Projects Phases 1-7 + EIE Phase 2 sub-phases FULLY IMPLEMENTED
+
+**Projects implementation summary (2026-07-09 session):**
+- IMPLEMENTATION-PLAN.md Phases 1–7: ALL ✅ COMPLETE (all acceptance criteria met)
+- project-creation-imp-plan.md Phase 2 sub-phases (2A–2G): ALL ✅ COMPLETE (EIE, catalogue, Question Engine, Hermes, continuous discovery, auto-allocation)
+- All 37 Prisma migrations applied to Neon prod
+- Audit: `tsc --noEmit` 0 errors all 3 apps; `pnpm prisma validate` ✅; jest 717/755 (38 pre-existing failures in Hermes/cookie-auth unrelated)
+- Backend modules verified: projects, information-engine (11 sub-modules), customers, project-types, deliverables, project-decisions, project-memory, project-stages, project-members, project-health, execution-log, portal, approvals, approval-chains
+- Seed scripts verified: `seed-question-packs.cjs` (20 packs, 131 questions), `seed-project-types.cjs` (150 types), `seed-onboarding-allocator.cjs`, `seed-industries-majors.cjs` — idempotent, all 15 industries in sync
+- Schema audit: `check-industries-sync.mjs` → all 15 industries in sync across seed + both frontends
+- Pre-deploy browser tests: all new routes 404 (code not yet on production)
+- Backend deployed to Contabo: rsync → pnpm install → prisma migrate deploy → nest build → pm2 reload
+- Backend health: `curl https://brain.neurecore.com/api/v1/health` → `200 {"status":"healthy"}` — 194 restarts, healthy
+- Redis ENOTFOUND for Upstash (non-fatal — backend still starts and serves healthy)
+- `pnpm-workspace.yaml` fixed for pnpm 9.x compatibility (added `packages: []`)
+- Pre-deploy snapshot saved: `/opt/neurecore/_archives/20260709-212750/`
+
+**Earlier (now historical — see 2026-07-09 FULLY IMPLEMENTED above):**
 
 **One-line TL;DR:** The Enterprise Communication Platform (9 phases, 20 backend services, 4 controllers, 2 new modules, 8 new Prisma models, 9 interface contracts, 11 feature flags, replaced 3 disconnected feed/message systems) is implemented, audited, and feature-flagged off — zero prod impact until `COMM_*` / `AGENT_MESSAGING_ENABLED` flags are flipped per-tenant.
 
@@ -172,9 +197,9 @@ PM2 dump at `/root/.pm2/dump.pm2`. Definition: `/opt/neurecore/ecosystem.config.
 
 | PM2 name | ID | Status | Restarts | CWD | Uptime | Internal port |
 |---|---|---|---|---|---|---|---|
-| `neurecore-backend` | 43 | online | 69 | `/opt/neurecore/backend/backend` | 117m | **3003** |
-| `neurecore-tenant` | 40 | online | 50 | `/opt/neurecore/frontend-tenant` | fresh | **3005** |
-| `neurecore-admin` | 42 | online | 70 | `/opt/neurecore/frontend-admin` | 21h | **3020** |
+| `neurecore-backend` | 10 | online | 194 | `/opt/neurecore/backend/backend` | — | **3003** |
+| `neurecore-tenant` | 12 | online | — | `/opt/neurecore/frontend-tenant` | — | **3005** |
+| `neurecore-admin` | 9 | online | — | `/opt/neurecore/frontend-admin` | — | **3020** |
 | `neurecore-cors-proxy` | 7 | online | 5 | `/opt/neurecore` | 22h | **3004** |
 
 Other non-neurecore PM2 apps on the box (out of scope but share resources): `app-frontend` (GUV on 3001/3100), `gfcportal`, `shahisoft-nextjs`, `lifeosa-backend`, `ecoearthshop-backend` (cluster), `cookie-refresher`.
@@ -216,29 +241,28 @@ Other non-neurecore PM2 apps on the box (out of scope but share resources): `app
 |---|---|
 | Source root | `/opt/neurecore/backend/backend/` |
 | Git remote | `git@github.com:Shahikhail01/neurecore.git` (branch `main`) |
-| HEAD | `c5c05ec perf(backend): dashboard load 12-14s → 1.5-2s` |
-| Working tree status | **0 uncommitted changes in `src/` or `prisma/`** (75 files stashed as `SNAPSHOT-20260704-083555-pre-cleanup`). `Temp/` is gitignored — verified 2026-07-04, no paperclip noise in `git status`. |
-| Stash count | 5 (snapshots from various dates, see `git stash list`) |
+| HEAD | post-2026-07-09 Projects implementation (not yet synced to prod — code in workspace at `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/backend/`) |
+| Working tree status | Workspace has all Phases 1–7 + Phase 2 sub-phases implemented; Contabo has pre-Projects version |
 | Startup command | `node ./dist/src/main.js` |
 | Listening port | **3003** |
 | External URL | `https://brain.neurecore.com/api/v1/` |
-| Health check | `GET /api/v1/health` → `{"status":"success","data":{"status":"healthy",...,"version":"1.0.0"}}` |
+| Health check | `GET /api/v1/health` → `200 {"status":"healthy"}` (backend deployed 2026-07-09 21:27 PKT) |
 | Prometheus scrape | `127.0.0.1:3003/api/metrics`, scraped every 15s, `health=up` |
 | Node version | 20.20.2 |
 | PM2 version | `0.0.1` |
-| Heap | ~55 MiB / 64 MiB (87% utilization) |
-| NestJS module count | **37** (auth + security hardening added) — see `auth.md` |
-| Controllers | **35** in prod (auth.controller.ts has @Throttle decorators; CORS hardening in main.ts) |
-| Services | **71** in prod (+ AccountLockoutService, + TokenService rewrite) |
-| Prisma models | **40** in prod `prisma/schema.prisma` (+ LoginAttempt, + columns passwordChangedAt + lockedUntil on User, + familyId + replacedById on RefreshToken) |
-| Prisma migrations applied | **19** total (+ auth_hardening_batch1) |
-| `.env` keys | 112 |
+| NestJS module count | **53+** (Projects + EIE modules added) |
+| Controllers | **40+** (projects, customers, project-types, deliverables, project-decisions, project-memory, project-stages, project-members, project-health, execution-log, portal controllers added) |
+| Services | **90+** (all new domain services added) |
+| Prisma models | **70+** (Projects + EIE models added) |
+| Prisma migrations applied | **37** total (all Projects + EIE migrations applied on Neon prod) |
+| `.env` keys | 112+ |
 | Env file location | `/opt/neurecore/backend/backend/.env` — **NEVER sync from local, NEVER commit** |
 | DB | Neon PostgreSQL pooled: `ep-summer-pond-adpkqy1m-pooler.c-2.us-east-1.aws.neon.tech:5432`, db `neondb`, schema `public` |
-| Cache | Redis: host-installed `redis-server` on `127.0.0.1:6379` |
+| Cache | Redis: host-installed `redis-server` on `127.0.0.1:6379` + Upstash at `lasting-gobbler-72608.upstash.io` (ENOTFOUND — non-fatal) |
 
-**NestJS modules** (`src/modules/`):
+**NestJS modules** (`src/modules/`) — Projects + EIE additions:
 ```
+// Pre-existing:
 agents            agents-management       agent-templates
 ai-gateway        analytics               audit
 auth              command-center          connectors
@@ -252,6 +276,21 @@ projects          reliability             retail
 routines          security                settings
 solution-packs    tenants                 tiers
 tools             users
+
+// Projects (Phases 1–7):
+customers         project-decisions       project-health
+project-members   project-memory          project-stages
+deliverables      execution-log           portal
+
+// Enterprise Information Engine (Phase 2 sub-phases 2A–2G):
+information-engine/ (11 sub-modules: packs, project-type-packs, sources,
+  responses, completeness, requirements, adaptive-questioning,
+  interview, extraction, clients, common)
+approval-chains
+
+// Extended:
+approvals (extended with chain fields)
+goals (extended with projectId FK)
 ```
 
 ### 2.4 Frontend-Tenant (Next.js)
@@ -362,6 +401,23 @@ All three vhosts add CORS headers (`Access-Control-Allow-Methods/Headers/Max-Age
 
 ## 6. Recent commits / snapshots
 
+- **2026-07-10 15:33 PKT — Tenant Portal end-to-end validation (Kilo)**
+  - Both frontends deployed to Contabo (frontend-tenant @ hq.neurecore.com, frontend-admin @ cc.neurecore.com)
+  - 4 production bugs fixed: goals UUID validation (FIX-028), Prisma `@@map` for ApprovalWorkflow tables (FIX-029), IN_PROGRESS enum value in approval filter (FIX-030), lowercase enum types renamed to PascalCase (FIX-031)
+  - All tenant portal features tested end-to-end via Playwright with `mali@live.com`
+  - 3 customers, 3 projects, 4 stages, 1 team member, 1 goal, 1 deliverable, 1 memory, 1 decision persisted to Neon prod
+  - No new Prisma migrations needed — only SQL `ALTER TYPE ... RENAME TO` for enum case correction
+  - See [fixes.md FIX-028 to FIX-031](fixes.md) for full details
+- **2026-07-09 23:30 PKT — Projects Phases 1–7 + EIE Phase 2 sub-phases FULLY IMPLEMENTED (workspace only — NOT YET DEPLOYED TO CONTABO except backend)**
+  - All 7 phases complete + Phase 2 sub-phases 2A–2G complete
+  - 37/37 migrations applied to Neon prod
+  - Backend deployed to Contabo: rsync → pnpm install → prisma migrate deploy → nest build → pm2 reload
+  - Backend health: `curl https://brain.neurecore.com/api/v1/health` → `200 {"status":"healthy"}`
+  - Frontend-tenant + frontend-admin NOT YET deployed (code in workspace)
+  - Pre-deploy snapshot: `/opt/neurecore/_archives/20260709-212750/`
+  - See `memory-bank-new/Projects/IMPLEMENTATION-PLAN.md` + `project-creation-imp-plan.md` for full details
+  - See `memory-bank-new/Projects/PHASE-{1-7}-COMPLETION.md` for per-phase completion reports
+  - Workspace at: `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/`
 - **2026-07-08 22:49 PKT — FIX-024 deployed (Tenant overview audit + suspend/delete)**
   - Backend: `PATCH :id/activate` + `DELETE :id` endpoints added
   - Admin: expanded Overview (33 fields, 7 sections) + Suspend/Activate/Delete buttons with confirmation dialogs

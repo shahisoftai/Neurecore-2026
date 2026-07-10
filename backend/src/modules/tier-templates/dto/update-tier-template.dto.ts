@@ -7,7 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  IsUUID,
+
   Length,
   Min,
 } from 'class-validator';
@@ -39,6 +39,6 @@ export class UpdateTierTemplateDto {
   sortOrder?: number;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsString()
   defaultBillingTierId?: string | null;
 }
