@@ -38,6 +38,7 @@ export class PrismaGoalRepository implements IGoalRepository {
         departmentId: data.departmentId,
         targetDate: data.targetDate ? new Date(data.targetDate) : undefined,
         projectId: data.projectId ?? null,
+        measurableCriteria: data.measurableCriteria ?? null,
       },
     });
   }
@@ -133,6 +134,9 @@ export class PrismaGoalRepository implements IGoalRepository {
       updateData.completedAt = data.completedAt
         ? new Date(data.completedAt)
         : null;
+    }
+    if (data.measurableCriteria !== undefined) {
+      updateData.measurableCriteria = data.measurableCriteria;
     }
 
     return this.prisma.goal.update({

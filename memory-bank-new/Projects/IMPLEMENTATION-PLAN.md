@@ -1049,6 +1049,30 @@ The most important admin feature for Projects is the `ProjectType` editor — it
 
 ---
 
+### Phase 8 — Project Completion & Audit Remediation ✅ COMPLETE (2026-07-11)
+**Goal:** Close gaps from the Phase 7 audit. Ship leftover AI automation wiring. Make project creation synchronously guarantee its goals.
+
+| # | Backend | Frontend-tenant | Frontend-admin |
+|---|---|---|---|
+| 8.1 | ✅ Goal pre-population **synchronous** in `ProjectsService.create()` — by the time create returns, goals exist | — | — |
+| 8.2 | ✅ `ProjectMemoryService.updateConfidence()` + dedicated `confidence Int?` column + migration `20260711_phase8_memory_confidence` | — | — |
+| 8.3 | ✅ `ProjectDecisionService.getForProject()` convenience method | — | — |
+| 8.4 | ✅ `ProjectAutomationService.replan()` real implementation (was stub) | — | — |
+| 8.5 | ✅ Project-memory agent tools refactored to use `ProjectMemoryService` (proper tenant scoping) | — | — |
+| 8.6 | ✅ `ChiefOfStaffService` event subscribers emit to humans via `EventsGateway` (`cos:notification` + `cos:project_update`) | — | — |
+| 8.7 | ✅ `ProjectHealthService` budget signal + analytics now read `Invoice.total` per project/customer/industry | — | — |
+| 8.8 | ✅ `Goal.measurableCriteria` in TS interface + repository | — | — |
+
+**Deliverable:** Project creation has a guaranteed post-condition (goals exist). All audit gaps closed. 694/694 tests still pass. Schema migrated on Contabo. Backend deployed and verified live.
+See [PHASE-8-COMPLETION.md](./PHASE-8-COMPLETION.md) for the full audit + design rationale.
+
+**Deferred to Phase 9:**
+- AI-weighted health score (concept §15) — needs product sign-off on per-recalc LLM cost.
+- Cross-Project Intelligence (concept §17) — deferred per concept ("architect for now, build later").
+- Proactive Chief of Staff agent — current CoS emits notifications; proactive agent is Phase 9.
+
+---
+
 ## 7. Anti-Patterns to Avoid
 
 | Rule | Why |
@@ -1082,11 +1106,12 @@ The most important admin feature for Projects is the `ProjectType` editor — it
 ```
 Phase 1 (Customer + Project Core) ✅ COMPLETE
   └─ Phase 2 (ProjectType) ✅ COMPLETE
-       └─ Phase 3 (Goals + Tasks → Deliverables) — requires ProjectType for task templates
-            └─ Phase 4 (Approval + Execution Log) — requires Deliverable model
-                 └─ Phase 5 (Memory + Decisions) — can start anytime after Phase 1
-                      └─ Phase 6 (Health + BI) — requires all above data
-                           └─ Phase 7 (Client Portal) — requires Phase 4 approval flow
+       └─ Phase 3 (Goals + Tasks → Deliverables) ✅ COMPLETE
+            └─ Phase 4 (Approval + Execution Log) ✅ COMPLETE
+                 └─ Phase 5 (Memory + Decisions) ✅ COMPLETE
+                      └─ Phase 6 (Health + BI) ✅ COMPLETE
+                           └─ Phase 7 (Client Portal) ✅ COMPLETE
+                                └─ Phase 8 (Audit Remediation + AI wiring) ✅ COMPLETE (2026-07-11)
 ```
 
 Phase 5 (Memory + Decisions) can run in parallel with 2/3/4 once the basic Project model exists — it's its own concern and doesn't depend on the execution chain.

@@ -18,6 +18,7 @@ import { SheetsTool } from './built-in/sheets.tool';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { ModelsModule } from '../models/models.module';
 import { MemoryModule } from '../memory/memory.module';
+import { ProjectMemoryModule } from '../project-memory/project-memory.module';
 import {
   CreateTaskTool,
   CreateProjectTool,
@@ -96,7 +97,7 @@ import {
 import type { IStructuredTool } from './interfaces/structured-tool.interface';
 
 @Module({
-  imports: [forwardRef(() => IntegrationsModule), ModelsModule, MemoryModule],
+  imports: [forwardRef(() => IntegrationsModule), ModelsModule, MemoryModule, ProjectMemoryModule],
   controllers: [ToolsController],
   providers: [
     HttpRequestTool,

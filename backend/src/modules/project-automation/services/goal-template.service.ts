@@ -52,7 +52,7 @@ export class GoalTemplateService {
         const goal = await this.goalsService.create(
           {
             title: entry.title.trim(),
-            description: entry.measurableCriteria ?? undefined,
+            measurableCriteria: entry.measurableCriteria ?? undefined,
             projectId,
           },
           tenantId,

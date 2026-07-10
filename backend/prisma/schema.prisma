@@ -2292,6 +2292,7 @@ model ProjectMemory {
   sourceEntityId   String?
   isPinned         Boolean   @default(false)
   isAiGenerated    Boolean   @default(false)
+  confidence       Int?      // 0-100 — how certain this is still true (Phase 8)
   supersededBy     String?   // id of the entry that supersedes this one
   metadata         Json      @default("{}")
   createdAt        DateTime  @default(now())

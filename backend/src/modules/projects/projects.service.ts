@@ -28,6 +28,7 @@ import {
 import type { ProjectTypesService } from '../project-types/project-types.service';
 import type { ProjectsAdapter } from '../information-engine/clients/projects.adapter';
 import type { ProjectAutomationService } from '../project-automation/project-automation.service';
+import type { GoalTemplateService } from '../project-automation/services/goal-template.service';
 
 @Injectable()
 export class ProjectsService {
@@ -39,6 +40,7 @@ export class ProjectsService {
     private readonly projectTypesService: ProjectTypesService,
     @Optional() private readonly projectsAdapter?: ProjectsAdapter,
     @Optional() private readonly projectAutomation?: ProjectAutomationService,
+    @Optional() private readonly goalTemplateService?: GoalTemplateService,
   ) {}
 
   async create(input: CreateProjectInput, tenantId: string): Promise<Project> {
@@ -99,6 +101,31 @@ export class ProjectsService {
     // without the engine; production wiring always provides it.
     if (this.projectsAdapter) {
       await this.projectsAdapter.onProjectCreated(project, tenantId, input);
+    }
+
+// Phase 8: Synchronously create goals from goalTemplate so the project is
+    // guaranteed to have its goals by the time create() returns. The rest of
+    // automation (agent spawning, task planning, memory seeding, CoS) remains
+    // fire-and-forget via ProjectAutomationService — those are longer-running
+    // and not part of the create contract. Goal creation is short and the
+    // foundation of the project, so we make it synchronous.
+    if (input.projectTypeId && this.goalTemplateService) {
+      try {
+        const goalResult = await this.goalTemplateService.createGoalsFromTemplate(
+          project.id,
+          input.projectTypeId,
+          tenantId,
+        );
+        if (goalResult.errors.length > 0) {
+          this.logger.warn(
+            `Phase 8: ${goalResult.errors.length} goal(s) failed to seed for project ${project.id}: ${goalResult.errors.join('; ')}`,
+          );
+        }
+      } catch (err) {
+        this.logger.error(
+          `Phase 8: goal seeding failed for project ${project.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
 
     // Phase 3A: Fire-and-forget project automation.

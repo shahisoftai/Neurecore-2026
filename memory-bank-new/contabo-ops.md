@@ -1,6 +1,6 @@
 # Contabo Operations — DOs and DONTs
 
-**Last verified:** 2026-07-08 23:11 PKT (FIX-026 deployed — tenant-specific AI Employee profiles. Backend: extended `PATCH /agents/:id` + new `POST /uploads/agent-avatar`. Tenant UI: editable profile section in `AgentInspector`, avatar component in `AgentCard`.)
+**Last verified:** 2026-07-11 00:30 PKT (Phase 8 deployed — see `memory-bank-new/Projects/PHASE-8-COMPLETION.md`. Migration `20260711_phase8_memory_confidence` applied; goal pre-population now synchronous; CoS subscribers emit to humans via EventsGateway.)
 **Audience:** Anyone working on the Contabo box (`vmi2954830.contaboserver.net`, `109.123.248.253`).
 **Sibling docs:** [system-state.md](system-state.md) · [operations.md](operations.md) · [backend.md](backend.md) · [frontend-admin.md](frontend-admin.md) · [frontend-tenant.md](frontend-tenant.md)
 

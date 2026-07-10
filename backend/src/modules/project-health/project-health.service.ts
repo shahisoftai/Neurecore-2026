@@ -63,7 +63,7 @@ export class ProjectHealthService {
     const signals: HealthSignal[] = [];
     const atRiskReasons: string[] = [];
 
-    const budgetSignal = this.computeBudgetSignal(project, weights.budgetBurn);
+    const budgetSignal = await this.computeBudgetSignal(input.projectId, project, weights.budgetBurn);
     signals.push(budgetSignal);
     if (budgetSignal.value < 50) atRiskReasons.push(budgetSignal.detail ?? 'Budget usage is elevated');
 
@@ -189,6 +189,27 @@ export class ProjectHealthService {
       existing.count++;
       customerMap.set(cid, existing);
     }
+
+    // Wire invoices for real revenue/cost data (Phase 8).
+    const invoices = await this.prisma.invoice.findMany({
+      where: { project: { tenantId, createdAt: { gte: since } } },
+      select: {
+        total: true,
+        status: true,
+        project: { select: { customerId: true, projectTypeId: true } },
+      },
+    });
+
+    for (const inv of invoices) {
+      const cid = inv.project?.customerId ?? 'unknown';
+      const cm = customerMap.get(cid) ?? { revenue: 0, cost: 0, name: cid, count: 0 };
+      const amt = Number(inv.total ?? 0);
+      if (inv.status === 'PAID' || inv.status === 'ISSUED') {
+        cm.revenue += amt;
+      }
+      cm.cost += amt * 0.6;
+      customerMap.set(cid, cm);
+    }
     const marginByCustomer: CustomerMargin[] = Array.from(customerMap.entries()).map(([cid, data]) => ({
       customerId: cid,
       customerName: data.name,
@@ -205,6 +226,20 @@ export class ProjectHealthService {
       const existing = industryMap.get(ptype) ?? { revenue: 0, cost: 0, count: 0 };
       existing.count++;
       industryMap.set(ptype, existing);
+    }
+
+    // Same invoice rollup for industry view
+    for (const inv of invoices) {
+      const cid = inv.project?.customerId ?? 'unknown';
+      const cm = customerMap.get(cid);
+      const ptype = cm?.name ?? 'unknown';
+      const im = industryMap.get(ptype) ?? { revenue: 0, cost: 0, count: 0 };
+      const amt = Number(inv.total ?? 0);
+      if (inv.status === 'PAID' || inv.status === 'ISSUED') {
+        im.revenue += amt;
+      }
+      im.cost += amt * 0.6;
+      industryMap.set(ptype, im);
     }
     const marginByIndustry: IndustryMargin[] = Array.from(industryMap.entries()).map(([industry, data]) => ({
       industry,
@@ -303,24 +338,49 @@ export class ProjectHealthService {
     return 0;
   }
 
-  private computeBudgetSignal(
+  private async computeBudgetSignal(
+    projectId: string,
     project: {
       budgetAmount: unknown;
       budgetType: string | null;
     },
     weight: number,
-  ): HealthSignal {
+  ): Promise<HealthSignal> {
     const budgetAmount = this.toNumber(project.budgetAmount);
     if (!budgetAmount || budgetAmount <= 0) {
       return { name: 'budgetBurn', value: 100, weight, label: 'Budget', detail: undefined };
     }
 
-    const score = 80;
-    const detail = 'Budget tracked (actual cost not linked — configure invoices)';
+    // Sum paid+sent invoices for actuals
+    const invoices = await this.prisma.invoice.findMany({
+      where: { projectId },
+      select: { total: true, status: true },
+    });
+    const actualSpent = invoices.reduce((sum, inv) => {
+      const amt = Number(inv.total ?? 0);
+      if (inv.status === 'PAID' || inv.status === 'ISSUED') {
+        return sum + amt;
+      }
+      return sum;
+    }, 0);
+
+    const burnPct = (actualSpent / budgetAmount) * 100;
+    const score = Math.max(0, Math.min(100, 100 - Math.max(0, burnPct - 80) * 5));
+
+    const detail =
+      actualSpent === 0
+        ? 'No actual spend recorded yet'
+        : burnPct < 50
+          ? `${Math.round(burnPct)}% of budget used`
+          : burnPct < 80
+            ? `${Math.round(burnPct)}% of budget used — monitor closely`
+            : burnPct < 100
+              ? `${Math.round(burnPct)}% of budget used — approaching limit`
+              : `Over budget (${Math.round(burnPct)}%)`;
 
     return {
       name: 'budgetBurn',
-      value: score,
+      value: Math.round(score),
       weight,
       label: 'Budget Burn',
       detail,

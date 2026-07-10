@@ -7,7 +7,7 @@
  * SOLID: Single Responsibility, Dependency Inversion.
  */
 
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { Prisma } from '@prisma/client';
 import type {
@@ -36,6 +36,7 @@ export class PrismaProjectMemoryRepository implements IProjectMemoryRepository {
         sourceEntityId: data.sourceEntityId ?? null,
         isPinned: data.isPinned ?? false,
         isAiGenerated: data.isAiGenerated ?? false,
+        confidence: data.confidence ?? null,
         supersededBy: null,
         metadata: (data.metadata ?? {}) as Prisma.InputJsonValue,
       },
@@ -111,6 +112,30 @@ export class PrismaProjectMemoryRepository implements IProjectMemoryRepository {
     this.logger.debug(`Memory ${id} superseded by ${supersededById}`);
   }
 
+  async updateConfidence(
+    id: string,
+    tenantId: string,
+    confidence: number,
+    supersededById?: string | null,
+  ): Promise<ProjectMemory> {
+    if (confidence < 0 || confidence > 100) {
+      throw new BadRequestException('Confidence must be between 0 and 100');
+    }
+    const existing = await this.findById(id, tenantId);
+    if (!existing) {
+      throw new NotFoundException(`ProjectMemory ${id} not found`);
+    }
+    const updateData: Prisma.ProjectMemoryUpdateInput = { confidence };
+    if (supersededById !== undefined) {
+      updateData.supersededBy = supersededById;
+    }
+    const updated = await this.prisma.projectMemory.update({
+      where: { id },
+      data: updateData,
+    });
+    return this.map(updated);
+  }
+
   async search(projectId: string, query: string, tenantId: string): Promise<ProjectMemory[]> {
     // category is a typed enum — match by exact (case-insensitive) equality for known categories,
     // and fall back to ILIKE on content.
@@ -149,6 +174,7 @@ export class PrismaProjectMemoryRepository implements IProjectMemoryRepository {
     sourceEntityId: string | null;
     isPinned: boolean;
     isAiGenerated: boolean;
+    confidence: number | null;
     supersededBy: string | null;
     metadata: unknown;
     createdAt: Date;
@@ -165,6 +191,7 @@ export class PrismaProjectMemoryRepository implements IProjectMemoryRepository {
       sourceEntityId: raw.sourceEntityId,
       isPinned: raw.isPinned,
       isAiGenerated: raw.isAiGenerated,
+      confidence: raw.confidence,
       supersededBy: raw.supersededBy,
       metadata: raw.metadata as Record<string, unknown>,
       createdAt: raw.createdAt,

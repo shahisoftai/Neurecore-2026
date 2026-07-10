@@ -89,4 +89,9 @@ export class ProjectDecisionService {
   async supersede(id: string, supersededById: string): Promise<void> {
     await this.repo.supersede(id, supersededById);
   }
+
+  async getForProject(projectId: string, tenantId: string): Promise<ProjectDecision[]> {
+    const result = await this.repo.findAll({ projectId }, tenantId);
+    return result.data;
+  }
 }

@@ -16,6 +16,7 @@ import {
   ToolExecutionContext,
 } from '../interfaces/structured-tool.interface';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import { ProjectMemoryService } from '../../project-memory/project-memory.service';
 
 // ─── Enums (matching Prisma schema) ────────────────────────────────────────
 
@@ -429,6 +430,7 @@ export const AddProjectMemoryInputSchema = z.object({
   content: z.string().min(1).describe('Memory content text'),
   authorType: z.enum(['HUMAN', 'AI', 'SYSTEM']).default('AI').optional(),
   isPinned: z.boolean().default(false).optional(),
+  confidence: z.number().int().min(0).max(100).default(80).describe('Confidence score 0-100'),
 });
 export type AddProjectMemoryInput = z.infer<typeof AddProjectMemoryInputSchema>;
 
@@ -443,6 +445,7 @@ export type SearchProjectMemoryInput = z.infer<typeof SearchProjectMemoryInputSc
 export const UpdateMemoryConfidenceInputSchema = z.object({
   memoryId: z.string().describe('Memory entry ID'),
   confidence: z.number().int().min(0).max(100).describe('New confidence score 0-100'),
+  supersededById: z.string().optional().describe('Optional ID of the entry that supersedes this one'),
 });
 export type UpdateMemoryConfidenceInput = z.infer<typeof UpdateMemoryConfidenceInputSchema>;
 export type RespondToInboxItemInput = z.infer<typeof RespondToInboxItemInputSchema>;
@@ -1999,20 +2002,19 @@ export class AddProjectMemoryTool extends BaseStructuredTool {
   readonly description = 'Add a memory entry to a project (append-only log).';
   readonly category = ToolCategory.API;
   readonly inputSchema = AddProjectMemoryInputSchema;
-  constructor(private readonly prisma: PrismaService) { super(); }
+  constructor(private readonly memoryService: ProjectMemoryService) { super(); }
   protected async executeImpl(input: AddProjectMemoryInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
     if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
     try {
-      const entry = await this.prisma.projectMemory.create({
-        data: {
-          projectId: input.projectId,
-          category: input.category as never,
-          content: input.content,
-          authorType: (input.authorType ?? 'AI') as never,
-          isPinned: input.isPinned ?? false,
-          isAiGenerated: input.authorType !== 'HUMAN',
-          metadata: {},
-        },
+      const entry = await this.memoryService.create(context.tenantId, {
+        projectId: input.projectId,
+        category: input.category,
+        content: input.content,
+        authorType: input.authorType === 'HUMAN' ? 'HUMAN' : 'AI',
+        authorId: context.agentId,
+        isPinned: input.isPinned ?? false,
+        isAiGenerated: input.authorType !== 'HUMAN',
+        confidence: input.confidence ?? 80,
       });
       return { success: true, data: { memoryId: entry.id, projectId: entry.projectId, category: entry.category, createdAt: entry.createdAt.toISOString() }, metadata: { model: 'neurecore-memory-v1' } };
     } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Failed to add project memory' }; }
@@ -2024,23 +2026,24 @@ export class SearchProjectMemoryTool extends BaseStructuredTool {
   readonly description = 'Search project memory entries by keyword.';
   readonly category = ToolCategory.API;
   readonly inputSchema = SearchProjectMemoryInputSchema;
-  constructor(private readonly prisma: PrismaService) { super(); }
+  constructor(private readonly memoryService: ProjectMemoryService) { super(); }
   protected async executeImpl(input: SearchProjectMemoryInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
     if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
     try {
-      const where: Record<string, unknown> = {
-        projectId: input.projectId,
-        content: { contains: input.query, mode: 'insensitive' },
-      };
-      if (input.category) where['category'] = input.category;
-
-      const memories = await this.prisma.projectMemory.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: input.limit ?? 10,
-        select: { id: true, category: true, content: true, createdAt: true, isPinned: true },
-      });
-      return { success: true, data: { count: memories.length, memories }, metadata: { model: 'neurecore-memory-v1' } };
+      const memories = await this.memoryService.search(
+        input.projectId,
+        input.query,
+        context.tenantId,
+      );
+      const limit = input.limit ?? 10;
+      const limited = memories.slice(0, limit).map((m) => ({
+        id: m.id,
+        category: m.category,
+        content: m.content,
+        createdAt: m.createdAt.toISOString(),
+        isPinned: m.isPinned,
+      }));
+      return { success: true, data: { count: limited.length, memories: limited }, metadata: { model: 'neurecore-memory-v1' } };
     } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Failed to search project memory' }; }
   }
 }
@@ -2050,16 +2053,16 @@ export class UpdateMemoryConfidenceTool extends BaseStructuredTool {
   readonly description = 'Update the confidence score of a memory entry (0-100).';
   readonly category = ToolCategory.API;
   readonly inputSchema = UpdateMemoryConfidenceInputSchema;
-  constructor(private readonly prisma: PrismaService) { super(); }
+  constructor(private readonly memoryService: ProjectMemoryService) { super(); }
   protected async executeImpl(input: UpdateMemoryConfidenceInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
     if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
     try {
-      const existing = await this.prisma.projectMemory.findFirst({ where: { id: input.memoryId } });
-      if (!existing) return { success: false, error: 'Memory entry not found' };
-      const updated = await this.prisma.projectMemory.update({
-        where: { id: input.memoryId },
-        data: { metadata: { ...(existing.metadata as object), confidence: input.confidence } as never },
-      });
+      const updated = await this.memoryService.updateConfidence(
+        input.memoryId,
+        context.tenantId,
+        input.confidence,
+        input.supersededById ?? null,
+      );
       return { success: true, data: { memoryId: updated.id, confidence: input.confidence }, metadata: { model: 'neurecore-memory-v1' } };
     } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Failed to update memory confidence' }; }
   }

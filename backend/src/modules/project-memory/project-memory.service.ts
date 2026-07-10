@@ -61,4 +61,13 @@ export class ProjectMemoryService {
     if (!query.trim()) return [];
     return this.repo.search(projectId, query.trim(), tenantId);
   }
+
+  async updateConfidence(
+    id: string,
+    tenantId: string,
+    confidence: number,
+    supersededById?: string | null,
+  ): Promise<ProjectMemory> {
+    return this.repo.updateConfidence(id, tenantId, confidence, supersededById);
+  }
 }

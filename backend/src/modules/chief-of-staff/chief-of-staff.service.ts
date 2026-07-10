@@ -3,6 +3,7 @@ import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { MiniMaxClient } from '../models/services/minimax-client.service';
 import { OfficialAgentGraph } from '../agents/langgraph/langgraph-official';
 import { ProjectEventBus } from '../project-events/project-event-bus.service';
+import { EventsGateway } from '../events/events.gateway';
 import type { SendCosMessageDto, ProjectCosSnapshot } from './dto/cos.dto';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class ChiefOfStaffService {
     private readonly minimax: MiniMaxClient,
     @Optional() private readonly agentGraph?: OfficialAgentGraph,
     @Optional() private readonly eventBus?: ProjectEventBus,
+    @Optional() private readonly eventsGateway?: EventsGateway,
   ) {}
 
   onModuleInit(): void {
@@ -25,21 +27,37 @@ export class ChiefOfStaffService {
         this.logger.debug(
           `CoS: Task completed on project ${event.projectId} — task: ${(event.payload as any)?.taskId}`,
         );
+        const title = (event.payload as any)?.title ?? 'a task';
+        void this.surfaceToHumans(event.projectId, event.tenantId, `Task completed: ${title}`);
       }),
       this.eventBus.subscribe('GoalAchieved', (event) => {
+        const payload = event.payload as { title?: string };
         this.logger.debug(
           `CoS: Goal achieved on project ${event.projectId} — goal: ${(event.payload as any)?.goalId}`,
+        );
+        void this.surfaceToHumans(
+          event.projectId,
+          event.tenantId,
+          `Goal achieved: ${payload?.title ?? 'milestone reached'}`,
         );
       }),
       this.eventBus.subscribe('StageCompleted', (event) => {
         this.logger.debug(
           `CoS: Stage completed on project ${event.projectId} — stage: ${(event.payload as any)?.stageName}`,
         );
+        const stageName = (event.payload as any)?.stageName ?? 'a stage';
+        void this.surfaceToHumans(event.projectId, event.tenantId, `Stage completed: ${stageName}`);
       }),
       this.eventBus.subscribe('HealthScoreDropped', (event) => {
-        const p = event.payload as { score: number; previousScore: number };
+        const p = event.payload as { score: number; previousScore: number; reason?: string };
         this.logger.warn(
           `CoS: Health dropped on project ${event.projectId} from ${p.previousScore} to ${p.score}`,
+        );
+        const reason = p.reason ? ` (${p.reason})` : '';
+        void this.surfaceToHumans(
+          event.projectId,
+          event.tenantId,
+          `⚠️ Health dropped from ${p.previousScore} to ${p.score}${reason}`,
         );
       }),
       this.eventBus.subscribe('InformationGapsFound', (event) => {
@@ -47,10 +65,31 @@ export class ChiefOfStaffService {
         this.logger.debug(
           `CoS: Information gaps found on project ${event.projectId} — ${p.missingCount} missing (${p.completenessScore}%)`,
         );
+        void this.surfaceToHumans(
+          event.projectId,
+          event.tenantId,
+          `${p.missingCount} information gaps detected (completeness ${p.completenessScore}%)`,
+        );
       }),
     );
 
     this.logger.log('ChiefOfStaffService subscribed to project events');
+  }
+
+  private async surfaceToHumans(projectId: string, tenantId: string, message: string): Promise<void> {
+    try {
+      const humans = await this.prisma.projectMember.findMany({
+        where: { projectId, actorType: 'HUMAN' },
+        select: { actorId: true },
+      });
+      const payload = { projectId, message, timestamp: new Date().toISOString() };
+      for (const human of humans) {
+        this.eventsGateway?.emitToUser(human.actorId, 'cos:notification', payload);
+      }
+      this.eventsGateway?.emitToTenant(tenantId, 'cos:project_update', payload);
+    } catch (err) {
+      this.logger.warn(`Failed to surface CoS notification for ${projectId}: ${err}`);
+    }
   }
 
   onModuleDestroy(): void {

@@ -28,6 +28,8 @@ export type Goal = {
   metrics: unknown;
   // Phase 3 — Project linkage
   projectId: string | null;
+  // Phase 8 — measurable criteria for AI-completable success verification
+  measurableCriteria: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -48,6 +50,8 @@ export interface CreateGoalInput {
   targetDate?: Date;
   // Phase 3
   projectId?: string;
+  // Phase 8
+  measurableCriteria?: string;
 }
 
 export interface UpdateGoalInput {
@@ -62,6 +66,7 @@ export interface UpdateGoalInput {
   departmentId?: string | null;
   targetDate?: Date | null;
   completedAt?: Date | null;
+  measurableCriteria?: string | null;
 }
 
 export interface ListGoalsOptions {

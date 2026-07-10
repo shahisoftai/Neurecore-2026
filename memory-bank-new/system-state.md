@@ -1,6 +1,19 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-10 19:03 PKT — Login fixed, tenant port corrected, backend cookie auth restored
+**Last verified:** 2026-07-11 00:30 PKT — Phase 8 (Project completion + audit remediation) shipped to Contabo
+
+**2026-07-11 00:30 PKT — Phase 8 deployment (Kilo):**
+- ✅ Goal pre-population in `ProjectsService.create()` is now synchronous — by the time create returns, the project has its goals seeded from `goalTemplate`
+- ✅ `ProjectMemoryService.updateConfidence()` added with dedicated `confidence Int?` column + migration `20260711_phase8_memory_confidence`
+- ✅ `ProjectDecisionService.getForProject()` added
+- ✅ `ProjectAutomationService.replan()` real implementation (was a stub)
+- ✅ Project-memory agent tools refactored to use `ProjectMemoryService` (proper tenant scoping)
+- ✅ `ChiefOfStaffService` event subscribers emit to humans via `EventsGateway` (`cos:notification` + `cos:project_update`)
+- ✅ `ProjectHealthService` budget signal + analytics now read `Invoice.total`
+- ✅ `Goal.measurableCriteria` wired through interface + repository + GoalTemplateService
+- ✅ Backend: 694/694 tests pass, tsc 0 errors, nest build OK
+- ✅ Contabo: backend redeployed, migration applied, `/api/v1/health` 200
+- See `memory-bank-new/Projects/PHASE-8-COMPLETION.md` for the full report
 
 **2026-07-10 19:03 PKT — Session summary (Kilo):**
 - ✅ FIX-032: Login silently failing — added `USE_HTTPONLY_AUTH=true` to `/opt/neurecore/backend/.env`

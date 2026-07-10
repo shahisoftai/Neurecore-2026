@@ -28,6 +28,7 @@ export type ProjectMemory = {
   sourceEntityId: string | null;
   isPinned: boolean;
   isAiGenerated: boolean;
+  confidence: number | null;
   supersededBy: string | null;
   metadata: Record<string, unknown>;
   createdAt: Date;
@@ -44,6 +45,7 @@ export interface CreateMemoryInput {
   sourceEntityId?: string;
   isPinned?: boolean;
   isAiGenerated?: boolean;
+  confidence?: number;
   metadata?: Record<string, unknown>;
 }
 
@@ -76,5 +78,6 @@ export interface IProjectMemoryRepository {
   update(id: string, tenantId: string, data: UpdateMemoryInput): Promise<ProjectMemory>;
   supersede(id: string, supersededById: string): Promise<void>;
   search(projectId: string, query: string, tenantId: string): Promise<ProjectMemory[]>;
+  updateConfidence(id: string, tenantId: string, confidence: number, supersededById?: string | null): Promise<ProjectMemory>;
 }
 
