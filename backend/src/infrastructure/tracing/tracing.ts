@@ -9,7 +9,10 @@
  * - If OTEL_ENABLED is set to 'false' or NODE_ENV is 'test', it's disabled.
  */
 
+import { Logger } from '@nestjs/common';
+
 let sdk: any = null;
+const logger = new Logger('Tracing');
 
 export async function initTracing(): Promise<void> {
   if (
@@ -56,16 +59,15 @@ export async function initTracing(): Promise<void> {
 
     sdk = localSdk;
     localSdk.start();
-    console.log('[Tracing] OpenTelemetry SDK started');
+    logger.log('[Tracing] OpenTelemetry SDK started');
 
     process.on('SIGTERM', () => {
       if (!sdk) return;
-      void sdk.shutdown().then(() => console.log('[Tracing] SDK shut down'));
+      void sdk.shutdown().then(() => logger.log('[Tracing] SDK shut down'));
     });
   } catch (err) {
-    console.warn(
-      '[Tracing] OpenTelemetry not available; tracing disabled:',
-      (err as Error).message,
+    logger.warn(
+      `[Tracing] OpenTelemetry not available; tracing disabled: ${(err as Error).message}`,
     );
   }
 }

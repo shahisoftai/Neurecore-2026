@@ -1,6 +1,8 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+
+const logger = new Logger('SettingsService');
 
 // Simple file-based storage for development
 // This ensures data persists across backend restarts
@@ -23,7 +25,7 @@ function loadSettings(): any {
       return JSON.parse(data);
     }
   } catch (e) {
-    console.error('Failed to load settings:', e);
+    logger.error(`Failed to load settings: ${e}`);
   }
   return null;
 }
@@ -34,7 +36,7 @@ function saveSettings(data: any): void {
     ensureDataDir();
     fs.writeFileSync(STORAGE_FILE, JSON.stringify(data, null, 2));
   } catch (e) {
-    console.error('Failed to save settings:', e);
+    logger.error(`Failed to save settings: ${e}`);
   }
 }
 

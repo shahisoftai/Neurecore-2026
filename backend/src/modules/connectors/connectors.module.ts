@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { ConnectorRegistry } from './connector.registry';
 import { ConnectorService } from './services/connector.service';
 import { PrismaOAuthTokenStore } from './services/oauth-token.service';
@@ -38,13 +38,15 @@ import { PipedriveConnector } from './adapters/pipedrive.adapter';
   ],
 })
 export class ConnectorsModule implements OnModuleInit {
+  private readonly logger = new Logger(ConnectorsModule.name);
+
   constructor(private readonly registry: ConnectorRegistry) {}
 
   onModuleInit(): void {
     // Guard against missing registry during early init (defensive for local dev/emulator)
     if (!this.registry || typeof this.registry.register !== 'function') {
-      console.warn(
-        'ConnectorsModule: ConnectorRegistry unavailable during onModuleInit — skipping adapter registration',
+      this.logger.warn(
+        'ConnectorRegistry unavailable during onModuleInit — skipping adapter registration',
       );
       return;
     }

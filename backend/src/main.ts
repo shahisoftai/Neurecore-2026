@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { ValidationPipe, VersioningType, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -158,6 +158,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
 
   // Persist OpenAPI artifact to backend/openapi/openapi.json (per spec §11.4).
+  const logger = new Logger('Bootstrap');
   try {
     const outDir = join(process.cwd(), 'openapi');
     mkdirSync(outDir, { recursive: true });
@@ -165,12 +166,11 @@ async function bootstrap() {
       join(outDir, 'openapi.json'),
       JSON.stringify(document, null, 2),
     );
-    // eslint-disable-next-line no-console
-    console.log(
+    logger.log(
       `[OpenAPI] Wrote backend/openapi/openapi.json (${Object.keys((document as { paths?: Record<string, unknown> }).paths ?? {}).length} paths)`,
     );
   } catch (err) {
-    console.warn(
+    logger.warn(
       `[OpenAPI] Failed to write openapi.json (request flow NOT blocked): ${String(err)}`,
     );
   }
@@ -213,7 +213,7 @@ async function bootstrap() {
 
   const port = config.get<number>('PORT', 3000);
   await app.listen(port);
-  console.log(`🚀 NeureCore API running on: http://localhost:${port}/api`);
-  console.log(`📘 OpenAPI UI:  http://localhost:${port}/api/docs`);
+  logger.log(`🚀 NeureCore API running on: http://localhost:${port}/api`);
+  logger.log(`📘 OpenAPI UI:  http://localhost:${port}/api/docs`);
 }
 bootstrap();

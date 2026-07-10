@@ -1,4 +1,4 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef, Logger } from '@nestjs/common';
 import { ToolsController } from './tools.controller';
 import { ToolsService } from './tools.service';
 import { StructuredToolRegistry } from './structured-tool.registry';
@@ -270,7 +270,11 @@ export class ToolsModule implements OnModuleInit {
     private readonly listInboxItems: ListInboxItemsTool,
     private readonly getInboxItem: GetInboxItemTool,
     private readonly respondToInboxItem: RespondToInboxItemTool,
-  ) {}
+  ) {
+    this.logger = new Logger(ToolsModule.name);
+  }
+
+  private readonly logger = new Logger(ToolsModule.name);
 
   onModuleInit(): void {
     const tools: IStructuredTool[] = [
@@ -359,8 +363,8 @@ export class ToolsModule implements OnModuleInit {
       this.respondToInboxItem,
     ].filter((t) => t !== null && t !== undefined) as IStructuredTool[];
 
-    console.log("[ToolsModule] filtered tools count:", tools.length);
+    this.logger.log(`[ToolsModule] filtered tools count: ${tools.length}`);
     this.registry.setTools(tools);
-    console.log("[ToolsModule] setTools called with", tools.length, "tools");
+    this.logger.log(`[ToolsModule] setTools called with ${tools.length} tools`);
   }
 }

@@ -3183,6 +3183,7 @@ model HermesAgent {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@map("hermes_agents")
   @@index([tenantId])
   @@index([type, tenantId])
   @@index([status, tenantId])
@@ -3202,6 +3203,7 @@ model HermesCapability {
 
   hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
 
+  @@map("hermes_capabilities")
   @@unique([hermesAgentId, name])
   @@index([hermesAgentId])
 }
@@ -3215,6 +3217,7 @@ model HermesToolPermission {
 
   hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
 
+  @@map("hermes_tool_permissions")
   @@unique([hermesAgentId, toolName])
   @@index([hermesAgentId])
 }
@@ -3237,6 +3240,7 @@ model HermesSession {
 
   hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
 
+  @@map("hermes_sessions")
   @@index([hermesAgentId, tenantId])
   @@index([userId, tenantId])
   @@index([threadId])
@@ -3270,6 +3274,7 @@ model HermesMessage {
 
   session HermesSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
+  @@map("hermes_messages")
   @@index([sessionId, createdAt])
   @@index([threadId, createdAt])
   @@index([contextType, contextId])
@@ -3294,6 +3299,7 @@ model HermesMemoryEntry {
 
   hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
 
+  @@map("hermes_memory_entries")
   @@index([hermesAgentId, tenantId])
   @@index([hermesAgentId, type])
   @@index([tenantId])
@@ -3322,6 +3328,7 @@ model HermesAuditLog {
 
   hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
 
+  @@map("hermes_audit_logs")
   @@index([hermesAgentId, tenantId])
   @@index([tenantId, createdAt])
   @@index([action, tenantId])

@@ -7,7 +7,7 @@
  * - DIP: Depends on ContextService abstraction
  */
 
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ContextService } from '../services/context.service';
 import type { ContextResponse } from '@/shared/types/context.types';
 
@@ -19,6 +19,8 @@ import type { ContextResponse } from '@/shared/types/context.types';
  */
 @Injectable()
 export class ContextProvider {
+    private readonly logger = new Logger(ContextProvider.name);
+
     constructor(private readonly contextService: ContextService) { }
 
     /**
@@ -57,7 +59,7 @@ export class ContextProvider {
             if (error instanceof HttpException) {
                 throw error;
             }
-            console.error('[ContextProvider] Error:', error);
+            this.logger.error(`[ContextProvider] Error: ${error}`);
             throw new HttpException(
                 'Failed to fetch context',
                 HttpStatus.INTERNAL_SERVER_ERROR
