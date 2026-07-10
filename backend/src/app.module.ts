@@ -51,6 +51,14 @@ import { ApprovalChainsModule } from './modules/approval-chains/approval-chains.
 // Phase 5 — Project Memory + Decision Registry
 import { ProjectMemoryModule } from './modules/project-memory/project-memory.module';
 import { ProjectDecisionsModule } from './modules/project-decisions/project-decisions.module';
+// Phase 3A — Project Automation (AI workforce orchestration)
+import { ProjectAutomationModule } from './modules/project-automation/project-automation.module';
+// Phase 3B — Project Event Bus + continuous automation
+import { ProjectEventsModule } from './modules/project-events/project-events.module';
+// Phase 3C — Chief of Staff agent + conversation API
+import { ChiefOfStaffModule } from './modules/chief-of-staff/chief-of-staff.module';
+// Phase 3E — Digital Twin + Activity Timeline
+import { DigitalTwinModule } from './modules/digital-twin/digital-twin.module';
 // Phase 6 — Health Score + BI Dashboards
 import { ProjectHealthModule } from './modules/project-health/project-health.module';
 // Phase 7 — Client Portal
@@ -196,6 +204,10 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     ApprovalChainsModule,
     ProjectMemoryModule,
     ProjectDecisionsModule,
+    ProjectAutomationModule, // Phase 3A
+    ProjectEventsModule,     // Phase 3B
+    ChiefOfStaffModule,      // Phase 3C
+    DigitalTwinModule,       // Phase 3E
     ProjectHealthModule,
     // Phase 7 — Client Portal
     PortalModule,

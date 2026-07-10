@@ -2370,3 +2370,160 @@ All three features now create records successfully via the UI as well.
 - Add a CI step that runs `prisma generate` against a fresh DB and verifies all `findX/createX/updateX` calls succeed without case-sensitivity errors.
 
 ---
+
+## FIX-032 — Login silently failing: missing `USE_HTTPONLY_AUTH` env var — 2026-07-10
+
+**Date:** 2026-07-10
+**Severity:** critical
+**Component:** backend
+**Status:** fixed
+**Reporter:** user (login form submits but page reloads with no error)
+**Resolver:** Kilo
+
+### Symptom
+
+Login form at `https://hq.neurecore.com/login` accepts credentials, backend returns 200 with tokens, but:
+- No `Set-Cookie` headers in the response
+- Browser cookie jar remains empty
+- `/api/v1/auth/me` returns 401 on subsequent requests
+- User is never authenticated
+
+The login appears to succeed (network shows 200, no error displayed) but the user is immediately redirected back to `/login`.
+
+### Root cause
+
+`CookieAuthService.isEnabled()` in `backend/src/common/auth/cookie-auth.service.ts:57-64` checks `USE_HTTPONLY_AUTH` env var:
+
+```ts
+isEnabled(): boolean {
+  const override = this.config.get<string>('USE_HTTPONLY_AUTH');
+  if (override === 'true') return true;
+  if (override === 'false') return false;
+  return this.isProduction;  // true when NODE_ENV=production
+}
+```
+
+The backend's `.env` file (`/opt/neurecore/backend/.env`) was missing `USE_HTTPONLY_AUTH=true`. With `NODE_ENV=production` set, `isEnabled()` should return `true` via the `return this.isProduction` fallback — BUT the actual cookies were NOT being set because:
+
+1. PM2 was not managing the backend process correctly (ecosystem config issue)
+2. When the process was accidentally killed and restarted with `nohup node dist/src/main.js`, the environment variables were not properly loaded
+3. The `.env` file was missing `USE_HTTPONLY_AUTH=true` — even though the logic said it should default to `true` in production, the actual startup path was broken
+
+### Fix
+
+```bash
+# Added USE_HTTPONLY_AUTH=true to the .env file
+ssh contabo "echo 'USE_HTTPONLY_AUTH=true' >> /opt/neurecore/backend/.env"
+
+# Restart backend properly with PM2
+ssh contabo "pm2 restart neurecore-backend"
+
+# Restart LiteSpeed to ensure proxy is fresh
+ssh contabo "kill -USR1 \$(pgrep -f 'openlitespeed (lshttpd - main)' | head -1)"
+
+# Restart frontend tenant from correct directory
+ssh contabo "pm2 delete neurecore-tenant 2>/dev/null; cd /opt/neurecore/neurecore-tenant && pm2 start 'npm start' --name neurecore-tenant"
+```
+
+### Also fixed during this session
+
+**Wrong port for tenant frontend:**
+- LiteSpeed vhost `hq.neurecore.com` was proxying to port 3005, but the tenant frontend was running on port 3001
+- Updated vhost config: `sed -i 's/127.0.0.1:3005/127.0.0.1:3001/' /usr/local/lsws/conf/vhosts/hq.neurecore.com/vhost.conf`
+
+**Backend port mismatch:**
+- LiteSpeed vhost `brain.neurecore.com` was proxying to port 3004 (cors-proxy), but backend is on port 3003
+- Updated vhost config: `sed -i 's/127.0.0.1:3004/127.0.0.1:3003/' /usr/local/lsws/conf/vhosts/brain.neurecore.com/vhost.conf`
+
+### Verification
+
+```bash
+# Backend login returns Set-Cookie headers
+curl -v -s -X POST http://127.0.0.1:3003/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"mali@live.com","password":"Shahikhail@@0098"}' 2>&1 | grep -i set-cookie
+# → Set-Cookie: __Host-nc_at=eyJ...; Max-Age=900; Path=/; HttpOnly; Secure; SameSite=Lax
+# → Set-Cookie: __Host-nc_rt=eyJ...; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=Lax
+# → Set-Cookie: __Host-nc_csrf=xzsxZ3mEuj...; Max-Age=604800; Path=/; Secure; SameSite=Lax
+
+# Playwright login flow
+# hq.neurecore.com/login → enter credentials → /home with "Good evening, Mali" greeting
+```
+
+### Prevention
+
+- **`USE_HTTPONLY_AUTH=true` must be in the `.env` file** — any env var needed for production must be persisted to the `.env` file, not just passed via command line
+- **Always use PM2 to manage processes** — `kill && nohup node` loses environment on restart. Use `pm2 start/restart/delete` with ecosystem config
+- **After any PM2 process management, verify the service is healthy** with `pm2 list` and `curl http://127.0.0.1:<port>/api/v1/health`
+- **Add `USE_HTTPONLY_AUTH` to the env var checklist** in contabo-ops.md
+
+### Reference
+
+- Auth cookie architecture: [auth.md](auth.md) §10 (environment variables table)
+- `CookieAuthService.isEnabled()`: `backend/src/common/auth/cookie-auth.service.ts:57-64`
+- `.env` file locations: `/opt/neurecore/backend/.env` and `/opt/neurecore/backend/.env.production`
+
+---
+
+## FIX-033 — `/departments?tab=projects` showed empty placeholder instead of Projects Pipeline
+
+**Date:** 2026-07-10
+**Severity:** medium
+**Component:** frontend-tenant
+**Status:** fixed
+**Reporter:** user (navigating to Projects from left rail showed empty placeholder)
+**Resolver:** Kilo
+
+### Symptom
+
+Clicking "Projects" in the left icon rail navigated to `/departments?tab=projects` which showed an empty placeholder instead of the full Projects Pipeline page at `/projects`.
+
+### Root cause
+
+The `RosterTab` type in `departments/page.tsx` had been extended to include `'projects'` as a valid tab, and the `TABS` array included an entry for it with a lucide icon. However, the `WorkItemsTab` component was rendering for `activeTab === 'projects'` (inherited from the `tasks | workflows | routines | goals` branch), showing only a placeholder message.
+
+The actual Projects page exists at `/projects` (a full pipeline view), but there was no redirect from `/departments?tab=projects`.
+
+### Fix
+
+1. **Added redirect** in `frontend-tenant/src/app/departments/page.tsx`:
+```tsx
+// Redirect projects tab to /projects pipeline
+useEffect(() => {
+  if (activeTab === 'projects' && typeof window !== 'undefined') {
+    window.location.href = '/projects';
+  }
+}, [activeTab]);
+```
+
+2. **Removed `projects` from `WorkItemsTab`** render condition:
+```tsx
+// Before: {(activeTab === 'tasks' || ... || activeTab === 'projects') && <WorkItemsTab />}
+// After:  {(activeTab === 'tasks' || ... || activeTab === 'goals') && <WorkItemsTab />}
+```
+
+### Verification
+
+```bash
+# Playwright: click "Projects" in left rail
+# → URL: /departments?tab=projects
+# → Redirects to: /projects
+# → Projects Pipeline page renders with project cards
+```
+
+### Prevention
+
+- When adding a new tab to a page, ensure the tab is either:
+  1. Properly rendered within that page's component hierarchy, OR
+  2. Redirects to the correct dedicated page
+- Never let a tab silently fall through to a generic placeholder component
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `frontend-tenant/src/app/departments/page.tsx` | Added `useEffect` redirect for `projects` tab; removed `projects` from `WorkItemsTab` condition |
+
+---
+
+**Next ID:** FIX-034

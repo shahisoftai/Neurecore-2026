@@ -27,6 +27,7 @@ import {
 } from './common/project-lifecycle';
 import type { ProjectTypesService } from '../project-types/project-types.service';
 import type { ProjectsAdapter } from '../information-engine/clients/projects.adapter';
+import type { ProjectAutomationService } from '../project-automation/project-automation.service';
 
 @Injectable()
 export class ProjectsService {
@@ -37,6 +38,7 @@ export class ProjectsService {
     @Inject('PROJECT_TYPES_SERVICE')
     private readonly projectTypesService: ProjectTypesService,
     @Optional() private readonly projectsAdapter?: ProjectsAdapter,
+    @Optional() private readonly projectAutomation?: ProjectAutomationService,
   ) {}
 
   async create(input: CreateProjectInput, tenantId: string): Promise<Project> {
@@ -97,6 +99,23 @@ export class ProjectsService {
     // without the engine; production wiring always provides it.
     if (this.projectsAdapter) {
       await this.projectsAdapter.onProjectCreated(project, tenantId, input);
+    }
+
+    // Phase 3A: Fire-and-forget project automation.
+    // Never blocks project creation. Errors are logged to ProjectAutomationLog.
+    if (this.projectAutomation) {
+      this.projectAutomation
+        .onProjectCreated(
+          project.id,
+          input.projectTypeId ?? '',
+          project.name,
+          tenantId,
+        )
+        .catch((err: Error) =>
+          this.logger.error(
+            `Phase 3A automation failed for project ${project.id}: ${err.message}`,
+          ),
+        );
     }
 
     return project;

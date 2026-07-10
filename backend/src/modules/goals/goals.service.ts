@@ -12,6 +12,7 @@ import {
   NotFoundException,
   BadRequestException,
   Inject,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import type { IGoalRepository } from './interfaces/goal.interface';
@@ -31,6 +32,7 @@ export class GoalsService {
   constructor(
     @Inject(GOAL_REPOSITORY) private readonly repository: IGoalRepository,
     private readonly prisma: PrismaService,
+    @Optional() private readonly eventBus?: any,
   ) {}
 
   async create(input: CreateGoalInput, tenantId: string) {
@@ -174,6 +176,21 @@ export class GoalsService {
     this.logger.debug(
       `Goal ${id} progress recalculated: ${updated.progress}% (${tasks.length} tasks)`,
     );
+
+    if (finalProgress >= 100 && this.eventBus) {
+      try {
+        this.eventBus.publish({
+          type: 'GoalAchieved',
+          projectId: goal.projectId,
+          tenantId,
+          timestamp: new Date(),
+          payload: { goalId: goal.id, title: goal.title },
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to publish GoalAchieved event: ${err}`);
+      }
+    }
+
     return updated;
   }
 

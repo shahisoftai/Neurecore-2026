@@ -155,6 +155,7 @@ enum HermesAgentType {
   OPERATIONS
   CUSTOMER_SUPPORT
   PROJECT_DISCOVERY
+  CHIEF_OF_STAFF
   CUSTOM
 }
 
@@ -211,6 +212,29 @@ enum ProjectTypeClassification {
   OPERATIONAL_PROGRAM
 
   @@map("project_type_classification")
+}
+
+// ─── Phase 3A: Project Automation — enums ───────────────────────────────────
+
+/// What triggered the automation run.
+enum AutomationEventType {
+  PROJECT_CREATED
+  GOAL_CREATED
+  MANUAL_TRIGGER
+  TASK_COMPLETED
+  STAGE_COMPLETED
+  REPLAN
+
+  @@map("automation_event_type")
+}
+
+/// Current status of an automation run.
+enum AutomationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+
+  @@map("automation_status")
 }
 
 enum HermesMemoryType {
@@ -2110,12 +2134,34 @@ model Project {
   // Phase 4 — Project-scoped approval workflows (deliverable risk-tiered chains)
   approvals ApprovalWorkflow[] @relation("ProjectApprovals")
 
+  // Phase 3A — Automation audit trail
+  automationLogs ProjectAutomationLog[]
+
   @@index([tenantId])
   @@index([status])
   @@index([departmentId])
   @@index([customerId])
   @@index([parentProjectId])
   @@map("projects")
+}
+
+/// Phase 3A: Audit trail for every project automation run.
+/// Fire-and-forget — failures are logged here, never block project creation.
+model ProjectAutomationLog {
+  id          String             @id @default(cuid())
+  projectId   String
+  project     Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  event       AutomationEventType
+  status      AutomationStatus   @default(PENDING)
+  result      Json?
+  error       String?
+  triggeredBy String?
+  createdAt   DateTime          @default(now())
+
+  @@index([projectId])
+  @@index([status])
+  @@index([event])
+  @@map("project_automation_logs")
 }
 
 model ProjectStage {

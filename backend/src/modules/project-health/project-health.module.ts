@@ -11,17 +11,21 @@
 import { Module } from '@nestjs/common';
 import { ProjectHealthController } from './project-health.controller';
 import { ProjectHealthService, PROJECT_HEALTH_REPOSITORY } from './project-health.service';
+import { ProjectHealthAIService } from './project-health-ai.service';
 import { PrismaProjectHealthRepository } from './repositories/prisma-project-health.repository';
+import { ModelsModule } from '../models/models.module';
 
 @Module({
+  imports: [ModelsModule],
   controllers: [ProjectHealthController],
   providers: [
     ProjectHealthService,
+    ProjectHealthAIService,
     {
       provide: PROJECT_HEALTH_REPOSITORY,
       useClass: PrismaProjectHealthRepository,
     },
   ],
-  exports: [ProjectHealthService],
+  exports: [ProjectHealthService, ProjectHealthAIService],
 })
 export class ProjectHealthModule {}

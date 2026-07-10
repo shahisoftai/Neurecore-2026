@@ -19,6 +19,7 @@ import {
 import { ApiCommon } from '../../common/decorators/api-common.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProjectHealthService } from './project-health.service';
+import { ProjectHealthAIService } from './project-health-ai.service';
 import { ComputeHealthDto, GetAnalyticsDto } from './dto/project-health.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/token.interface';
@@ -28,7 +29,10 @@ import type { ProjectHealth, AnalyticsRollup, Bottleneck } from './interfaces/pr
 @Controller({ path: 'project-health', version: '1' })
 @UseGuards(JwtAuthGuard)
 export class ProjectHealthController {
-  constructor(private readonly healthService: ProjectHealthService) {}
+  constructor(
+    private readonly healthService: ProjectHealthService,
+    private readonly healthAiService: ProjectHealthAIService,
+  ) {}
 
   @Get('project/:projectId')
   async getHealth(
@@ -69,5 +73,14 @@ export class ProjectHealthController {
   @Get('bottlenecks')
   async getBottlenecks(@CurrentUser() user: JwtPayload): Promise<Bottleneck[]> {
     return this.healthService.detectBottlenecks(user.tenantId ?? '');
+  }
+
+  @Post('project/:projectId/calculate-ai')
+  @HttpCode(HttpStatus.OK)
+  async calculateAIHealth(
+    @CurrentUser() user: JwtPayload,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.healthAiService.calculateWithAI(projectId, user.tenantId ?? '');
   }
 }

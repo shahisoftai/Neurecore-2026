@@ -242,6 +242,46 @@ export const HERMES_TOOL_SETS: Record<HermesAgentType, HermesToolDescriptor[]> =
         },
     ],
 
+    // Phase 3C — Chief of Staff agent.
+    // Access to project memory, goals, tasks, health, and the CoS chat API.
+    CHIEF_OF_STAFF: [
+        {
+            name: 'project_memory_add',
+            description: 'Add a memory entry to a project',
+            permission: ToolPermissionLevel.ALLOW,
+        },
+        {
+            name: 'project_memory_search',
+            description: 'Search project memory by keyword',
+            permission: ToolPermissionLevel.READ_ONLY,
+        },
+        {
+            name: 'project_memory_update_confidence',
+            description: 'Update the confidence score of a memory entry',
+            permission: ToolPermissionLevel.ALLOW,
+        },
+        {
+            name: 'getProject',
+            description: 'Read a project by ID',
+            permission: ToolPermissionLevel.READ_ONLY,
+        },
+        {
+            name: 'getTask',
+            description: 'Read a task by ID',
+            permission: ToolPermissionLevel.READ_ONLY,
+        },
+        {
+            name: 'completeness_get',
+            description: 'Read completeness score for a project',
+            permission: ToolPermissionLevel.READ_ONLY,
+        },
+        {
+            name: 'record_response',
+            description: 'Record an information response for a project',
+            permission: ToolPermissionLevel.ALLOW,
+        },
+    ],
+
     CUSTOM: [
         { name: 'email', description: 'Email operations', permission: ToolPermissionLevel.ALLOW },
         { name: 'documents', description: 'Document operations', permission: ToolPermissionLevel.ALLOW },

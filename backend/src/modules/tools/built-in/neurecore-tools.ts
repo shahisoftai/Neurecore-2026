@@ -415,9 +415,36 @@ export type GetInboxItemInput = z.infer<typeof GetInboxItemInputSchema>;
 
 export const RespondToInboxItemInputSchema = z.object({
   itemId: z.string(),
-  action: z.enum(['approve', 'reject', 'respond']),
+  action: z.enum(['approve', 'reject', 'comment']),
   comment: z.string().optional(),
 });
+
+// ─── Phase 3D: Project Memory Schemas ──────────────────────────────────────────
+
+const MemoryCategoryEnum = z.enum(['NOTE', 'INSIGHT', 'CONSTRAINT', 'RISK', 'OPPORTUNITY', 'LESSON']);
+
+export const AddProjectMemoryInputSchema = z.object({
+  projectId: z.string().describe('Project ID'),
+  category: MemoryCategoryEnum.describe('Memory category'),
+  content: z.string().min(1).describe('Memory content text'),
+  authorType: z.enum(['HUMAN', 'AI', 'SYSTEM']).default('AI').optional(),
+  isPinned: z.boolean().default(false).optional(),
+});
+export type AddProjectMemoryInput = z.infer<typeof AddProjectMemoryInputSchema>;
+
+export const SearchProjectMemoryInputSchema = z.object({
+  projectId: z.string().describe('Project ID'),
+  query: z.string().min(1).describe('Search query string'),
+  category: MemoryCategoryEnum.optional(),
+  limit: z.number().int().positive().max(50).default(10).optional(),
+});
+export type SearchProjectMemoryInput = z.infer<typeof SearchProjectMemoryInputSchema>;
+
+export const UpdateMemoryConfidenceInputSchema = z.object({
+  memoryId: z.string().describe('Memory entry ID'),
+  confidence: z.number().int().min(0).max(100).describe('New confidence score 0-100'),
+});
+export type UpdateMemoryConfidenceInput = z.infer<typeof UpdateMemoryConfidenceInputSchema>;
 export type RespondToInboxItemInput = z.infer<typeof RespondToInboxItemInputSchema>;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1962,5 +1989,78 @@ export class RespondToInboxItemTool extends BaseStructuredTool {
       }
       return { success: true, data: { itemId: input.itemId, action: input.action, note: 'Response recorded' }, metadata: { model: 'neurecore-inbox-v1' } };
     } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Failed to respond to inbox item' }; }
+  }
+}
+
+// ─── Phase 3D: Project Memory Tools ────────────────────────────────────────────
+
+export class AddProjectMemoryTool extends BaseStructuredTool {
+  readonly name = 'project_memory_add';
+  readonly description = 'Add a memory entry to a project (append-only log).';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = AddProjectMemoryInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+  protected async executeImpl(input: AddProjectMemoryInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const entry = await this.prisma.projectMemory.create({
+        data: {
+          projectId: input.projectId,
+          category: input.category as never,
+          content: input.content,
+          authorType: (input.authorType ?? 'AI') as never,
+          isPinned: input.isPinned ?? false,
+          isAiGenerated: input.authorType !== 'HUMAN',
+          metadata: {},
+        },
+      });
+      return { success: true, data: { memoryId: entry.id, projectId: entry.projectId, category: entry.category, createdAt: entry.createdAt.toISOString() }, metadata: { model: 'neurecore-memory-v1' } };
+    } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Failed to add project memory' }; }
+  }
+}
+
+export class SearchProjectMemoryTool extends BaseStructuredTool {
+  readonly name = 'project_memory_search';
+  readonly description = 'Search project memory entries by keyword.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = SearchProjectMemoryInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+  protected async executeImpl(input: SearchProjectMemoryInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = {
+        projectId: input.projectId,
+        content: { contains: input.query, mode: 'insensitive' },
+      };
+      if (input.category) where['category'] = input.category;
+
+      const memories = await this.prisma.projectMemory.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: input.limit ?? 10,
+        select: { id: true, category: true, content: true, createdAt: true, isPinned: true },
+      });
+      return { success: true, data: { count: memories.length, memories }, metadata: { model: 'neurecore-memory-v1' } };
+    } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Failed to search project memory' }; }
+  }
+}
+
+export class UpdateMemoryConfidenceTool extends BaseStructuredTool {
+  readonly name = 'project_memory_update_confidence';
+  readonly description = 'Update the confidence score of a memory entry (0-100).';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = UpdateMemoryConfidenceInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+  protected async executeImpl(input: UpdateMemoryConfidenceInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const existing = await this.prisma.projectMemory.findFirst({ where: { id: input.memoryId } });
+      if (!existing) return { success: false, error: 'Memory entry not found' };
+      const updated = await this.prisma.projectMemory.update({
+        where: { id: input.memoryId },
+        data: { metadata: { ...(existing.metadata as object), confidence: input.confidence } as never },
+      });
+      return { success: true, data: { memoryId: updated.id, confidence: input.confidence }, metadata: { model: 'neurecore-memory-v1' } };
+    } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Failed to update memory confidence' }; }
   }
 }

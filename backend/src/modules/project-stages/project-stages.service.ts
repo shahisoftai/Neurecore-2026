@@ -35,6 +35,8 @@ export class ProjectStagesService {
     private readonly prisma: PrismaService,
     @Optional()
     private readonly continuousDiscovery?: ContinuousDiscoveryService,
+    @Optional()
+    private readonly eventBus?: any,
   ) {}
 
   private async ensureProject(
@@ -90,6 +92,19 @@ export class ProjectStagesService {
     // Phase 2F: trigger a recompute when a stage moves to COMPLETED.
     if (updated.status === 'COMPLETED' && this.continuousDiscovery) {
       void this.continuousDiscovery.onStageCompleted(projectId);
+    }
+
+    // Phase 3B: emit StageCompleted event for automation handlers
+    if (updated.status === 'COMPLETED' && this.eventBus) {
+      try {
+        this.eventBus.publish({
+          type: 'StageCompleted',
+          projectId,
+          tenantId,
+          timestamp: new Date(),
+          payload: { stageId: updated.id, stageName: updated.name },
+        });
+      } catch (err) { /* fire-and-forget */ }
     }
 
     return updated;

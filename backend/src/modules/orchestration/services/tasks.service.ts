@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, Inject, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Inject, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { Prisma } from '@prisma/client';
 import type { TaskPriority, TaskStatus } from '@prisma/client';
@@ -11,6 +11,7 @@ export class TasksService {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Optional() private readonly eventBus?: any,
   ) {}
 
   async findAll(options?: {
@@ -142,6 +143,20 @@ export class TasksService {
 
     if (status === 'COMPLETED' && updated.goalId) {
       this.logger.debug(`Task ${id} completed — goal ${updated.goalId} progress recalculation queued`);
+    }
+
+    if (status === 'COMPLETED' && this.eventBus) {
+      try {
+        this.eventBus.publish({
+          type: 'TaskCompleted',
+          projectId: updated.projectId,
+          tenantId,
+          timestamp: new Date(),
+          payload: { taskId: id, goalId: updated.goalId, title: updated.title },
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to publish TaskCompleted event: ${err}`);
+      }
     }
 
     return updated;

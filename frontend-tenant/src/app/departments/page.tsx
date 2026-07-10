@@ -140,6 +140,13 @@ export default function DepartmentsRosterPage() {
     if (t && TABS.find((tab) => tab.id === t)) setActiveTab(t);
   }, []);
 
+  // Redirect projects tab to /projects pipeline
+  useEffect(() => {
+    if (activeTab === 'projects' && typeof window !== 'undefined') {
+      window.location.href = '/projects';
+    }
+  }, [activeTab]);
+
   const setTab = (t: RosterTab) => {
     setActiveTab(t);
     if (typeof window !== 'undefined') {
@@ -207,7 +214,7 @@ export default function DepartmentsRosterPage() {
             {activeTab === 'departments' && <DepartmentsTab />}
             {activeTab === 'org-chart' && <OrgChartTab />}
             {activeTab === 'templates' && <TemplatesTab />}
-            {(activeTab === 'tasks' || activeTab === 'workflows' || activeTab === 'routines' || activeTab === 'goals' || activeTab === 'projects') && <WorkItemsTab kind={activeTab} />}
+            {(activeTab === 'tasks' || activeTab === 'workflows' || activeTab === 'routines' || activeTab === 'goals') && <WorkItemsTab kind={activeTab} />}
           </motion.div>
         </AnimatePresence>
       </div>

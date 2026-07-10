@@ -1,6 +1,17 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-10 17:30 PKT — **ALL PENDING ISSUES RESOLVED** — 18 issues fixed (PD-01, PD-30, D22, D24, D25, D26, H1, PE8, PD-03, PD-10, PD-20, PD-21, PD-40, PD-42, PD-50, PD-51). Commit `7d447f4` pushed to `004-ent-comm` branch. Backend healthy @ /api/v1/health 200. Frontends healthy @ hq.neurecore.com and cc.neurecore.com. Socket.IO D22 fix deployed — real-time features now functional.
+**Last verified:** 2026-07-10 19:03 PKT — Login fixed, tenant port corrected, backend cookie auth restored
+
+**2026-07-10 19:03 PKT — Session summary (Kilo):**
+- ✅ FIX-032: Login silently failing — added `USE_HTTPONLY_AUTH=true` to `/opt/neurecore/backend/.env`
+- ✅ FIX-033: `/departments?tab=projects` empty — added redirect to `/projects`
+- ✅ LiteSpeed vhost `hq.neurecore.com` updated to proxy to port 3001 (was 3005)
+- ✅ LiteSpeed vhost `brain.neurecore.com` updated to proxy to port 3003 (was 3004)
+- ✅ neurecore-backend: port 3003, healthy
+- ✅ neurecore-tenant: port 3001, healthy
+- ✅ neurecore-admin: port 3020, healthy
+- Login verified: mali@live.com → /home with "Good evening, Mali" greeting
+- Projects redirect verified: /departments?tab=projects → /projects
 
 **2026-07-10 17:30 PKT — ALL PENDING ISSUES RESOLVED (Kilo):**
 - ✅ D22: Socket.IO 400 errors — Fixed SocketManager URL derivation (was using wrong path from NEXT_PUBLIC_API_URL)
@@ -222,10 +233,10 @@
 PM2 dump at `/root/.pm2/dump.pm2`. Definition: `/opt/neurecore/ecosystem.config.js`.
 
 | PM2 name | ID | Status | Restarts | CWD | Uptime | Internal port |
-|---|---|---|---|---|---|---|---|
-| `neurecore-backend` | 10 | online | 194 | `/opt/neurecore/backend/backend` | — | **3003** |
-| `neurecore-tenant` | 12 | online | — | `/opt/neurecore/frontend-tenant` | — | **3005** |
-| `neurecore-admin` | 9 | online | — | `/opt/neurecore/frontend-admin` | — | **3020** |
+|---|---|---|---|---|---|---|
+| `neurecore-backend` | various | online | — | `/opt/neurecore/backend/backend` | — | **3003** |
+| `neurecore-tenant` | various | online | — | `/opt/neurecore/neurecore-tenant` | — | **3001** |
+| `neurecore-admin` | various | online | — | `/opt/neurecore/frontend-admin` | — | **3020** |
 | `neurecore-cors-proxy` | 7 | online | 5 | `/opt/neurecore` | 22h | **3004** |
 
 Other non-neurecore PM2 apps on the box (out of scope but share resources): `app-frontend` (GUV on 3001/3100), `gfcportal`, `shahisoft-nextjs`, `lifeosa-backend`, `ecoearthshop-backend` (cluster), `cookie-refresher`.
@@ -240,11 +251,11 @@ Other non-neurecore PM2 apps on the box (out of scope but share resources): `app
 | 443 | `0.0.0.0` | OpenLiteSpeed (TLS termination) |
 | 631 | `0.0.0.0` | cupsd |
 | 3000 | `127.0.0.1` | `nghttpx` (LiteSpeed proxy) — NOT backend |
-| 3001 | `0.0.0.0` | `next-server` GUV `app-frontend` — NOT neurecore |
+| 3001 | `127.0.0.1` | **neurecore-tenant** (Next.js) — NOTE: was 3005, moved to 3001 |
 | 3002 | — | nothing listening |
 | 3003 | `0.0.0.0` | **neurecore-backend** (NestJS) |
 | 3004 | `127.0.0.1` | **neurecore-cors-proxy** (sidecar → 3003) |
-| 3005 | `127.0.0.1` | **neurecore-tenant** (Next.js) |
+| 3005 | — | **FREE** (neurecore-tenant moved to 3001) |
 | 3010 | `127.0.0.1` | PM2 internal God daemon |
 | 3011 | — | **FREE** (EAOS retired) |
 | 3020 | `127.0.0.1` | **neurecore-admin** (Next.js) |
@@ -323,14 +334,14 @@ goals (extended with projectId FK)
 
 | Item | Value |
 |---|---|
-| Source root | `/opt/neurecore/frontend-tenant/` |
-| Build root | `/opt/neurecore/frontend-tenant/.next/` |
-| Startup | `/opt/neurecore/frontend-tenant/start.sh` → `node node_modules/.bin/next start --hostname 127.0.0.1 --port 3005` |
+| Source root | `/opt/neurecore/neurecore-tenant/` (Note: tenant frontend source is at `neurecore-tenant`, NOT `frontend-tenant`) |
+| Build root | `/opt/neurecore/neurecore-tenant/.next/` |
+| Startup | `cd /opt/neurecore/neurecore-tenant && npm start` (starts on port 3001 by default) |
 | Framework | Next.js 15.5.12, React 19, Radix UI (15 packages), Zustand v5, Tailwind, Socket.IO |
-| Listening port | **3005** (bound 127.0.0.1) |
+| Listening port | **3001** (bound 127.0.0.1) — NOTE: was 3005, moved to 3001 on 2026-07-10 |
 | External URL | `https://hq.neurecore.com` |
 | Source folder | `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant/` |
-| Env file | `/opt/neurecore/frontend-tenant/.env.production` |
+| Env file | `/opt/neurecore/neurecore-tenant/.env.production` |
 | Public API URL | `NEXT_PUBLIC_API_URL=/api/v1` (relative — relies on OLS catch-all rewrite to forward to backend via the same hostname) |
 | Public WS URL | `NEXT_PUBLIC_WS_URL=wss://brain.neurecore.com` |
 | Test framework | Vitest (`src/**/*.{test,spec}.{ts,tsx}`) + Playwright (`tests/e2e/`) |
@@ -405,7 +416,7 @@ Located at `/opt/neurecore/observability/`.
 
 | Vhost | Handler extProcessor | Internal address | TLS cert path |
 |---|---|---|---|
-| `hq.neurecore.com` | `neurecore_tenant` | `127.0.0.1:3005` | `/etc/letsencrypt/live/hq.neurecore.com/{privkey,fullchain}.pem` |
+| `hq.neurecore.com` | `neurecore_tenant` | `127.0.0.1:3001` | `/etc/letsencrypt/live/hq.neurecore.com/{privkey,fullchain}.pem` |
 | `cc.neurecore.com` | `neurecore_admin` | `127.0.0.1:3020` | `/etc/letsencrypt/live/cc.neurecore.com/{privkey,fullchain}.pem` |
 | `brain.neurecore.com` | `nodeapi` | `127.0.0.1:3003` | `/etc/letsencrypt/live/brain.neurecore.com/{privkey,fullchain}.pem` |
 

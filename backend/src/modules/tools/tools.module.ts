@@ -89,6 +89,9 @@ import {
   ListInboxItemsTool,
   GetInboxItemTool,
   RespondToInboxItemTool,
+  AddProjectMemoryTool,
+  SearchProjectMemoryTool,
+  UpdateMemoryConfidenceTool,
 } from './built-in/neurecore-tools';
 import type { IStructuredTool } from './interfaces/structured-tool.interface';
 
@@ -179,6 +182,9 @@ import type { IStructuredTool } from './interfaces/structured-tool.interface';
     ListInboxItemsTool,
     GetInboxItemTool,
     RespondToInboxItemTool,
+    AddProjectMemoryTool,
+    SearchProjectMemoryTool,
+    UpdateMemoryConfidenceTool,
     ToolsService,
     StructuredToolRegistry,
   ],
@@ -270,6 +276,9 @@ export class ToolsModule implements OnModuleInit {
     private readonly listInboxItems: ListInboxItemsTool,
     private readonly getInboxItem: GetInboxItemTool,
     private readonly respondToInboxItem: RespondToInboxItemTool,
+    private readonly addProjectMemory: AddProjectMemoryTool,
+    private readonly searchProjectMemory: SearchProjectMemoryTool,
+    private readonly updateMemoryConfidence: UpdateMemoryConfidenceTool,
   ) {
     this.logger = new Logger(ToolsModule.name);
   }
@@ -361,6 +370,9 @@ export class ToolsModule implements OnModuleInit {
       this.listInboxItems,
       this.getInboxItem,
       this.respondToInboxItem,
+      this.addProjectMemory,
+      this.searchProjectMemory,
+      this.updateMemoryConfidence,
     ].filter((t) => t !== null && t !== undefined) as IStructuredTool[];
 
     this.logger.log(`[ToolsModule] filtered tools count: ${tools.length}`);

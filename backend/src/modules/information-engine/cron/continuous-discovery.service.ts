@@ -46,6 +46,7 @@ export class ContinuousDiscoveryService {
     private readonly completenessService: CompletenessService,
     private readonly cron: MiniCronService,
     @Optional() @Inject(STALE_NOTIFIER) private readonly notifier?: StaleNotifier,
+    @Optional() private readonly eventBus?: any,
   ) {}
 
   /**
@@ -180,6 +181,21 @@ export class ContinuousDiscoveryService {
     this.logger.warn(
       `[stale] project=${projectId} tenant=${tenantId} name="${projectName}" score=${snap.score} lastAssessedAt=${snap.lastAssessedAt.toISOString()}`,
     );
+
+    if (this.eventBus) {
+      try {
+        this.eventBus.publish({
+          type: 'InformationGapsFound',
+          projectId,
+          tenantId,
+          timestamp: new Date(),
+          payload: {
+            completenessScore: snap.score,
+            missingCount: snap.missing.length,
+          },
+        });
+      } catch { /* fire-and-forget */ }
+    }
   }
 
   // Used by tests for the validate endpoint input shape.

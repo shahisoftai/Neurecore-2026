@@ -8,7 +8,7 @@
  * SOLID: Single Responsibility — health computation only.
  */
 
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import type {
   IProjectHealthRepository,
@@ -41,6 +41,7 @@ export class ProjectHealthService {
     @Inject(PROJECT_HEALTH_REPOSITORY)
     private readonly repo: IProjectHealthRepository,
     private readonly prisma: PrismaService,
+    @Optional() private readonly eventBus?: any,
   ) {}
 
   async computeHealth(input: ComputeHealthInput): Promise<ProjectHealth> {
@@ -100,6 +101,26 @@ export class ProjectHealthService {
     };
 
     await this.repo.upsertHealth(health);
+
+    if (this.eventBus) {
+      try {
+        const prev = await this.repo.getHealth(input.projectId, input.tenantId);
+        if (!prev || Math.round(overallScore) < prev.overallScore - 20) {
+          this.eventBus.publish({
+            type: 'HealthScoreDropped',
+            projectId: input.projectId,
+            tenantId: input.tenantId,
+            timestamp: new Date(),
+            payload: {
+              score: Math.round(overallScore),
+              previousScore: prev?.overallScore ?? 100,
+              reason: atRiskReasons[0],
+            },
+          });
+        }
+      } catch { /* fire-and-forget */ }
+    }
+
     return { ...health, computedAt: new Date() };
   }
 
