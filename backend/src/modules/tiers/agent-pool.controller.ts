@@ -34,15 +34,14 @@ import {
   IsNumber,
   IsBoolean,
   IsOptional,
-  IsUUID,
   Min,
 } from 'class-validator';
 
 class AddToPoolDto implements AddToPoolInput {
-  @IsUUID()
+  @IsString()
   tierId!: string;
 
-  @IsUUID()
+  @IsString()
   templateId!: string;
 
   @IsOptional()

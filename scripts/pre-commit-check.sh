@@ -70,6 +70,15 @@ else
   echo "  OK: Enum naming conventions OK"
 fi
 
+echo "[pre-commit]   @IsUUID() usage check..."
+if ! bash scripts/lint-no-isuuid.sh > /tmp/precommit-isuuid.log 2>&1; then
+  echo "  FAIL: @IsUUID() found in DTOs:"
+  cat /tmp/precommit-isuuid.log
+  FAIL=1
+else
+  echo "  OK: No @IsUUID() usage"
+fi
+
 # ─── 2. Frontend checks ───────────────────────────────────────────────────────
 echo ""
 echo "[pre-commit] Running frontend checks..."

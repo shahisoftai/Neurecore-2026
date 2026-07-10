@@ -32,7 +32,12 @@ rebuild_backend() {
   tar -czf "/tmp/dist-backup-$(date +%Y%m%d-%H%M%S).tar.gz" dist/ 2>/dev/null || true
 
   # 2. Pull deps + regen Prisma client
-  npm ci --include=dev --legacy-peer-deps 2>&1 | tail -5
+  # PD-03: prefer pnpm (matches pnpm-lock.yaml) but fall back to npm if not installed
+  if command -v pnpm &> /dev/null && [ -f pnpm-lock.yaml ]; then
+    pnpm install --frozen-lockfile 2>&1 | tail -5
+  else
+    npm install --legacy-peer-deps 2>&1 | tail -5
+  fi
   if [ -f .env ]; then
     set +u
     export $(grep -v '^#' .env | grep -E 'DATABASE_URL|DIRECT_URL' | xargs)
@@ -54,7 +59,11 @@ rebuild_tenant() {
   echo "=== Rebuilding tenant ($(date)) ===" | tee -a "$LOG"
   cd "$TENANT_DIR"
 
-  npm ci --include=dev --legacy-peer-deps 2>&1 | tail -5
+  if command -v pnpm &> /dev/null && [ -f pnpm-lock.yaml ]; then
+    pnpm install --frozen-lockfile 2>&1 | tail -5
+  else
+    npm install --legacy-peer-deps 2>&1 | tail -5
+  fi
   ./node_modules/.bin/next build 2>&1 | tail -10
 
   pm2 startOrReload "$ECOSYSTEM" --only neurecore-tenant
@@ -66,7 +75,11 @@ rebuild_admin() {
   echo "=== Rebuilding admin ($(date)) ===" | tee -a "$LOG"
   cd "$ADMIN_DIR"
 
-  npm ci --include=dev --legacy-peer-deps 2>&1 | tail -5
+  if command -v pnpm &> /dev/null && [ -f pnpm-lock.yaml ]; then
+    pnpm install --frozen-lockfile 2>&1 | tail -5
+  else
+    npm install --legacy-peer-deps 2>&1 | tail -5
+  fi
   ./node_modules/.bin/next build 2>&1 | tail -10
 
   pm2 startOrReload "$ECOSYSTEM" --only neurecore-admin

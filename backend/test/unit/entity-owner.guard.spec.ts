@@ -7,17 +7,21 @@ import type { Reflector } from '@nestjs/core';
 /**
  * Unit tests for EntityOwnerGuard.
  *
- * Phase 3, Task 3.3.
+ * The guard validates that the authenticated user has a valid tenant context.
+ * Cross-tenant access is prevented at the service layer (Prisma queries are
+ * filtered by tenantId from req.user.tenantId).
+ *
+ * Note: The guard no longer compares resource.tenantId against user.tenantId
+ * because guards run BEFORE route handlers, so req.resource cannot be set
+ * before the guard executes. See the comment in entity-owner.guard.ts.
  */
 
 function makeExecutionContext(opts: {
-  user?: { role: UserRole; sub?: string } | null;
-  resource?: { tenantId: string | null } | null;
+  user?: { role: UserRole; sub?: string; tenantId?: string | null } | null;
 }): ExecutionContext {
   const request: Record<string, unknown> = {};
-  if (opts.user !== null) request.user = opts.user ?? { role: 'USER', sub: 'u1' };
-  if (opts.resource !== null) {
-    request.resource = opts.resource ?? { tenantId: 'tenant-A' };
+  if (opts.user !== null) {
+    request.user = opts.user ?? { role: 'USER', sub: 'u1', tenantId: 'tenant-A' };
   }
   return {
     switchToHttp: () => ({
@@ -34,44 +38,43 @@ const reflectorStub = {
   getAllAndOverride: () => false,
 } as unknown as Reflector;
 
+const tenantCtx = {} as TenantContextService;
+
 describe('EntityOwnerGuard', () => {
-  it('passes when platform role', () => {
+  it('passes when platform role (SUPER_ADMIN)', () => {
     const ctx = makeExecutionContext({
       user: { role: UserRole.SUPER_ADMIN },
-      resource: { tenantId: 'tenant-A' },
     });
-    const tenantCtx = { tenantId: 'tenant-X' } as never;
-    const guard = new EntityOwnerGuard(reflectorStub, tenantCtx as TenantContextService);
-    expect(() => guard.canActivate(ctx)).not.toThrow();
+    const guard = new EntityOwnerGuard(reflectorStub, tenantCtx);
+    expect(guard.canActivate(ctx)).toBe(true);
   });
 
   it('throws Forbidden when no user', () => {
-    const ctx = makeExecutionContext({ user: null, resource: { tenantId: 'tenant-A' } });
-    const tenantCtx = { tenantId: 'tenant-X' } as never;
-    const guard = new EntityOwnerGuard(reflectorStub, tenantCtx as TenantContextService);
-    expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
-  });
-
-  it('throws Forbidden on cross-tenant access', () => {
-    const ctx = makeExecutionContext({
-      user: { role: UserRole.USER, sub: 'u1' },
-      resource: { tenantId: 'tenant-B' },
-    });
-    const tenantCtx = {
-      get: () => ({ tenantId: 'tenant-A' }),
-    } as unknown as TenantContextService;
+    const ctx = makeExecutionContext({ user: null });
     const guard = new EntityOwnerGuard(reflectorStub, tenantCtx);
     expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
   });
 
-  it('passes when resource.tenantId matches tenant context', () => {
+  it('throws Forbidden when non-platform user has no tenantId', () => {
     const ctx = makeExecutionContext({
-      user: { role: UserRole.USER, sub: 'u1' },
-      resource: { tenantId: 'tenant-A' },
+      user: { role: UserRole.USER, sub: 'u1', tenantId: null },
     });
-    const tenantCtx = {
-      get: () => ({ tenantId: 'tenant-A' }),
-    } as unknown as TenantContextService;
+    const guard = new EntityOwnerGuard(reflectorStub, tenantCtx);
+    expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
+  });
+
+  it('passes when user has valid tenantId', () => {
+    const ctx = makeExecutionContext({
+      user: { role: UserRole.USER, sub: 'u1', tenantId: 'tenant-A' },
+    });
+    const guard = new EntityOwnerGuard(reflectorStub, tenantCtx);
+    expect(guard.canActivate(ctx)).toBe(true);
+  });
+
+  it('passes for PLATFORM_ADMIN role', () => {
+    const ctx = makeExecutionContext({
+      user: { role: UserRole.PLATFORM_ADMIN },
+    });
     const guard = new EntityOwnerGuard(reflectorStub, tenantCtx);
     expect(guard.canActivate(ctx)).toBe(true);
   });

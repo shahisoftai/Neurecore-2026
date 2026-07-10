@@ -1,15 +1,26 @@
 import { ICRMConnector } from '../interfaces/ICRMConnector';
 
 /**
- * PipedriveConnector
- * Implements ICRMConnector adapter for Pipedrive.
- * Follows Liskov Substitution: all connectors are interchangeable via ICRMConnector.
+ * PipedriveConnector — STUB IMPLEMENTATION
+ *
+ * PRODUCTION-BLOCKED: PD-21
+ *
+ * API token storage and API calls are NOT implemented.
+ * This adapter silently succeeds without connecting to Pipedrive.
+ * Do not enable in production until token storage is implemented.
+ * Tracked in pending-tasks.md PD-21.
  */
 export class PipedriveConnector implements ICRMConnector {
   name = 'pipedrive';
 
   async connect(_config: Record<string, unknown>): Promise<void> {
     void JSON.stringify(_config);
+    if (process.env['NODE_ENV'] === 'production') {
+      throw new Error(
+        'PipedriveConnector: API token storage not implemented (PD-21). ' +
+          'Do not enable in production.',
+      );
+    }
     // TODO: Store encrypted API token from config
     return Promise.resolve();
   }
@@ -20,12 +31,18 @@ export class PipedriveConnector implements ICRMConnector {
 
   async syncContacts(_tenantId: string): Promise<void> {
     void _tenantId.length;
+    if (process.env['NODE_ENV'] === 'production') {
+      throw new Error('PipedriveConnector: not implemented in production (PD-21)');
+    }
     // GET https://api.pipedrive.com/v1/persons
     return Promise.resolve();
   }
 
   async syncLeads(_tenantId: string): Promise<void> {
     void _tenantId.length;
+    if (process.env['NODE_ENV'] === 'production') {
+      throw new Error('PipedriveConnector: not implemented in production (PD-21)');
+    }
     // GET https://api.pipedrive.com/v1/deals
     return Promise.resolve();
   }

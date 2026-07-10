@@ -16,7 +16,22 @@ export class SocketManager implements ISocketManager {
     private readonly tokenManager: ITokenManager,
     baseUrl?: string,
   ) {
-    this.url = baseUrl ?? (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000');
+    this.url = baseUrl ?? this.deriveSocketUrl();
+  }
+
+  /**
+   * Derive the Socket.IO server URL.
+   * Priority:
+   *   1. Explicit NEXT_PUBLIC_SOCKET_URL env var (for split deployments)
+   *   2. Same-origin (window.location) — uses OLS proxy rule
+   *      which forwards /socket.io/* to the NestJS backend
+   */
+  private deriveSocketUrl(): string {
+    if (typeof window === 'undefined') return '';
+    const explicit = process.env.NEXT_PUBLIC_SOCKET_URL;
+    if (explicit && explicit.length > 0) return explicit;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}`;
   }
 
   connect(): void {
@@ -28,7 +43,13 @@ export class SocketManager implements ISocketManager {
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
-      transports: ['websocket', 'polling'],
+      // Polling-only: OLS → NestJS proxy can't reliably relay the WebSocket
+      // upgrade (HTTP/2 downgrade + missing Connection: Upgrade header),
+      // which causes 400s on /socket.io/. Long-polling gives real-time push
+      // at sub-second latency without needing a true WS tunnel. See
+      // memory-bank/runbook.md §3.2 and FIX-022.
+      transports: ['polling'],
+      upgrade: false,
     });
 
     this.socket.on('connect', () => hqEventBus.emit('socket:connected', undefined as void));

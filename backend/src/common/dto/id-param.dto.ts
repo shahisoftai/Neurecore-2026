@@ -1,25 +1,22 @@
 /**
- * IdParamDto — canonical path parameter for endpoints that take a single UUID.
- *
- * Phase 1, Task 1.2 (per `EAOS-api-contract.md` §4.2).
+ * IdParamDto — canonical path parameter for endpoints that take a single ID.
  *
  * Use:
  *   @Get(':id')
  *   findOne(@Param() params: IdParamDto) { ... }
  *
- * Equivalent to `@Param('id', ParseUUIDPipe) id: string` but with the
- * type-safety of a DTO (so the OpenAPI schema is generated correctly).
+ * Uses @IsString() instead of @IsUUID() because NeureCore IDs are CUIDs
+ * (e.g. cm9p2x3ka0001abc...), not RFC 4122 UUIDs. See FIX-028.
  */
 
-import { IsUUID } from 'class-validator';
+import { IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class IdParamDto {
   @ApiProperty({
-    description: 'Resource UUID',
-    format: 'uuid',
-    example: '9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f',
+    description: 'Resource ID (CUID format)',
+    example: 'cm9p2x3ka0001abcdefgh',
   })
-  @IsUUID()
+  @IsString()
   id!: string;
 }
