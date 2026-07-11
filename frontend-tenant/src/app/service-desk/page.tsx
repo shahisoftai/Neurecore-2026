@@ -43,6 +43,7 @@ import {
   Wallet,
   Bot,
   CircleDot,
+  Hash,
 } from 'lucide-react';
 
 import { useTenantAuth } from '@/hooks/useTenantAuth';
@@ -50,9 +51,10 @@ import TenantShell from '@/components/TenantShell';
 import { KpiCard } from '@/components/creatio/KpiCard';
 import { StatusBadge } from '@/components/creatio/StatusBadge';
 import { ActionButton } from '@/components/creatio/ActionToolbar';
+import ThreadInboxPanel from '@/components/threads/ThreadInboxPanel';
 
 // ─── Types ────────────────────────────────────────────────────────────────
-type ServiceDeskTab = 'inbox' | 'approvals' | 'audit' | 'activity';
+type ServiceDeskTab = 'inbox' | 'approvals' | 'audit' | 'activity' | 'threads';
 
 interface InboxItem {
   id: string;
@@ -99,6 +101,7 @@ const TABS: { id: ServiceDeskTab; label: string; icon: typeof Inbox }[] = [
   { id: 'approvals', label: 'Approvals', icon: CheckSquare },
   { id: 'audit',     label: 'Audit Log', icon: ShieldCheck },
   { id: 'activity',  label: 'Activity',  icon: Activity },
+  { id: 'threads',   label: 'Threads',   icon: MessageSquare },
 ];
 
 const API_BASE = '/api/v1';
@@ -222,6 +225,7 @@ export default function ServiceDeskPage() {
             {activeTab === 'approvals' && <ApprovalsTab />}
             {activeTab === 'audit' && <AuditTab />}
             {activeTab === 'activity' && <ActivityTab />}
+            {activeTab === 'threads' && <ThreadInboxPanel />}
           </motion.div>
         </AnimatePresence>
       </div>

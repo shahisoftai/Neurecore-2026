@@ -1,6 +1,46 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-11 14:09 PKT — AI Gateway deep-audit round 2 completed (728/728 tests, all consumers migrated)
+**Last verified:** 2026-07-11 22:55 PKT — Enterprise Communication Platform pre-rollout engineering + comms-gated tenant UI implemented; 6 Prisma migrations created + applied; WS security hardened; admin feature-flags extended.
+
+**2026-07-11 22:55 PKT — Comms Rollout Implementation (Kilo):**
+- ✅ **Pre-rollout engineering** (§0 tasks): 6 Prisma migration files created + marked as applied (`20260711_comms_01` through `_06`); 47 total migrations tracked, DB schema up to date
+- ✅ **WS security hardening** (`EventsGateway`): `thread:join`/`thread:leave` now verify tenant ownership + participant membership; `PrismaService` injected; any authenticated-but-non-participant user → `{ joined: false }`
+- ✅ **Admin feature-flags page** extended: `TenantFeatureFlagOverrides` +11 comms flags; UI shows "Hermes Runtime" + "Enterprise Communication" grouped sections with ⚠️ HIGH RISK on `AGENT_MESSAGING_ENABLED`
+- ✅ **A2A flag ambiguity resolved**: `AgentMessagingGuard` now checks `AGENT_MESSAGING_ENABLED || COMM_AGENT_MESSAGING_ENABLED` (OR condition)
+- ✅ **Server feature flags** extended: `useServerFeatureFlag.ts` `ServerFeatureFlag` type +11 comms flags
+- ✅ **Comms-gated tenant UI**: `ThreadInboxPanel` + `ThreadView` components added to `/service-desk?tab=threads` (5-tab layout)
+- ✅ **Thread service + store + hook**: `threads.service.ts` (IThreadService), `threadStore.ts` (Zustand persist+merge), `useThreads.ts` (DIP, WS lifecycle)
+- ✅ **Socket infrastructure**: `joinThread()`/`leaveThread()` exports, 8 thread WS event listeners, EventBus types extended, storeEventBridge wired
+- ✅ **Build verification**: `tsc --noEmit` → 0 errors (backend + both frontends), `next build` → all routes compiled, `nest build` → clean
+- ✅ **Contabo deploy** (2026-07-11 20:07 PKT): All 3 services rsync'd, rebuilt, and restarted. Backend 6 migrations marked as applied (47 total). `brain` health 200, `hq` 200, `cc` 200. DR snapshot at `/opt/neurecore/_archives/20260711-200735-pre-comms-deploy/`. PM2 saved.
+- ✅ `comms/comms-rollout.md` updated with §14 completion + deploy notes
+- ⚠️ No feature flags flipped yet — all `COMM_*` flags still false. Proceed to §5 per-phase flag rollout.
+- See [comms/comms-rollout.md](comms/comms-rollout.md) for full implementation and rollout sequence
+
+**2026-07-11 17:35 PKT — Settings/AI Providers + Admin chat fixes (Kilo):**
+- ✅ MiniMax API fully operational: boot probe 6/8 [ok] at avg 3175ms; base URL fixed `api.minimax.io` (was `api.minimaxi.com`); proper `sk-*` key
+- ✅ Settings/AI Providers page (`/admin/settings/ai`) shows all 5 providers with nested models + routing config
+- ✅ `AiProvidersController` created at path `settings/ai` bridging frontend `SettingsApiClient` basePath to gateway DB catalog
+- ✅ `PROVIDER_INFO` updated with `openai`, `anthropic`, `mimo` + type-safe fallback for unknown slugs
+- ✅ `AISettingsService` (17 methods) now uses `unwrapList()`/`unwrapItem()` for NestJS response wrapper parsing
+- ✅ Admin chat (`POST /chat/messages`) returns real MiniMax replies; 4 chat paths added to CSRF exemption in both middleware files
+- ✅ FIX-038 logged in [fixes.md](fixes.md) covering all 4 sub-issues
+
+**2026-07-11 16:25 PKT — AI Gateway deployed to Contabo (Kilo):**
+- ✅ All three services rebuilt + redeployed: backend (3003), admin (3020), tenant (3001)
+- ✅ 2 Prisma migrations applied: `20260711_ai_gateway_catalog` (model_providers, ai_models, tenant_model_overrides, model_catalog_audits) + `20260711_ai_gateway_cost_attribution` (sourceModule, sourceEventId, metadata on cost_records)
+- ✅ Seed run: 5 providers (MiniMax, DeepSeek, MiMo, OpenAI, Anthropic) + 12 models across 8 capabilities
+- ✅ `AI_GATEWAY_V2=true` + `MINIMAX_API_KEY` + `MINIMAX_BASE_URL` + `MINIMAX_MODEL` added to `/opt/neurecore/backend/backend/.env`
+- ✅ MiniMax fully operational: `sk-*` key + `api.minimax.io/v1` base URL; boot probe 6/8 [ok] averaging 3175ms per probe
+- ✅ Tenant chat (ConversationPanel) routes through gateway: `capability=conversation, provider=minimax, model=MiniMax-M2.7-highspeed`
+- ✅ Tenant AIChatPanel shows real AI response (Daily Digest)
+- ✅ Backend health API endpoints all functional: `/admin/models/providers`, `/admin/models`, `/admin/models/health`, `/admin/models/cost-summary`
+- ⚠️ Frontend `/admin/models` page has pre-existing basePath routing issue (sidebar links double `/admin` prefix)
+- ✅ 728/728 backend tests pass (76 suites); `nest build` + `tsc --noEmit` clean
+- ✅ 6 deploy-time issues fixed (migration SQL, DI crashes, start.sh — see FIX-037 in fixes.md)
+- ✅ PM2 saved; all processes survive reboot
+- DR snapshot: `/opt/neurecore/_archives/20260711-112413-pre-ai-gateway/`
+- See [ai-gateway/ai-gateway-imp-plan.md](ai-gateway/ai-gateway-imp-plan.md) for full feature list + deploy details
 
 **2026-07-11 00:30 PKT — Phase 8 deployment (Kilo):**
 - ✅ Goal pre-population in `ProjectsService.create()` is now synchronous — by the time create returns, the project has its goals seeded from `goalTemplate`

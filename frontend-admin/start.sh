@@ -1,3 +1,3 @@
 #!/bin/bash
 cd /opt/neurecore/frontend-admin
-exec node node_modules/.bin/next start --hostname 127.0.0.1 --port 3020
+exec ./node_modules/.bin/next start --hostname 127.0.0.1 --port 3020

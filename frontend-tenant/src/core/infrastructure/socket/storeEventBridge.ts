@@ -8,6 +8,7 @@ import { useAgentStore } from '@/stores/agentStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useWorkflowStore } from '@/stores/workflowStore';
 import { useNotificationStore } from '@/shared/stores/notificationStore';
+import { useThreadStore } from '@/stores/threadStore';
 import type { AgentStatus, TaskStatus, WorkflowStatus, NotificationType } from '@/shared/types/domain.types';
 
 let _initialized = false;
@@ -69,6 +70,42 @@ export function initStoreEventBridge(): () => void {
         priority: 'important',
         entityId: approvalId,
         entityType: 'Approval',
+      });
+    }),
+  );
+
+  // ── Enterprise Communication Platform thread events (2026-07-11) ─────────
+
+  _unsubs.push(
+    hqEventBus.on('thread:created', ({ thread }) => {
+      useThreadStore.getState().addThread(thread as any);
+    }),
+  );
+
+  _unsubs.push(
+    hqEventBus.on('thread:closed', ({ threadId }) => {
+      useThreadStore.getState().removeThread(threadId);
+    }),
+  );
+
+  _unsubs.push(
+    hqEventBus.on('thread:message', ({ threadId, message }) => {
+      // Bump thread to top of list (update updatedAt via patch)
+      useThreadStore.getState().updateThread(threadId, {
+        updatedAt: new Date().toISOString(),
+      } as any);
+    }),
+  );
+
+  _unsubs.push(
+    hqEventBus.on('thread:mention', ({ threadId, preview }) => {
+      useNotificationStore.getState().addNotification({
+        title: 'You were mentioned',
+        message: preview.slice(0, 120),
+        type: 'info',
+        priority: 'important',
+        entityId: threadId,
+        entityType: 'Thread',
       });
     }),
   );

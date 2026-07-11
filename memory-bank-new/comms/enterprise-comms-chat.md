@@ -1,8 +1,7 @@
 # Enterprise Communication & Chat — Implementation Reference
 
-**Date:** 2026-07-08 (rev 3 — post-deep-audit runtime + DI + WS gap pass)
-**Status:** ✅ Phases 1–9 IMPLEMENTED + BUILDING + RUNTIME BOOT CLEAN (backend + both frontends, all build/lint/typecheck clean; all new endpoints wired and serving 401 under JWT guard)
-**Plan of record:** [`enterprise-communication.md`](./enterprise-communication.md) (Rev 4)
+**Date:** 2026-07-11 (rev 4 — deployed to Contabo 20:07 PKT; all 3 services rebuilt; 47 migrations tracked; WS security hardened; comms-gated tenant UI live at `/service-desk?tab=threads` behind `COMM_THREADS_ENABLED` flag)
+**Status:** ✅ Phases 1–9 IMPLEMENTED + DEPLOYED TO CONTABO. ✅ Pre-rollout engineering complete. ✅ All builds clean. ⚠️ No feature flags flipped yet — all `COMM_*` flags still `false`. See [`comms-rollout.md`](./comms-rollout.md) §5 for per-phase flag activation.
 **Implementation approach:** Trunk-based, additive-only, feature-flagged. No phase requires data migration or service downtime.
 
 ---

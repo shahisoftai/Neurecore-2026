@@ -2675,3 +2675,103 @@ Round 1 of the AI Gateway implementation (FIX-034/FIX-035) had:
 - [ai-gateway.md](../ai-gateway/ai-gateway.md)
 - [backend/src/modules/ai-gateway/README.md](../../backend/src/modules/ai-gateway/README.md)
 
+---
+
+## FIX-037 — AI Gateway Contabo deploy: 6 runtime issues resolved (2026-07-11 16:25 PKT)
+
+**Symptom:** After rsyncing the full AI Gateway implementation to Contabo, the backend crashed on startup with 3 NestJS DI resolution failures. After fixing DI issues, Prisma migrations failed halfway with FK constraint errors. After fixing migrations, the admin frontend crashed on PM2 restart.
+
+**Root cause:** Six distinct issues spanning backend DI, database migration SQL, and frontend process management:
+
+1. **Migration SQL FK references wrong table name** — `REFERENCES "Tenant"("id")` but actual DB table is `tenants` (via `@@map("tenants")`). Also a migration drift with 5 old-branch migrations in DB but not in local `prisma/migrations/`.
+2. **NestJS DI #1 — string token injection in `OPENCLAW_CONFIG` factory** — `inject: ['SecretProviderService']` uses a string token. `SecretProviderService` is exported from `@Global()` `SecurityModule` but the string token doesn't resolve cross-module. Changed to class reference `inject: [SecretProviderService]`.
+3. **NestJS DI #2 — `@Optional()` missing on `AiModelRepository` constructor params** — `cacheTtlSeconds = 60` and `maxEntries = 256` are primitive number params with defaults. NestJS tries to resolve them as providers and fails. Added `@Optional()` decorators.
+4. **NestJS DI #3 — `CircuitBreaker` in `providers` array but constructed manually** — `CircuitBreaker` has `constructor(options: CircuitBreakerOptions)` which NestJS can't resolve. `AiGatewayService` creates it manually with `new CircuitBreaker(cbOptions)`. Removed from module `providers[]`.
+5. **Admin `start.sh` runs shell script through node** — `exec node node_modules/.bin/next start` tries to interpret the shell-script `.bin/next` as JavaScript. Changed to `exec ./node_modules/.bin/next start` (matching tenant `start.sh` pattern).
+6. **Rsync accidentally duplicated `ai-gateway.module.ts` into `selection/` subdirectory** — The first rsync command with multiple sources put the module file in the wrong location, creating a file with broken relative imports. Cleaned up with `rm`.
+
+**Fix:**
+
+1. Fixed migration SQL: `sed -i "s/REFERENCES \"Tenant\"/REFERENCES \"tenants\"/g"` in both migration files. Resolved failed migrations via `prisma migrate resolve --rolled-back`, then re-applied. Created 5 baseline stub migration dirs for the old-branch migrations.
+2. Edited `ai-gateway.module.ts`: added `import { SecretProviderService } from '../security/providers/secret.provider'` and changed `inject: ['SecretProviderService']` to `inject: [SecretProviderService]`.
+3. Edited `ai-model.repository.ts`: added `@Optional()` from `@nestjs/common`, decorated both `cacheTtlSeconds` and `maxEntries` params.
+4. Removed `CircuitBreaker` import and provider entry from `ai-gateway.module.ts`.
+5. Rewrote `frontend-admin/start.sh` to use `./node_modules/.bin/next` directly.
+6. Deleted the stray file `src/modules/ai-gateway/selection/ai-gateway.module.ts` on Contabo.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `backend/prisma/migrations/20260711_ai_gateway_catalog/migration.sql` | Fixed FK reference: `"Tenant"` → `"tenants"` |
+| `backend/prisma/migrations/20260711_ai_gateway_cost_attribution/migration.sql` | Fixed FK reference: `"Tenant"` → `"tenants"` |
+| `backend/src/modules/ai-gateway/ai-gateway.module.ts` | Removed `CircuitBreaker` import+provider; added `SecretProviderService` import; changed inject token |
+| `backend/src/modules/ai-gateway/selection/ai-model.repository.ts` | Added `@Optional()` to `cacheTtlSeconds` and `maxEntries` constructor params |
+| `frontend-admin/start.sh` | Changed `exec node node_modules/.bin/next` to `exec ./node_modules/.bin/next` |
+| 5 new migration dirs in `prisma/migrations/` (Contabo only) | Baseline stubs for `20260702_hermes_layer`, `20260703_admin_pool`, `20260703135343_industry_enum_extend`, `20260708_enterprise_communication_platform`, `20260709_projects_audit_schema_fixes` |
+
+### Acceptance
+
+- Backend: `curl -sk https://brain.neurecore.com/api/v1/health` → 200, status healthy
+- Backend boot probe logs: AI Gateway initialized, 5 of 8 capability probes attempted (3 got 401 from MiniMax, 2 skipped — reasoning/coding need DeepSeek key)
+- Admin: `curl -sk -o /dev/null -w '%{http_code}' https://cc.neurecore.com/` → 200
+- Tenant: `curl -sk -o /dev/null -w '%{http_code}' https://hq.neurecore.com/` → 200
+- API: `GET /admin/models/providers` → 200 with 5 providers + nested models
+- API: `GET /admin/models/health` → 200 `{ circuit: [], booted: true }`
+- API: `GET /admin/models/cost-summary?days=30` → 200 `{ days: 30, rows: [] }`
+- Chat: ConversationPanel routes through gateway (AI_GATEWAY_V2 path confirmed in logs)
+- Tests: 728/728 pass locally; `nest build` + `tsc --noEmit` clean
+
+### Reference
+
+- [ai-gateway-imp-plan.md §0](ai-gateway/ai-gateway-imp-plan.md)
+- [system-state.md](system-state.md) (updated 2026-07-11 16:25 PKT)
+- [contabo-ops.md §3.3b](contabo-ops.md)
+
+---
+
+## FIX-038 — Settings/AI Providers page + Admin chat (2026-07-11 17:35 PKT)
+
+**Symptom:** The admin portal Settings > AI Providers page showed "The requested resource was not found." After fixing the endpoint, it showed "No AI providers configured" despite 5 providers in the DB. The admin overview chat showed "Chat backend (`/api/chat`) is not yet deployed."
+
+**Root cause:** Three independent issues:
+
+1. **API path mismatch** — The frontend `SettingsApiClient` prepends `/settings` basePath to all requests. The `AISettingsService` calls `/ai/providers`, which becomes `/api/v1/settings/ai/providers`. The backend `AiProvidersController` was mounted at `ai`, not `settings/ai`. Changed to `@Controller({ path: 'settings/ai' })`.
+
+2. **Response unwrap missing** — The `AISettingsService.getProviders()` did `return response.items` but the NestJS global response interceptor wraps data as `{ status, data: [...] }`. There is no `items` key. Other admin services use `unwrapList()`/`unwrapItem()` from `@/services/unwrap.ts` — the AI settings service was the only one that didn't. Updated all 17 methods in `aiSettings.service.ts` to use `unwrapList()` and `unwrapItem()`.
+
+3. **PROVIDER_INFO missing 3 providers** — The settings page component had a `Record<AIProvider, ...>` map with only 4 entries: `deepseek`, `gemini`, `openrouter`, `minimax`. The DB catalog has 5 providers: `anthropic`, `deepseek`, `minimax`, `openai`, `mimo`. When rendering the provider cards, `PROVIDER_INFO[provider.provider]` returned `undefined` for unknown slugs, causing `can't access property "icon", t is undefined`. Added `openai`, `anthropic`, `mimo` entries and a fallback `?? { name, icon: '🔌' }` for future unknown providers.
+
+4. **CSRF blocks admin chat** — The `CsrfProtectionMiddleware` (`common/auth/csrf.middleware.ts`) blocked POST `/chat/messages` from the admin portal because the admin's `__Host-nc_csrf` cookie was not being sent (admin uses cookie-based auth but the CSRF cookie is set separately during login). The request returned 403 → admin frontend's `chatService.sendMessage()` caught the error and returned the stub fallback message. Added `/api/v1/chat/messages`, `/api/v1/chat/history`, `/api/v1/chat/suggestions`, and `/api/v1/ai/chat` to `EXEMPT_PATHS` in both CSRF middleware files (`common/auth/csrf.middleware.ts` and `modules/security/middleware/csrf.middleware.ts`).
+
+**Fix:**
+
+1. Changed controller path from `{ path: 'ai' }` to `{ path: 'settings/ai' }` in `ai-providers.controller.ts`.
+2. Imported `unwrapList` and `unwrapItem` in `aiSettings.service.ts`; changed all 17 methods to unwrap responses.
+3. Added `openai`, `anthropic`, `mimo` to `PROVIDER_INFO` in `settings/ai/page.tsx`; changed type from `Record<AIProvider, ...>` to `Record<string, ...>` with fallback.
+4. Added 4 chat paths to CSRF exemption sets in both middleware files.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `backend/src/modules/ai-gateway/controllers/ai-providers.controller.ts` | NEW: 15-endpoint compatibility controller mounted at `settings/ai` |
+| `backend/src/modules/ai-gateway/ai-gateway.module.ts` | Added `AiProvidersController` to controllers array |
+| `backend/src/common/auth/csrf.middleware.ts` | Added 4 chat paths to `EXEMPT_PATHS` |
+| `backend/src/modules/security/middleware/csrf.middleware.ts` | Added 4 chat paths to `publicPaths` |
+| `frontend-admin/src/services/settings/aiSettings.service.ts` | All 17 methods now use `unwrapList()`/`unwrapItem()` |
+| `frontend-admin/src/app/settings/ai/page.tsx` | Added 3 providers to `PROVIDER_INFO`; type widened; fallback added |
+
+### Acceptance
+
+- `GET /api/v1/settings/ai/providers` → 200 with 5 providers + nested models
+- `GET /api/v1/settings/ai/routing` → 200 with 6 capabilities + model assignments
+- `POST /api/v1/chat/messages` (admin JWT) → 200 with real MiniMax reply (`model: "MiniMax-M2.7-highspeed"`, `provider: "minimax"`)
+- Settings/AI Providers page renders 5 provider cards (no crash, no "not found")
+- Admin chat returns real AI responses instead of stub message
+
+### Reference
+
+- [ai-gateway-reference.md](ai-gateway/ai-gateway-reference.md)
+- [ai-gateway-imp-plan.md §0](ai-gateway/ai-gateway-imp-plan.md)
+

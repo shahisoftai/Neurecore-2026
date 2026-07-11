@@ -7,33 +7,35 @@
 
 import type { AIProviderConfig, AIModel, AIRoutingConfig } from "@/types/settings.types";
 import type { IAISettingsService, ISettingsApiClient } from "./interfaces";
+import { unwrapList, unwrapItem } from "@/services/unwrap";
 
 export class AISettingsService implements IAISettingsService {
   constructor(private apiClient: ISettingsApiClient) {}
 
   // Provider Management
   async getProviders(): Promise<AIProviderConfig[]> {
-    const response = await this.apiClient.get<{ items: AIProviderConfig[] }>(
-      "/ai/providers",
-    );
-    return response.items;
+    const response = await this.apiClient.get<any>("/ai/providers");
+    return unwrapList(response).items as AIProviderConfig[];
   }
 
   async getProvider(id: string): Promise<AIProviderConfig> {
-    return this.apiClient.get<AIProviderConfig>(`/ai/providers/${id}`);
+    const response = await this.apiClient.get<any>(`/ai/providers/${id}`);
+    return unwrapItem(response) as AIProviderConfig;
   }
 
   async createProvider(
     data: Partial<AIProviderConfig>,
   ): Promise<AIProviderConfig> {
-    return this.apiClient.post<AIProviderConfig>("/ai/providers", data);
+    const response = await this.apiClient.post<any>("/ai/providers", data);
+    return unwrapItem(response) as AIProviderConfig;
   }
 
   async updateProvider(
     id: string,
     data: Partial<AIProviderConfig>,
   ): Promise<AIProviderConfig> {
-    return this.apiClient.patch<AIProviderConfig>(`/ai/providers/${id}`, data);
+    const response = await this.apiClient.patch<any>(`/ai/providers/${id}`, data);
+    return unwrapItem(response) as AIProviderConfig;
   }
 
   async deleteProvider(id: string): Promise<void> {
@@ -44,34 +46,37 @@ export class AISettingsService implements IAISettingsService {
     id: string,
     enabled: boolean,
   ): Promise<AIProviderConfig> {
-    return this.apiClient.patch<AIProviderConfig>(
+    const response = await this.apiClient.patch<any>(
       `/ai/providers/${id}/toggle`,
       { enabled },
     );
+    return unwrapItem(response) as AIProviderConfig;
   }
 
   async setDefaultProvider(id: string): Promise<AIProviderConfig> {
-    return this.apiClient.post<AIProviderConfig>(
+    const response = await this.apiClient.post<any>(
       `/ai/providers/${id}/set-default`,
     );
+    return unwrapItem(response) as AIProviderConfig;
   }
 
   // Model Management
   async getModels(providerId: string): Promise<AIModel[]> {
-    const response = await this.apiClient.get<{ items: AIModel[] }>(
+    const response = await this.apiClient.get<any>(
       `/ai/providers/${providerId}/models`,
     );
-    return response.items;
+    return unwrapList(response).items as AIModel[];
   }
 
   async addModel(
     providerId: string,
     model: Partial<AIModel>,
   ): Promise<AIModel> {
-    return this.apiClient.post<AIModel>(
+    const response = await this.apiClient.post<any>(
       `/ai/providers/${providerId}/models`,
       model,
     );
+    return unwrapItem(response) as AIModel;
   }
 
   async updateModel(
@@ -79,10 +84,11 @@ export class AISettingsService implements IAISettingsService {
     modelId: string,
     data: Partial<AIModel>,
   ): Promise<AIModel> {
-    return this.apiClient.patch<AIModel>(
+    const response = await this.apiClient.patch<any>(
       `/ai/providers/${providerId}/models/${modelId}`,
       data,
     );
+    return unwrapItem(response) as AIModel;
   }
 
   async deleteModel(providerId: string, modelId: string): Promise<void> {
@@ -96,39 +102,41 @@ export class AISettingsService implements IAISettingsService {
     modelId: string,
     enabled: boolean,
   ): Promise<AIModel> {
-    return this.apiClient.patch<AIModel>(
+    const response = await this.apiClient.patch<any>(
       `/ai/providers/${providerId}/models/${modelId}/toggle`,
       { enabled },
     );
+    return unwrapItem(response) as AIModel;
   }
 
   async setDefaultModel(providerId: string, modelId: string): Promise<AIModel> {
-    return this.apiClient.post<AIModel>(
+    const response = await this.apiClient.post<any>(
       `/ai/providers/${providerId}/models/${modelId}/set-default`,
     );
+    return unwrapItem(response) as AIModel;
   }
 
   // Validation
   async testProviderConnection(
     id: string,
   ): Promise<{ success: boolean; latency: number; error?: string }> {
-    return this.apiClient.post<{
-      success: boolean;
-      latency: number;
-      error?: string;
-    }>(`/ai/providers/${id}/test`);
+    const response = await this.apiClient.post<any>(`/ai/providers/${id}/test`);
+    return unwrapItem(response);
   }
 
   // AI Routing
   async getAIRouting(): Promise<AIRoutingConfig> {
-    return this.apiClient.get<AIRoutingConfig>("/ai/routing");
+    const response = await this.apiClient.get<any>("/ai/routing");
+    return unwrapItem(response) as AIRoutingConfig;
   }
 
   async updateAIRouting(config: Partial<AIRoutingConfig>): Promise<AIRoutingConfig> {
-    return this.apiClient.patch<AIRoutingConfig>("/ai/routing", config);
+    const response = await this.apiClient.patch<any>("/ai/routing", config);
+    return unwrapItem(response) as AIRoutingConfig;
   }
 
   async resetAIRouting(): Promise<AIRoutingConfig> {
-    return this.apiClient.post<AIRoutingConfig>("/ai/routing/reset");
+    const response = await this.apiClient.post<any>("/ai/routing/reset");
+    return unwrapItem(response) as AIRoutingConfig;
   }
 }

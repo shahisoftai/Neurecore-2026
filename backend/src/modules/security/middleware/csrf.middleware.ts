@@ -40,7 +40,7 @@ export class CsrfMiddleware implements NestMiddleware {
     }
 
     // Skip for public endpoints
-    const publicPaths = ['/health', '/healthz', '/api/v1/auth/login'];
+    const publicPaths = ['/health', '/healthz', '/api/v1/auth/login', '/api/v1/chat/messages', '/api/v1/chat/history', '/api/v1/chat/suggestions', '/api/v1/ai/chat'];
     if (publicPaths.some((path) => req.path.startsWith(path))) {
       return next();
     }

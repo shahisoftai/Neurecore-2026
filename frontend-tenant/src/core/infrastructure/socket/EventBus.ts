@@ -49,6 +49,16 @@ export interface HQSocketEvents {
   'activity:new': { type: string; payload: unknown };
   'notification:new': { id: string; title: string; message: string; type: string };
   'approval:requested': { approvalId: string; title: string };
+  // Enterprise Communication Platform (2026-07-11)
+  'thread:message': { threadId: string; message: unknown };
+  'thread:created': { thread: unknown };
+  'thread:participant_added': { threadId: string; participant: unknown };
+  'thread:mention': { threadId: string; messageId: string; mentionedBy: unknown; preview: string };
+  'thread:closed': { threadId: string };
+  'thread:activity': { threadId: string; activity: unknown };
+  'presence:updated': { type: string; id: string; status: string; tenantId: string };
+  'activity:direct': unknown;
+  'dependency:updated': { changedEntity: unknown; dependents: unknown[]; event: string; timestamp: string };
 }
 
 export const hqEventBus = new EventBus<HQSocketEvents>();

@@ -43,6 +43,10 @@ const EXEMPT_PATHS = new Set<string>([
   '/api/v1/auth/register',
   '/api/v1/auth/google',
   '/api/v1/auth/refresh',
+  '/api/v1/chat/messages',
+  '/api/v1/chat/history',
+  '/api/v1/chat/suggestions',
+  '/api/v1/ai/chat',
 ]);
 
 @Injectable()

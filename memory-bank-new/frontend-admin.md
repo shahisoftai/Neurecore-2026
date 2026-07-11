@@ -1,6 +1,6 @@
 # Frontend-Admin (NeureCore admin console)
 
-**Last verified:** 2026-07-07 20:00 PKT (FIX-020 SHIPPED + deployed — see §12 below; **DO NOT corrupt** the new auth architecture — see [`int-features/auth-architecture.md`](../int-features/auth-architecture.md))
+**Last verified:** 2026-07-11 17:35 PKT (AI Gateway UI + Settings/AI Providers page live, admin chat CSRF fixed)
 **Live URL:** `https://cc.neurecore.com` (under `/admin/` basePath)
 **Internal port:** 3020
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-admin/`
@@ -42,7 +42,7 @@ Distinct from tenant UI: **no per-tenant org chart, focuses on platform-wide dat
 | Item | Value |
 |---|---|
 | PM2 process | `neurecore-admin` (id 42) |
-| Startup | `/opt/neurecore/frontend-admin/start.sh` → `node node_modules/.bin/next start --hostname 127.0.0.1 --port 3020` |
+| Startup | `/opt/neurecore/frontend-admin/start.sh` → `./node_modules/.bin/next start --hostname 127.0.0.1 --port 3020` |
 | Build output | `/opt/neurecore/frontend-admin/.next/` |
 | Env file | `/opt/neurecore/frontend-admin/.env.production` |
 | Local dev port | `3002` |
@@ -408,5 +408,97 @@ curl -sk -o /dev/null -w "%{http_code}\n" https://cc.neurecore.com/admin/package
 ```
 
 ---
+
+---
+
+## 13. AI Gateway UI routes (deployed 2026-07-11)
+
+Two new admin pages added for the AI Gateway:
+
+### `/admin/models` (Models management)
+
+Four tabs:
+1. **Providers** — List with toggle/create; shows live reachability from `/admin/models/health`
+2. **Models** — List per-provider; mark default per capability; create/edit
+3. **Per-tenant Overrides** — Search tenant → view/edit overrides; capability × model select
+4. **Health & Cost** — Circuit snapshot + cost summary (7/14/30/60/90 day window)
+
+Source: `src/app/admin/models/page.tsx`
+
+### `/admin/cost-summary` (Cost analytics)
+
+Cost totals sorted by `costCents` descending. Shows provider, model, call count, tokens in/out, and a totals row. Day-range window selector (7/14/30/60/90 days).
+
+Source: `src/app/admin/cost-summary/page.tsx`
+
+### Sidebar
+
+"Models" appears under the "Intelligence" section. Link: `/models` (Next.js basePath `/admin` auto-prepends to `/admin/models`).
+
+### OLS vhost
+
+`cc.neurecore.com` vhost already has `RewriteRule ^/?models(/.*)?$ /admin/models$1 [L]` (line 49). No additional rule needed for `/cost-summary` — the catch-all `RewriteRule .* - [L]` passes it through to Next.js.
+
+### Known issue
+
+Sidebar `href="/models"` renders as `/admin/models` (basePath prepended). Clicking navigates to `/admin/admin/models` due to client-side router adding basePath twice. This is a pre-existing routing bug, not AI-Gateway-specific. Workaround: navigate to `https://cc.neurecore.com/models` directly (OLS rewrites to `/admin/models` internally).
+
+### Reference
+
+- Full feature list: [ai-gateway-imp-plan.md](ai-gateway/ai-gateway-imp-plan.md)
+- Backend module: [backend.md §16](backend.md)
+- Deploy fixes: [fixes.md FIX-037 + FIX-038](fixes.md)
+
+---
+
+## 14. Settings / AI Providers page (fixed 2026-07-11)
+
+The `Settings > AI Providers` page (`/admin/settings/ai`) calls a compatibility API layer (`AiProvidersController` at path `settings/ai`) that maps the frontend's expected response shape onto the gateway DB catalog.
+
+### Route mapping
+
+| Frontend calls | Backend route | Source |
+|---|---|---|
+| `GET /api/v1/settings/ai/providers` | `AiProvidersController.listProviders()` | `controllers/ai-providers.controller.ts` |
+| `POST /api/v1/settings/ai/providers` | `AiProvidersController.createProvider()` | same |
+| `PATCH /api/v1/settings/ai/providers/:id` | `AiProvidersController.updateProvider()` | same |
+| `DELETE /api/v1/settings/ai/providers/:id` | `AiProvidersController.deleteProvider()` | same |
+| `PATCH /api/v1/settings/ai/providers/:id/toggle` | `AiProvidersController.toggleProvider()` | same |
+| `POST /api/v1/settings/ai/providers/:id/test` | `AiProvidersController.testProvider()` → gateway `ping()` | same |
+| `GET/POST/PATCH/DELETE .../providers/:id/models/*` | CRUD on `ai_models` table | same |
+| `GET /api/v1/settings/ai/routing` | `AiProvidersController.getRouting()` | same |
+| `PATCH /api/v1/settings/ai/routing` | `AiProvidersController.updateRouting()` | same |
+
+### Response format
+
+The `AISettingsService` (17 methods) uses `unwrapList()`/`unwrapItem()` from `@/services/unwrap.ts` to parse the NestJS `{ status, data }` wrapper. This matches the pattern used by all other admin services (agentsPool, tier settings, etc.).
+
+### PROVIDER_INFO registry
+
+The page component maps provider slugs to display info. Five providers are registered:
+
+| Slug | Display name | Icon |
+|---|---|---|
+| `deepseek` | DeepSeek | 🔮 |
+| `gemini` | Google Gemini | 🌟 |
+| `openrouter` | OpenRouter | 🔗 |
+| `minimax` | MiniMax | 🤖 |
+| `openai` | OpenAI | 🧠 |
+| `anthropic` | Anthropic | 🎭 |
+| `mimo` | Xiaomi MiMo | 📡 |
+
+A fallback `{ name: provider.name, icon: '🔌' }` handles any future unknown slugs.
+
+### Admin chat CSRF fix
+
+The admin overview chat calls `POST /chat/messages` which was blocked by CSRF middleware (missing `__Host-nc_csrf` cookie on admin requests). Added to exemption lists in both `common/auth/csrf.middleware.ts` and `modules/security/middleware/csrf.middleware.ts`. Admin chat now returns real MiniMax responses.
+
+### Reference
+
+- Controller: `backend/src/modules/ai-gateway/controllers/ai-providers.controller.ts`
+- Service: `frontend-admin/src/services/settings/aiSettings.service.ts`
+- Page: `frontend-admin/src/app/settings/ai/page.tsx`
+- CSRF fixes: `backend/src/common/auth/csrf.middleware.ts`, `backend/src/modules/security/middleware/csrf.middleware.ts`
+- Fix log: [fixes.md FIX-038](fixes.md)
 
 **End of frontend-admin.md.**

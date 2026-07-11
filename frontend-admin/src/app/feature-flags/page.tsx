@@ -7,9 +7,9 @@
  * Each toggle PATCHes `/api/v1/feature-flags/tenants/:tenantId` and
  * invalidates the in-process cache.
  *
- * Tenants picker: minimal — uses `tenantsService.list()` from existing
- * admin service. Replace with a proper typeahead search once the
- * tenant catalog grows.
+ * 2026-07-11: Extended with 11 Enterprise Communication Platform flags.
+ * Flags are grouped into "Hermes Runtime" and "Enterprise Communication"
+ * sections. AGENT_MESSAGING_ENABLED is visually flagged as HIGH RISK.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -26,6 +26,7 @@ const FLAG_LABELS: Array<{
   key: keyof TenantFeatureFlagOverrides;
   label: string;
   description: string;
+  highRisk?: boolean;
 }> = [
   {
     key: 'HERMES_ENABLED',
@@ -56,6 +57,76 @@ const FLAG_LABELS: Array<{
     label: 'AI actions kill-switch',
     description:
       'Emergency stop — blocks ALL AI actions for this tenant. Independent of Hermes flag.',
+  },
+
+  // ── Enterprise Communication Platform (2026-07-11) ────────
+
+  {
+    key: 'COMM_THREADS_ENABLED',
+    label: 'Communication threads',
+    description:
+      'Enable persistent cross-agent/human threads with participant membership and read-state tracking. Gated behind Phase 1.',
+  },
+  {
+    key: 'COMM_ACTIVITIES_ENABLED',
+    label: 'Canonical activity feed',
+    description:
+      'Unify MissionFeed, ActivityStream, and LiveFeedWidget into a single persisted ActivityEvent model. Gated behind Phase 2 + Phase 5.',
+  },
+  {
+    key: 'COMM_PRESENCE_ENABLED',
+    label: 'Agent presence',
+    description:
+      'Redis-backed heartbeat with SCAN-based stale sweep. Shows agent online/idle/working/blocked state. Gated behind Phase 7.',
+  },
+  {
+    key: 'COMM_CONVERSATION_INTELLIGENCE_ENABLED',
+    label: 'Conversation intelligence',
+    description:
+      'Map-reduce summarization, cross-department Q&A, and semantic search across thread history. Gated behind Phase 8.',
+  },
+  {
+    key: 'COMM_DIGEST_ENABLED',
+    label: 'Weekly digest',
+    description:
+      'Generate tenant/department/goal/project/agent digests with KPI rollups, cost-center reports, and risk detection. Gated behind Phase 9a.',
+  },
+  {
+    key: 'COMM_ESCALATION_ENABLED',
+    label: 'Escalation engine',
+    description:
+      '1-min background tick that escalates stale approval requests and risk alerts via REPORTS_TO chain. Gated behind Phase 9b.',
+  },
+  {
+    key: 'COMM_FOLLOWUP_ENABLED',
+    label: 'Follow-up nudges',
+    description:
+      '5-min background tick that emits thread.followup activities for stale threads. Gated behind Phase 9b.',
+  },
+  {
+    key: 'COMM_MENTIONS_ENABLED',
+    label: '@Mentions',
+    description:
+      'Fan-out thread:mention WebSocket events to mentioned user rooms. Gated behind Phase 9c.',
+  },
+  {
+    key: 'COMM_WORKFLOW_TEMPLATES_ENABLED',
+    label: 'Workflow templates',
+    description:
+      'Cron-scheduled templates that auto-create threads and post a first message on schedule. Gated behind Phase 9b.',
+  },
+  {
+    key: 'AGENT_MESSAGING_ENABLED',
+    label: '⚠️ Agent-to-agent messaging',
+    description:
+      'HIGH RISK — enables AI agents to message each other direct. Circuit breaker enforces hop limit (5), message cap, and cost ceiling. MUST be verified per-tenant; NEVER flip globally. Gated behind Phase 4.',
+    highRisk: true,
+  },
+  {
+    key: 'COMM_AGENT_MESSAGING_ENABLED',
+    label: 'Agent-to-agent messaging (legacy)',
+    description:
+      'Legacy alias for AGENT_MESSAGING_ENABLED. Either flag enables the A2A path. Prefer AGENT_MESSAGING_ENABLED.',
   },
 ];
 
@@ -134,6 +205,84 @@ export default function FeatureFlagsAdminPage() {
     }
   }
 
+  const HERMES_FLAGS = FLAG_LABELS.slice(0, 5);
+  const COMMS_FLAGS = FLAG_LABELS.slice(5);
+
+  function FlagRow({
+    flag,
+    value,
+    saving,
+    onToggle,
+  }: {
+    flag: (typeof FLAG_LABELS)[number];
+    value: boolean | undefined;
+    saving: boolean;
+    onToggle: (v: boolean) => void;
+  }) {
+    return (
+      <div className="p-4 flex items-start justify-between gap-4">
+        <div>
+          <div className="text-sm font-medium text-zinc-100">
+            {flag.label}
+            {flag.highRisk && (
+              <span className="ml-2 text-[10px] text-amber-400 font-semibold">
+                HIGH RISK
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-zinc-500 mt-1 max-w-xl">
+            {flag.description}
+          </div>
+          <div className="text-[10px] text-zinc-600 mt-2 font-mono">
+            {flag.key}
+            {typeof value === 'boolean' ? ` = ${value}` : ' (inherits global default)'}
+          </div>
+        </div>
+        <button
+          onClick={() => onToggle(!value)}
+          disabled={saving}
+          className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+            value === true
+              ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
+              : value === false
+                ? 'bg-rose-600/20 border-rose-500 text-rose-300'
+                : 'border-surface-border text-zinc-400 hover:text-zinc-200'
+          } ${saving ? 'opacity-50' : ''}`}
+        >
+          {saving ? 'Saving…' : value === true ? 'On' : value === false ? 'Off' : 'Inherit'}
+        </button>
+      </div>
+    );
+  }
+
+  function renderFlagSection(
+    header: string,
+    flags: typeof FLAG_LABELS,
+  ) {
+    return (
+      <section className="rounded-xl border border-surface-border bg-surface-raised divide-y divide-surface-border">
+        <div className="px-4 py-3 text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+          {header}
+        </div>
+        {flags.length === 0 ? (
+          <div className="p-4 text-xs text-zinc-600">
+            No flags in this section.
+          </div>
+        ) : (
+          flags.map((flag) => (
+            <FlagRow
+              key={flag.key}
+              flag={flag}
+              value={overrides[flag.key]}
+              saving={savingKey === flag.key}
+              onToggle={(v) => toggle(flag.key, v)}
+            />
+          ))
+        )}
+      </section>
+    );
+  }
+
   if (!user) return null;
 
   return (
@@ -173,51 +322,10 @@ export default function FeatureFlagsAdminPage() {
         </section>
 
         {selectedId && (
-          <section className="rounded-xl border border-surface-border bg-surface-raised divide-y divide-surface-border">
-            {FLAG_LABELS.map((flag) => {
-              const v = overrides[flag.key];
-              return (
-                <div
-                  key={flag.key}
-                  className="p-4 flex items-start justify-between gap-4"
-                >
-                  <div>
-                    <div className="text-sm font-medium text-zinc-100">
-                      {flag.label}
-                    </div>
-                    <div className="text-xs text-zinc-500 mt-1 max-w-xl">
-                      {flag.description}
-                    </div>
-                    <div className="text-[10px] text-zinc-600 mt-2 font-mono">
-                      {flag.key}
-                      {typeof v === 'boolean'
-                        ? ` = ${v}`
-                        : ' (inherits global default)'}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => toggle(flag.key, !v)}
-                    disabled={savingKey === flag.key}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
-                      v === true
-                        ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
-                        : v === false
-                          ? 'bg-rose-600/20 border-rose-500 text-rose-300'
-                          : 'border-surface-border text-zinc-400 hover:text-zinc-200'
-                    } ${savingKey === flag.key ? 'opacity-50' : ''}`}
-                  >
-                    {savingKey === flag.key
-                      ? 'Saving…'
-                      : v === true
-                        ? 'On'
-                        : v === false
-                          ? 'Off'
-                          : 'Inherit'}
-                  </button>
-                </div>
-              );
-            })}
-          </section>
+          <div className="space-y-4">
+            {renderFlagSection('Hermes Runtime', HERMES_FLAGS)}
+            {renderFlagSection('Enterprise Communication', COMMS_FLAGS)}
+          </div>
         )}
 
         {statusMessage && (

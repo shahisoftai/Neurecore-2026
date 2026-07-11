@@ -10,7 +10,7 @@
  * outside of the seed script.
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 
@@ -48,8 +48,8 @@ export class AiModelRepository {
   private readonly maxEntries: number;
   constructor(
     private readonly prisma: PrismaService,
-    cacheTtlSeconds = 60,
-    maxEntries = 256,
+    @Optional() cacheTtlSeconds = 60,
+    @Optional() maxEntries = 256,
   ) {
     this.cacheTtlMs = cacheTtlSeconds * 1000;
     this.maxEntries = maxEntries;

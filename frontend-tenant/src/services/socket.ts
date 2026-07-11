@@ -94,6 +94,37 @@ export function getSocket(): Socket {
     // Pass-through events (if backend emits them directly)
     socket.on('notification:new', (p) => hqEventBus.emit('notification:new', p));
     socket.on('approval:requested', (p) => hqEventBus.emit('approval:requested', p));
+
+    // ── Enterprise Communication Platform thread events (2026-07-11) ─────────
+    socket.on('thread:message', (p: { threadId: string; message: unknown }) =>
+      hqEventBus.emit('thread:message', p));
+
+    socket.on('thread:created', (p: { thread: unknown }) =>
+      hqEventBus.emit('thread:created', p));
+
+    socket.on('thread:participant_added', (p: { threadId: string; participant: unknown }) =>
+      hqEventBus.emit('thread:participant_added', p));
+
+    socket.on('thread:mention', (p: { threadId: string; messageId: string; mentionedBy: unknown; preview: string }) =>
+      hqEventBus.emit('thread:mention', p));
+
+    socket.on('thread:closed', (p: { threadId: string }) =>
+      hqEventBus.emit('thread:closed', p));
+
+    socket.on('thread:activity', (p: { threadId: string; activity: unknown }) =>
+      hqEventBus.emit('thread:activity', p));
+
+    socket.on('presence:updated', (p: { type: string; id: string; status: string; tenantId: string }) =>
+      hqEventBus.emit('presence:updated', p));
+
+    socket.on('activity:new', (p: unknown) =>
+      hqEventBus.emit('activity:new', { type: 'activity:new', payload: p }));
+
+    socket.on('activity:direct', (p: unknown) =>
+      hqEventBus.emit('activity:direct', p));
+
+    socket.on('dependency:updated', (p: { changedEntity: unknown; dependents: unknown[]; event: string; timestamp: string }) =>
+      hqEventBus.emit('dependency:updated', p));
   }
   return socket;
 }
@@ -102,10 +133,19 @@ export function connectSocket(): void {
   getSocket().connect();
 }
 
-/** Full disconnect — resets socket so next connectSocket() uses fresh token. */
 export function disconnectSocket(): void {
   if (socket) {
     socket.disconnect();
     socket = null;
   }
+}
+
+/** Subscribe to a thread room to receive per-thread WS broadcasts. */
+export function joinThread(threadId: string): void {
+  getSocket().emit('thread:join', { threadId });
+}
+
+/** Unsubscribe from a thread room. */
+export function leaveThread(threadId: string): void {
+  getSocket().emit('thread:leave', { threadId });
 }

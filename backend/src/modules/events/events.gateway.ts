@@ -12,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import { RedisService } from '../../infrastructure/cache/redis.service';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
 import {
   CookieAuthService,
   ACCESS_TOKEN_COOKIE,
@@ -56,6 +57,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly config: ConfigService,
     private readonly redis: RedisService,
     private readonly cookieAuth: CookieAuthService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {
@@ -160,29 +162,73 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
    * `thread:message`, `thread:activity`, `thread:participant_added`,
    * `thread:mention` events for that thread.
    *
-   * Auth: the socket was authenticated at handshake time, so we trust
-   * `client.data.userId` / `tenantId`. Tenant isolation is enforced by
-   * the calling service on every emit (no 'all' rooms exist).
+   * Auth: the socket was authenticated at handshake time.
+   * Tenant isolation + participant verification enforced here.
+   *
+   * 2026-07-11 (security hardening): Before joining the thread room,
+   * verify (a) the thread belongs to the socket's tenant, and
+   * (b) the requesting user is a registered thread participant.
+   * Previously any authenticated user could join any thread room.
    */
   @SubscribeMessage('thread:join')
   async handleThreadJoin(
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { threadId?: string },
   ): Promise<{ joined: boolean; room?: string }> {
+    const authed = client as AuthedSocket;
+    if (!authed.userId || !authed.tenantId) return { joined: false };
+
     const threadId = typeof body?.threadId === 'string' ? body.threadId : null;
     if (!threadId) return { joined: false };
+
+    const thread = await this.prisma.communicationThread.findFirst({
+      where: { id: threadId, tenantId: authed.tenantId },
+    });
+    if (!thread) return { joined: false };
+
+    const isParticipant = await this.prisma.threadParticipant.findUnique({
+      where: {
+        threadId_participantType_participantId: {
+          threadId,
+          participantType: 'USER',
+          participantId: authed.userId,
+        },
+      },
+    });
+    if (!isParticipant) return { joined: false };
+
     const room = `thread:${threadId}`;
     await client.join(room);
     return { joined: true, room };
   }
 
+  /**
+   * Phase 1: remove client from a thread room.
+   *
+   * 2026-07-11 (security hardening): Verify tenant ownership before
+   * allowing leave. Participant check is less strict than join since
+   * the user may have been removed as a participant but still holds
+   * an active socket, and client.leave() of an unjoined room is a
+   * safe no-op. We enforce tenant match to prevent cross-tenant
+   * room enumeration (a malicious client cycling through threadIds
+   * to confirm which rooms they were previously in on another tenant).
+   */
   @SubscribeMessage('thread:leave')
   async handleThreadLeave(
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { threadId?: string },
   ): Promise<{ left: boolean; room?: string }> {
+    const authed = client as AuthedSocket;
+    if (!authed.userId || !authed.tenantId) return { left: false };
+
     const threadId = typeof body?.threadId === 'string' ? body.threadId : null;
     if (!threadId) return { left: false };
+
+    const thread = await this.prisma.communicationThread.findFirst({
+      where: { id: threadId, tenantId: authed.tenantId },
+    });
+    if (!thread) return { left: false };
+
     const room = `thread:${threadId}`;
     await client.leave(room);
     return { left: true, room };

@@ -60,10 +60,15 @@ export class AgentMessagingGuard implements IAgentMessagingGuard {
       );
     }
 
-    const enabled = await this.featureFlag.isEnabled(
-      'AGENT_MESSAGING_ENABLED',
-      message.tenantId,
-    );
+    const enabled =
+      (await this.featureFlag.isEnabled(
+        'AGENT_MESSAGING_ENABLED',
+        message.tenantId,
+      )) ||
+      (await this.featureFlag.isEnabled(
+        'COMM_AGENT_MESSAGING_ENABLED',
+        message.tenantId,
+      ));
     if (!enabled) {
       throw new Error('Agent-to-agent messaging is disabled for this tenant');
     }

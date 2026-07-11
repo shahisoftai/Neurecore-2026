@@ -18,7 +18,6 @@
 import { Global, Module } from '@nestjs/common';
 import { AiGatewayService } from './ai-gateway.service';
 import { CostAttributorService } from './cost/cost-attributor.service';
-import { CircuitBreaker } from './failover/circuit-breaker';
 import { FallbackChainBuilder } from './failover/fallback-chain';
 import { StructuredLogger } from './observability/structured-logger';
 import { LangSmithSink } from './observability/langsmith-sink';
@@ -30,10 +29,12 @@ import { LangSmithTracingService } from './langsmith-tracing.service';
 import { OPENCLAW_CONFIG } from './openclaw-gateway.tokens';
 import { ModelsAdminController } from './controllers/models-admin.controller';
 import { ModelsReadController } from './controllers/models-read.controller';
+import { AiProvidersController } from './controllers/ai-providers.controller';
+import { SecretProviderService } from '../security/providers/secret.provider';
 
 @Global()
 @Module({
-  controllers: [ModelsAdminController, ModelsReadController],
+  controllers: [ModelsAdminController, ModelsReadController, AiProvidersController],
   providers: [
     // OpenClaw + LangSmith are unchanged (per plan §3.1 row S34/S35:
     // they continue to live here alongside the gateway for now; the
@@ -48,7 +49,7 @@ import { ModelsReadController } from './controllers/models-read.controller';
         retryAttempts: 3,
         enableTracing: true,
       }),
-      inject: ['SecretProviderService'],
+      inject: [SecretProviderService],
     },
     OpenClawGatewayService,
     LangSmithTracingService,
@@ -56,7 +57,6 @@ import { ModelsReadController } from './controllers/models-read.controller';
     HttpLlmTransport,
     AiModelRepository,
     FallbackChainBuilder,
-    CircuitBreaker,
     CapabilityResolver,
     CostAttributorService,
     StructuredLogger,

@@ -11,10 +11,7 @@ import type {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const PROVIDER_INFO: Record<
-  AIProvider,
-  { name: string; icon: string; description: string }
-> = {
+const PROVIDER_INFO: Record<string, { name: string; icon: string; description: string }> = {
   deepseek: {
     name: "DeepSeek",
     icon: "🔮",
@@ -34,6 +31,21 @@ const PROVIDER_INFO: Record<
     name: "MiniMax",
     icon: "🤖",
     description: "MiniMax AI large language model",
+  },
+  openai: {
+    name: "OpenAI",
+    icon: "🧠",
+    description: "GPT-4o, GPT-4o-mini, and embedding models",
+  },
+  anthropic: {
+    name: "Anthropic",
+    icon: "🎭",
+    description: "Claude 3.5 Sonnet and Claude 3 Haiku",
+  },
+  mimo: {
+    name: "Xiaomi MiMo",
+    icon: "📡",
+    description: "MiMo 72B Instruct language model",
   },
 };
 
@@ -243,7 +255,11 @@ export default function AISettingsPage() {
             </div>
           ) : (
             safeProviders.map((provider) => {
-              const info = PROVIDER_INFO[provider.provider];
+              const info = PROVIDER_INFO[provider.provider] ?? {
+                name: provider.name ?? provider.provider,
+                icon: "🔌",
+                description: provider.provider,
+              };
               const testResult = testResults[provider.id];
 
               return (

@@ -1,6 +1,6 @@
 # Frontend-Tenant (NeureCore tenant app)
 
-**Last verified:** 2026-07-10 15:33 PKT (Tenant Portal end-to-end validation session — both frontends deployed to Contabo; 12 features tested end-to-end with `mali@live.com`; 4 backend bugs fixed; 1 frontend guard added. See §22 below.)
+**Last verified:** 2026-07-11 22:55 PKT — Comms-gated tenant UI implemented (ThreadInboxPanel + ThreadView), socket infrastructure extended, feature flags added. All builds clean; not yet deployed to Contabo.
 **Live URL:** `https://hq.neurecore.com`
 **Internal port:** 3005
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant/`
@@ -147,6 +147,7 @@ src/components/
 ├── checklist/           # WS-2.1: ThingsToDoPanel (mounted in TenantShell)
 ├── uploads/             # WS-2.1: LogoUploader (reusable)
 ├── wizard/              # WS-2.1: WizardShell placeholder (PR-3 fills body)
+├── threads/             # EC-2026: ThreadInboxPanel + ThreadView (comms-gated behind COMM_THREADS_ENABLED)
 ├── creatio/             # Creatio-inspired layout helpers (legacy reference)
 └── [domain]             # feature-specific small components
 ```
@@ -168,7 +169,8 @@ src/stores/
 ├── inspectorStore.ts         # Selected entity inspector
 ├── onboardingChecklist.store.ts  # WS-2.1: progressive onboarding wizard checklist (single source of truth, optimistic mutations, rollback)
 ├── taskStore.ts              # Task list state
-└── workflowStore.ts          # Multi-step workflow progress
+├── workflowStore.ts          # Multi-step workflow progress
+└── threadStore.ts            # EC-2026: Thread list state (persisted, merge, WS-driven)
 ```
 
 `authStore` persists to `localStorage` (`neurecore_tenant_auth`).
@@ -192,7 +194,9 @@ src/hooks/
 ├── useChat.ts                    # AI chat streaming
 ├── useDelegation.ts              # Delegation routing
 ├── useTimeRange.ts               # Shared 24h/7d/30d/90d range
-└── useOnboardingChecklist.ts     # WS-2.1: subscribe to onboardingChecklist.store + auto-hydrate
+├── useOnboardingChecklist.ts     # WS-2.1: subscribe to onboardingChecklist.store + auto-hydrate
+├── useServerFeatureFlag.ts       # Backend-managed feature flags (added comms flags 2026-07-11)
+└── useThreads.ts                 # EC-2026: Thread data fetching + WS subscription lifecycle (DIP on IThreadService)
 ```
 
 > **New auth hook** — `useAuth()` in `src/auth/hooks/useAuth.ts`. **All new code should import this, NOT `useTenantAuth`.** See [`int-features/auth-architecture.md`](../int-features/auth-architecture.md).

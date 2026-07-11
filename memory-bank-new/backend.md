@@ -1,9 +1,9 @@
 # Backend (NeureCore NestJS API)
 
-**Last verified:** 2026-07-10 15:33 PKT
+**Last verified:** 2026-07-11 22:55 PKT — Comms pre-rollout engineering complete; WS security hardened; 6 comms Prisma migrations created + applied (47 total); A2A flag ambiguity resolved.
 **Live URL:** `https://brain.neurecore.com/api/v1/`
 **Internal port:** 3003
-**Repo:** `git@github.com:Shahikhail01/neurecore.git` @ `c5c05ec` (working tree has 20+ uncommitted files from FIX-028..031 — see [pending-tasks.md D23](pending-tasks.md))
+**Repo:** `git@github.com:Shahikhail01/neurecore.git` @ `9aec2fc` (AI Gateway deployed; working tree has uncommitted changes from FIX-028..031 + AI Gateway deploy fixes + 2026-07-11 comms implementation — see [fixes.md](fixes.md))
 **Sibling docs:** [system-state.md](system-state.md) · [operations.md](operations.md) · [frontend-tenant.md](frontend-tenant.md) · [contabo-ops.md](contabo-ops.md) · [pools-taxonomy.md](pools-taxonomy.md)
 
 ---
@@ -12,6 +12,8 @@
 
 A NestJS 11 / Prisma 5 / PostgreSQL (Neon) / Redis / Socket.IO monolith that serves the public API for both frontends and an internal AI agent runtime. **Prod count (verified 2026-07-04):** 35 modules, 32 controllers, 67 services, 38 Prisma models, 12 migrations applied. Local repo has 55 modules, 56 controllers, 118 services, 74 models, 23 migration dirs — significant local-vs-prod drift, see §13 "Known issues & gaps". Listens on `:3003` and is reverse-proxied by OLS at `brain.neurecore.com`. Started via PM2 `neurecore-backend`.
 
+> **2026-07-11 22:55 PKT — Comms pre-rollout engineering (Kilo):** 6 Prisma migrations created + marked as applied (47 total, DB up to date). WS security hardened in EventsGateway (thread:join/thread:leave now verify tenant + participant membership). A2A flag ambiguity resolved (guard checks AGENT_MESSAGING_ENABLED || COMM_AGENT_MESSAGING_ENABLED). tsc --noEmit → 0 errors, nest build → clean. See comms/comms-rollout.md §14.
+>
 > **2026-07-08 13:35 PKT — Enterprise Communication Platform Phases 1-9 IMPLEMENTED + AUDIT-PASSED (rev 2 + rev 3) locally (NOT YET DEPLOYED, see [`enterprise-comms-chat.md`](enterprise-comms-chat.md)):** local Prisma models **+8** (CommunicationThread, ThreadParticipant, ThreadReadState, ActivityEvent, AdapterCursor, WorkflowTemplate, NotificationPreference, RetentionPolicy → 83 total local models). Local `HermesModule` providers **+20** (ThreadService, ActivityService, EnterpriseEventBusService, ParticipantResolver, AgentMessagingService, AgentMessagingGuard, PresenceService, ConversationIntelligenceService, EntityGraphService, DependencyGraphService, ThreadSummarizationService, DigestService, EntityHealthRollupService, CostCenterService, RiskDetectionService, EscalationService, FollowUpService, WorkflowTemplateService, NotificationPreferenceService, RetentionJobService → 139 total local services). Local controllers **+4** (ActivityController, ExplainabilityController, ComplianceController, ThreadsController → 61 total local controllers). Local modules **+2** (ActivityModule, ThreadsModule → 57 total local modules). **Legacy `HermesEventBusService` deleted**; `HermesRuntimeService` now injects `IHermesEventBus` interface via `@Inject(HERMES_EVENT_BUS)` (rev-3 fix). **Rev-3 also added:** 6 `useExisting` symbol aliases for interface-based DI (THREAD_SERVICE, HERMES_EVENT_BUS, ACTIVITY_SERVICE, HERMES_RUNTIME, AGENT_MESSAGING_GUARD, PARTICIPANT_RESOLVER); `EventsModule` imported by `HermesModule`; new `thread:join`/`thread:leave` WS handlers in `EventsGateway`; `ActivityService.list()` supports `since` query param; `useActivityFeed` backfill uses `since:lastId` instead of broken `before:undefined`. 3 orphan test specs deleted. All additive; zero prod impact until `COMM_*` / `AGENT_MESSAGING_ENABLED` flags flipped.
 
 (Verified at end of work: `find modules -mindepth 1 -maxdepth 1 -type d | wc -l` → **57** modules, `find . -name '*.controller.ts' | wc -l` → **61** controllers, `find . -name '*.service.ts' | wc -l` → **139** services, `grep -c '^model ' schema.prisma` → **83** Prisma models, `find . -name '*.interface.ts' | wc -l` → **32** interfaces.)
@@ -487,5 +489,113 @@ git push origin 004-ent-comm
 ```
 
 ---
+
+---
+
+## 16. AI Gateway module (deployed 2026-07-11)
+
+**Status:** ✅ DEPLOYED with `AI_GATEWAY_V2=true` in production.
+
+The AI Gateway is a new `@Global()` NestJS module at `src/modules/ai-gateway/` that consolidates all LLM invocation into a single entry point (`AiGatewayService`). It replaces the legacy `LLMFactory` + per-provider clients (`MiniMaxClient`, `DeepSeekClientService`, `MiMoClientService`) with a DB-backed model catalog, automatic failover, circuit breaking, and per-invoke cost attribution.
+
+### Key components
+
+| Component | File | Purpose |
+|---|---|---|
+| `AiGatewayService` | `ai-gateway.service.ts` | Public facade: `select()` / `invoke()` / `stream()` / `invokeStructured()` / `invokeWithTools()` |
+| `HttpLlmTransport` | `transport/http-llm.transport.ts` | Single `fetch()` for all providers; SSE parsing; error normalization |
+| `CapabilityResolver` | `selection/capability-resolver.ts` | tenant + capability → provider/model resolution (tenant-override > default > fallback chain) |
+| `AiModelRepository` | `selection/ai-model.repository.ts` | LRU-cached DB read of `model_providers` + `ai_models` + `tenant_model_overrides` |
+| `FallbackChainBuilder` | `failover/fallback-chain.ts` | Ordered provider/model alternates per capability |
+| `CircuitBreaker` | `failover/circuit-breaker.ts` | Per-provider CLOSED→OPEN→HALF_OPEN state machine (5 errs/30s → 60s open) |
+| `CostAttributorService` | `cost/cost-attributor.service.ts` | Single `CostRecord` writer (idempotent on `sourceEventId`) |
+| `StructuredLogger` | `observability/structured-logger.ts` | JSON log per invoke (capability, provider, model, latencyMs, costCents, errorCode) |
+| `LangSmithSink` | `observability/langsmith-sink.ts` | Span wrapping per `invoke()` |
+
+### DB schema (new tables)
+
+| Table | Purpose |
+|---|---|
+| `model_providers` | Provider config: slug, apiBaseUrl, apiKeyEnv, isActive |
+| `ai_models` | Model catalog: modelId, capabilities[], contextWindow, costPer1kInput/Output, isDefault |
+| `tenant_model_overrides` | Per-tenant per-capability model override (unique on tenantId+capability) |
+| `model_catalog_audits` | Admin write trail (actorId, action, entity, before/after snapshots) |
+
+Plus new columns on `cost_records`: `sourceModule` (TEXT), `sourceEventId` (TEXT, UNIQUE), `metadata` (JSONB); `tenantId` loosened to nullable for system-level calls.
+
+### Admin API
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/admin/models/providers` | GET | List providers with nested models |
+| `/admin/models/providers` | POST | Create provider |
+| `/admin/models/providers/:id` | PATCH | Toggle provider isActive |
+| `/admin/models` | GET | List models (filterable by capability/provider) |
+| `/admin/models` | POST | Create model |
+| `/admin/models/:id` | PATCH | Toggle isAvailable/isDefault, change capabilities |
+| `/admin/tenants/:tenantId/model-overrides` | POST | Set per-tenant override |
+| `/admin/tenants/:tenantId/model-overrides/:id` | DELETE | Remove override |
+| `/admin/models/health` | GET | Circuit state per provider + boot status |
+| `/admin/models/cost-summary` | GET | Aggregated cost by provider/model/day |
+
+All guarded with `@Roles('SUPER_ADMIN')` + `RolesGuard`.
+
+### Migrated consumers (behind `AI_GATEWAY_V2` flag)
+
+| Consumer | Capability | Method |
+|---|---|---|
+| `chat.service.ts` | conversation | `invoke()`, `stream()` |
+| `chief-of-staff.service.ts` | reasoning | `invoke()` |
+| `project-health-ai.service.ts` | reasoning | `invokeStructured()` |
+| `rag-pipeline.service.ts` | conversation / reasoning | `invoke()`, `stream()` |
+| `retail.service.ts` | conversation / reasoning | `invoke()` |
+| `tools/built-in/{query,explain,chat}.tool.ts` | tools / reasoning / conversation | `invoke()` |
+| `langgraph-official.ts` (plannerNode) | tools | `invokeWithTools()` |
+| `agent-evaluator.service.ts` | evaluation | `invokeStructured()` |
+| `hermes-registry.service.ts` | planning | `select()` |
+| `thread-summarization.service.ts` | conversation | `invoke()` |
+| `digest.service.ts` | reasoning | `invoke()` |
+| `conversation-intelligence.service.ts` | reasoning | `invoke()` |
+
+### Capability defaults (seed)
+
+| Capability | Default model | Fallback chain |
+|---|---|---|
+| conversation | MiniMax-M2.7-highspeed | → MiniMax-M2.5 → MiniMax-Text-01 |
+| planning | gpt-4o-mini | → MiniMax-M2.7-highspeed → deepseek-chat |
+| execution | gpt-4o-mini | → MiniMax-M2.7-highspeed → deepseek-reasoner |
+| evaluation | gpt-4o-mini | → MiniMax-M2.7-highspeed → deepseek-chat |
+| coding | deepseek-coder | → MiniMax-M2.7-highspeed |
+| reasoning | deepseek-reasoner | → MiniMax-M2.7-highspeed → gpt-4o-mini |
+| tools | gpt-4o-mini | → MiniMax-M2.7-highspeed |
+| embedding | text-embedding-3-small | — |
+
+### Deploy-time issues resolved
+
+See [fixes.md FIX-037](fixes.md) for the 6 issues found and fixed during the Contabo deploy:
+1. Migration SQL: `"Tenant"` → `"tenants"` in FK references
+2. NestJS DI: string token → class reference for `SecretProviderService`
+3. NestJS DI: `@Optional()` missing on `AiModelRepository` constructor params
+4. NestJS DI: `CircuitBreaker` removed from providers (manual construction)
+5. Admin `start.sh`: `node .bin/next` → `./.bin/next` (shell script, not JS)
+6. Stray `ai-gateway.module.ts` in wrong directory
+
+### Health check
+
+```bash
+# Gateway health
+curl -sk https://brain.neurecore.com/api/v1/admin/models/health \
+  -H "Authorization: Bearer <admin-jwt>"
+
+# Check boot probe in logs
+ssh contabo 'pm2 logs neurecore-backend --nostream --lines 30 | grep -i "AiGateway\|boot"'
+```
+
+### Reference
+
+- Full implementation plan: [ai-gateway-imp-plan.md](ai-gateway/ai-gateway-imp-plan.md)
+- Deploy details: [ai-gateway-imp-plan.md §0](ai-gateway/ai-gateway-imp-plan.md)
+- Issues fixed: [fixes.md FIX-037](fixes.md)
+- System state: [system-state.md](system-state.md)
 
 **End of backend.md.**

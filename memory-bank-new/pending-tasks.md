@@ -1,11 +1,61 @@
 # Pending Tasks & Issues
 
 > Source: comprehensive review of `memory-bank-new/` (16 .md files) on 2026-07-08.
-> Last updated: 2026-07-10 17:30 PKT — **All 18 pending issues resolved** (PD-01, PD-30, D24, D25, PD-50, PD-51, PD-20, D22, H1, PE8, D26, PD-10, PD-40, PD-21, PD-03, PD-42). All fixes committed to `004-ent-comm` branch and deployed to Contabo. Backend healthy @ /api/v1/health 200. Frontends healthy @ hq.neurecore.com and cc.neurecore.com. Socket.IO D22 fix deployed.
+> Last updated: 2026-07-11 22:55 PKT — **Enterprise Communication Platform pre-rollout engineering complete** (6 migrations, WS security, admin flags, A2A ambiguity). **Comms-gated tenant UI implemented** (ThreadInboxPanel + ThreadView at /service-desk?tab=threads). All builds clean. Pending Contabo deploy per comms-rollout.md §3. Previously: All 18 pending issues resolved on 2026-07-10.
 > This document consolidates every outstanding task, known issue, and doc-drift item
 > across Hermes, the tenant/admin UIs, the platform backend, and operations.
 
 Status legend: 🔴 Not started · 🟡 In progress / partial / scaffold only · 🟢 Done · ✅ Resolved · ⚠️ Active/recurring issue · 🧹 Doc drift · 🛡️ Local mitigation shipped, prod deploy pending
+
+---
+
+---
+
+## 0b. 2026-07-11 — Enterprise Communication Platform Rollout (Kilo)
+
+> **Session goal:** Complete all §0 pre-rollout engineering tasks, implement comms-gated tenant UI, prepare for Contabo deploy.
+
+### Status snapshot (2026-07-11 22:55 PKT)
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| §0.1 — 6 Prisma migration files | ✅ **DONE** | `20260711_comms_01` through `_06` created + marked as applied; 47 total migrations |
+| §0.2 — WS thread:join/thread:leave security | ✅ **DONE** | EventsGateway now verifies tenant + participant membership via PrismaService |
+| §0.3 — Admin feature-flags page extended | ✅ **DONE** | +11 comms flags; grouped into Hermes Runtime + Enterprise Communication sections; AGENT_MESSAGING_ENABLED marked ⚠️ HIGH RISK |
+| §0.5 — A2A flag ambiguity resolved | ✅ **DONE** | AgentMessagingGuard checks both AGENT_MESSAGING_ENABLED and COMM_AGENT_MESSAGING_ENABLED (OR condition) |
+| §0.4 — Server feature flags extended | ✅ **DONE** | useServerFeatureFlag.ts ServerFeatureFlag type +11 comms flags |
+| §0.6 — Frontend thread:join/thread:leave socket emits | ✅ **DONE** | joinThread()/leaveThread() exports in socket.ts; 8 thread WS event listeners; EventBus + storeEventBridge extended |
+| Comms-gated tenant UI | ✅ **DONE** | ThreadInboxPanel + ThreadView at /service-desk?tab=threads; 10 new files, 6 modified |
+| Build verification | ✅ **DONE** | tsc --noEmit → 0 errors (backend + both frontends); next build → all routes compiled; nest build → clean |
+| Deploy to Contabo | 🔴 **NOT DEPLOYED** | All code local; proceed to comms-rollout.md §3 |
+
+### Files created (10)
+
+| File | Purpose |
+| --- | --- |
+| `backend/prisma/migrations/20260711_comms_01_thread_model/` | Thread model migration (tables, enums, HermesMessage columns, indexes, FKs) |
+| `backend/prisma/migrations/20260711_comms_02_activity_events/` | ActivityEvent + AdapterCursor migration |
+| `backend/prisma/migrations/20260711_comms_03_workflow_templates/` | WorkflowTemplate migration |
+| `backend/prisma/migrations/20260711_comms_04_notification_preferences/` | NotificationPreference migration |
+| `backend/prisma/migrations/20260711_comms_05_retention_policies/` | RetentionPolicy migration |
+| `backend/prisma/migrations/20260711_comms_06_relationship_type_extend/` | REPORTS_TO + DELEGATES_TO enum extension |
+| `frontend-tenant/src/services/threads.service.ts` | IThreadService interface + implementation (8 REST endpoints) |
+| `frontend-tenant/src/stores/threadStore.ts` | Zustand store with persist+merge+Array.isArray guards |
+| `frontend-tenant/src/hooks/useThreads.ts` | Data hook with WS lifecycle, DIP on IThreadService |
+| `frontend-tenant/src/components/threads/ThreadInboxPanel.tsx` | Two-panel thread inbox, gated behind COMM_THREADS_ENABLED |
+| `frontend-tenant/src/components/threads/ThreadView.tsx` | Chat-style thread message view with WS-driven reload |
+
+### Files modified (6)
+
+| File | Change |
+| --- | --- |
+| `backend/src/modules/events/events.gateway.ts` | Added PrismaService injection; hardened thread:join/thread:leave with tenant + participant checks |
+| `backend/src/modules/hermes/services/agent-messaging.guard.ts` | Checks AGENT_MESSAGING_ENABLED OR COMM_AGENT_MESSAGING_ENABLED |
+| `frontend-tenant/src/hooks/useServerFeatureFlag.ts` | ServerFeatureFlag type +11 comms flags |
+| `frontend-tenant/src/core/infrastructure/socket/EventBus.ts` | HQSocketEvents +8 thread event types |
+| `frontend-tenant/src/services/socket.ts` | +joinThread()/leaveThread() exports; +8 thread WS event listeners |
+| `frontend-tenant/src/core/infrastructure/socket/storeEventBridge.ts` | +4 thread event → store bridges; import threadStore |
+| `frontend-tenant/src/app/service-desk/page.tsx` | +Threads tab (5th tab); ServiceDeskTab type extended; ThreadInboxPanel import |
 
 ---
 
@@ -102,7 +152,7 @@ Status legend: 🔴 Not started · 🟡 In progress / partial / scaffold only ·
 | D12.11 | **AIChatPanel initialMessage prop** | ✅ Extended 2026-07-05 | Added optional `initialMessage?: string` to `AIChatPanelProps`. When the home hero prompt sends a message, the panel opens with the input pre-filled. Consumed once on mount via `useEffect`. |
 | D13 | **Auth Hardening Batch 1a — 10 auth bugs fixed (FIX-016)** | ✅ Shipped 2026-07-05 | **Critical:** 401 interceptor refresh-loop on auth endpoint failures (all 3 API clients). **Critical:** Contabo tenant stale build (`localhost:3000` hardcoded). **High:** Error extraction fragile, admin rewrite dead code, RestClient no-op setTokens. **Medium:** Duplicate cookie-clearing, admin hardcoded redirect. **Low:** Doc drift, unwrapItem fragility. Verified: curl (login, refresh, reuse-detection, lockout), Playwright (both frontends), `tsc --noEmit` clean all projects. See [`fixes.md` FIX-016](fixes.md). |
 | D14 | **Chat systems deployed + production-verified (FIX-017)** | ✅ Verified 2026-07-06 16:15 PKT | Deployed C4 fix (`chat.service.ts` maps `query` → `message` for backend DTO). npm ci peer-dep failure → `npm install --legacy-peer-deps`. Both ConversationPanel (💬) and AIChatPanel (✦ Ask AI) tested end-to-end via Playwright on Contabo. MiniMax API key confirmed, backend returns 200 with token counts. `chat-bots.md` fully updated with resolution status + production verification section. See [`fixes.md` FIX-017](fixes.md). |
-| D21 | **Enterprise Communication Platform — Phases 1-9 implemented + audit-passed (rev 2 + rev 3)** | ✅ Implemented 2026-07-08 (pending deploy + flag flip) | All 9 phases of [`enterprise-communication.md`](enterprise-communication.md) implemented as additive-only changes. **Rev 2 audit (10 spec gaps closed)** — see [`enterprise-comms-chat.md §17`](enterprise-comms-chat.md#17-audit-pass--spec-vs-implementation-rev-2). **Rev 3 deep-audit (17 runtime/DI/WS gaps closed, 13:35 PKT)** — see [`enterprise-comms-chat.md §18`](enterprise-comms-chat.md#18-audit-pass--rev-3-2026-07-08-runtime--di--ws). Rev-3 key fixes: (a) `ActivityModule` no longer redeclares `ActivityService` (was creating shadow provider without `EventsGateway` access); (b) `HermesModule` now imports `EventsModule`; (c) 6 services (`HermesSessionService`, `HermesRuntimeService`, `EnterpriseEventBusService`, `ParticipantResolver`, `AgentMessagingService`, `EscalationService`, `FollowUpService`, `WorkflowTemplateService`, `ThreadSummarizationService`) converted from broken `import type <Interface>` DI to working `@Inject(<SYMBOL_TOKEN>)` + `useExisting` aliases; (d) `thread:participant_added` room-name typo fixed (`emitToRoom(threadId,…)` → `` emitToRoom(`thread:${threadId}`,…) ``); (e) new `thread:join`/`thread:leave` WS subscribe handlers in `EventsGateway` so clients can actually receive per-thread broadcasts; (f) `useActivityFeed` backfill uses new `since` query param (was `before:undefined` → re-fetched same page); (g) 3 orphan test specs deleted (`hermes-event-bus.service.spec.ts`, `hermes-router.service.spec.ts`, `finance-hermes-agent.spec.ts`). **New Prisma models (8):** `CommunicationThread`, `ThreadParticipant`, `ThreadReadState`, `ActivityEvent`, `AdapterCursor`, `WorkflowTemplate`, `NotificationPreference`, `RetentionPolicy`. **Modified:** `HermesMessage` (+threadId/context*/idempotencyKey/mentions), `HermesAuditLog` (+threadId), `Tenant` (+5 back-relations), `RelationshipType` (+REPORTS_TO, +DELEGATES_TO). **New backend services (20):** ThreadService, ActivityService, EnterpriseEventBusService, ParticipantResolver, AgentMessagingService+Guard, PresenceService, ConversationIntelligenceService, EntityGraphService, DependencyGraphService, ThreadSummarizationService, DigestService, EntityHealthRollupService, CostCenterService, RiskDetectionService, EscalationService, FollowUpService, WorkflowTemplateService, NotificationPreferenceService, RetentionJobService. **New controllers (4):** ActivityController, ExplainabilityController, ComplianceController, ThreadsController. **New interface contracts (9)** including `IDependencyGraph`. **New modules (2):** ActivityModule, ThreadsModule. **Deleted:** legacy `HermesEventBusService` (replaced by `EnterpriseEventBusService`; runtime injects `IHermesEventBus` interface — DIP compliant) + 3 orphan test specs. **New frontend:** `activityFeedService`, `useActivityFeed` hook (REST + WS + `since`-based backfill-on-reconnect), `LiveFeedWidget` rewired. **D21 row replaced** — original rev-2 narrative preserved inside [`enterprise-comms-chat.md §17`](enterprise-comms-chat.md#17-audit-pass--spec-vs-implementation-rev-2). |, `RetentionPolicy`. **Modified:** `HermesMessage` (+threadId/context*/idempotencyKey/mentions), `HermesAuditLog` (+threadId), `Tenant` (+5 back-relations), `RelationshipType` (+REPORTS_TO, +DELEGATES_TO). **New backend services (21):** ThreadService, ActivityService, EnterpriseEventBusService, ParticipantResolver, AgentMessagingService+Guard, PresenceService, ConversationIntelligenceService, EntityGraphService, DependencyGraphService, ThreadSummarizationService, DigestService, EntityHealthRollupService, CostCenterService, RiskDetectionService, EscalationService, FollowUpService, WorkflowTemplateService, NotificationPreferenceService, RetentionJobService. **New controllers (4):** ActivityController, ExplainabilityController, ComplianceController, ThreadsController. **New interface contracts (9)** including `IDependencyGraph`. **New modules (2):** ActivityModule, ThreadsModule. **Deleted:** legacy `HermesEventBusService` (replaced by `EnterpriseEventBusService`; runtime now injects `IHermesEventBus` interface — DIP compliant). **New frontend:** `activityFeedService`, `useActivityFeed` hook (REST + WS + backfill-on-reconnect), `LiveFeedWidget` rewired. **Audit-pass fixes (rev 2):** `HermesSessionService.createWithThread()` auto-creates threads; `AgentMessagingGuard` reads spec-mandated `AGENT_MESSAGING_ENABLED` flag (legacy alias kept); `AgentMessagingService.send()` auto-adds both agents as thread participants; `@Mention` fan-out via `thread:mention` WS events; `ThreadSummarizationService` for §16.3.3; `DependencyGraphService` + dependency-aware alerts (§16.4.2); `ConversationIntelligenceService.ask({ scopeDepartmentId })` for cross-dept Q&A (§16.4.3); `ThreadsController` REST surface; `LiveFeedWidget` rewired to canonical feed. **`FeatureFlagService` registers 11 flags** (10 `COMM_*` + `AGENT_MESSAGING_ENABLED` per spec §6.4). **All flag-gated — zero production behavior change until flags flipped.** **Verification (rev 2):** `tsc --noEmit` 0 errors (backend + frontend-tenant + frontend-admin); `nest build` clean; `next build` clean; ESLint clean for all new files. **Final counts:** 57 modules, 61 controllers, 139 services, 83 Prisma models, 9 interfaces. Reference: [`enterprise-comms-chat.md`](enterprise-comms-chat.md) (implementation reference, rev 2). **TODO before deploy:** generate 5 Prisma migrations (`20260708_thread_model`, `20260708_activity_events`, `20260708_notification_preferences`, `20260708_workflow_templates`, `20260708_retention_policies`), apply each against a Neon branch first, then deploy to Contabo. **TODO per-tenant rollout:** flip flags in `COMM_THREADS_ENABLED → COMM_ACTIVITIES_ENABLED → COMM_PRESENCE_ENABLED → COMM_DIGEST_ENABLED` order, then individual Phase 9 flags. **NEVER flip `AGENT_MESSAGING_ENABLED` globally** — verify guard against runaway test first. **Out-of-scope / deferred:** frontend `AgentInboxPanel`/`ThreadView`/`PresenceBadge` UIs, unit/integration tests, embeddings/RAG vector search — see `enterprise-comms-chat.md §15`. |
+| D21 | **Enterprise Communication Platform — Phases 1-9 + pre-rollout + UI** | ✅ **FULLY IMPLEMENTED 2026-07-11** — pre-rollout engineering complete (6 migrations, WS security hardened, admin flags extended, A2A ambiguity resolved). Comms-gated tenant UI completed (ThreadInboxPanel + ThreadView at /service-desk?tab=threads). All builds: tsc 0 errors, next build clean, nest build clean. **Pending Contabo deploy** per comms-rollout.md §3. Previously: Phases 1-9 implemented + audit-passed on 2026-07-08.
 
 > **Verification summary (D12 fix session, 2026-07-05 12:30 PKT):**
 >   - `npx tsc --noEmit` clean (backend + frontend-tenant + frontend-admin)

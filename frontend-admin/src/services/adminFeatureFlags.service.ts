@@ -11,6 +11,18 @@ export interface TenantFeatureFlagOverrides {
   HERMES_APPROVAL_REQUIRED?: boolean;
   HERMES_SESSION_LOGGING?: boolean;
   DISABLE_AI_ACTIONS?: boolean;
+  // Enterprise Communication Platform (2026-07-11)
+  COMM_THREADS_ENABLED?: boolean;
+  COMM_ACTIVITIES_ENABLED?: boolean;
+  COMM_PRESENCE_ENABLED?: boolean;
+  COMM_CONVERSATION_INTELLIGENCE_ENABLED?: boolean;
+  COMM_DIGEST_ENABLED?: boolean;
+  COMM_ESCALATION_ENABLED?: boolean;
+  COMM_FOLLOWUP_ENABLED?: boolean;
+  COMM_MENTIONS_ENABLED?: boolean;
+  AGENT_MESSAGING_ENABLED?: boolean;
+  COMM_AGENT_MESSAGING_ENABLED?: boolean;
+  COMM_WORKFLOW_TEMPLATES_ENABLED?: boolean;
 }
 
 export async function getTenantFeatureFlags(

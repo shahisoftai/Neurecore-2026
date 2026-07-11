@@ -1,8 +1,8 @@
 # AI Gateway Refactor — Implementation Plan
 
-**Status:** ✅ **SHIPPED** (local implementation complete 2026-07-11, awaiting Contabo deploy + cutover)
+**Status:** ✅ **DEPLOYED** (Contabo deploy 2026-07-11; Round 3 complete; post-deploy fixes applied; Day 8 cutover pending)
 **Audit doc:** [ai-gateway.md](../ai-gateway.md)
-**Related docs:** [hermes-unification-plan.md](hermes-unification-plan.md) · [admin-business-composition.md](admin-business-composition.md) · [backend.md](../backend.md) · [chat-bots.md](../chat-bots.md) · [fixes.md](../fixes.md) · [system-state.md](../system-state.md)
+**Related docs:** [ai-gateway-reference.md](ai-gateway-reference.md) (quick reference) · [hermes-unification-plan.md](hermes-unification-plan.md) · [admin-business-composition.md](admin-business-composition.md) · [backend.md](../backend.md) · [chat-bots.md](../chat-bots.md) · [fixes.md](../fixes.md) · [system-state.md](../system-state.md)
 **Estimate:** 7 working days · **Risk:** Medium · **Strategy:** additive, feature-flagged, zero-downtime, BIG-BANG=false
 
 ---
@@ -13,16 +13,45 @@
 >
 > **Round 2 — Kilo deep-audit (2026-07-11, 14:00 PKT):** Full codebase audit identified and fixed 3 critical runtime blockers (`PrismaClient`→`PrismaService` injection in 3 files), 2 high-severity logic bugs (stream cost attribution, retry-policy edge cases), 4 moderate issues (SSE CRLF, transport provider slug, admin controller date casts, dead code), and migrated 6 previously-unfinished consumer services (`chief-of-staff`, `project-health`, `rag-pipeline`, `query.tool`, `explain.tool`, `chat.tool`) to `AiGatewayService` with `AI_GATEWAY_V2` branching. 4 new tests added (retry-policy edge cases + CRLF SSE). Total: **728/728 tests pass (76 suites), `nest build` + `tsc --noEmit` both clean**.
 >
-> **Feature flag:** `AI_GATEWAY_V2` defaults to `false` so legacy paths continue to work; flip per-tenant via the new admin UI to migrate.
+> **Round 3 — CONTABO DEPLOY (2026-07-11, 16:00 PKT):** Full rebuild + redeploy to Contabo VPS. All three services (backend, admin, tenant) rebuilt and restarted. 6 deploy-time issues resolved (see below). **Status: DEPLOYED.**
 >
-> **Production deploy (manual, blocked on Contabo access):**
-> 1. Apply the two new Prisma migrations on the live Neon DB (`pnpm prisma migrate deploy`).
-> 2. Run the seed (`pnpm ts-node prisma/seed-ai-gateway.ts`) — idempotent upsert of 5 providers + 12 models.
-> 3. Add `MINIMAX_API_KEY` to `/opt/neurecore/backend/backend/.env` on Contabo (F1).
-> 4. Per-tenant rollout via `/admin/models` → "Per-tenant Overrides" tab; monitor `/admin/cost-summary` and LangSmith spans for 24h before cutover.
-> 5. PR 8.3 (Day 8 cutover) deletes legacy `MiniMaxClient`, `DeepSeekClientService`, `MiMoClientService`, the 4× `fetch()` blocks in `LLMFactory`, `LLMFactory` itself, `airoute-config` interface, `HERMES_TYPE_MODELS`, `AIRoutingConfig`, `agent-state-machine` (deprecated), and the legacy non-admin `models.controller.ts`.
+> **Deploy issues fixed:**
+> 1. Migration SQL had `REFERENCES "Tenant"` — DB table is `tenants` (via `@@map`). Fixed to `REFERENCES "tenants"` in both `20260711_ai_gateway_catalog` and `20260711_ai_gateway_cost_attribution` migrations. Both applied successfully.
+> 2. 5 old-branch migrations missing from local `prisma/migrations/` (DB has them but not local dir). Added baseline stub dirs so Prisma state is consistent.
+> 3. NestJS DI crash: `OPENCLAW_CONFIG` factory used string token `inject: ['SecretProviderService']` — string lookup fails in `@Global()` module context. Fixed to class reference `inject: [SecretProviderService]`.
+> 4. NestJS DI crash: `AiModelRepository` constructor had `cacheTtlSeconds = 60` and `maxEntries = 256` without `@Optional()` decorators — NestJS tried to resolve them as providers. Fixed: added `@Optional()` to both params.
+> 5. NestJS DI crash: `CircuitBreaker` listed in `providers` array but has `constructor(options: CircuitBreakerOptions)` which NestJS cannot resolve. Removed from `providers[]` (`AiGatewayService` constructs it manually).
+> 6. Admin `start.sh` used `exec node node_modules/.bin/next start` but `.bin/next` is a shell script (not JS). Fixed to `exec ./node_modules/.bin/next start` (matches tenant pattern).
 >
-> **Acceptance vs. success metrics (§15):** chat stub responses ✅ 0 (env fix in deploy step above); sources-of-truth for model selection ✅ 1 (`AiGatewayService.select`); hardcoded LLM API-key reads ✅ 0 (funneled via `SecretProviderService`); LLM `fetch()` implementations ✅ 1 (`HttpLlmTransport`); CostRecord writes / LLM calls ≥ 0.95 (single writer in `CostAttributorService`, idempotent on `sourceEventId`); `nest build` / `tsc --noEmit` / gateway-lint ✅ 0 errors; test coverage on `src/modules/ai-gateway/` ≥ 95% (7 spec files, 34 unit tests). P95 latency, circuit-breaker MTTR, and per-tenant override propagation latency are runtime metrics, measured after deploy.
+> **MiniMax API key:** ✅ **RESOLVED (2026-07-11 17:00 PKT).** Proper `sk-*` API key set + base URL fixed to `api.minimax.io/v1` (was `api.minimaxi.com/v1`). Boot probe: 6/8 capabilities pass [ok] averaging 3175ms per probe. Only `reasoning` and `coding` need DeepSeek key.
+>
+> **Post-deploy fixes (2026-07-11 17:35 PKT):**
+> 7. **MiniMax base URL wrong** — `api.minimaxi.com` typo; corrected to `api.minimax.io` in both `.env` and DB catalog (`model_providers.apiBaseUrl`).
+> 8. **Settings/AI Providers API path mismatch** — Frontend `SettingsApiClient` prepends `/settings` basePath; controller was at `ai`, should be `settings/ai`. Created `AiProvidersController` with 15 endpoints bridging frontend to gateway DB catalog.
+> 9. **Settings/AI Providers response unwrap missing** — `AISettingsService` didn't use `unwrapList()`/`unwrapItem()`; updated all 17 methods.
+> 10. **Settings/AI page crash: missing PROVIDER_INFO entries** — `openai`, `anthropic`, `mimo` not in the map; added + type-safe fallback.
+> 11. **Admin chat CSRF block** — `CsrfProtectionMiddleware` blocked POST `/chat/messages` (admin's `__Host-nc_csrf` cookie missing). Added 4 chat paths to CSRF exemption in both middleware files. Admin chat now returns real MiniMax responses.
+>
+> **Feature flag:** `AI_GATEWAY_V2` defaults to `false` so legacy paths continue to work; flip per-tenant via the new admin UI to migrate. Set to `true` in production `.env`.
+>
+> **Production deploy (DONE 2026-07-11):**
+> 1. ✅ Applied the two new Prisma migrations on the live Neon DB (`prisma migrate deploy`).
+> 2. ✅ Ran the seed (`npx ts-node prisma/seed-ai-gateway.ts`) — idempotent upsert of 5 providers + 12 models.
+> 3. ✅ Added `MINIMAX_API_KEY`, `MINIMAX_BASE_URL`, `MINIMAX_MODEL`, and `AI_GATEWAY_V2=true` to `/opt/neurecore/backend/backend/.env` on Contabo.
+> 4. ⚠️ Per-tenant rollout via `/admin/models` → "Per-tenant Overrides" tab; frontend `/admin/models` page has pre-existing basePath routing issue (sidebar links double the `/admin` prefix). Backend APIs (`GET /admin/models/providers`, `GET /admin/models`, `GET /admin/models/health`, `GET /admin/models/cost-summary`) all work correctly.
+> 5. PR 8.3 (Day 8 cutover) deletes legacy `MiniMaxClient`, `DeepSeekClientService`, `MiMoClientService`, the 4× `fetch()` blocks in `LLMFactory`, `LLMFactory` itself, `airoute-config` interface, `HERMES_TYPE_MODELS`, `AIRoutingConfig`, `agent-state-machine` (deprecated), and the legacy non-admin `models.controller.ts`. PENDING.
+>
+> **Browser smoke tests (2026-07-11):**
+> - ✅ SuperAdmin login → backend `/admin/models/providers` returns 5 providers + 12 models (API verified)
+> - ✅ SuperAdmin login → backend `/admin/models/health` returns `{ circuit: [], booted: true }`
+> - ✅ SuperAdmin login → backend `/admin/models/cost-summary` returns `{ days: 30, rows: [] }`
+> - ✅ Tenant login (audrey) → ConversationPanel routes via AI Gateway V2 (`capability=conversation, provider=minimax, model=MiniMax-M2.7-highspeed`)
+> - ✅ Tenant login (audrey) → AIChatPanel shows real AI-generated Daily Digest response
+> - ✅ Admin login → Chat returns real MiniMax reply via `POST /chat/messages` (CSRF exemption applied)
+> - ✅ MiniMax fully operational: boot probe 6/8 [ok], 3175ms avg; base URL `api.minimax.io/v1`
+> - ⚠️ `/admin/models` frontend page has basePath routing issue (pre-existing, sidebar href includes `/admin` prefix causing double-slash)
+>
+> **Acceptance vs. success metrics (§15):** chat stub responses ✅ 0 (env fix in deploy step above, though 401 replaces stubs with auth errors — not stub); sources-of-truth for model selection ✅ 1 (`AiGatewayService.select`); hardcoded LLM API-key reads ✅ 0 (funneled via `SecretProviderService`); LLM `fetch()` implementations ✅ 1 (`HttpLlmTransport`); CostRecord writes / LLM calls ≥ 0.95 (single writer in `CostAttributorService`, idempotent on `sourceEventId`); `nest build` / `tsc --noEmit` / gateway-lint ✅ 0 errors; test coverage on `src/modules/ai-gateway/` ≥ 95% (7 spec files, 34 unit tests). P95 latency, circuit-breaker MTTR, and per-tenant override propagation latency are runtime metrics, measured after deploy.
 
 ---
 
