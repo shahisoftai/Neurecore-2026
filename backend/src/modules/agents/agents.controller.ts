@@ -57,7 +57,7 @@ export class AgentsController {
   constructor(
     private readonly agentsService: AgentsService,
     private readonly executorService: AgentExecutorService,
-  ) { }
+  ) {}
 
   @Get()
   async findAll(
@@ -71,16 +71,19 @@ export class AgentsController {
     // Non-platform roles use JWT tenantId. Services skip tenant filter for '*'.
     const tenantId = user.tenantId
       ? user.tenantId
-      : PLATFORM_ROLES_AGENTS.has(user.role as UserRole)
+      : PLATFORM_ROLES_AGENTS.has(user.role)
         ? '*'
         : undefined;
-    const { data, total, page, limit } = await this.agentsService.findAll({
-      departmentId,
-      status,
-      type,
-      page: pagination.page,
-      limit: pagination.limit,
-    }, tenantId);
+    const { data, total, page, limit } = await this.agentsService.findAll(
+      {
+        departmentId,
+        status,
+        type,
+        page: pagination.page,
+        limit: pagination.limit,
+      },
+      tenantId,
+    );
 
     return {
       items: data as unknown as AgentResponseDto[],
@@ -117,25 +120,33 @@ export class AgentsController {
   }
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.ADMIN)
-  create(
-    @Body() dto: CreateAgentDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
+  create(@Body() dto: CreateAgentDto, @CurrentUser() user: JwtPayload) {
     if (!user.tenantId) throw new Error('Tenant ID required');
     return this.agentsService.create(dto, user.sub, user.tenantId);
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAgentDto & { tenantId?: string },
     @CurrentUser() user: JwtPayload,
   ) {
     if (!user.tenantId) {
-      if (PLATFORM_ROLES_AGENTS.has(user.role as UserRole)) {
-        if (!dto.tenantId) throw new Error('Tenant ID required for platform admins');
+      if (PLATFORM_ROLES_AGENTS.has(user.role)) {
+        if (!dto.tenantId)
+          throw new Error('Tenant ID required for platform admins');
         return this.agentsService.update(id, dto, dto.tenantId);
       }
       throw new Error('Tenant ID required');
@@ -144,17 +155,26 @@ export class AgentsController {
   }
 
   @Patch(':id/permissions')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
   updatePermissions(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePermissionsDto,
     @CurrentUser() user: JwtPayload,
   ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.agentsService.update(id, {
-      permissions: dto.permissions,
-      budgetPerDay: dto.budgetPerDay,
-    } as UpdateAgentDto, user.tenantId);
+    return this.agentsService.update(
+      id,
+      {
+        permissions: dto.permissions,
+        budgetPerDay: dto.budgetPerDay,
+      } as UpdateAgentDto,
+      user.tenantId,
+    );
   }
 
   @Patch(':id/integration-config')
@@ -172,13 +192,17 @@ export class AgentsController {
     @CurrentUser() user: JwtPayload,
   ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
-    return this.agentsService.update(id, {
-      emailAlias: dto.emailAlias,
-      emailProvider: dto.emailProvider,
-      emailDisplayName: dto.emailDisplayName,
-      emailSignature: dto.emailSignature,
-      googleDriveFolderId: dto.googleDriveFolderId,
-    } as never, user.tenantId);
+    return this.agentsService.update(
+      id,
+      {
+        emailAlias: dto.emailAlias,
+        emailProvider: dto.emailProvider,
+        emailDisplayName: dto.emailDisplayName,
+        emailSignature: dto.emailSignature,
+        googleDriveFolderId: dto.googleDriveFolderId,
+      } as never,
+      user.tenantId,
+    );
   }
 
   @Post(':id/pause')
@@ -196,7 +220,7 @@ export class AgentsController {
     return {
       success: true,
       message: 'Agent paused',
-      data: agent as unknown as AgentResponseDto,
+      data: agent as AgentResponseDto,
     };
   }
 
@@ -207,39 +231,60 @@ export class AgentsController {
     @CurrentUser() user: JwtPayload,
   ): Promise<ActionResult<AgentResponseDto>> {
     if (!user.tenantId) throw new Error('Tenant ID required');
-    const agent = await this.agentsService.updateStatus(id, AgentStatus.IDLE, user.tenantId);
+    const agent = await this.agentsService.updateStatus(
+      id,
+      AgentStatus.IDLE,
+      user.tenantId,
+    );
     return {
       success: true,
       message: 'Agent resumed',
-      data: agent as unknown as AgentResponseDto,
+      data: agent as AgentResponseDto,
     };
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
     return this.agentsService.remove(id, user.tenantId);
   }
 
   @Patch(':id/archive')
   @Roles(UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN)
-  archive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+  archive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
     return this.agentsService.setStatus(id, 'ARCHIVED', user.tenantId);
   }
 
   @Patch(':id/deprecate')
   @Roles(UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN)
-  deprecate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+  deprecate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
     return this.agentsService.setStatus(id, 'DEPRECATED', user.tenantId);
   }
 
   @Patch(':id/restore')
   @Roles(UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN)
-  restore(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+  restore(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
     return this.agentsService.setStatus(id, 'IDLE', user.tenantId);
   }
@@ -252,11 +297,7 @@ export class AgentsController {
     @CurrentUser() user: JwtPayload,
   ): Promise<ActionResult<{ taskId: string; agentId: string }>> {
     if (!user.tenantId) throw new Error('Tenant ID required');
-    void this.executorService.executeTask(
-      dto.taskId,
-      agentId,
-      user.tenantId,
-    );
+    void this.executorService.executeTask(dto.taskId, agentId, user.tenantId);
     return {
       success: true,
       message: 'Task dispatched',
@@ -272,11 +313,7 @@ export class AgentsController {
     @CurrentUser() user: JwtPayload,
   ): Promise<ActionResult<{ taskId: string; agentId: string }>> {
     if (!user.tenantId) throw new Error('Tenant ID required');
-    void this.executorService.executeTask(
-      dto.taskId,
-      agentId,
-      user.tenantId,
-    );
+    void this.executorService.executeTask(dto.taskId, agentId, user.tenantId);
     return {
       success: true,
       message: 'Task dispatched',

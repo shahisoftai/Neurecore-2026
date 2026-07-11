@@ -53,9 +53,7 @@ interface AiActionResponse {
 export class AiActionMetricsInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AiActionMetricsInterceptor.name);
 
-  constructor(
-    private readonly metrics: MetricsService,
-  ) {}
+  constructor(private readonly metrics: MetricsService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<AuthedRequest>();

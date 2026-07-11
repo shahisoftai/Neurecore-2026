@@ -28,6 +28,8 @@ import {
   StructuredToolResult,
   ToolExecutionContext,
 } from '../interfaces/structured-tool.interface';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../../ai-gateway/ai-gateway.service';
 import { LLMFactory } from '../../models/services/llm-factory.service';
 
 const MAX_ROWS_IN_PROMPT = 25;
@@ -81,7 +83,11 @@ export class ExplainTool extends BaseStructuredTool {
   readonly outputSchema = ExplainOutputSchema;
   readonly requiredPermissions = ['data:read'];
 
-  constructor(private readonly llm: LLMFactory) {
+  constructor(
+    private readonly llm: LLMFactory,
+    private readonly featureFlags: FeatureFlagService,
+    private readonly aiGateway: AiGatewayService,
+  ) {
     super();
   }
 
@@ -144,7 +150,7 @@ Respond in valid JSON only — no markdown fences, no commentary outside the JSO
 
 Shape: { "summary": "...", "keyInsights": ["...", "..."], "recommendations": ["..."] }`;
 
-    const response = await this.llm.invoke(prompt, { temperature: 0.3, maxTokens: 800 });
+    const response = await this.invokeLlm(prompt, 'explain-tool.rows', 800);
     const parsed = parseExplainResponse(response.content);
 
     return {
@@ -184,7 +190,7 @@ Respond in valid JSON only — no markdown fences, no commentary outside the JSO
 
 Shape: { "summary": "...", "keyInsights": ["..."], "recommendations": ["..."] }`;
 
-    const response = await this.llm.invoke(prompt, { temperature: 0.3, maxTokens: 500 });
+    const response = await this.invokeLlm(prompt, 'explain-tool.agg', 500);
     const parsed = parseExplainResponse(response.content);
 
     return {
@@ -198,6 +204,26 @@ Shape: { "summary": "...", "keyInsights": ["..."], "recommendations": ["..."] }`
       },
       metadata: { model: 'explain-tool-v1' },
     };
+  }
+
+  private async invokeLlm(
+    prompt: string,
+    sourceModule: string,
+    maxTokens: number,
+  ): Promise<{ content: string; usage?: { inputTokens: number; outputTokens: number; totalTokens: number } }> {
+    if (await this.featureFlags.isEnabled('AI_GATEWAY_V2')) {
+      const resp = await this.aiGateway.invoke({
+        tenantId: null,
+        capability: 'reasoning',
+        prompt,
+        temperature: 0.3,
+        maxTokens,
+        sourceModule,
+      });
+      return { content: resp.content, usage: resp.usage };
+    }
+    const result = await this.llm.invoke(prompt, { temperature: 0.3, maxTokens });
+    return { content: result.content, usage: result.usage };
   }
 }
 

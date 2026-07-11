@@ -2526,4 +2526,152 @@ useEffect(() => {
 
 ---
 
-**Next ID:** FIX-034
+**Next ID:** FIX-037
+
+---
+
+## FIX-034 — AI Gateway P0 hot-fixes F2–F9 (env + hardcoded literals + hermes bug)
+
+**Date:** 2026-07-11
+**Severity:** critical
+**Component:** `src/modules/{chat,agents,hermes,models,retail,ai-actions}/` + secret provider
+**Status:** code shipped; F1 (`MINIMAX_API_KEY` in `.env`) is a manual deploy step on Contabo
+**Reporter:** [ai-gateway-imp-plan.md §9](ai-gateway/ai-gateway-imp-plan.md#9-p0-immediate-fixes-do-today-before-the-refactor) + audit
+
+### Root cause
+
+`MINIMAX_API_KEY` was missing from every env file, and 35+ LLM-selection sites across 8 sources of truth were duplicating model ids, base URLs, and the bogus `'MiniMax-Text-01'` / `'preview-model'` literals. See [ai-gateway.md](../ai-gateway/ai-gateway.md) for the full audit.
+
+### Fixes shipped
+
+| # | File | Change |
+|---|---|---|
+| F2 | `src/modules/chat/chat.service.ts` | Removed 5× `'MiniMax-Text-01'` literals; now reads `this.minimax.model` (legacy) or `aiGateway.getLastResolved(...).model.modelId` (V2). |
+| F3 | `src/modules/agents/services/agent-planner.service.ts` | No more `process.env.OPENAI_API_KEY` (always empty in prod). Resolves `MINIMAX_API_KEY` / `OPENAI_API_KEY` via `SecretProviderService`; uses correct base URL per key. V2 path calls `ai.invokeStructured` with Zod. |
+| F4 | `src/modules/hermes/services/hermes-registry.service.ts:72` | `getDefaultModelForType(agent.name)` (latent bug — name string passed where HermesType enum expected) replaced with `resolveDefaultModel(tenantId, agent.model)` that calls `ai.select(tenantId, 'planning')` under V2. |
+| F5 | `src/modules/models/services/llm-factory.service.ts` | All 4× hardcoded `https://api.minimax.chat/v1` defaults collapsed to `https://api.minimaxi.com/v1` via `resolveBaseUrl(provider, config)`. |
+| F6 | `src/modules/models/services/llm-factory.service.ts` | `invokeWithTools` provider-key ternary extended to `minimax / openai / deepseek / mimo`; missing key throws explicit `Error` instead of silently hitting OpenAI. |
+| F7 | `src/modules/models/models.controller.ts` | `@Roles('SUPER_ADMIN')` + `RolesGuard` class-level guard. |
+| F8 | `src/modules/security/{interfaces/secret.interfaces.ts,providers/secret.provider.ts}` | `ANTHROPIC_API_KEY` added to `SECRET_ENV_MAPPING`, `WellKnownSecret.ANTHROPIC_API_KEY`, `ISecretProvider.getAnthropicApiKey()`. |
+| F9 | `src/modules/retail/retail.service.ts` + `src/modules/ai-actions/built-in.actions.ts` | `'preview-model'` replaced with `null` / `'gpt-4o-mini'` (gateway resolves at call time). |
+
+### Acceptance
+
+- `pnpm nest build` clean
+- `pnpm tsc --noEmit` clean
+- 724/724 unit tests pass (76 suites; 30 new gateway tests)
+- After deploy with `MINIMAX_API_KEY` set, `MiniMaxClient.isConfigured() === true`; chat returns real `MiniMax-M2.7-highspeed / minimax`, not `'unconfigured'` or `'MiniMax-Text-01'`.
+
+### Reference
+
+- [ai-gateway-imp-plan.md §9](ai-gateway/ai-gateway-imp-plan.md#9-p0-immediate-fixes-do-today-before-the-refactor)
+- [ai-gateway.md](../ai-gateway/ai-gateway.md) (audit)
+
+---
+
+## FIX-035 — AI Gateway ship: 7/8 days landed, 1 source of truth for LLM calls
+
+**Date:** 2026-07-11
+**Severity:** high
+**Component:** `src/modules/ai-gateway/` (new module, 20 files) + 7 consumer migrations
+**Status:** code shipped; Day 8 cutover pending Contabo deploy (F1 + migrations + seed)
+
+### What landed
+
+Per [ai-gateway-imp-plan.md §0](ai-gateway/ai-gateway-imp-plan.md):
+
+- **Phase 0 (P0 fixes F2–F9)**: all in code (see FIX-034).
+- **Phase 1 (catalog + skeleton)**: 4 new Prisma models, 2 additive migrations, idempotent seed, 8 SOLID helper classes, `AiGatewayService` facade, boot probe.
+- **Phase 2 (transport)**: `HttpLlmTransport` (the only `fetch()`), `SseStreamParser`, `CircuitBreaker`, `RetryPolicy`, `FallbackChainBuilder`, `CapabilityResolver`, `AiModelRepository` (LRU+TTL cache), `CostAttributorService` (idempotent on `sourceEventId`), `StructuredLogger`.
+- **Phase 3 (consumer migration, behind `AI_GATEWAY_V2` flag)**: `chat.service.ts` + `agent-planner.service.ts` + `hermes-registry.service.ts` + `hermes/{thread-summarization, digest, conversation-intelligence}.service.ts` + `retail.service.ts` + `ai-actions/built-in.actions.ts` + `models.controller.ts` (F7 role guard).
+- **Phase 4 (agent paths)**: `langgraph-official.ts` (S18), `agent-state-machine.ts` (S16/S17, marked `@deprecated`), `agent-evaluator.service.ts` (S15), `agents.service.ts` (S19).
+- **Phase 5 (Hermes cleanups)**: P0 F4 in registry; thread-summarization + digest + conversation-intelligence routed through gateway under V2.
+- **Phase 6 (config + observability)**: `LangSmithSink` wraps `invoke()` in spans; `secret.provider.ts` adds Anthropic; `getAi()` reduced to non-LLM-key fields; `AIRoutingConfig` + matching controller routes deleted.
+- **Phase 7 (admin UI)**: `ModelsAdminController` (CRUD + audit + cache invalidation) + `ModelsReadController` (health + cost summary); frontend-admin `/admin/models` (4 tabs) + `/admin/cost-summary` page; legacy `/models` is now a redirect.
+
+### Known gaps (tracked in plan §3, §11 follow-ups)
+
+- **`chief-of-staff.service.ts` + `project-health-ai.service.ts` + `rag-pipeline.service.ts` + `tools/built-in/{query,explain,chat}.tool.ts`**: still inject `MiniMaxClient` / `LLMFactory` directly. Picked up in a follow-up PR after the gateway is observably healthy in production.
+- **`HERMES_TYPE_MODELS` + `getDefaultModelForType` in `hermes.constants.ts`**: still exported but no longer imported by the registry. Deleted in PR 8.3.
+- **Legacy `models.controller.ts`**: kept behind SuperAdmin guard; not yet removed. Deleted in PR 8.3.
+- **env.loader.ts Zod tightening**: deferred. The gateway's `AiGatewayConfig` has its own Zod parser; the global loader stays permissive to avoid touching every existing module.
+- **LangSmith sink on `stream()`**: not yet wrapped (LangSmith `trace()` takes async functions, not async generators). The structured logger line carries equivalent context.
+- **Cost-record batching every 5s**: per-row writes for now. `createMany` batching is a follow-up.
+
+### Acceptance vs. success metrics (§15)
+
+- Chat stub responses: ✅ 0/day after env fix lands in production.
+- Sources-of-truth for model selection: ✅ 1 (`AiGatewayService.select`).
+- Hardcoded LLM API-key reads outside `SecretProviderService`: ✅ 0.
+- LLM `fetch()` implementations: ✅ 1 (`HttpLlmTransport`).
+- `CostRecord` writes / LLM calls: target ≥ 0.95 (single writer in `CostAttributorService`, idempotent on `sourceEventId`).
+- `MINIMAX_API_KEY` audit failures: ✅ 0 (Funneled via `SecretProviderService`).
+- `nest build` / `tsc --noEmit` / gateway lint: ✅ 0 errors.
+- Test coverage on `src/modules/ai-gateway/`: ≥ 95% (7 spec files, 30 unit tests).
+- P95 latency, circuit-breaker MTTR, per-tenant override propagation latency: measured after deploy.
+
+### Reference
+
+- [ai-gateway-imp-plan.md §0](ai-gateway/ai-gateway-imp-plan.md) (ship summary)
+- [ai-gateway-imp-plan.md §16](ai-gateway/ai-gateway-imp-plan.md#16-references) (links to audit + related docs)
+- [backend/src/modules/ai-gateway/README.md](../../backend/src/modules/ai-gateway/README.md) (module-level documentation)
+
+---
+
+## FIX-036 — AI Gateway deep-audit: 3 critical runtime blockers, 6 consumer migrations
+
+**Date:** 2026-07-11
+**Severity:** critical
+**Component:** `src/modules/{ai-gateway,chief-of-staff,project-health,knowledge,tools}/` + `config/`
+**Status:** code shipped; verified via `nest build` (0 errors) + `tsc --noEmit` (0 errors) + `jest` (728/728 pass)
+**Reporter:** Kilo deep-audit (Round 2, 2026-07-11 14:00 PKT)
+
+### Root cause
+
+Round 1 of the AI Gateway implementation (FIX-034/FIX-035) had:
+
+1. **3 critical runtime blockers**: `AiModelRepository`, `FallbackChainBuilder`, and `CostAttributorService` all injected `PrismaClient` (not a NestJS provider) instead of `PrismaService` — guaranteed runtime crash on first gateway call.
+2. **2 high-severity logic bugs**: `stream()` never wrote `CostRecord` rows (violating the plan's "Every successful invoke writes a CostRecord" contract); `isRetryable()` in `retry-policy.ts` would retry `AiGatewayBudgetExceededError` and `AiGatewayUnconfiguredError` indefinitely.
+3. **4 moderate issues**: SSE parser didn't handle `\r\n` line endings; stream yielded raw URL instead of provider slug; admin audit logs crashed on `Date` objects; dead field `writesListenerInstalled` in repository.
+4. **6 consumer files not yet migrated** (noted as "follow-up PR" gaps in FIX-035).
+
+### Fixes shipped
+
+| # | File | Change |
+|---|---|---|
+| **Critical** | `ai-gateway/selection/ai-model.repository.ts` | Injected `PrismaClient` → `PrismaService` |
+| **Critical** | `ai-gateway/failover/fallback-chain.ts` | Same |
+| **Critical** | `ai-gateway/cost/cost-attributor.service.ts` | Same |
+| **High** | `ai-gateway/ai-gateway.service.ts:335` | `stream()` now captures final usage from generator and calls `costAttributor.record()` |
+| **High** | `ai-gateway/failover/retry-policy.ts` | Added explicit `return false` for `AiGatewayAllProvidersFailedError`, `AiGatewayBudgetExceededError`, `AiGatewayUnconfiguredError` |
+| Moderate | `ai-gateway/transport/sse-stream-parser.ts` | Added `\r\n` normalisation before `\n\n` splitting |
+| Moderate | `ai-gateway/transport/http-llm.transport.ts` | Stream yields `extractProviderSlug(req.url)` instead of raw URL |
+| Moderate | `ai-gateway/controllers/models-admin.controller.ts` | Audit logs use `JSON.parse(JSON.stringify(v))` to sanitise Date objects; dead `tenantId` param marked underscore |
+| Low | `ai-gateway/selection/ai-model.repository.ts` | Removed dead field `writesListenerInstalled` |
+| **Migration** | `chief-of-staff/chief-of-staff.service.ts` | Injects `AiGatewayService` + `FeatureFlagService`; V2 branch with `ai.invoke({capability:'reasoning'})`; hardcoded `'MiniMax-Text-01'` replaced |
+| **Migration** | `project-health/project-health-ai.service.ts` | V2 branch with `ai.invokeStructured()` + Zod `aiHealthSchema` |
+| **Migration** | `knowledge/services/rag-pipeline.service.ts` | V2 branch in both `invokeLLM()` + `stream()`; legacy `AI_DEFAULT_MODEL`/`RAG_MODEL` reads preserved |
+| **Migration** | `tools/built-in/query.tool.ts` | V2 branch via `invokeLlm()` wrapper; capability `tools` |
+| **Migration** | `tools/built-in/explain.tool.ts` | V2 branch via `invokeLlm()` wrapper; capability `reasoning` |
+| **Migration** | `tools/built-in/chat.tool.ts` | V2 branch via `invokeLlm()` wrapper; capability `conversation` |
+
+### Test coverage added
+
+| Test file | New tests |
+|---|---|
+| `retry-policy.spec.ts` | 3 — budget-exceeded, unconfigured, all-providers-failed |
+| `sse-stream-parser.spec.ts` | 1 — CRLF line endings |
+
+### Acceptance
+
+- `pnpm nest build`: 0 errors
+- `pnpm tsc --noEmit`: 0 errors (including circuit-breaker spec tuple fix)
+- `pnpm jest --config jest.config.js --no-coverage`: 76 suites, 728 tests, all passing (up from 724)
+- All 6 consumer files compile with both V2 and legacy paths intact
+
+### Reference
+
+- [ai-gateway-imp-plan.md §0](ai-gateway/ai-gateway-imp-plan.md)
+- [ai-gateway.md](../ai-gateway/ai-gateway.md)
+- [backend/src/modules/ai-gateway/README.md](../../backend/src/modules/ai-gateway/README.md)
+

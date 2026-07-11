@@ -4,6 +4,8 @@ import { MiniMaxClient } from '../models/services/minimax-client.service';
 import { OfficialAgentGraph } from '../agents/langgraph/langgraph-official';
 import { SendChatMessageDto } from './dto/chat.dto';
 import { ActivityService } from '../hermes/services/activity.service';
+import { FeatureFlagService } from '../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
 
 /**
  * Chat Service
@@ -18,6 +20,11 @@ import { ActivityService } from '../hermes/services/activity.service';
  *   3. Builds a compact JSON-shaped "LIVE TENANT DATA" block and prefixes it to the
  *      system prompt so the model answers with real numbers instead of hallucinating
  *   4. Falls back to a clear stub message if MiniMax is not configured
+ *
+ * When `AI_GATEWAY_V2` is on, the service routes through `AiGatewayService` for
+ * true streaming, structured output, and cost attribution; otherwise it falls
+ * back to the legacy `MiniMaxClient` direct injection (preserves F2 fix:
+ * never returns the bogus `'MiniMax-Text-01'` literal).
  */
 @Injectable()
 export class ChatService {
@@ -28,6 +35,8 @@ export class ChatService {
     private readonly prisma: PrismaService,
     private readonly agentGraph: OfficialAgentGraph,
     private readonly activityService: ActivityService,
+    private readonly featureFlags: FeatureFlagService,
+    private readonly aiGateway: AiGatewayService,
   ) {}
 
   async send(
@@ -91,7 +100,9 @@ export class ChatService {
     // ACTION: Route to OfficialAgentGraph for tool execution
     if (intent === 'action' && tenantId) {
       try {
-        this.logger.log(`[chat] Routing action request to agent graph: ${dto.message}`);
+        this.logger.log(
+          `[chat] Routing action request to agent graph: ${dto.message}`,
+        );
 
         const result = await this.agentGraph.run({
           goal: dto.message,
@@ -104,7 +115,8 @@ export class ChatService {
         // Extract reply from final message or tool results
         const messages = result.messages ?? [];
         const finalMessage = messages[messages.length - 1];
-        const reply = finalMessage?.content ??
+        const reply =
+          finalMessage?.content ??
           (result.toolResults?.length > 0
             ? `Executed ${result.toolResults.length} tool(s).`
             : 'Action completed.');
@@ -118,7 +130,7 @@ export class ChatService {
           contextId: conversationId,
           payload: {
             intent: 'action',
-            model: 'MiniMax-Text-01',
+            model: this.minimax.model,
             toolResults: result.toolResults?.length ?? 0,
             messages: messages.length,
           },
@@ -129,12 +141,14 @@ export class ChatService {
           reply,
           conversationId,
           tokens: { input: 0, output: 0, total: 0 },
-          model: 'MiniMax-Text-01',
+          model: this.minimax.model,
           provider: 'minimax',
           liveData,
         };
       } catch (err) {
-        this.logger.error(`[chat] Agent graph failed: ${(err as Error).message}`);
+        this.logger.error(
+          `[chat] Agent graph failed: ${(err as Error).message}`,
+        );
         const errReply = `I tried to execute that action but encountered an error: ${(err as Error).message}`;
         this.recordChatActivitySafe({
           tenantId,
@@ -151,7 +165,7 @@ export class ChatService {
           reply: errReply,
           conversationId,
           tokens: { input: 0, output: 0, total: 0 },
-          model: 'MiniMax-Text-01',
+          model: this.minimax.model,
           provider: 'minimax',
           liveData,
         };
@@ -184,42 +198,71 @@ export class ChatService {
       .join('\n');
 
     try {
-      const response = await this.minimax.invoke(
-        prompt,
-        dto.temperature ?? 0.3,
-        dto.maxTokens ?? 512,
-      );
+      // Feature-flagged routing: when AI_GATEWAY_V2 is on, the gateway
+      // owns provider selection, failover, streaming, structured output,
+      // and cost attribution. When off, the legacy MiniMaxClient path is
+      // preserved (with F2 fix: real model id, never 'MiniMax-Text-01').
+      const useGateway = this.featureFlags.isEnabled('AI_GATEWAY_V2');
+      // Normalize the two response shapes into one local tuple. The
+      // gateway's `LLMResponse` carries `model` + `provider` at the top
+      // level; the legacy `MiniMaxClient.invoke` returns
+      // `LLMResponse` (legacy) which has neither (it lives on the
+      // client instance), so we read it from `this.minimax.model`.
+      const replyContent: string = useGateway
+        ? (
+            await this.aiGateway.invoke({
+              tenantId,
+              capability: 'conversation',
+              prompt,
+              sourceModule: 'chat',
+              ...(dto.temperature !== undefined
+                ? { temperature: dto.temperature }
+                : {}),
+              ...(dto.maxTokens !== undefined
+                ? { maxTokens: dto.maxTokens }
+                : {}),
+            })
+          ).content
+        : (
+            await this.minimax.invoke(
+              prompt,
+              dto.temperature ?? 0.3,
+              dto.maxTokens ?? 512,
+            )
+          ).content;
+      const replyModel: string = useGateway
+        ? ((await this.aiGateway.getLastResolved(tenantId, 'conversation'))
+            ?.model.modelId ?? 'gateway')
+        : this.minimax.model;
+      const replyProvider: string = useGateway
+        ? ((await this.aiGateway.getLastResolved(tenantId, 'conversation'))
+            ?.provider.slug ?? 'gateway')
+        : 'minimax';
 
-      const tokens = response.usage
-        ? {
-            input: response.usage.inputTokens,
-            output: response.usage.outputTokens,
-            total: response.usage.totalTokens,
-          }
-        : { input: 0, output: 0, total: 0 };
+      const tokens = { input: 0, output: 0, total: 0 };
 
       this.recordChatActivitySafe({
         tenantId: tenantIdFromJwt ?? null,
         actorType: 'AI_AGENT',
-        actorId: 'minimax',
+        actorId: replyProvider,
         type: 'chat:assistant_reply',
-        title: (response.content ?? '').slice(0, 80),
+        title: (replyContent ?? '').slice(0, 80),
         contextId: conversationId,
         payload: {
           intent: 'query',
-          model: this.minimax.model,
-          provider: 'minimax',
+          model: replyModel,
+          provider: replyProvider,
           tokens,
         },
         sourceEventId: `chat:${conversationId}:assistant`,
       });
 
       return {
-        reply: response.content,
+        reply: replyContent,
         conversationId,
         tokens,
-        model: this.minimax.model,
-        provider: 'minimax',
+        model: replyModel,
+        provider: replyProvider,
         liveData,
       };
     } catch (err) {
@@ -247,6 +290,48 @@ export class ChatService {
         provider: 'minimax',
         liveData,
       };
+    }
+  }
+
+  /**
+   * V2 streaming entry point. Returns an async iterable of text
+   * deltas. Activated by `AI_GATEWAY_V2`. The legacy REST endpoint
+   * is unchanged.
+   */
+  async *stream(
+    dto: SendChatMessageDto,
+    tenantIdFromJwt?: string,
+  ): AsyncGenerator<{ delta: string; done: boolean }> {
+    const tenantId =
+      tenantIdFromJwt ??
+      (dto.context?.['tenantId'] as string | undefined) ??
+      null;
+    const systemPrompt =
+      dto.systemPrompt ??
+      'You are HeadQuarter, the AI assistant inside the NeureCore platform. ' +
+        'Answer the user using ONLY the LIVE TENANT DATA provided below. ' +
+        'If the data does not contain the answer, say so directly rather than guessing. ' +
+        'Keep answers concise (2-4 sentences).';
+    const liveData = tenantId
+      ? await this.fetchTenantSnapshot(tenantId)
+      : { note: 'no tenant context available' };
+    const prompt = [
+      `SYSTEM: ${systemPrompt}`,
+      `\nLIVE TENANT DATA (JSON):\n${JSON.stringify(liveData, null, 2)}`,
+      `\nUSER: ${dto.message}`,
+      '\nASSISTANT:',
+    ].join('\n');
+    for await (const chunk of this.aiGateway.stream({
+      tenantId,
+      capability: 'conversation',
+      prompt,
+      sourceModule: 'chat.stream',
+      ...(dto.temperature !== undefined
+        ? { temperature: dto.temperature }
+        : {}),
+      ...(dto.maxTokens !== undefined ? { maxTokens: dto.maxTokens } : {}),
+    })) {
+      yield { delta: chunk.delta, done: chunk.done };
     }
   }
 
@@ -294,14 +379,28 @@ export class ChatService {
    */
   private detectIntent(message: string): 'action' | 'query' {
     const actionKeywords = [
-      'create', 'add', 'new', 'make',
-      'pause', 'stop', 'resume', 'start', 'activate',
-      'list', 'show', 'get', 'find',
-      'assign', 'delegate', 'set',
-      'delete', 'remove', 'archive',
+      'create',
+      'add',
+      'new',
+      'make',
+      'pause',
+      'stop',
+      'resume',
+      'start',
+      'activate',
+      'list',
+      'show',
+      'get',
+      'find',
+      'assign',
+      'delegate',
+      'set',
+      'delete',
+      'remove',
+      'archive',
     ];
     const lower = message.toLowerCase();
-    return actionKeywords.some(k => lower.includes(k)) ? 'action' : 'query';
+    return actionKeywords.some((k) => lower.includes(k)) ? 'action' : 'query';
   }
 
   /**
@@ -309,50 +408,66 @@ export class ChatService {
    * All counts are scoped to `tenantId`. Errors degrade gracefully to null
    * fields so a single failed query doesn't kill the chat reply.
    */
-  private async fetchTenantSnapshot(tenantId: string): Promise<Record<string, unknown>> {
+  private async fetchTenantSnapshot(
+    tenantId: string,
+  ): Promise<Record<string, unknown>> {
     const snap: Record<string, unknown> = {
       tenantId,
       generatedAt: new Date().toISOString(),
     };
 
     try {
-      const [agentsByStatus, departmentsCount, tasksByStatus, workflowsByStatus, pendingApprovals, costMonth] =
-        await Promise.all([
-          this.prisma.agent.groupBy({
+      const [
+        agentsByStatus,
+        departmentsCount,
+        tasksByStatus,
+        workflowsByStatus,
+        pendingApprovals,
+        costMonth,
+      ] = await Promise.all([
+        this.prisma.agent
+          .groupBy({
             by: ['status'],
             where: { tenantId },
             _count: { _all: true },
-          }).catch(() => []),
-          this.prisma.department.count({ where: { tenantId, status: 'ACTIVE' } }).catch(() => null),
-          this.prisma.task
-            .groupBy({
-              by: ['status'],
-              where: { tenantId },
-              _count: { _all: true },
-            })
-            .catch(() => []),
-          this.prisma.workflow
-            .groupBy({
-              by: ['status'],
-              where: { tenantId },
-              _count: { _all: true },
-            })
-            .catch(() => []),
-          this.prisma.approvalRequest
-            .count({ where: { tenantId, status: 'PENDING' } })
-            .catch(() => null),
-          this.prisma.costRecord
-            .aggregate({
-              where: {
-                tenantId,
-                windowStart: {
-                  gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                },
+          })
+          .catch(() => []),
+        this.prisma.department
+          .count({ where: { tenantId, status: 'ACTIVE' } })
+          .catch(() => null),
+        this.prisma.task
+          .groupBy({
+            by: ['status'],
+            where: { tenantId },
+            _count: { _all: true },
+          })
+          .catch(() => []),
+        this.prisma.workflow
+          .groupBy({
+            by: ['status'],
+            where: { tenantId },
+            _count: { _all: true },
+          })
+          .catch(() => []),
+        this.prisma.approvalRequest
+          .count({ where: { tenantId, status: 'PENDING' } })
+          .catch(() => null),
+        this.prisma.costRecord
+          .aggregate({
+            where: {
+              tenantId,
+              windowStart: {
+                gte: new Date(
+                  new Date().getFullYear(),
+                  new Date().getMonth(),
+                  1,
+                ),
               },
-              _sum: { costCents: true },
-            })
-            .catch(() => null),
-        ]);
+            },
+            _sum: { costCents: true },
+          })
+          .catch(() => null),
+      ]);
 
       // Build agent counts map
       const agentCounts: Record<string, number> = {};

@@ -18,7 +18,8 @@ export class WorkflowTemplateService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(THREAD_SERVICE) private readonly threadService: IThreadService,
-    @Inject(ACTIVITY_SERVICE) private readonly activityService: IActivityService,
+    @Inject(ACTIVITY_SERVICE)
+    private readonly activityService: IActivityService,
   ) {}
 
   onModuleInit(): void {

@@ -244,7 +244,10 @@ export class AIActionsService {
     const tierSlug = (tenant?.tier?.slug ?? 'community').toUpperCase();
     const knownTiers = ['COMMUNITY', 'STARTER', 'PRO', 'ENTERPRISE'];
     const tier = (knownTiers.includes(tierSlug) ? tierSlug : 'COMMUNITY') as
-      'COMMUNITY' | 'STARTER' | 'PRO' | 'ENTERPRISE';
+      | 'COMMUNITY'
+      | 'STARTER'
+      | 'PRO'
+      | 'ENTERPRISE';
 
     const userPermissions = derivePermissions(role);
     return this.registry

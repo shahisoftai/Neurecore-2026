@@ -52,7 +52,8 @@ export class EnterpriseEventBusService implements IHermesEventBus {
   private readonly emitter = new EventEmitter();
 
   constructor(
-    @Inject(ACTIVITY_SERVICE) private readonly activityService: IActivityService,
+    @Inject(ACTIVITY_SERVICE)
+    private readonly activityService: IActivityService,
     private readonly eventsGateway: EventsGateway,
     @Optional() private readonly dependencyGraph?: IDependencyGraph,
   ) {}

@@ -5,7 +5,7 @@
  * Enables tracing of LLM calls, tool executions, and agent workflows.
  */
 
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { readConfigOr } from '../../common/utils/config-getter';

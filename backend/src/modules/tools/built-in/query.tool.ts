@@ -34,6 +34,8 @@ import {
   ToolExecutionContext,
 } from '../interfaces/structured-tool.interface';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../../ai-gateway/ai-gateway.service';
 import { LLMFactory } from '../../models/services/llm-factory.service';
 
 // ─── Allowed schema (security allow-list) ───────────────────────────────────
@@ -150,6 +152,8 @@ export class QueryTool extends BaseStructuredTool {
   constructor(
     private readonly prisma: PrismaService,
     private readonly llm: LLMFactory,
+    private readonly featureFlags: FeatureFlagService,
+    private readonly aiGateway: AiGatewayService,
   ) {
     super();
   }
@@ -209,7 +213,7 @@ Rules:
 
 User question: ${question}`;
 
-    const response = await this.llm.invoke(prompt, { temperature: 0.1, maxTokens: 600 });
+    const response = await this.invokeLlm(prompt, 'query-tool.translate');
     const text = response.content.trim();
     // Be tolerant of LLM wrapping JSON in markdown fences
     const json = extractJsonObject(text);
@@ -311,6 +315,25 @@ User question: ${question}`;
       },
       metadata: { model: 'query-tool-v1' },
     };
+  }
+
+  private async invokeLlm(
+    prompt: string,
+    sourceModule: string,
+  ): Promise<{ content: string; usage?: { inputTokens: number; outputTokens: number; totalTokens: number } }> {
+    if (await this.featureFlags.isEnabled('AI_GATEWAY_V2')) {
+      const resp = await this.aiGateway.invoke({
+        tenantId: null,
+        capability: 'tools',
+        prompt,
+        temperature: 0.1,
+        maxTokens: 600,
+        sourceModule,
+      });
+      return { content: resp.content, usage: resp.usage };
+    }
+    const result = await this.llm.invoke(prompt, { temperature: 0.1, maxTokens: 600 });
+    return { content: result.content, usage: result.usage };
   }
 }
 

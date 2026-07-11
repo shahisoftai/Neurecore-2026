@@ -1,6 +1,9 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { z } from 'zod';
 import { MiniMaxClient } from '../models/services/minimax-client.service';
+import { FeatureFlagService } from '../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
 import { ProjectHealthService } from './project-health.service';
 import type { ProjectHealth, HealthSignalName } from './interfaces/project-health.interface';
 
@@ -12,6 +15,14 @@ export interface AIHealthResult {
   reasoning: string;
 }
 
+const aiHealthSchema = z.object({
+  adjustedScore: z.number().min(0).max(100),
+  atRiskReasons: z.array(z.string()),
+  recommendedActions: z.array(z.string()),
+  confidence: z.number().min(0).max(1),
+  reasoning: z.string(),
+});
+
 @Injectable()
 export class ProjectHealthAIService {
   private readonly logger = new Logger(ProjectHealthAIService.name);
@@ -19,11 +30,17 @@ export class ProjectHealthAIService {
   constructor(
     private readonly minimax: MiniMaxClient,
     private readonly projectHealthService: ProjectHealthService,
+    private readonly featureFlags: FeatureFlagService,
+    private readonly aiGateway: AiGatewayService,
     @Optional() private readonly configService?: ConfigService,
   ) {}
 
   async calculateWithAI(projectId: string, tenantId: string): Promise<AIHealthResult> {
     const health = await this.projectHealthService.computeHealth({ projectId, tenantId });
+
+    if (await this.featureFlags.isEnabled('AI_GATEWAY_V2')) {
+      return this.analyzeWithGateway(health, projectId, tenantId);
+    }
 
     if (!this.minimax.isConfigured()) {
       return this.fallbackResult(health);
@@ -68,13 +85,64 @@ Respond ONLY in this JSON format (no markdown, no explanation):
     }
   }
 
+  private async analyzeWithGateway(
+    health: ProjectHealth,
+    _projectId: string,
+    tenantId: string,
+  ): Promise<AIHealthResult> {
+    try {
+      const signalSummary = health.signals
+        .map((s) => `${s.name}: ${s.value}/100 (weight: ${s.weight})`)
+        .join('\n');
+
+      const prompt = `Analyze the health signals for a project and provide recommendations.
+
+PROJECT HEALTH SIGNALS:
+${signalSummary}
+
+OVERALL SCORE: ${health.overallScore}/100
+SEVERITY: ${health.severity}
+TREND: ${health.trend}
+
+Your task:
+1. Evaluate which signals are most critical for THIS specific project
+2. Provide an adjusted overall score (0-100) based on your analysis
+3. List at-risk reasons (what is actually dangerous right now)
+4. List recommended actions (specific, actionable next steps)
+5. Rate your confidence in this analysis (0-1)`;
+
+      const { data } = await this.aiGateway.invokeStructured({
+        tenantId,
+        capability: 'reasoning',
+        prompt,
+        temperature: 0.2,
+        maxTokens: 512,
+        sourceModule: 'project-health',
+        schema: aiHealthSchema,
+      });
+
+      return {
+        overallScore: Math.max(0, Math.min(100, data.adjustedScore)),
+        atRiskReasons: data.atRiskReasons.slice(0, 5),
+        recommendedActions: data.recommendedActions.slice(0, 5),
+        confidence: Math.max(0, Math.min(1, data.confidence)),
+        reasoning: data.reasoning.slice(0, 500),
+      };
+    } catch (err) {
+      this.logger.warn(
+        `Gateway health analysis failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return this.fallbackResult(health);
+    }
+  }
+
   private fallbackResult(health: ProjectHealth): AIHealthResult {
     return {
       overallScore: health.overallScore,
       atRiskReasons: health.atRiskReasons,
       recommendedActions: this.defaultRecommendations(health),
       confidence: 0.3,
-      reasoning: 'AI analysis unavailable — using rule-based defaults. Configure MINIMAX_API_KEY for AI-powered health analysis.',
+      reasoning: 'AI analysis unavailable — using rule-based defaults. Enable AI_GATEWAY_V2 or configure MINIMAX_API_KEY for AI-powered health analysis.',
     };
   }
 

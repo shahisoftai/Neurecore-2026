@@ -1,9 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { EntityGraphService } from './entity-graph.service';
 import { ConversationIntelligenceService } from './conversation-intelligence.service';
 import type { EntityType } from '@prisma/client';
 import { LLMFactory } from '../../models/services/llm-factory.service';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../../ai-gateway/ai-gateway.service';
 
 export interface DigestScope {
   type: 'AGENT' | 'DEPARTMENT' | 'GOAL' | 'PROJECT' | 'TENANT';
@@ -25,6 +27,8 @@ export class DigestService {
     private readonly entityGraph: EntityGraphService,
     private readonly conversationIntelligence: ConversationIntelligenceService,
     private readonly llmFactory: LLMFactory,
+    @Optional() private readonly featureFlags?: FeatureFlagService,
+    @Optional() private readonly aiGateway?: AiGatewayService,
   ) {}
 
   async generate(params: DigestParams): Promise<string> {
@@ -67,10 +71,22 @@ export class DigestService {
       .join('\n\n');
 
     try {
-      const result = await this.llmFactory.invoke(
-        `Produce a concise weekly digest summarizing the following agent narratives. Group by themes, highlight key outcomes and outstanding action items.\n\n${merged}`,
-        { temperature: 0.3, maxTokens: 800 },
-      );
+      const prompt = `Produce a concise weekly digest summarizing the following agent narratives. Group by themes, highlight key outcomes and outstanding action items.\n\n${merged}`;
+      if (this.featureFlags?.isEnabled('AI_GATEWAY_V2') && this.aiGateway) {
+        const r = await this.aiGateway.invoke({
+          tenantId: params.tenantId,
+          capability: 'reasoning',
+          prompt,
+          sourceModule: 'hermes-digest',
+          temperature: 0.3,
+          maxTokens: 800,
+        });
+        return r.content;
+      }
+      const result = await this.llmFactory.invoke(prompt, {
+        temperature: 0.3,
+        maxTokens: 800,
+      });
       return result.content;
     } catch {
       return merged.slice(0, 4000);

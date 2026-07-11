@@ -43,7 +43,10 @@ export class ChatController {
   /** Command Center "Ask AI" entry point */
   @Post('chat/messages')
   @HttpCode(HttpStatus.OK)
-  async sendMessage(@Body() dto: SendChatMessageDto, @Req() req: AuthedRequest) {
+  async sendMessage(
+    @Body() dto: SendChatMessageDto,
+    @Req() req: AuthedRequest,
+  ) {
     return this.chat.send(dto, req.user?.tenantId, req.user?.sub);
   }
 

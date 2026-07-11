@@ -532,6 +532,9 @@ model Tenant {
   activityEvents       ActivityEvent[]
   workflowTemplates    WorkflowTemplate[]
   notificationPrefs    NotificationPreference[]
+
+  // AI Gateway catalog back-relations
+  modelOverrides TenantModelOverride[]
   retentionPolicies    RetentionPolicy[]
 
   createdAt DateTime @default(now())
@@ -1648,8 +1651,8 @@ model CostRecord {
   id String @id @default(uuid())
 
   // Cost attribution
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   agentId String?
   agent   Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
@@ -1671,6 +1674,11 @@ model CostRecord {
   // Optional: Link to LangSmith run for traceability
   langSmithRunId String?
 
+  // AI Gateway attribution (ai-gateway-imp-plan.md §3.1, §9)
+  sourceModule  String? // e.g. 'chat', 'chief-of-staff', 'hermes'
+  sourceEventId String? @unique // idempotency key for the gateway
+  metadata      Json?   @default("{}")
+
   createdAt DateTime @default(now())
 
   @@index([tenantId])
@@ -1679,6 +1687,7 @@ model CostRecord {
   @@index([provider])
   @@index([model])
   @@index([windowStart, windowEnd])
+  @@index([sourceModule])
   @@map("cost_records")
 }
 
@@ -3773,4 +3782,76 @@ model Package {
   @@index([industryId, tierTemplateId])
   @@index([status])
   @@map("packages")
+}
+
+// ─── AI Gateway Catalog (ai-gateway-imp-plan.md §4.2) ───────────────────
+
+model ModelProvider {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  apiBaseUrl  String
+  apiKeyEnv   String
+  isActive    Boolean  @default(true)
+  models      AiModel[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("model_providers")
+}
+
+model AiModel {
+  id              String   @id @default(cuid())
+  providerId      String
+  provider        ModelProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  modelId         String
+  displayName     String
+  capabilities    String[]
+  contextWindow   Int      @default(8192)
+  costPer1kInput  Decimal  @default(0)
+  costPer1kOutput Decimal  @default(0)
+  maxConcurrent   Int      @default(100)
+  isAvailable     Boolean  @default(true)
+  isDefault       Boolean  @default(false)
+  priority        Int      @default(100)
+  metadata        Json     @default("{}")
+  overrides       TenantModelOverride[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([providerId, modelId])
+  @@index([isAvailable, isDefault])
+  @@index([capabilities])
+  @@map("ai_models")
+}
+
+model TenantModelOverride {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  capability  String
+  aiModelId   String
+  aiModel     AiModel  @relation(fields: [aiModelId], references: [id])
+  priority    Int      @default(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, capability])
+  @@index([tenantId])
+  @@map("tenant_model_overrides")
+}
+
+model ModelCatalogAudit {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("model_catalog_audits")
 }

@@ -25,6 +25,8 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { LLMFactory } from '../../models/services/llm-factory.service';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../../ai-gateway/ai-gateway.service';
 import { ChunkingService } from './chunking.service';
 import { EmbeddingsService } from './embeddings.service';
 import { HybridSearchService } from './hybrid-search.service';
@@ -51,6 +53,8 @@ export class RAGPipeline {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly llmFactory: LLMFactory,
+    private readonly featureFlags: FeatureFlagService,
+    private readonly aiGateway: AiGatewayService,
     private readonly hybrid: HybridSearchService,
     private readonly chunking: ChunkingService,
     @Inject(EMBEDDINGS_SERVICE)
@@ -80,7 +84,7 @@ export class RAGPipeline {
     }
 
     const context = this.renderContext(chunks);
-    const { content, tokens, model } = await this.invokeLLM(question, context);
+    const { content, tokens, model } = await this.invokeLLM(question, context, tenantId);
 
     // Increment retrieval counts in the background (best-effort)
     void this.bumpRetrievalCounts(chunks.map((c) => c.entryId));
@@ -129,18 +133,36 @@ export class RAGPipeline {
       // Use LLMFactory.invokeChat — streaming via OpenAI client where supported.
       // For providers that don't support streaming we fall back to a single
       // invoke + split-into-words so the UI still gets progressive output.
-      const model =
-        this.config.get<string>('RAG_MODEL') ??
-        this.config.get<string>('AI_DEFAULT_MODEL') ??
-        'gpt-4o-mini';
+      let result: { content: string; usage?: { inputTokens: number; outputTokens: number; totalTokens: number } };
+      let usedModel: string;
+      if (await this.featureFlags.isEnabled('AI_GATEWAY_V2')) {
+        const resp = await this.aiGateway.invoke({
+          tenantId,
+          capability: 'conversation',
+          prompt,
+          temperature: 0.2,
+          maxTokens: options?.maxContextTokens
+            ? Math.min(2_000, Math.floor(options.maxContextTokens / 4))
+            : 800,
+          sourceModule: 'rag-pipeline',
+        });
+        result = { content: resp.content, usage: resp.usage };
+        usedModel = resp.model;
+      } else {
+        const model =
+          this.config.get<string>('RAG_MODEL') ??
+          this.config.get<string>('AI_DEFAULT_MODEL') ??
+          'gpt-4o-mini';
+        usedModel = model;
 
-      const result = await this.llmFactory.invoke(prompt, {
-        model,
-        temperature: 0.2,
-        maxTokens: options?.maxContextTokens
-          ? Math.min(2_000, Math.floor(options.maxContextTokens / 4))
-          : 800,
-      });
+        result = await this.llmFactory.invoke(prompt, {
+          model,
+          temperature: 0.2,
+          maxTokens: options?.maxContextTokens
+            ? Math.min(2_000, Math.floor(options.maxContextTokens / 4))
+            : 800,
+        });
+      }
 
       buf = result.content;
       inputTok = result.usage?.inputTokens ?? 0;
@@ -295,13 +317,42 @@ export class RAGPipeline {
   private async invokeLLM(
     question: string,
     context: string,
+    tenantId: string,
   ): Promise<{ content: string; tokens: { input: number; output: number; total: number }; model: string }> {
+    const prompt = `${SYSTEM_PROMPT.replace('{context}', context)}\n\nUser question: ${question}`;
+
+    if (await this.featureFlags.isEnabled('AI_GATEWAY_V2')) {
+      try {
+        const response = await this.aiGateway.invoke({
+          tenantId,
+          capability: 'conversation',
+          prompt,
+          temperature: 0.2,
+          maxTokens: 800,
+          sourceModule: 'rag-pipeline',
+        });
+        return {
+          content: response.content,
+          model: response.model,
+          tokens: {
+            input: response.usage.inputTokens,
+            output: response.usage.outputTokens,
+            total: response.usage.totalTokens,
+          },
+        };
+      } catch (err) {
+        this.logger.error(
+          `Gateway invoke failed for RAG: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        throw err;
+      }
+    }
+
     const model =
       this.config.get<string>('RAG_MODEL') ??
       this.config.get<string>('AI_DEFAULT_MODEL') ??
       'gpt-4o-mini';
 
-    const prompt = `${SYSTEM_PROMPT.replace('{context}', context)}\n\nUser question: ${question}`;
     const result = await this.llmFactory.invoke(prompt, {
       model,
       temperature: 0.2,

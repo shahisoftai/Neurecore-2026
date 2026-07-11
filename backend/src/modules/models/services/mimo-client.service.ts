@@ -83,7 +83,11 @@ export class MiMoClientService implements ILLMClient {
 
   constructor(private readonly config?: ConfigService) {
     this.apiKey = readConfigOr(config, 'MIMO_API_KEY', '');
-    this.baseUrl = readConfigOr(config, 'MIMO_BASE_URL', 'https://api.mimo.ai/v1');
+    this.baseUrl = readConfigOr(
+      config,
+      'MIMO_BASE_URL',
+      'https://api.mimo.ai/v1',
+    );
     this.model = readConfigOr(config, 'MIMO_MODEL', 'MiMo-72B-Instruct');
     this.organizationId = readConfig(config, 'MIMO_ORG_ID');
 
@@ -357,7 +361,9 @@ export class MiMoClientService implements ILLMClient {
     }>,
     _temperature?: number,
     _maxTokens?: number,
-  ): Promise<import('../interfaces/llm-client.interface').LLMWithToolsResponse> {
+  ): Promise<
+    import('../interfaces/llm-client.interface').LLMWithToolsResponse
+  > {
     throw new Error('invokeWithTools not implemented for MiMo');
   }
 }

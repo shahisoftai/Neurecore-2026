@@ -46,9 +46,11 @@ export class AgentMessagingService implements IAgentMessaging {
     @Inject(HERMES_RUNTIME) private readonly runtime: IHermesRuntime,
     @Inject(THREAD_SERVICE) private readonly threadService: IThreadService,
     private readonly session: HermesSessionService,
-    @Inject(PARTICIPANT_RESOLVER) private readonly resolver: IParticipantResolver,
+    @Inject(PARTICIPANT_RESOLVER)
+    private readonly resolver: IParticipantResolver,
     @Inject(AGENT_MESSAGING_GUARD) private readonly guard: IAgentMessagingGuard,
-    @Inject(ACTIVITY_SERVICE) private readonly activityService: IActivityService,
+    @Inject(ACTIVITY_SERVICE)
+    private readonly activityService: IActivityService,
   ) {}
 
   async send(message: AgentMessage): Promise<AgentMessagingResult> {

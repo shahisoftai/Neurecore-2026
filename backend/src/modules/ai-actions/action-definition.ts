@@ -17,13 +17,22 @@
  */
 
 export type AIActionCategory =
-  'INTELLIGENCE' | 'ANALYSIS' | 'OPTIMIZATION' | 'EXECUTION' | 'REPORTING';
+  | 'INTELLIGENCE'
+  | 'ANALYSIS'
+  | 'OPTIMIZATION'
+  | 'EXECUTION'
+  | 'REPORTING';
 
 export type AIActionTierRequired =
-  'COMMUNITY' | 'STARTER' | 'PRO' | 'ENTERPRISE';
+  | 'COMMUNITY'
+  | 'STARTER'
+  | 'PRO'
+  | 'ENTERPRISE';
 
 export type AIActionCostType =
-  'per_invocation' | 'per_token' | 'included_in_tier';
+  | 'per_invocation'
+  | 'per_token'
+  | 'included_in_tier';
 
 export interface AICostModel {
   /** Billing model. */
@@ -63,7 +72,11 @@ export interface AIActionDefinition {
    * (Intelligence panel → INTELLIGENCE; Operations → EXECUTION; etc.).
    */
   capability:
-    'intelligence' | 'operations' | 'insights' | 'automation' | 'collaboration';
+    | 'intelligence'
+    | 'operations'
+    | 'insights'
+    | 'automation'
+    | 'collaboration';
   /** Free-form tags for discovery (`["summary", "briefing"]`). */
   tags: string[];
 

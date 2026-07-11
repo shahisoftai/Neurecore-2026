@@ -122,7 +122,9 @@ export class AgentStreamingController {
     if (!this.canAccessSession(user, session)) {
       res
         .status(HttpStatus.FORBIDDEN)
-        .send(`data: ${JSON.stringify({ error: 'Cross-tenant or cross-user session access denied' })}\n\n`);
+        .send(
+          `data: ${JSON.stringify({ error: 'Cross-tenant or cross-user session access denied' })}\n\n`,
+        );
       return;
     }
 
@@ -189,7 +191,9 @@ export class AgentStreamingController {
       throw new NotFoundException('Session not found');
     }
     if (!this.canAccessSession(user, session)) {
-      throw new ForbiddenException('Cross-tenant or cross-user session access denied');
+      throw new ForbiddenException(
+        'Cross-tenant or cross-user session access denied',
+      );
     }
 
     const taskId = session.taskId;
@@ -303,7 +307,9 @@ export class AgentStreamingController {
       throw new NotFoundException('Session not found');
     }
     if (!this.canAccessSession(user, session)) {
-      throw new ForbiddenException('Cross-tenant or cross-user session access denied');
+      throw new ForbiddenException(
+        'Cross-tenant or cross-user session access denied',
+      );
     }
     this.streamingService.cancelSession(sessionId);
   }
@@ -326,7 +332,9 @@ export class AgentStreamingController {
       throw new NotFoundException('Session not found');
     }
     if (!this.canAccessSession(user, session)) {
-      throw new ForbiddenException('Cross-tenant or cross-user session access denied');
+      throw new ForbiddenException(
+        'Cross-tenant or cross-user session access denied',
+      );
     }
     return {
       sessionId: session.sessionId,
@@ -340,9 +348,7 @@ export class AgentStreamingController {
    * List active sessions (scoped to caller's tenant unless platform role)
    */
   @Get('sessions')
-  listSessions(
-    @CurrentUser() user: JwtPayload,
-  ): {
+  listSessions(@CurrentUser() user: JwtPayload): {
     sessions: Array<{ sessionId: string; taskId: string; connectedAt: number }>;
   } {
     const isPlatform = PLATFORM_ROLES.includes(user.role);
@@ -386,7 +392,11 @@ export class AgentStreamingController {
     session: { userId?: string; tenantId?: string },
   ): boolean {
     if (PLATFORM_ROLES.includes(user.role)) return true;
-    if (user.tenantId && session.tenantId && user.tenantId !== session.tenantId) {
+    if (
+      user.tenantId &&
+      session.tenantId &&
+      user.tenantId !== session.tenantId
+    ) {
       return false;
     }
     if (session.userId && session.userId !== user.sub) {

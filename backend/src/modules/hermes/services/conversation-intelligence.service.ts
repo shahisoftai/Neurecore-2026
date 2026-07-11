@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { LLMFactory } from '../../models/services/llm-factory.service';
 import type {
@@ -10,6 +10,8 @@ import type {
 } from '../interfaces/IConversationIntelligence';
 import type { HermesMessageData } from '../interfaces/hermes-session.interface';
 import { CONVERSATION_INTELLIGENCE } from '../interfaces/IConversationIntelligence';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../../ai-gateway/ai-gateway.service';
 
 @Injectable()
 export class ConversationIntelligenceService implements IConversationIntelligence {
@@ -20,6 +22,8 @@ export class ConversationIntelligenceService implements IConversationIntelligenc
   constructor(
     private readonly prisma: PrismaService,
     private readonly llmFactory: LLMFactory,
+    @Optional() private readonly featureFlags?: FeatureFlagService,
+    @Optional() private readonly aiGateway?: AiGatewayService,
   ) {}
 
   async summarize(params: SummarizeParams): Promise<ConversationSummary> {
@@ -162,10 +166,24 @@ export class ConversationIntelligenceService implements IConversationIntelligenc
 
   private async invokeSummary(text: string): Promise<string> {
     try {
-      const result = await this.llmFactory.invoke(
-        `Summarize the following conversation/decision log in 3-5 paragraphs. Include key decisions, action items, and outcomes.\n\n${text}`,
-        { temperature: 0.2, maxTokens: 600 },
-      );
+      const prompt = `Summarize the following conversation/decision log in 3-5 paragraphs. Include key decisions, action items, and outcomes.\n\n${text}`;
+      if (this.featureFlags?.isEnabled('AI_GATEWAY_V2') && this.aiGateway) {
+        const r = await this.aiGateway.invoke({
+          // Conversation intelligence is a reasoning task; the gateway
+          // routes by `reasoning` capability.
+          tenantId: null,
+          capability: 'reasoning',
+          prompt,
+          sourceModule: 'conversation-intelligence',
+          temperature: 0.2,
+          maxTokens: 600,
+        });
+        return r.content;
+      }
+      const result = await this.llmFactory.invoke(prompt, {
+        temperature: 0.2,
+        maxTokens: 600,
+      });
       return result.content;
     } catch (err) {
       this.logger.warn(`invokeSummary failed: ${String(err)}`);

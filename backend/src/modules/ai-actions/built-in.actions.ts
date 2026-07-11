@@ -60,7 +60,9 @@ function placeholder(
   title: string,
   body: string,
 ): Promise<AIActionResult> {
-  const model = process.env.AI_DEFAULT_MODEL ?? 'preview-model';
+  // F9: `preview-model` is not a real model id. When unset, downstream
+  // resolves the model via the gateway (or `LLMFactory` for legacy).
+  const model = process.env.AI_DEFAULT_MODEL ?? 'gpt-4o-mini';
   const totalTokens = Math.max(BASE_TOKENS, Math.floor(body.length / 4));
   return Promise.resolve({
     output: body,

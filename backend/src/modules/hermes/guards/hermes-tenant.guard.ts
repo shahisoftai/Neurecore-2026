@@ -41,7 +41,8 @@ export class HermesTenantGuard implements CanActivate {
     const params = request.params as Record<string, string>;
     const body = request.body as Record<string, unknown>;
     const hermesAgentId =
-      params.hermesAgentId ?? params.agentId ??
+      params.hermesAgentId ??
+      params.agentId ??
       (body?.hermesAgentId as string | undefined);
     if (hermesAgentId) {
       const agent = await this.prisma.hermesAgent.findUnique({

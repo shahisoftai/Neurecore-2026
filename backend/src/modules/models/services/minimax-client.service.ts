@@ -283,7 +283,10 @@ export class MiniMaxClient {
         finishReason: choice.finish_reason,
       };
     } catch (error) {
-      Logger.error(`MiniMax invokeWithTools failed: ${error}`, MiniMaxClient.name);
+      Logger.error(
+        `MiniMax invokeWithTools failed: ${error}`,
+        MiniMaxClient.name,
+      );
       throw error;
     }
   }

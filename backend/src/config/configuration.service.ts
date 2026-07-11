@@ -222,21 +222,19 @@ export class ConfigurationService implements IConfigService {
     };
   }
 
-  /**
-   * Get AI configuration
-   */
-  getAi(): AiConfig {
+/**
+ * Get AI configuration
+ *
+ * Per ai-gateway-imp-plan.md §3.1 row S31: API keys and per-model
+ * defaults have moved to the gateway catalog (DB-backed). Only
+ * non-secret gateway knobs live here.
+ */
+getAi(): AiConfig {
     return {
-      OPENAI_API_KEY: this.get<string>('OPENAI_API_KEY'),
-      OPENAI_ORGANIZATION: this.get<string>('OPENAI_ORGANIZATION'),
-      OPENAI_PROJECT: this.get<string>('OPENAI_PROJECT'),
-      ANTHROPIC_API_KEY: this.get<string>('ANTHROPIC_API_KEY'),
-      DEFAULT_MODEL: this.get<string>('DEFAULT_MODEL') || 'gpt-4-turbo-preview',
-      DEFAULT_TEMPERATURE: this.get<number>('DEFAULT_TEMPERATURE') || 0.7,
-      DEFAULT_MAX_TOKENS: this.get<number>('DEFAULT_MAX_TOKENS') || 4096,
       AI_STREAMING_ENABLED: this.get<boolean>('AI_STREAMING_ENABLED') ?? true,
       AI_FUNCTION_CALLING_ENABLED:
         this.get<boolean>('AI_FUNCTION_CALLING_ENABLED') ?? true,
+      DEFAULT_AGENT_MODEL: this.get<string>('DEFAULT_AGENT_MODEL'),
     };
   }
 

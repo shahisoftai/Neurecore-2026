@@ -30,6 +30,8 @@ import {
   StructuredToolResult,
   ToolExecutionContext,
 } from '../interfaces/structured-tool.interface';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../../ai-gateway/ai-gateway.service';
 import { LLMFactory } from '../../models/services/llm-factory.service';
 import { MemoryService } from '../../memory/memory.service';
 import { ContextTool } from './context.tool';
@@ -91,6 +93,8 @@ export class ChatTool extends BaseStructuredTool {
     private readonly llm: LLMFactory,
     private readonly memory: MemoryService,
     private readonly contextTool: ContextTool,
+    private readonly featureFlags: FeatureFlagService,
+    private readonly aiGateway: AiGatewayService,
   ) {
     super();
   }
@@ -197,10 +201,8 @@ ${blocks.join('\n\n')}
 Be specific. Cite sources when possible (memory entries, document names, past turns).`;
 
     // 3. Call LLM
-    const response = await this.llm.invoke(systemPrompt + '\n\nQuestion: ' + input.question, {
-      temperature: 0.4,
-      maxTokens: 700,
-    });
+    const prompt = systemPrompt + '\n\nQuestion: ' + input.question;
+    const response = await this.invokeLlm(prompt, 'chat-tool.ask');
     const answer = response.content.trim();
 
     // 4. Persist turns
@@ -241,6 +243,25 @@ Be specific. Cite sources when possible (memory entries, document names, past tu
       },
       metadata: { model: 'chat-tool-v1' },
     };
+  }
+
+  private async invokeLlm(
+    prompt: string,
+    sourceModule: string,
+  ): Promise<{ content: string; usage?: { inputTokens: number; outputTokens: number; totalTokens: number } }> {
+    if (await this.featureFlags.isEnabled('AI_GATEWAY_V2')) {
+      const resp = await this.aiGateway.invoke({
+        tenantId: null,
+        capability: 'conversation',
+        prompt,
+        temperature: 0.4,
+        maxTokens: 700,
+        sourceModule,
+      });
+      return { content: resp.content, usage: resp.usage };
+    }
+    const result = await this.llm.invoke(prompt, { temperature: 0.4, maxTokens: 700 });
+    return { content: result.content, usage: result.usage };
   }
 
   // ─── remember ────────────────────────────────────────────────────────────

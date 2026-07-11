@@ -7,19 +7,34 @@
 
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import type {
-  OpenClawConfig,
-  AgentMessage,
-  AgentResponse,
-} from './ai-gateway.module';
+import {
+  type OpenClawConfig,
+  OPENCLAW_CONFIG,
+} from './openclaw-gateway.tokens';
 import { LangSmithTracingService } from './langsmith-tracing.service';
+
+export interface AgentMessage {
+  id: string;
+  agentId: string;
+  action: string;
+  payload: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  timestamp: number;
+}
+
+export interface AgentResponse {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+  traceId?: string;
+}
 
 @Injectable()
 export class OpenClawGatewayService {
   private readonly logger = new Logger(OpenClawGatewayService.name);
 
   constructor(
-    @Inject('OPENCLAW_CONFIG') private readonly config: OpenClawConfig,
+    @Inject(OPENCLAW_CONFIG) private readonly config: OpenClawConfig,
     private readonly tracingService: LangSmithTracingService,
   ) {}
 
@@ -165,7 +180,7 @@ export class OpenClawGatewayService {
               return;
             }
             try {
-              const parsed = JSON.parse(data);
+              const parsed: unknown = JSON.parse(data);
               yield {
                 success: true,
                 data: parsed,
@@ -226,7 +241,7 @@ export class OpenClawGatewayService {
           );
         }
 
-        const data = await response.json();
+        const data: unknown = await response.json();
         return data;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));

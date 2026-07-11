@@ -66,7 +66,10 @@ export interface AgentFilter {
 // ─────────────────────────────────────────────────────────────
 
 export interface IAgentService {
-  findAll(filter: AgentFilter, tenantId: string): Promise<{
+  findAll(
+    filter: AgentFilter,
+    tenantId: string,
+  ): Promise<{
     data: unknown[];
     total: number;
     page: number;

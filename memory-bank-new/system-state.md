@@ -1,6 +1,6 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-11 00:30 PKT — Phase 8 (Project completion + audit remediation) shipped to Contabo
+**Last verified:** 2026-07-11 14:09 PKT — AI Gateway deep-audit round 2 completed (728/728 tests, all consumers migrated)
 
 **2026-07-11 00:30 PKT — Phase 8 deployment (Kilo):**
 - ✅ Goal pre-population in `ProjectsService.create()` is now synchronous — by the time create returns, the project has its goals seeded from `goalTemplate`
@@ -451,6 +451,25 @@ All three vhosts add CORS headers (`Access-Control-Allow-Methods/Headers/Max-Age
 
 ## 6. Recent commits / snapshots
 
+- **2026-07-11 14:09 PKT — AI Gateway deep-audit: round 2 remediated (Kilo)**
+  - 3 critical runtime blockers fixed (`PrismaClient` → `PrismaService` injection)
+  - 2 high-severity logic bugs fixed (stream cost attribution, retry-policy non-retryable errors)
+  - 4 moderate issues fixed (SSE CRLF, transport slug, admin audit dates, dead code)
+  - 6 consumer files migrated: `chief-of-staff`, `project-health-ai`, `rag-pipeline`, `query.tool`, `explain.tool`, `chat.tool`
+  - 4 new unit tests (retry edge cases + CRLF parser); total now **728/728 passing**
+  - `nest build` + `tsc --noEmit`: both 0 errors
+  - Memory-bank: `ai-gateway.md` status → ✅ SHIPPED; `fixes.md` → FIX-036 added; `backend.md` + `frontend-admin.md` updated
+- **2026-07-11 13:43 PKT — AI Gateway refactor: 7/8 days landed locally (Kilo)**
+  - All 8 days of [ai-gateway-imp-plan.md](ai-gateway/ai-gateway-imp-plan.md) complete locally; Day 8 cutover pending Contabo deploy
+  - New Prisma models: `model_providers`, `ai_models`, `tenant_model_overrides`, `model_catalog_audits` (migration `20260711_ai_gateway_catalog`)
+  - `CostRecord` extended with `sourceModule`, `sourceEventId` (unique), `metadata` JSONB; `tenantId` loosened to nullable (migration `20260711_ai_gateway_cost_attribution`)
+  - New `src/modules/ai-gateway/` module: 8 SOLID helper classes + `AiGatewayService` facade (the only LLM-invocation entry point)
+  - 5 providers + 12 models seeded idempotently; `ANTHROPIC_API_KEY` added to `SECRET_ENV_MAPPING`
+  - P0 fixes F2–F9 in code; F1 (env `MINIMAX_API_KEY`) is a manual deploy step
+  - Feature flag `AI_GATEWAY_V2` defaults to `false`; flip per-tenant via new admin UI
+  - 30 new unit tests; 724/724 total pass; backend `nest build` + frontend `next build` both clean
+  - Frontend-admin `/admin/models` (Providers / Models / Per-tenant Overrides / Health & Cost tabs) + `/admin/cost-summary` replace legacy `/models`
+  - PR 8.3 (Day 8) tags `MiniMaxClient`, `DeepSeekClientService`, `MiMoClientService`, `LLMFactory`, `agent-state-machine.ts`, `HERMES_TYPE_MODELS`, `AIRoutingConfig`, and the legacy `models.controller.ts` for deletion after a 24h soak
 - **2026-07-10 15:33 PKT — Tenant Portal end-to-end validation (Kilo)**
   - Both frontends deployed to Contabo (frontend-tenant @ hq.neurecore.com, frontend-admin @ cc.neurecore.com)
   - 4 production bugs fixed: goals UUID validation (FIX-028), Prisma `@@map` for ApprovalWorkflow tables (FIX-029), IN_PROGRESS enum value in approval filter (FIX-030), lowercase enum types renamed to PascalCase (FIX-031)

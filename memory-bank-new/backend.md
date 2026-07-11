@@ -69,7 +69,7 @@ src/modules/
 │   ├── agents-pool.service.ts      # extends abstract PoolService + toggleEnabled + duplicate
 │   └── dto/{create,update}-agents-pool.dto.ts
 ├── agent-templates/         # Reusable agent blueprints (legacy service — still available)
-├── ai-gateway/              # LLM provider abstraction (openclaw-gateway)
+├── ai-gateway/              # AI Gateway v2 — sole LLM entry point (AiGatewayService), DB-backed catalog, circuit-breaker failover, cost attribution, admin CRUD controllers, transport, SSE parser
 ├── analytics/               # Usage metrics + reporting
 ├── audit/                   # Append-only audit log (global @Audit interceptor)
 ├── auth/                    # JWT login/refresh, Google OAuth, password reset

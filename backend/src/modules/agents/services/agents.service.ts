@@ -144,12 +144,22 @@ export class AgentsService implements IAgentService {
     userId: string,
     tenantId: string,
   ): Promise<unknown> {
+    // S19 (per ai-gateway-imp-plan.md): the default model id for new
+    // agents is `DEFAULT_AGENT_MODEL` from env, otherwise the DB
+    // default (`gpt-4o-mini`). At LLM-call time the gateway may
+    // override either value via the `execution` capability chain +
+    // per-tenant overrides.
+    const defaultModel =
+      process.env['DEFAULT_AGENT_MODEL'] &&
+      process.env['DEFAULT_AGENT_MODEL']!.length > 0
+        ? process.env['DEFAULT_AGENT_MODEL']!
+        : 'gpt-4o-mini';
     const agent = await this.prisma.agent.create({
       data: {
         name: input.name,
         description: input.description,
         type: (input.type as AgentType) ?? 'FUNCTIONAL',
-        model: input.model ?? 'gpt-4o-mini',
+        model: input.model ?? defaultModel,
         systemPrompt: input.systemPrompt,
         instructions: input.instructions,
         budgetPerDay: input.budgetPerDay,
@@ -203,7 +213,8 @@ export class AgentsService implements IAgentService {
         (base.profile as Record<string, unknown> | undefined) ?? {};
       const profile = { ...existingProfile };
       if (input.avatarUrl !== undefined) profile.avatarUrl = input.avatarUrl;
-      if (input.designation !== undefined) profile.designation = input.designation;
+      if (input.designation !== undefined)
+        profile.designation = input.designation;
       if (input.bio !== undefined) profile.bio = input.bio;
       if (input.color !== undefined) profile.color = input.color;
       if (input.emoji !== undefined) profile.emoji = input.emoji;

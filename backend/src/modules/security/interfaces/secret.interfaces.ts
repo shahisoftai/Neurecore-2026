@@ -45,6 +45,11 @@ export interface ISecretProvider {
   getOpenAiApiKey(): string;
 
   /**
+   * Get Anthropic API key
+   */
+  getAnthropicApiKey(): string;
+
+  /**
    * Get MiniMax API key
    */
   getMiniMaxApiKey(): string;
@@ -137,6 +142,7 @@ export enum WellKnownSecret {
   OPENCLAW_API_KEY = 'OPENCLAW_API_KEY',
   JWT_SECRET = 'JWT_SECRET',
   OPENAI_API_KEY = 'OPENAI_API_KEY',
+  ANTHROPIC_API_KEY = 'ANTHROPIC_API_KEY',
   MINIMAX_API_KEY = 'MINIMAX_API_KEY',
   DEEPSEEK_API_KEY = 'DEEPSEEK_API_KEY',
   MIMO_API_KEY = 'MIMO_API_KEY',

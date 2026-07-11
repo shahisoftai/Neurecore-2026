@@ -37,6 +37,7 @@ const SECRET_ENV_MAPPING: Record<WellKnownSecret, string> = {
   [WellKnownSecret.OPENCLAW_API_KEY]: 'OPENCLAW_API_KEY',
   [WellKnownSecret.JWT_SECRET]: 'JWT_SECRET',
   [WellKnownSecret.OPENAI_API_KEY]: 'OPENAI_API_KEY',
+  [WellKnownSecret.ANTHROPIC_API_KEY]: 'ANTHROPIC_API_KEY',
   [WellKnownSecret.MINIMAX_API_KEY]: 'MINIMAX_API_KEY',
   [WellKnownSecret.DEEPSEEK_API_KEY]: 'DEEPSEEK_API_KEY',
   [WellKnownSecret.MIMO_API_KEY]: 'MIMO_API_KEY',
@@ -213,6 +214,12 @@ export class SecretProviderService implements ISecretProvider {
   getOpenAiApiKey(): string {
     return this.resolve(
       `env:${SECRET_ENV_MAPPING[WellKnownSecret.OPENAI_API_KEY]}`,
+    ).value;
+  }
+
+  getAnthropicApiKey(): string {
+    return this.resolve(
+      `env:${SECRET_ENV_MAPPING[WellKnownSecret.ANTHROPIC_API_KEY]}`,
     ).value;
   }
 

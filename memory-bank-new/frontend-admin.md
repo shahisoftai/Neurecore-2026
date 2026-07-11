@@ -53,7 +53,7 @@ Rebuild: `bash /opt/neurecore/rebuild.sh admin`.
 
 ## 3. Routing (App Router)
 
-OLS `cc.neurecore.com` rewrites 21 root paths (`/admin`, `/agents`, `/agents-pool`, `/audit`, `/billing`, `/brain`, `/connectors`, `/departments-pool`, `/dept-templates`, `/features`, `/industries`, `/infrastructure`, `/login`, `/logout`, `/models`, `/monitoring`, `/overview`, `/packages`, `/security`, `/settings`, `/strategy`, `/tenants`, `/tier-templates`, `/tiers`, `/users`) to `/admin/...` inside Next.js. Catch-all proxies everything else.
+OLS `cc.neurecore.com` rewrites 22 root paths (`/admin`, `/agents`, `/agents-pool`, `/audit`, `/billing`, `/brain`, `/connectors`, `/departments-pool`, `/dept-templates`, `/features`, `/industries`, `/infrastructure`, `/login`, `/logout`, `/models` (redirects to `/admin/models`), `/monitoring`, `/overview`, `/packages`, `/security`, `/settings`, `/strategy`, `/tenants`, `/tier-templates`, `/tiers`, `/users`) to `/admin/...` inside Next.js. Catch-all proxies everything else.
 
 Top-level app routes:
 

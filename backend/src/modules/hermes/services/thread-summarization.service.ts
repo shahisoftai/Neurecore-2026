@@ -1,16 +1,22 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../../ai-gateway/ai-gateway.service';
 import { LLMFactory } from '../../models/services/llm-factory.service';
-import { THREAD_SERVICE, type IThreadService } from '../interfaces/IThreadService';
+import {
+  THREAD_SERVICE,
+  type IThreadService,
+} from '../interfaces/IThreadService';
 import { HermesSessionService } from './hermes-session.service';
 
 /**
  * ThreadSummarizationService — Phase 9c §16.3.3.
  *
  * Periodic background task that scans CommunicationThread rows for threads
- * exceeding SUMMARIZE_THRESHOLD messages. Calls LLMFactory.invokeSummary
- * and posts the result as a SYSTEM message into the thread so the
- * conversation history is preserved at a glance.
+ * exceeding SUMMARIZE_THRESHOLD messages. When `AI_GATEWAY_V2=true`,
+ * the summary is produced by `AiGatewayService.invoke` (capability
+ * `conversation`) — single source of truth, cost attributed, failover
+ * safe. Otherwise the legacy `LLMFactory.invoke` path is used.
  *
  * Rate-limited to MAX_PER_TICK to avoid LLM cost spikes.
  */
@@ -28,6 +34,8 @@ export class ThreadSummarizationService implements OnModuleInit {
     @Inject(THREAD_SERVICE) private readonly threadService: IThreadService,
     private readonly session: HermesSessionService,
     private readonly llmFactory: LLMFactory,
+    @Optional() private readonly featureFlags?: FeatureFlagService,
+    @Optional() private readonly aiGateway?: AiGatewayService,
   ) {}
 
   onModuleInit(): void {
@@ -95,11 +103,24 @@ export class ThreadSummarizationService implements OnModuleInit {
 
     let narrative: string;
     try {
-      const result = await this.llmFactory.invoke(
-        `Summarize the following conversation in 3-5 paragraphs. Include key decisions, action items, and outcomes. Preserve any unresolved questions.\n\n${context}`,
-        { temperature: 0.2, maxTokens: 600 },
-      );
-      narrative = result.content;
+      const prompt = `Summarize the following conversation in 3-5 paragraphs. Include key decisions, action items, and outcomes. Preserve any unresolved questions.\n\n${context}`;
+      if (this.featureFlags?.isEnabled('AI_GATEWAY_V2') && this.aiGateway) {
+        const r = await this.aiGateway.invoke({
+          tenantId,
+          capability: 'conversation',
+          prompt,
+          sourceModule: 'thread-summarization',
+          temperature: 0.2,
+          maxTokens: 600,
+        });
+        narrative = r.content;
+      } else {
+        const result = await this.llmFactory.invoke(prompt, {
+          temperature: 0.2,
+          maxTokens: 600,
+        });
+        narrative = result.content;
+      }
     } catch (err) {
       this.logger.warn(`invokeSummary failed: ${String(err)}`);
       return;

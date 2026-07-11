@@ -34,7 +34,8 @@ export class EscalationService implements OnModuleInit {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(ACTIVITY_SERVICE) private readonly activityService: IActivityService,
+    @Inject(ACTIVITY_SERVICE)
+    private readonly activityService: IActivityService,
   ) {}
 
   onModuleInit(): void {

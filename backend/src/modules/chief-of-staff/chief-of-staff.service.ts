@@ -4,6 +4,8 @@ import { MiniMaxClient } from '../models/services/minimax-client.service';
 import { OfficialAgentGraph } from '../agents/langgraph/langgraph-official';
 import { ProjectEventBus } from '../project-events/project-event-bus.service';
 import { EventsGateway } from '../events/events.gateway';
+import { FeatureFlagService } from '../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
 import type { SendCosMessageDto, ProjectCosSnapshot } from './dto/cos.dto';
 
 @Injectable()
@@ -14,6 +16,8 @@ export class ChiefOfStaffService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly minimax: MiniMaxClient,
+    private readonly featureFlags: FeatureFlagService,
+    private readonly aiGateway: AiGatewayService,
     @Optional() private readonly agentGraph?: OfficialAgentGraph,
     @Optional() private readonly eventBus?: ProjectEventBus,
     @Optional() private readonly eventsGateway?: EventsGateway,
@@ -116,6 +120,10 @@ export class ChiefOfStaffService {
       dto.conversationId ?? `cos_${projectId}_${Date.now()}`;
 
     const snapshot = await this.fetchProjectSnapshot(projectId, tenantId);
+
+    if (await this.featureFlags.isEnabled('AI_GATEWAY_V2')) {
+      return this.chatWithGateway(projectId, tenantId, dto, conversationId, snapshot, userId);
+    }
 
     if (this.minimax.isConfigured() && this.agentGraph) {
       return this.chatWithAgent(projectId, tenantId, dto, conversationId, snapshot, userId);
@@ -321,6 +329,122 @@ Your principles:
 Always format key numbers prominently.`;
   }
 
+  private async chatWithGateway(
+    projectId: string,
+    tenantId: string,
+    dto: SendCosMessageDto,
+    conversationId: string,
+    snapshot: ProjectCosSnapshot,
+    userId: string,
+  ): Promise<{
+    reply: string;
+    conversationId: string;
+    tokens?: { input: number; output: number; total: number };
+    model?: string;
+    provider?: string;
+    projectSnapshot?: ProjectCosSnapshot;
+  }> {
+    const intent = this.detectIntent(dto.message);
+
+    if (intent === 'action' && this.agentGraph) {
+      try {
+        const result = await this.agentGraph.run({
+          goal: dto.message,
+          agentId: `cos-${projectId}`,
+          tenantId,
+          userId,
+          sessionId: conversationId,
+        });
+        const messages = result.messages ?? [];
+        const finalMessage = messages[messages.length - 1];
+        const reply =
+          finalMessage?.content ??
+          (result.toolResults?.length > 0
+            ? `Executed ${result.toolResults.length} action(s).`
+            : 'Action completed.');
+        return {
+          reply,
+          conversationId,
+          tokens: { input: 0, output: 0, total: 0 },
+          model: (await this.aiGateway.getLastResolved(tenantId, 'reasoning'))
+            ?.model?.modelId,
+          provider: (await this.aiGateway.getLastResolved(tenantId, 'reasoning'))
+            ?.provider?.slug,
+          projectSnapshot: snapshot,
+        };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(`CoS agent graph (gateway) failed: ${msg}`);
+        return {
+          reply: `I attempted to execute that action but encountered an error: ${msg}`,
+          conversationId,
+          tokens: { input: 0, output: 0, total: 0 },
+          model: (await this.aiGateway.getLastResolved(tenantId, 'reasoning'))
+            ?.model?.modelId,
+          provider: (await this.aiGateway.getLastResolved(tenantId, 'reasoning'))
+            ?.provider?.slug,
+          projectSnapshot: snapshot,
+        };
+      }
+    }
+
+    const systemPrompt = this.buildCosSystemPrompt(snapshot);
+    const historyText = (dto.history ?? [])
+      .slice(-10)
+      .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+      .join('\n');
+
+    const prompt = [
+      `SYSTEM: ${systemPrompt}`,
+      `\nPROJECT DATA (JSON):\n${JSON.stringify(snapshot, null, 2)}`,
+      historyText ? `\nCONVERSATION:\n${historyText}` : '',
+      `\nUSER: ${dto.message}`,
+      '\nASSISTANT:',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    try {
+      const response = await this.aiGateway.invoke({
+        tenantId,
+        capability: 'reasoning',
+        prompt,
+        temperature: 0.3,
+        maxTokens: 512,
+        sourceModule: 'chief-of-staff',
+      });
+      const tokens = response.usage
+        ? {
+            input: response.usage.inputTokens,
+            output: response.usage.outputTokens,
+            total: response.usage.totalTokens,
+          }
+        : { input: 0, output: 0, total: 0 };
+
+      return {
+        reply: response.content,
+        conversationId,
+        tokens,
+        model: response.model,
+        provider: response.provider,
+        projectSnapshot: snapshot,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`CoS gateway invoke failed: ${msg}`);
+      return {
+        reply: `I encountered an error: ${msg}`,
+        conversationId,
+        tokens: { input: 0, output: 0, total: 0 },
+        model: (await this.aiGateway.getLastResolved(tenantId, 'reasoning'))
+          ?.model?.modelId,
+        provider: (await this.aiGateway.getLastResolved(tenantId, 'reasoning'))
+          ?.provider?.slug,
+        projectSnapshot: snapshot,
+      };
+    }
+  }
+
   private buildStubReply(snapshot: ProjectCosSnapshot): string {
     return `Chief of Staff is ready to assist with project "${snapshot.name}".
 Status: ${snapshot.status} | Health: ${snapshot.healthScore ?? 'N/A'}% | Completeness: ${snapshot.completenessScore}%
@@ -328,7 +452,7 @@ Goals: ${snapshot.activeGoals} active / ${snapshot.completenessScore} completed
 Tasks: ${snapshot.openTasks} open / ${snapshot.completedTasks} completed
 Current Stage: ${snapshot.currentStage ?? 'N/A'}
 
-MiniMax API key not configured — enable it in backend .env for full AI responses.`;
+AI Gateway not available — enable AI_GATEWAY_V2 or configure MINIMAX_API_KEY for full AI responses.`;
   }
 
   private detectIntent(message: string): 'action' | 'query' {

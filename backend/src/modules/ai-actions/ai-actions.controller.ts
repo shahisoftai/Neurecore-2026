@@ -87,7 +87,11 @@ export class AIActionsController {
     @Query('entityType') entityType?: string,
   ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
-    const items = await this.aiActions.listAvailable(user.tenantId, user.sub, entityType);
+    const items = await this.aiActions.listAvailable(
+      user.tenantId,
+      user.sub,
+      entityType,
+    );
     return {
       items,
       pagination: {

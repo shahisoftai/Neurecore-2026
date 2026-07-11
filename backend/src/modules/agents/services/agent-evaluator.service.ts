@@ -1,10 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type {
   IAgentEvaluator,
   EvaluationInput,
   EvaluationResult,
 } from '../interfaces/agent-evaluator.interface';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../../ai-gateway/ai-gateway.service';
 
 /**
  * AgentEvaluatorService
@@ -16,6 +18,11 @@ import type {
  * LangChain is used when OPENAI_API_KEY is available; falls back to
  * heuristic scoring so the platform remains functional without an API key.
  *
+ * S15 (per ai-gateway-imp-plan.md): when `AI_GATEWAY_V2=true`, the
+ * evaluator routes through `AiGatewayService.invokeStructured` with
+ * capability=`evaluation`. Otherwise the legacy ChatOpenAI path is
+ * preserved.
+ *
  * SOLID:
  *  - SRP: only evaluates — does not plan or execute
  *  - OCP: scoring strategy swappable via subclass (LLM vs heuristic)
@@ -25,12 +32,27 @@ import type {
 export class AgentEvaluatorService implements IAgentEvaluator {
   private readonly logger = new Logger(AgentEvaluatorService.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Optional() private readonly featureFlags?: FeatureFlagService,
+    @Optional() private readonly aiGateway?: AiGatewayService,
+  ) {}
 
   async evaluate(input: EvaluationInput): Promise<EvaluationResult> {
     this.logger.debug(
       `Evaluating task ${input.taskId} for agent ${input.agentId}`,
     );
+
+    // V2 routing: gateway owns the call + structured output + cost.
+    if (this.featureFlags?.isEnabled('AI_GATEWAY_V2') && this.aiGateway) {
+      try {
+        return await this.gatewayEvaluate(input);
+      } catch (err) {
+        this.logger.warn(
+          `AI gateway evaluation failed, falling back: ${String(err)}`,
+        );
+      }
+    }
 
     const apiKey = this.config.get<string>('OPENAI_API_KEY');
 
@@ -39,6 +61,51 @@ export class AgentEvaluatorService implements IAgentEvaluator {
     }
 
     return this.heuristicEvaluate(input);
+  }
+
+  private async gatewayEvaluate(
+    input: EvaluationInput,
+  ): Promise<EvaluationResult> {
+    if (!this.aiGateway) {
+      return this.heuristicEvaluate(input);
+    }
+    const stepSummary = input.steps
+      .map(
+        (s) =>
+          `- ${s.description}: ${s.success ? '✓' : '✗'} ${
+            s.output ? JSON.stringify(s.output).slice(0, 100) : ''
+          }`,
+      )
+      .join('\n');
+    const prompt = `You are an AI task evaluator. Evaluate the quality of an AI agent's task execution.
+Provide a structured evaluation with score, success status, reflection, and suggestions.
+
+Goal: ${input.goal}
+
+Steps executed:
+${stepSummary}
+
+Final output: ${JSON.stringify(input.finalOutput ?? null).slice(0, 200)}`;
+    const { data } = await this.aiGateway.invokeStructured<{
+      score: number;
+      success: boolean;
+      reflection: string;
+      suggestions?: string[];
+      shouldRetry: boolean;
+    }>({
+      tenantId: null,
+      capability: 'evaluation',
+      sourceModule: 'agent-evaluator',
+      prompt,
+      schema: evaluationZodSchema(),
+    });
+    return {
+      score: data.score,
+      success: data.success,
+      reflection: data.reflection,
+      suggestions: data.suggestions ?? [],
+      shouldRetry: data.shouldRetry,
+    };
   }
 
   // ───────────────────────────────────────────────────────────
@@ -158,4 +225,18 @@ Provide a structured evaluation with score, success status, reflection, and sugg
       shouldRetry: successRate < 0.5,
     };
   }
+}
+
+function evaluationZodSchema() {
+  // Local require keeps the test path off `zod` when the gateway is
+  // not in use.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const z = require('zod').z;
+  return z.object({
+    score: z.number().min(0).max(1),
+    success: z.boolean(),
+    reflection: z.string(),
+    suggestions: z.array(z.string()).optional(),
+    shouldRetry: z.boolean(),
+  });
 }

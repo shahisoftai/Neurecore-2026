@@ -120,9 +120,15 @@ export class LLMFactory {
 
     // Prefer MiniMax-M2.7-highspeed if available
     if (routing.provider === 'minimax') {
-      const highspeedIdx = targetModels.findIndex(m => m.id === 'MiniMax-M2.7-highspeed');
+      const highspeedIdx = targetModels.findIndex(
+        (m) => m.id === 'MiniMax-M2.7-highspeed',
+      );
       if (highspeedIdx > 0) {
-        targetModels = [targetModels[highspeedIdx], ...targetModels.slice(0, highspeedIdx), ...targetModels.slice(highspeedIdx + 1)];
+        targetModels = [
+          targetModels[highspeedIdx],
+          ...targetModels.slice(0, highspeedIdx),
+          ...targetModels.slice(highspeedIdx + 1),
+        ];
       }
     }
 
@@ -175,12 +181,12 @@ export class LLMFactory {
     const apiKey =
       provider === 'minimax'
         ? (this.config.get<string>('MINIMAX_API_KEY') ?? '')
-        : (this.config.get<string>('OPENAI_API_KEY') ?? '');
-    const baseUrl =
-      provider === 'minimax'
-        ? (this.config.get<string>('MINIMAX_BASE_URL') ??
-          'https://api.minimax.chat/v1')
-        : 'https://api.openai.com/v1';
+        : provider === 'openai'
+          ? (this.config.get<string>('OPENAI_API_KEY') ?? '')
+          : provider === 'deepseek'
+            ? (this.config.get<string>('DEEPSEEK_API_KEY') ?? '')
+            : (this.config.get<string>('MIMO_API_KEY') ?? '');
+    const baseUrl = resolveBaseUrl(provider, this.config);
 
     if (!apiKey) {
       return {
@@ -257,15 +263,8 @@ export class LLMFactory {
       modelId = selected.model.id;
     }
 
-    const apiKey =
-      provider === 'minimax'
-        ? (this.config.get<string>('MINIMAX_API_KEY') ?? '')
-        : (this.config.get<string>('OPENAI_API_KEY') ?? '');
-    const baseUrl =
-      provider === 'minimax'
-        ? (this.config.get<string>('MINIMAX_BASE_URL') ??
-          'https://api.minimax.chat/v1')
-        : 'https://api.openai.com/v1';
+    const apiKey = resolveApiKey(provider, this.config);
+    const baseUrl = resolveBaseUrl(provider, this.config);
 
     if (!apiKey) {
       return {} as T;
@@ -288,7 +287,6 @@ export class LLMFactory {
         max_tokens: maxTokens,
       };
 
-      // Add JSON mode for OpenAI/MiniMax
       body.response_format = { type: 'json_object' };
 
       const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -340,15 +338,8 @@ export class LLMFactory {
       modelId = selected.model.id;
     }
 
-    const apiKey =
-      provider === 'minimax'
-        ? (this.config.get<string>('MINIMAX_API_KEY') ?? '')
-        : (this.config.get<string>('OPENAI_API_KEY') ?? '');
-    const baseUrl =
-      provider === 'minimax'
-        ? (this.config.get<string>('MINIMAX_BASE_URL') ??
-          'https://api.minimax.chat/v1')
-        : 'https://api.openai.com/v1';
+    const apiKey = resolveApiKey(provider, this.config);
+    const baseUrl = resolveBaseUrl(provider, this.config);
 
     if (!apiKey) {
       yield { content: `Stub: ${prompt.slice(0, 50)}...`, done: true };
@@ -444,23 +435,14 @@ export class LLMFactory {
       modelId = selected.model.id;
     }
 
-    const apiKey =
-      provider === 'minimax'
-        ? (this.config.get<string>('MINIMAX_API_KEY') ?? '')
-        : (this.config.get<string>('OPENAI_API_KEY') ?? '');
-    const baseUrl =
-      provider === 'minimax'
-        ? (this.config.get<string>('MINIMAX_BASE_URL') ??
-          'https://api.minimax.chat/v1')
-        : 'https://api.openai.com/v1';
+    const apiKey = resolveApiKey(provider, this.config);
+    const baseUrl = resolveBaseUrl(provider, this.config);
 
     if (!apiKey) {
-      return {
-        content: `Stub: tools unavailable (no API key)`,
-        toolCalls: [],
-        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-        finishReason: 'stop',
-      };
+      throw new Error(
+        `No API key configured for provider ${provider}. ` +
+          `Set the matching env var (MINIMAX_API_KEY / OPENAI_API_KEY / DEEPSEEK_API_KEY / MIMO_API_KEY).`,
+      );
     }
 
     try {
@@ -527,4 +509,49 @@ export class LLMFactory {
       throw error;
     }
   }
+}
+
+// ───────────────────────────────────────────────────────────────────
+// F5 + F6 helpers
+//
+// Single source of truth for "provider X → base URL / env var name".
+// Eliminates the 4× duplicated `https://api.minimax.chat/v1` literal
+// and the silent `deepseek`/`mimo` fall-through in `invokeWithTools`.
+// SOLID: SRP — pure functions, no side effects, no NestJS injection.
+// ───────────────────────────────────────────────────────────────────
+
+const PROVIDER_BASE_URLS: Record<LLMProvider, string> = {
+  minimax: 'https://api.minimaxi.com/v1',
+  openai: 'https://api.openai.com/v1',
+  deepseek: 'https://api.deepseek.com/v1',
+  mimo: 'https://api.mimo.ai/v1',
+};
+
+const PROVIDER_ENV_KEYS: Record<LLMProvider, string> = {
+  minimax: 'MINIMAX_API_KEY',
+  openai: 'OPENAI_API_KEY',
+  deepseek: 'DEEPSEEK_API_KEY',
+  mimo: 'MIMO_API_KEY',
+};
+
+export function resolveBaseUrl(
+  provider: LLMProvider,
+  config: ConfigService,
+): string {
+  const fromEnv =
+    provider === 'minimax'
+      ? config.get<string>('MINIMAX_BASE_URL')
+      : provider === 'deepseek'
+        ? config.get<string>('DEEPSEEK_BASE_URL')
+        : provider === 'mimo'
+          ? config.get<string>('MIMO_BASE_URL')
+          : undefined;
+  return fromEnv || PROVIDER_BASE_URLS[provider];
+}
+
+export function resolveApiKey(
+  provider: LLMProvider,
+  config: ConfigService,
+): string {
+  return config.get<string>(PROVIDER_ENV_KEYS[provider]) ?? '';
 }

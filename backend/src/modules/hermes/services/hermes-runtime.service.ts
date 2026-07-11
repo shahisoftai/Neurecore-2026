@@ -247,12 +247,9 @@ export class HermesRuntimeService implements IHermesRuntime {
         timestamp: Date.now(),
       });
 
-      await this.presence.setStatus(
-        'AI_AGENT',
-        hermesAgentId,
-        'blocked',
-        execCtxInner.tenantId,
-      ).catch(() => undefined);
+      await this.presence
+        .setStatus('AI_AGENT', hermesAgentId, 'blocked', execCtxInner.tenantId)
+        .catch(() => undefined);
 
       return {
         success: false,

@@ -12,7 +12,7 @@
  */
 
 import { StateGraph, END, START, Annotation } from '@langchain/langgraph';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AgentState, StepResult, ToolCall } from './agent.state';
 import { AgentStreamingService } from '../streaming/agent-streaming.service';
@@ -21,6 +21,8 @@ import { StreamingEventType } from '../streaming/agent-streaming.service';
 import { AgentCheckpointService } from './checkpoint.service';
 import { SecurityInterceptorService } from '../security/security-interceptor.service';
 import type { ISecurityContext } from '../security/interfaces/security.interfaces';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../../ai-gateway/ai-gateway.service';
 import { LLMFactory } from '../../models/services/llm-factory.service';
 
 // Node name constants to satisfy TypeScript
@@ -167,12 +169,14 @@ export class OfficialAgentGraph {
   > | null = null;
 
   constructor(
-    private readonly llmFactory: LLMFactory,
+    private readonly aiGateway: AiGatewayService,
     private readonly config: ConfigService,
     private readonly streamingService: AgentStreamingService,
     private readonly toolRegistry: StructuredToolRegistry,
     private readonly checkpointService: AgentCheckpointService,
     private readonly securityInterceptor: SecurityInterceptorService,
+    private readonly featureFlags: FeatureFlagService,
+    @Optional() private readonly legacyFactory?: LLMFactory,
   ) {
     this.initializeGraph();
   }
@@ -253,7 +257,11 @@ export class OfficialAgentGraph {
         return {
           messages: [
             ...state.messages,
-            { role: 'assistant' as const, content: `I understand you want: ${state.goal}. However, no tools are available to execute this action.`, timestamp: Date.now() },
+            {
+              role: 'assistant' as const,
+              content: `I understand you want: ${state.goal}. However, no tools are available to execute this action.`,
+              timestamp: Date.now(),
+            },
           ],
           currentNode: PLANNER_NODE,
           shouldContinue: false,
@@ -264,7 +272,7 @@ export class OfficialAgentGraph {
 You have access to tools to perform actions on behalf of the user.
 
 Available tools:
-${toolDefs.map(t => `- ${t.function.name}: ${t.function.description}`).join('\n')}
+${toolDefs.map((t) => `- ${t.function.name}: ${t.function.description}`).join('\n')}
 
 When the user asks to CREATE, ADD, LIST, SHOW, GET, PAUSE, RESUME, or any ACTION:
 → Use the appropriate tool.
@@ -279,17 +287,30 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
         { role: 'user' as const, content: state.goal, timestamp: Date.now() },
       ];
 
-      const result = await this.llmFactory.invokeWithTools(
-        [{ role: 'system', content: systemPrompt }, { role: 'user', content: state.goal }],
-        toolDefs,
-        0.3,
-        2048,
-        state.model ?? undefined,
-      );
+      // Feature-flagged routing (S18 per ai-gateway-imp-plan.md):
+      //   AI_GATEWAY_V2=true  → AiGatewayService.invokeWithTools (capability='tools',
+      //                          modelId override preserved from `state.model`)
+      //   AI_GATEWAY_V2=false → legacy LLMFactory.invokeWithTools (preserved)
+      const result = this.featureFlags.isEnabled('AI_GATEWAY_V2')
+        ? await this.invokePlannerWithGateway(
+            systemPrompt,
+            state.goal,
+            toolDefs,
+            state.model ?? null,
+            state.tenantId,
+          )
+        : await this.invokePlannerLegacy(
+            systemPrompt,
+            state.goal,
+            toolDefs,
+            state.model ?? undefined,
+          );
 
       // Check if LLM returned tool calls
       if (result.toolCalls && result.toolCalls.length > 0) {
-        this.logger.log(`[planner] LLM returned ${result.toolCalls.length} tool call(s): ${result.toolCalls.map(t => t.name).join(', ')}`);
+        this.logger.log(
+          `[planner] LLM returned ${result.toolCalls.length} tool call(s): ${result.toolCalls.map((t) => t.name).join(', ')}`,
+        );
 
         const toolCalls: ToolCall[] = result.toolCalls.map((tc, i) => ({
           name: tc.name,
@@ -300,7 +321,11 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
           toolCalls,
           messages: [
             ...state.messages,
-            { role: 'user' as const, content: state.goal, timestamp: Date.now() },
+            {
+              role: 'user' as const,
+              content: state.goal,
+              timestamp: Date.now(),
+            },
           ],
           currentNode: TOOL_NODE,
           iteration: 1,
@@ -312,7 +337,11 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
       return {
         messages: [
           ...state.messages,
-          { role: 'assistant' as const, content: result.content ?? 'I understand. How can I help?', timestamp: Date.now() },
+          {
+            role: 'assistant' as const,
+            content: result.content ?? 'I understand. How can I help?',
+            timestamp: Date.now(),
+          },
         ],
         currentNode: PLANNER_NODE,
         shouldContinue: false,
@@ -457,20 +486,27 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
       }
 
       // Format result message
-      const successCount = toolResults.filter(r => !r.error).length;
-      const failCount = toolResults.filter(r => r.error).length;
+      const successCount = toolResults.filter((r) => !r.error).length;
+      const failCount = toolResults.filter((r) => r.error).length;
 
       let responseMessage = '';
       if (failCount === 0) {
         responseMessage = `Successfully executed ${successCount} tool(s): `;
-        responseMessage += toolResults.map(r => `${r.toolName}`).join(', ');
+        responseMessage += toolResults.map((r) => `${r.toolName}`).join(', ');
         // Add key result data
         for (const r of toolResults) {
-          if (r.output && typeof r.output === 'object' && !Array.isArray(r.output)) {
+          if (
+            r.output &&
+            typeof r.output === 'object' &&
+            !Array.isArray(r.output)
+          ) {
             const output = r.output as Record<string, unknown>;
-            if (output.taskId) responseMessage += `. Created ${output.title ?? 'task'} with ID ${output.taskId}`;
-            if (output.projectId) responseMessage += `. Created project with ID ${output.projectId}`;
-            if (output.agentId) responseMessage += `. Agent ${output.name ?? output.agentId} is now ${output.newStatus ?? 'updated'}`;
+            if (output.taskId)
+              responseMessage += `. Created ${output.title ?? 'task'} with ID ${output.taskId}`;
+            if (output.projectId)
+              responseMessage += `. Created project with ID ${output.projectId}`;
+            if (output.agentId)
+              responseMessage += `. Agent ${output.name ?? output.agentId} is now ${output.newStatus ?? 'updated'}`;
           }
         }
       } else {
@@ -481,7 +517,11 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
         toolResults,
         messages: [
           ...state.messages,
-          { role: 'assistant' as const, content: responseMessage, timestamp: Date.now() },
+          {
+            role: 'assistant' as const,
+            content: responseMessage,
+            timestamp: Date.now(),
+          },
         ],
         toolCalls: [], // Clear tool calls after execution
         currentNode: EVALUATOR_NODE,
@@ -623,6 +663,86 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
     } catch (error) {
       this.logger.warn(`Failed to emit node event: ${error}`);
     }
+  }
+
+  /**
+   * Planner via the AI Gateway (S18). Preserves the free-form
+   * `Agent.model` override as `modelId` so existing agents with a
+   * legacy model id continue to behave as before.
+   */
+  private async invokePlannerWithGateway(
+    systemPrompt: string,
+    userGoal: string,
+    toolDefs: Array<{
+      type: 'function';
+      function: { name: string; description: string; parameters: unknown };
+    }>,
+    modelId: string | null,
+    tenantId: string,
+  ): Promise<{
+    content?: string;
+    toolCalls?: Array<{ name: string; arguments: Record<string, unknown> }>;
+  }> {
+    const r = await this.aiGateway.invokeWithTools({
+      tenantId,
+      capability: 'tools',
+      ...(modelId ? { modelId } : {}),
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userGoal },
+      ],
+      tools: toolDefs.map((t) => ({
+        name: t.function.name,
+        description: t.function.description,
+        parameters: t.function.parameters as Record<string, unknown>,
+      })),
+      temperature: 0.3,
+      maxTokens: 2048,
+      sourceModule: 'agent-graph.planner',
+    });
+    return {
+      ...(r.content ? { content: r.content } : {}),
+      ...(r.toolCalls && r.toolCalls.length > 0
+        ? {
+            toolCalls: r.toolCalls.map((tc) => ({
+              name: tc.name,
+              arguments:
+                (tc.arguments as Record<string, unknown>) ?? {},
+            })),
+          }
+        : {}),
+    };
+  }
+
+  /**
+   * Legacy planner path. Kept intact for the `AI_GATEWAY_V2=false`
+   * rollout window. Will be deleted in PR 8.3.
+   */
+  private async invokePlannerLegacy(
+    systemPrompt: string,
+    userGoal: string,
+    toolDefs: Array<{
+      type: 'function';
+      function: { name: string; description: string; parameters: unknown };
+    }>,
+    overrideModel?: string,
+  ): Promise<{
+    content?: string;
+    toolCalls?: Array<{ name: string; arguments: Record<string, unknown> }>;
+  }> {
+    if (!this.legacyFactory) {
+      return { content: 'Legacy LLMFactory not available; set AI_GATEWAY_V2=true or ensure ModelsModule is imported.' };
+    }
+    return this.legacyFactory.invokeWithTools(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userGoal },
+      ],
+      toolDefs as unknown as Parameters<LLMFactory['invokeWithTools']>[1],
+      0.3,
+      2048,
+      overrideModel,
+    );
   }
 
   /**
@@ -796,7 +916,9 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
       model: params.model ?? null,
     };
 
-    this.logger.log(`[stream] Starting streaming agent execution with model: ${params.model ?? 'default'}`);
+    this.logger.log(
+      `[stream] Starting streaming agent execution with model: ${params.model ?? 'default'}`,
+    );
 
     try {
       for await (const chunk of await this.compiledGraph.stream(initialState, {

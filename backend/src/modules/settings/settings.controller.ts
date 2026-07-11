@@ -321,21 +321,4 @@ export class SettingsController {
   async resendEmail(@Param('id') id: string) {
     return this.settingsService.resendEmail(id);
   }
-
-  // ==================== AI ROUTING ====================
-
-  @Get('ai/routing')
-  async getAIRouting() {
-    return this.settingsService.getAIRouting();
-  }
-
-  @Patch('ai/routing')
-  async updateAIRouting(@Body() dto: Record<string, string>) {
-    return this.settingsService.updateAIRouting(dto);
-  }
-
-  @Post('ai/routing/reset')
-  async resetAIRouting() {
-    return this.settingsService.resetAIRouting();
-  }
 }

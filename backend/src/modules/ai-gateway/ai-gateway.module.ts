@@ -1,74 +1,73 @@
 /**
  * AI Gateway Module
  *
- * Provides unified interface for AI agent communication via OpenClaw protocol.
- * OpenClaw enables secure, structured communication between agents and external AI services.
+ * Wires the gateway's collaborating classes. The module is `@Global`
+ * so any consumer (chat, hermes, agents, COS, …) can inject
+ * `AiGatewayService` without re-importing the module.
  *
- * SOLID: Uses SecretProviderService for centralized secret management
+ * Architectural rules (from ai-gateway-imp-plan.md §2):
+ *   - One entry point: `AiGatewayService`.
+ *   - Helpers (transport, resolver, breaker, …) are exported only when
+ *     a test or admin endpoint needs them. Production code should
+ *     never import them directly.
+ *
+ * SOLID: SRP — this module owns gateway composition; it does not
+ * implement LLM logic itself.
  */
 
-import { Module, Global } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Global, Module } from '@nestjs/common';
+import { AiGatewayService } from './ai-gateway.service';
+import { CostAttributorService } from './cost/cost-attributor.service';
+import { CircuitBreaker } from './failover/circuit-breaker';
+import { FallbackChainBuilder } from './failover/fallback-chain';
+import { StructuredLogger } from './observability/structured-logger';
+import { LangSmithSink } from './observability/langsmith-sink';
+import { AiModelRepository } from './selection/ai-model.repository';
+import { CapabilityResolver } from './selection/capability-resolver';
+import { HttpLlmTransport } from './transport/http-llm.transport';
 import { OpenClawGatewayService } from './openclaw-gateway.service';
 import { LangSmithTracingService } from './langsmith-tracing.service';
-import { SecretProviderService } from '../security/providers/secret.provider';
-
-/**
- * OpenClaw Gateway configuration
- */
-export interface OpenClawConfig {
-  endpoint: string;
-  apiKey: string;
-  timeout: number;
-  retryAttempts: number;
-  enableTracing: boolean;
-}
-
-/**
- * Agent communication message
- */
-export interface AgentMessage {
-  id: string;
-  agentId: string;
-  action: string;
-  payload: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
-  timestamp: number;
-}
-
-/**
- * Agent response
- */
-export interface AgentResponse {
-  success: boolean;
-  data?: unknown;
-  error?: string;
-  traceId?: string;
-}
+import { OPENCLAW_CONFIG } from './openclaw-gateway.tokens';
+import { ModelsAdminController } from './controllers/models-admin.controller';
+import { ModelsReadController } from './controllers/models-read.controller';
 
 @Global()
 @Module({
+  controllers: [ModelsAdminController, ModelsReadController],
   providers: [
+    // OpenClaw + LangSmith are unchanged (per plan §3.1 row S34/S35:
+    // they continue to live here alongside the gateway for now; the
+    // plan moves them out in a later cleanup PR. Keeping them here
+    // preserves the existing API surface and import graph.)
     {
-      provide: 'OPENCLAW_CONFIG',
-      useFactory: (
-        config: ConfigService,
-        secrets: SecretProviderService,
-      ): OpenClawConfig => ({
-        endpoint:
-          config.get<string>('OPENCLAW_ENDPOINT') ??
-          'https://api.openclaw.ai/v1',
-        // Use SecretProviderService for centralized secret access
+      provide: OPENCLAW_CONFIG,
+      useFactory: (secrets: { getOpenClawApiKey(): string }) => ({
+        endpoint: 'https://api.openclaw.ai/v1',
         apiKey: secrets.getOpenClawApiKey(),
-        timeout: config.get<number>('OPENCLAW_TIMEOUT') ?? 30000,
-        retryAttempts: config.get<number>('OPENCLAW_RETRY_ATTEMPTS') ?? 3,
-        enableTracing: config.get<boolean>('OPENCLAW_ENABLE_TRACING') ?? true,
+        timeout: 30_000,
+        retryAttempts: 3,
+        enableTracing: true,
       }),
-      inject: [ConfigService, SecretProviderService],
+      inject: ['SecretProviderService'],
     },
     OpenClawGatewayService,
     LangSmithTracingService,
+    // AI Gateway v2 collaborators
+    HttpLlmTransport,
+    AiModelRepository,
+    FallbackChainBuilder,
+    CircuitBreaker,
+    CapabilityResolver,
+    CostAttributorService,
+    StructuredLogger,
+    LangSmithSink,
+    AiGatewayService,
   ],
-  exports: [OpenClawGatewayService, LangSmithTracingService, 'OPENCLAW_CONFIG'],
+  exports: [
+    OpenClawGatewayService,
+    LangSmithTracingService,
+    LangSmithSink,
+    AiGatewayService,
+  ],
 })
 export class AIGatewayModule {}

@@ -1,13 +1,18 @@
 /**
  * Agent State Machine
  *
- * LangGraph-style state machine for agent execution with:
- * - Nodes: planner, executor, tool_node, evaluator, finish
- * - Conditional edges for routing
- * - Streaming support
+ * @deprecated Per ai-gateway-imp-plan.md §3.1 (S16/S17) and §8.3,
+ * this file is the legacy state machine retained only for
+ * `AI_GATEWAY_V2=false` rollback safety. The current implementation
+ * lives in `langgraph-official.ts`. This file will be deleted after
+ * a 24h soak of `AI_GATEWAY_V2=true` in production.
+ *
+ * When `AI_GATEWAY_V2=true`, the planner + evaluator nodes route
+ * through `AiGatewayService` (capability=`planning` / `evaluation`)
+ * instead of reading `OPENAI_API_KEY` and hardcoding `gpt-4o-mini`.
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AgentState,
@@ -21,6 +26,8 @@ import {
 } from './agent.state';
 import { AgentStreamingService } from '../streaming/agent-streaming.service';
 import { StructuredToolRegistry } from '../../tools/structured-tool.registry';
+import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
+import { AiGatewayService } from '../../ai-gateway/ai-gateway.service';
 
 /**
  * Node functions
@@ -46,6 +53,8 @@ export class AgentStateMachine {
     private readonly config: ConfigService,
     private readonly streamingService: AgentStreamingService,
     private readonly toolRegistry: StructuredToolRegistry,
+    @Optional() private readonly featureFlags?: FeatureFlagService,
+    @Optional() private readonly aiGateway?: AiGatewayService,
   ) {}
 
   /**
@@ -246,9 +255,13 @@ export class AgentStateMachine {
       const { ChatPromptTemplate } = await import('@langchain/core/prompts');
       const { z } = await import('zod');
 
+      // S16 (per ai-gateway-imp-plan.md): the model id is resolved by
+      // the gateway when AI_GATEWAY_V2=true. When the flag is off we
+      // fall back to the legacy 'gpt-4o-mini' default.
+      const modelId = await this.resolveModelId('planning');
       const llm = new ChatOpenAI({
         apiKey,
-        model: 'gpt-4o-mini',
+        model: modelId,
         temperature: 0.2,
         maxTokens: 1024,
       });
@@ -497,9 +510,11 @@ Rules:
       const { ChatPromptTemplate } = await import('@langchain/core/prompts');
       const { z } = await import('zod');
 
+      // S17: model id resolved by the gateway when AI_GATEWAY_V2=true.
+      const modelId = await this.resolveModelId('evaluation');
       const llm = new ChatOpenAI({
         apiKey,
-        model: 'gpt-4o-mini',
+        model: modelId,
         temperature: 0,
         maxTokens: 512,
       });
@@ -619,5 +634,28 @@ Rules:
         }
         break;
     }
+  }
+
+  /**
+   * Resolve the model id used by the planner / evaluator ChatOpenAI
+   * instances. When `AI_GATEWAY_V2=true`, the gateway owns selection
+   * and the resolved `modelId` is preferred over the legacy
+   * `'gpt-4o-mini'` default. On any error, the legacy default is
+   * returned (preserving the current behaviour for the `false` path).
+   */
+  private async resolveModelId(
+    capability: 'planning' | 'execution' | 'evaluation' | 'tools',
+  ): Promise<string> {
+    if (this.featureFlags?.isEnabled('AI_GATEWAY_V2') && this.aiGateway) {
+      try {
+        const resolved = await this.aiGateway.select(null, capability);
+        return resolved.model.modelId;
+      } catch (err) {
+        this.logger.warn(
+          `[resolveModelId] gateway lookup failed for ${capability}: ${String(err)}`,
+        );
+      }
+    }
+    return 'gpt-4o-mini';
   }
 }

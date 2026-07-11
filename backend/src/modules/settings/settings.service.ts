@@ -144,24 +144,6 @@ export interface EmailLog {
   clickedAt?: string;
 }
 
-export interface AIRoutingConfig {
-  planning: string;
-  execution: string;
-  evaluation: string;
-  conversation: string;
-  coding: string;
-  reasoning: string;
-}
-
-export const DEFAULT_AI_ROUTING: AIRoutingConfig = {
-  planning: 'MiniMax-M2.7-highspeed',
-  execution: 'MiniMax-M2.7-highspeed',
-  evaluation: 'MiniMax-M2.7-highspeed',
-  conversation: 'MiniMax-M2.7-highspeed',
-  coding: 'MiniMax-M2.7-highspeed',
-  reasoning: 'MiniMax-M2.7-highspeed',
-};
-
 // Default tiers
 const DEFAULT_TIERS: TenantTier[] = [
   {
@@ -268,7 +250,6 @@ const tiers: TenantTier[] = persisted?.tiers || DEFAULT_TIERS;
 const emailConfigs: EmailConfig[] = persisted?.emailConfigs || [];
 const emailTemplates: EmailTemplate[] = persisted?.emailTemplates || [];
 const emailLogs: EmailLog[] = persisted?.emailLogs || [];
-const aiRouting: AIRoutingConfig = persisted?.aiRouting || DEFAULT_AI_ROUTING;
 
 // Counters
 let aiProviderCounter =
@@ -306,7 +287,6 @@ function persistData() {
     emailConfigs,
     emailTemplates,
     emailLogs,
-    aiRouting,
     counters: {
       aiProviderCounter,
       tierCounter,
@@ -638,25 +618,5 @@ export class SettingsService {
     const log = emailLogs.find((l) => l.id === id);
     if (!log) throw new Error('Log not found');
     return log;
-  }
-
-  // ==================== AI ROUTING ====================
-
-  async getAIRouting(): Promise<AIRoutingConfig> {
-    return aiRouting;
-  }
-
-  async updateAIRouting(
-    config: Partial<AIRoutingConfig>,
-  ): Promise<AIRoutingConfig> {
-    Object.assign(aiRouting, config);
-    persistData();
-    return aiRouting;
-  }
-
-  async resetAIRouting(): Promise<AIRoutingConfig> {
-    Object.assign(aiRouting, DEFAULT_AI_ROUTING);
-    persistData();
-    return aiRouting;
   }
 }

@@ -6,7 +6,6 @@ import {
   IsArray,
   IsObject,
   MaxLength,
-
   Min,
   Max,
 } from 'class-validator';

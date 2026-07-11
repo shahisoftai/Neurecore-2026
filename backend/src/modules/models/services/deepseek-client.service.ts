@@ -228,7 +228,9 @@ export class DeepSeekClientService implements ILLMClient {
     }>,
     _temperature?: number,
     _maxTokens?: number,
-  ): Promise<import('../interfaces/llm-client.interface').LLMWithToolsResponse> {
+  ): Promise<
+    import('../interfaces/llm-client.interface').LLMWithToolsResponse
+  > {
     throw new Error('invokeWithTools not implemented for DeepSeek');
   }
 }

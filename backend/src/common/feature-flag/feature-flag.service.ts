@@ -117,6 +117,11 @@ export class FeatureFlagService implements OnModuleInit {
         'COMM_MENTIONS_ENABLED',
         bool(this.config.get<string>('COMM_MENTIONS_ENABLED')),
       ],
+      // AI Gateway v2 (ai-gateway-imp-plan.md §10, §11)
+      [
+        'AI_GATEWAY_V2',
+        bool(this.config.get<string>('AI_GATEWAY_V2')),
+      ],
     ];
     for (const [key, value] of knownFlags) {
       const previous = this.cache.get(key);

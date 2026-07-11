@@ -69,7 +69,10 @@ export class RetailService implements OnModuleInit {
    * generator that still produces useful, type-correct output for the UI.
    */
   private buildRetailActionContext(): RetailActionContext {
-    const previewModel = process.env.AI_DEFAULT_MODEL ?? 'preview-model';
+    // F9: `preview-model` is not a real model id. The gateway (when
+    // AI_GATEWAY_V2 is on) or `LLMFactory` (legacy) returns the
+    // resolved model id; this field is now advisory only.
+    const previewModel = process.env.AI_DEFAULT_MODEL ?? 'gpt-4o-mini';
 
     return {
       defaultModel: previewModel,
