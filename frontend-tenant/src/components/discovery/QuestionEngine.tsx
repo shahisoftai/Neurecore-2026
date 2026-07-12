@@ -22,6 +22,8 @@ import {
 export interface QuestionEngineProps {
   projectId: string;
   question: ResolvedQuestion | null;
+  /** Pre-existing response value for the current question (from DB). */
+  existingResponseValue?: unknown;
   loading?: boolean;
   error?: string | null;
   onRecord: (value: unknown) => Promise<void>;
@@ -34,6 +36,7 @@ export interface QuestionEngineProps {
 export function QuestionEngine({
   projectId,
   question,
+  existingResponseValue,
   loading,
   error,
   onRecord,
@@ -126,6 +129,7 @@ export function QuestionEngine({
         ) : (
           <FormSkin
             question={question}
+            existingValue={existingResponseValue}
             onSubmit={handleSubmit}
             submitting={submitting}
           />

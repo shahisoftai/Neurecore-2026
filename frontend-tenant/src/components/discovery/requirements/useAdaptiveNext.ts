@@ -10,6 +10,7 @@ import type { ResolvedQuestion } from '../types';
 
 interface State {
   question: ResolvedQuestion | null;
+  existingResponse: { value: unknown; confidence: number } | null;
   loading: boolean;
   error: string | null;
 }
@@ -19,22 +20,24 @@ export function useAdaptiveNext(
 ): State & { refresh: () => Promise<void> } {
   const [state, setState] = useState<State>({
     question: null,
+    existingResponse: null,
     loading: false,
     error: null,
   });
 
   async function load() {
     if (!projectId) {
-      setState({ question: null, loading: false, error: null });
+      setState({ question: null, existingResponse: null, loading: false, error: null });
       return;
     }
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      const { question } = await informationEngineService.getNextQuestion(projectId);
-      setState({ question, loading: false, error: null });
+      const { question, existingResponse } = await informationEngineService.getNextQuestion(projectId);
+      setState({ question, existingResponse: existingResponse ?? null, loading: false, error: null });
     } catch (e) {
       setState({
         question: null,
+        existingResponse: null,
         loading: false,
         error: e instanceof Error ? e.message : 'Failed to load next question',
       });

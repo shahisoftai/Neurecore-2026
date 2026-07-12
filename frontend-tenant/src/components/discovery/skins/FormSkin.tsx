@@ -13,20 +13,22 @@ import type { ResolvedQuestion } from '../types';
 
 export interface FormSkinProps {
   question: ResolvedQuestion;
+  /** Pre-existing response value from the database (if any). */
+  existingValue?: unknown;
   onSubmit: (value: unknown) => Promise<void>;
   submitting?: boolean;
   disabled?: boolean;
 }
 
-export function FormSkin({ question, onSubmit, submitting, disabled }: FormSkinProps) {
+export function FormSkin({ question, existingValue, onSubmit, submitting, disabled }: FormSkinProps) {
   const [value, setValue] = useState<unknown>('');
   const [localError, setLocalError] = useState<string | null>(null);
 
-  // Reset state when the question changes.
+  // Reset state when the question changes, using existing value if available.
   useEffect(() => {
-    setValue('');
+    setValue(existingValue !== undefined ? existingValue : '');
     setLocalError(null);
-  }, [question.id]);
+  }, [question.id, existingValue]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

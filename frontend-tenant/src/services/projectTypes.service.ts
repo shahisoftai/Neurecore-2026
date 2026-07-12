@@ -140,9 +140,9 @@ export const informationEngineService = {
   /** Read the deterministic next question (or null when complete). */
   async getNextQuestion(
     projectId: string,
-  ): Promise<{ question: ResolvedQuestion | null }> {
+  ): Promise<{ question: ResolvedQuestion | null; existingResponse?: { value: unknown; confidence: number } | null }> {
     const res = await api.get(`/projects/${projectId}/next-question`);
-    return unwrapItem(res) as { question: ResolvedQuestion | null };
+    return unwrapItem(res) as { question: ResolvedQuestion | null; existingResponse?: { value: unknown; confidence: number } | null };
   },
 
   /** Read the current EntityCompleteness row for a project. */

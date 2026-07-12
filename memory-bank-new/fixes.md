@@ -2890,3 +2890,137 @@ ssh contabo "node -e \"const{PrismaClient}=require('...'); ...\""
 
 Verified: tenant now returns `industry: 'financial-services'`; `GET /project-types?industry=financial-services` returns 10 types.
 
+---
+
+## FIX-040 — Discovery Tab Stuck on "Project name" (2026-07-12 11:00 PKT)
+
+### Summary
+
+After submitting Essentials and landing on the Discovery tab, the first question shown was "Project name" — even though it was already entered in the Essentials form. Additionally, `FormSkin` always showed an empty field, never pre-filling an existing answer even when one existed in the database.
+
+### Root Cause (3 compounding bugs)
+
+#### Bug 1 — SYSTEM null responses pre-empting real answers
+
+`ProjectsAdapter.seedMissingAsSystemResponses()` seeds ALL required unanswered questions with `SYSTEM null` responses immediately after project creation. When a user later navigates to Discovery:
+
+1. `pickNext` is called with `currentResponses` including the SYSTEM null rows
+2. `isAnswered` check: `response.value !== null` → `null !== null` is `false` → NOT answered
+3. Question appears unanswered → Discovery asks for it again
+
+This is the opposite of the intended behavior: SYSTEM null should mean "not answered yet (UI should ask)", but the skip logic treats null as "answered but empty" for non-null checks, except `isAnswered` explicitly excludes null.
+
+**Key:** `adaptive-questioning.service.ts` line 51-58:
+```typescript
+const isAnswered =
+  response !== undefined &&
+  response.value !== null &&     // ← null fails this check
+  response.value !== undefined &&
+  response.value !== '' &&       // ← empty string fails too
+  ...
+if (isAnswered) continue;
+```
+
+A SYSTEM null response has `value === null` → `isAnswered = false` → question is NOT skipped.
+
+#### Bug 2 — Top-level project fields never seeded as responses
+
+`seedFromProjectTopLevelFields` was absent. Essentials collects `Project.name`, `Project.description`, and `Project.targetDate` as **top-level project fields**, not in `customFieldValues`. But Discovery questions map to `customFieldValues.projectName`, `customFieldValues.projectDescription`, `customFieldValues.targetEndDate`. Since `seedResponsesFromCustomFields` only reads `customFieldValues`, these top-level answers were never recorded as `InformationResponses`.
+
+The `core` QuestionPack's first three questions are exactly:
+- `projectName` → `mapsTo: customFieldValues.projectName`
+- `projectDescription` → `mapsTo: customFieldValues.projectDescription`
+- `targetEndDate` → `mapsTo: customFieldValues.targetEndDate`
+
+Since `customFieldValues` has no `projectName` key (it's in `Project.name`), the seeding skipped them. Then `seedMissingAsSystemResponses` seeded them all with SYSTEM null.
+
+#### Bug 3 — FormSkin never pre-fills existing response
+
+`FormSkin.tsx` always initialized to `setValue('')` on question change. The `QuestionEngine` never passed an existing response value down to `FormSkin`. Even if a question had a perfect USER_INPUT response in the DB, the user saw an empty field.
+
+### Fix (applied in order — order matters)
+
+#### Fix 1 — `projects.adapter.ts`: Add `seedFromProjectTopLevelFields`
+
+Runs AFTER `seedResponsesFromCustomFields` but BEFORE `seedMissingAsSystemResponses`:
+
+```typescript
+private async seedFromProjectTopLevelFields(project, resolved): Promise<void> {
+  // Maps questionId → top-level project field
+  if (project.name)           // → questionId 'projectName'
+  if (project.description)     // → questionId 'projectDescription'
+  if (project.targetDate)      // → questionId 'targetEndDate'
+  // Seeds USER_INPUT response for each, keyed by resolved questionId
+}
+```
+
+Order: `seedResponsesFromCustomFields` (→ customFieldValues answers) → `seedFromProjectTopLevelFields` (→ top-level answers) → `seedMissingAsSystemResponses` (→ SYSTEM null for still-missing required questions).
+
+#### Fix 2 — `engine.controller.ts`: `getNextQuestion` returns `existingResponse`
+
+```typescript
+return { question: next, existingResponse: found ?? null };
+```
+
+Looks up the current `InformationResponse` for the picked question and returns it.
+
+#### Fix 3 — `projectTypes.service.ts`: `getNextQuestion` returns type includes `existingResponse`
+
+```typescript
+Promise<{ question: ResolvedQuestion | null; existingResponse?: { value: unknown; confidence: number } | null }>
+```
+
+#### Fix 4 — `useAdaptiveNext.ts`: Return `existingResponse` in state
+
+```typescript
+const [state, setState] = useState<State>({
+  question: null,
+  existingResponse: null,  // NEW
+  ...
+});
+```
+
+#### Fix 5 — `ProjectCreationDiscovery.tsx`: Pass `existingResponse?.value` to QuestionEngine
+
+```typescript
+const { question, existingResponse, ... } = useAdaptiveNext(projectId);
+<QuestionEngine existingResponseValue={existingResponse?.value} ... />
+```
+
+#### Fix 6 — `QuestionEngine.tsx`: Accept and forward `existingResponseValue`
+
+```typescript
+export interface QuestionEngineProps {
+  ...
+  existingResponseValue?: unknown;
+}
+<FormSkin existingValue={existingResponseValue} ... />
+```
+
+#### Fix 7 — `FormSkin.tsx`: Pre-fill from existing value
+
+```typescript
+useEffect(() => {
+  setValue(existingValue !== undefined ? existingValue : '');
+  setLocalError(null);
+}, [question.id, existingValue]);  // existingValue is a dep
+```
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `backend/src/modules/information-engine/clients/projects.adapter.ts` | Added `seedFromProjectTopLevelFields()`; called between `seedResponsesFromCustomFields` and `seedMissingAsSystemResponses` |
+| `backend/src/modules/information-engine/engine.controller.ts` | `getNextQuestion` now returns `existingResponse` with the DB response value for the picked question |
+| `frontend-tenant/src/services/projectTypes.service.ts` | `getNextQuestion` return type updated to include `existingResponse` |
+| `frontend-tenant/src/components/discovery/requirements/useAdaptiveNext.ts` | State includes `existingResponse`; `load()` extracts and stores it |
+| `frontend-tenant/src/components/forms/ProjectCreationDiscovery.tsx` | Passes `existingResponse?.value` to QuestionEngine |
+| `frontend-tenant/src/components/discovery/QuestionEngine.tsx` | Added `existingResponseValue?: unknown` prop; forwards to FormSkin |
+| `frontend-tenant/src/components/discovery/skins/FormSkin.tsx` | Added `existingValue?: unknown` prop; initializes with existing value instead of `''` |
+
+### Acceptance
+
+- After Essentials submit, Discovery shows the first truly unanswered question (not `projectName` which was entered in Essentials)
+- `projectName` answer from Essentials is pre-filled in the Discovery form when revisiting
+- All 3 services healthy: brain/200, hq/200, cc/200
+

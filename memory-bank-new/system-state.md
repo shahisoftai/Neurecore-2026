@@ -1,6 +1,18 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-12 10:14 PKT — Project creation wizard bug fixes: (1) industry-filtered project type dropdown, (2) discovery tab race condition fixed. Deployed to Contabo.
+**Last verified:** 2026-07-12 11:00 PKT — Discovery tab stuck on "project name" bug fixed. Backend + frontend deployed to Contabo.
+
+**2026-07-12 11:00 PKT — Discovery Tab Question Pre-fill Bug Fixes (FIX-040, Kilo):**
+- ✅ **Root cause — 3 bugs working together:** (1) `seedMissingAsSystemResponses` seeded all required questions with `SYSTEM null` → Discovery asked for answers already in Essentials. (2) Top-level project fields (`name`, `description`, `targetDate`) never seeded as InformationResponses. (3) `FormSkin` always initialized to `''` with no pre-fill from existing response.
+- ✅ **Fix 1 — ProjectsAdapter:** Added `seedFromProjectTopLevelFields()` which seeds `projectName → Project.name`, `projectDescription → Project.description`, `targetEndDate → Project.targetDate` as `USER_INPUT` responses before `seedMissingAsSystemResponses` runs. Order matters: USER_INPUT takes precedence over SYSTEM null.
+- ✅ **Fix 2 — FormSkin:** Added `existingValue?: unknown` prop. `useEffect` now initializes `setValue(existingValue ?? '')` instead of always `''`.
+- ✅ **Fix 3 — QuestionEngine:** Added `existingResponseValue?: unknown` prop, forwarded to `FormSkin`.
+- ✅ **Fix 4 — ProjectCreationDiscovery:** Destructures `existingResponse` from `useAdaptiveNext`, passes `existingResponse?.value` to `QuestionEngine`.
+- ✅ **Fix 5 — useAdaptiveNext:** Returns `existingResponse` from backend; stores in state.
+- ✅ **Fix 6 — engine.controller.ts:** `getNextQuestion` now returns `existingResponse: { value, confidence } | null` by looking up the current response for the picked question.
+- ✅ **Build:** backend `tsc --noEmit` + `nest build` → clean; frontend `tsc --noEmit` + `next build` → clean.
+- ✅ **Contabo deploy:** backend rsync → `prisma generate` → `nest build` → PM2 restart; frontend rsync (no lockfile) → `npm run build` → PM2 reload. All services healthy (brain/200, hq/200, cc/200).
+- See [fixes.md FIX-040](fixes.md#fix-040--discovery-tab-stuck-on-project-name-2026-07-12) for full details.
 
 **2026-07-12 10:14 PKT — Project Creation Wizard Bug Fixes (Kilo):**
 - ✅ **Issue 1 — Project type dropdown shows all types, not tenant-industry filtered:** `ProjectCreationEssentials.tsx` now calls `tenantsService.getCurrent()` first, extracts `tenant.industry`, then passes it as `industry` filter to `projectTypesService.list({ industry: tenant.industry ?? undefined })`. Graceful fallback: if `getCurrent()` fails, still loads all types.

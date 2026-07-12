@@ -39,7 +39,7 @@ export function ProjectCreationDiscovery({
     useCompleteness(projectId);
   const { questions, loading: reqLoading, refresh: refreshReqs } =
     useResolvedRequirements(projectId);
-  const { question, loading: nextLoading, refresh: refreshNext } =
+  const { question, existingResponse, loading: nextLoading, refresh: refreshNext } =
     useAdaptiveNext(projectId);
   const { record } = useRecordResponse(projectId);
 
@@ -94,6 +94,7 @@ export function ProjectCreationDiscovery({
         <QuestionEngine
           projectId={projectId}
           question={question}
+          existingResponseValue={existingResponse?.value}
           loading={nextLoading || reqLoading}
           onRecord={handleRecord}
           onSkip={onSkip}

@@ -87,6 +87,11 @@ export class ProjectsAdapter {
     // Seed InformationResponse rows from customFieldValues (engine writes
     // customFieldValues too — see anti-patterns §12 rule #1).
     await this.seedResponsesFromCustomFields(project, input, resolved);
+    // Seed top-level Project fields (name, description, targetDate) that
+    // were collected in Essentials but not stored in customFieldValues.
+    // This prevents Discovery from re-asking questions whose answers are
+    // already in the project record.
+    await this.seedFromProjectTopLevelFields(project, resolved);
     // Per §4.2 step 1: only REQUIRED questions get a SYSTEM null fallback.
     // Optional questions are simply absent; their absence doesn't lower
     // completeness because they're not counted in totalRequired.
@@ -144,6 +149,68 @@ export class ProjectsAdapter {
         value,
         sourceType: 'USER_INPUT',
         sourceLabel: 'Initial project form',
+        confidence: 100,
+      });
+    }
+  }
+
+  /**
+   * Seed answers from top-level Project fields that were collected in the
+   * Essentials form but are not stored in customFieldValues.
+   *
+   * Maps:
+   *   questionId "projectName"       → Project.name
+   *   questionId "projectDescription" → Project.description
+   *   questionId "targetEndDate"     → Project.targetDate
+   *
+   * This runs AFTER seedResponsesFromCustomFields so any customFieldValues
+   * answers take precedence. It runs BEFORE seedMissingAsSystemResponses
+   * so these questions receive USER_INPUT responses and are not re-asked
+   * in the Discovery tab.
+   */
+  private async seedFromProjectTopLevelFields(
+    project: Project,
+    resolved: {
+      id: string;
+      packKey: string;
+      questionId: string;
+      mapsTo?: { field: string };
+    }[],
+  ): Promise<void> {
+    const topLevelMappings: Array<{
+      questionId: string;
+      value: unknown;
+    }> = [];
+
+    if (project.name) {
+      topLevelMappings.push({ questionId: 'projectName', value: project.name });
+    }
+    if (project.description) {
+      topLevelMappings.push({ questionId: 'projectDescription', value: project.description });
+    }
+    if (project.targetDate) {
+      topLevelMappings.push({ questionId: 'targetEndDate', value: project.targetDate });
+    }
+
+    if (topLevelMappings.length === 0) return;
+
+    const resolvedByQid = new Map(resolved.map((q) => [q.questionId, q]));
+
+    for (const mapping of topLevelMappings) {
+      const q = resolvedByQid.get(mapping.questionId);
+      if (!q) continue;
+      if (
+        mapping.value === null ||
+        mapping.value === undefined ||
+        mapping.value === ''
+      ) {
+        continue;
+      }
+      await this.responseService.record('PROJECT', project.id, {
+        questionId: q.questionId,
+        value: mapping.value,
+        sourceType: 'USER_INPUT',
+        sourceLabel: 'Initial project form (top-level field)',
         confidence: 100,
       });
     }

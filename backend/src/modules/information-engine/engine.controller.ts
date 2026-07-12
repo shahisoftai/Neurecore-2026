@@ -53,18 +53,36 @@ export class EngineReadController {
       'PROJECT',
       projectId,
     );
+    const currentResponses = current.map((r) => ({
+      questionId: r.questionId,
+      value: r.value,
+      confidence: r.confidence,
+    }));
     const next = await this.adaptiveQuestioningService.pickNext(resolved, {
       entityType: 'PROJECT',
       entityId: projectId,
       hasCustomer: undefined,
       classification: null,
-      currentResponses: current.map((r) => ({
-        questionId: r.questionId,
-        value: r.value,
-        confidence: r.confidence,
-      })),
+      currentResponses,
     });
-    return { question: next };
+
+    let existingResponse: { value: unknown; confidence: number } | null = null;
+    if (next) {
+      const localId = next.id.startsWith(`${next.packKey}.`)
+        ? next.id.slice(next.packKey.length + 1)
+        : next.id;
+      const found = current.find(
+        (r) =>
+          r.questionId === next.questionId ||
+          r.questionId === localId ||
+          r.questionId === next.id,
+      );
+      if (found && found.value !== null && found.value !== undefined && found.value !== '') {
+        existingResponse = { value: found.value, confidence: found.confidence };
+      }
+    }
+
+    return { question: next, existingResponse };
   }
 
   private async resolveForProject(
