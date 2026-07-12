@@ -22,6 +22,8 @@ import { GoogleCalendarService } from './google/google-calendar.service';
 import type { CreateEventInput } from './google/google-calendar.service';
 import { GoogleDriveService } from './google/google-drive.service';
 import { GoogleSheetsService } from './google/google-sheets.service';
+import { GoogleDocsService } from './google/google-docs.service';
+import { GoogleSlidesService } from './google/google-slides.service';
 import { BrevoUsageService } from './brevo/brevo-usage.service';
 import { Public } from '../../common/decorators/roles.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -48,6 +50,8 @@ export class IntegrationsController {
     private readonly calendarService: GoogleCalendarService,
     private readonly driveService: GoogleDriveService,
     private readonly sheetsService: GoogleSheetsService,
+    private readonly docsService: GoogleDocsService,
+    private readonly slidesService: GoogleSlidesService,
     private readonly brevoUsage: BrevoUsageService,
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -399,6 +403,44 @@ export class IntegrationsController {
     @CurrentUser() user: JwtPayload,
   ) {
     await this.sheetsService.clearRange(user.tenantId!, spreadsheetId, range);
+  }
+
+  // ─── Google Docs endpoints ───────────────────────────────────────
+
+  @Post('docs')
+  @HttpCode(HttpStatus.OK)
+  async createGoogleDoc(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { title: string; content?: string; parentId?: string },
+  ) {
+    return this.docsService.createDocument(user.tenantId!, body);
+  }
+
+  @Get('docs/:documentId')
+  async getGoogleDoc(
+    @Param('documentId') documentId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.docsService.getDocument(user.tenantId!, documentId);
+  }
+
+  // ─── Google Slides endpoints ─────────────────────────────────────
+
+  @Post('slides')
+  @HttpCode(HttpStatus.OK)
+  async createGoogleSlides(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { title: string; slides?: { title: string; body?: string }[]; parentId?: string },
+  ) {
+    return this.slidesService.createPresentation(user.tenantId!, body);
+  }
+
+  @Get('slides/:presentationId')
+  async getGoogleSlides(
+    @Param('presentationId') presentationId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.slidesService.getPresentation(user.tenantId!, presentationId);
   }
 
   @Get('drive/search')

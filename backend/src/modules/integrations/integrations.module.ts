@@ -10,6 +10,8 @@ import { GoogleGmailService } from './google/google-gmail.service';
 import { GoogleCalendarService } from './google/google-calendar.service';
 import { GoogleDriveService } from './google/google-drive.service';
 import { GoogleSheetsService } from './google/google-sheets.service';
+import { GoogleDocsService } from './google/google-docs.service';
+import { GoogleSlidesService } from './google/google-slides.service';
 import { DriveCleanupService } from './google/drive-cleanup.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { GmailEmailProvider } from './email/gmail-email.provider';
@@ -30,6 +32,8 @@ import { EmailProviderFactory } from './email/email-provider.factory';
     GoogleCalendarService,
     GoogleDriveService,
     GoogleSheetsService,
+    GoogleDocsService,
+    GoogleSlidesService,
     DriveCleanupService,
     GmailEmailProvider,
     BrevoEmailProvider,
@@ -44,6 +48,8 @@ import { EmailProviderFactory } from './email/email-provider.factory';
     GoogleCalendarService,
     GoogleDriveService,
     GoogleSheetsService,
+    GoogleDocsService,
+    GoogleSlidesService,
     DriveCleanupService,
     EmailProviderFactory,
   ],

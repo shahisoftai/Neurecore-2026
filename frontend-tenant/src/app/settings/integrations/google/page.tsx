@@ -17,6 +17,8 @@ import {
   ArrowLeft,
   ChevronRight,
   FileSpreadsheet,
+  FileText,
+  Presentation,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -200,6 +202,30 @@ function ManageGoogleContent() {
                 <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               </div>
             </Link>
+            <a href="https://docs.google.com/document/u/0/" target="_blank" rel="noopener noreferrer">
+              <div className="border border-border rounded-md p-3 hover:border-blue-400/40 hover:bg-blue-400/5 transition cursor-pointer flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Google Docs</p>
+                    <p className="text-xs text-muted-foreground">Create & edit documents</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              </div>
+            </a>
+            <a href="https://docs.google.com/presentation/u/0/" target="_blank" rel="noopener noreferrer">
+              <div className="border border-border rounded-md p-3 hover:border-yellow-500/40 hover:bg-yellow-500/5 transition cursor-pointer flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Presentation className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Google Slides</p>
+                    <p className="text-xs text-muted-foreground">Create & edit presentations</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              </div>
+            </a>
           </div>
         </Card>
       )}

@@ -104,8 +104,10 @@ function CalendarContent() {
       ]);
       setEvents(list);
       setCalendars(cals);
-      if (calendarId === 'primary' && cals.length > 0 && cals[0].id) {
-        setCalendarId(cals[0].id);
+      if (calendarId === 'primary') {
+        const primary = cals.find((c) => c.primary);
+        if (primary) setCalendarId(primary.id);
+        else if (cals.length > 0) setCalendarId(cals[0].id);
       }
     } catch (err) {
       console.error(err);

@@ -367,6 +367,30 @@ class IntegrationsService {
     );
   }
 
+  // ─── Google Docs ────────────────────────────────────────────────
+
+  async createGoogleDoc(input: { title: string; content?: string; parentId?: string }): Promise<{ documentId: string; title: string; url: string }> {
+    const res = await api.post('/integrations/docs', input);
+    return unwrapItem(res) as { documentId: string; title: string; url: string };
+  }
+
+  async getGoogleDoc(documentId: string): Promise<Record<string, unknown>> {
+    const res = await api.get(`/integrations/docs/${documentId}`);
+    return unwrapItem(res) as Record<string, unknown>;
+  }
+
+  // ─── Google Slides ──────────────────────────────────────────────
+
+  async createGoogleSlides(input: { title: string; slides?: { title: string; body?: string }[]; parentId?: string }): Promise<{ presentationId: string; title: string; url: string }> {
+    const res = await api.post('/integrations/slides', input);
+    return unwrapItem(res) as { presentationId: string; title: string; url: string };
+  }
+
+  async getGoogleSlides(presentationId: string): Promise<Record<string, unknown>> {
+    const res = await api.get(`/integrations/slides/${presentationId}`);
+    return unwrapItem(res) as Record<string, unknown>;
+  }
+
   // ─── Drive Sharing (G8) ───────────────────────────────────────────
 
   async shareDriveFile(

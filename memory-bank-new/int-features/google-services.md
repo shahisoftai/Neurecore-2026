@@ -696,3 +696,107 @@ ADMIN_FRONTEND_BASE_URL=https://cc.neurecore.com             # post-OAuth-callba
 16. Admin: `https://cc.neurecore.com/settings/integrations` shows the tenant with status, scope badges, agent count, and **a Revoke button per connected tenant** (Phase 3 G7)
 17. Disconnect: tenant UI → Disconnect → confirm DB row removed + subsequent Gmail calls return 401
 18. **Credential rotation drill (validates G10 runbook)** — On a staging box, follow `runbook.md §9` end-to-end: rotate the `GOOGLE_CLIENT_SECRET` via `sed` + `pm2 restart`, then click through Connect Google on the tenant UI. Confirm browser lands back on the tenant host (G1). Confirm the prior `integration_credential` rows still have valid refresh tokens (call Gmail/Drive endpoints). Confirm the audit log records any admin-side revoke you performed.
+
+---
+
+## 11. Google Docs + Slides Integration (2026-07-12)
+
+### Summary
+
+Native **Google Docs** and **Google Slides** creation added as part of comprehensive Google Workspace coverage. Previously, only plain text/HTML files, Sheets, Calendar, and Gmail were supported. Now AI Employees can create native Google Docs (writable content via Docs API) and Google Slides presentations (with multiple slides, titles, and body content).
+
+### 11.1 New Files Added
+
+| File | Purpose |
+|------|---------|
+| `backend/src/modules/integrations/google/google-docs.service.ts` | Google Docs API wrapper: create document with content |
+| `backend/src/modules/integrations/google/google-slides.service.ts` | Google Slides API wrapper: create presentation with slides |
+
+### 11.2 Architecture
+
+Both services follow the same pattern as existing Google services:
+
+- **Authentication**: Uses `GoogleAuthClient` for OAuth2 token lifecycle (auto-refresh)
+- **API calls**: Direct `fetch()` calls to Google APIs (no googleapis npm package)
+- **Tenant-scoped**: All operations require `tenantId` parameter
+
+### Google Docs Service
+
+- **Endpoint**: `POST /integrations/docs` — creates a native Google Doc
+- **Input**: `{ title, content?, parentId? }`
+- **Returns**: `{ documentId, title, url }`
+- **Content**: Optional text content inserted via Docs API `batchUpdate` (insertText)
+- **Drive API**: Uses `files.create` with `mimeType: application/vnd.google-apps.document`
+- **Reading**: `GET /integrations/docs/:documentId` fetches full document content via Docs API
+
+### Google Slides Service
+
+- **Endpoint**: `POST /integrations/slides` — creates a native Google Slides presentation
+- **Input**: `{ title, slides?: [{ title, body? }], parentId? }`
+- **Returns**: `{ presentationId, title, url }`
+- **Slides**: Multiple slides with title text boxes and body content text boxes
+- **Drive API**: Uses `files.create` with `mimeType: application/vnd.google-apps.presentation`
+- **Slides API**: Uses `batchUpdate` with `createSlide` + `createShape` + `insertText` requests
+- **Reading**: `GET /integrations/slides/:presentationId` fetches full presentation content
+
+### 11.3 Frontend Changes
+
+| File | Change |
+|------|--------|
+| `frontend-tenant/src/services/integrations.service.ts` | Added `createGoogleDoc()`, `getGoogleDoc()`, `createGoogleSlides()`, `getGoogleSlides()` |
+| `frontend-tenant/src/app/settings/integrations/google/page.tsx` | Added "Google Docs" and "Google Slides" quick-access links in "Open Google apps" section; imported `FileText` and `Presentation` icons |
+
+### 11.4 API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/integrations/docs` | Create Google Doc |
+| `GET` | `/integrations/docs/:documentId` | Get Google Doc content |
+| `POST` | `/integrations/slides` | Create Google Slides presentation |
+| `GET` | `/integrations/slides/:presentationId` | Get presentation content |
+
+### 11.5 Module Wiring
+
+Both services are registered in `integrations.module.ts`:
+- `GoogleDocsService` in `providers[]` and `exports[]`
+- `GoogleSlidesService` in `providers[]` and `exports[]`
+
+### 11.6 Bug Fix: Calendar Default Calendar
+
+**G-CAL-PRIMARY**: The calendar UI defaulted to the first calendar in the list (e.g. "Holidays in Pakistan" read-only calendar) instead of the user's primary calendar. Fixed in `calendar/page.tsx`:
+
+```typescript
+// Before: selected first calendar regardless of type
+if (calendarId === 'primary' && cals.length > 0 && cals[0].id) {
+  setCalendarId(cals[0].id);
+}
+
+// After: selects primary calendar first
+if (calendarId === 'primary') {
+  const primary = cals.find((c) => c.primary);
+  if (primary) setCalendarId(primary.id);
+  else if (cals.length > 0) setCalendarId(cals[0].id);
+}
+```
+
+### 11.7 Live Verification (2026-07-12 15:42 PKT)
+
+All operations verified end-to-end against `mnpiracha@gmail.com` (tenant `mali@live.com`):
+
+| Operation | Result | Artifact |
+|-----------|--------|----------|
+| Create Google Doc | ✅ 200 | `AI Employee - Strategic Plan 2026` → `1xsx9YmUwE2OT0jMyCkOI2WLRUXMBW4bozW7shKVpR28` |
+| Read Google Doc | ✅ 200 (after deploy) | Returns full document JSON |
+| Create Google Slides | ✅ 200 | `AI Employee - Board Presentation Q3 2026` → `1_DdgPcpkqwSjjl0LOHKwZ12nCuGwwe0iX9rN5mok9IU` |
+| Read Google Slides | ✅ 200 (after deploy) | Returns full presentation JSON |
+| Create Spreadsheet with data | ✅ 200 | `Q3 Financial Report` → `1j7YI_VCkaPT7uReYZ2FL78B_hr6gOrVw_cZMAX6eswM` + 16 cells written |
+| Create Calendar Event | ✅ 200 | `AI Employee - Strategy Review` (Jul 13, 10-11am PKT) |
+| Create Drive HTML File | ✅ 200 | `AI Employee - Market Analysis Report.html` |
+| Login | ✅ 200 | `mali@live.com` / `Shahikhail@@0098` |
+
+### 11.8 Deploy Notes
+
+Deployed to Contabo 2026-07-12 15:35 PKT:
+- **Backend**: rsync → pnpm install → prisma generate → nest build → PM2 restart (neurecore-backend)
+- **Tenant**: rsync → pnpm install --no-frozen-lockfile → npm run build → PM2 reload (neurecore-tenant)
+- **Lockfile note**: Server has `lucide-react@^0.460.0` in lockfile vs local `^1.7.0`; used `--no-frozen-lockfile` to bypass
