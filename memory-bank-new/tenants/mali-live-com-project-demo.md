@@ -174,13 +174,57 @@ All comms and Hermes flags enabled:
 
 ---
 
-## 9. Known Issues & Limitations
+## 9. Hermes Runtime — Deployed (2026-07-12 19:45 PKT)
 
-1. **Project member API**: `POST /projects/:id/members` returns PERMISSION_DENIED for tenant OWNER role (requires SUPER_ADMIN). Members had to be inserted via direct DB.
-2. **A2A Hermes messaging**: While AGENT_MESSAGING_ENABLED is true, actual Hermes Agent IDs need to be linked to each agent for the full agent-to-agent runtime. Current `hermesAgentId` is null on most agents.
-3. **Agent self-execution**: Agents are RUNNING but require Hermes runtime orchestration to autonomously decompose goals, execute tasks, and communicate. This requires the Hermes worker to be online and configured.
-4. **Calendar UI default**: Calendar now defaults to primary calendar (fixed in frontend code).
+### What was deployed
+- `HERMES_ENABLED=true` in Contabo backend `.env` + PM2 restart with `--update-env`
+- `HERMES_AUTO_LINK=true` — auto-links new agents to HermesAgent on first execution
+- `HERMES_SESSION_LOGGING=true` — audit trail for all Hermes sessions
+- Migration script `scripts/hermes-migrate.cjs` linked **41/41 agents** to HermesAgent records
+- A2A test communication thread created for AP-AR agent-to-agent messaging
+
+### Current State
+| Item | Status |
+|------|--------|
+| Hermes global env | ✅ `HERMES_ENABLED=true` |
+| HermesAgent records | ✅ 41 created (1 per agent) |
+| Agent→HermesAgent links | ✅ 41/41 agents have `hermesAgentId` |
+| Agent execution | ✅ Routes through HermesRuntimeService.execute() |
+| A2A messaging | ✅ Available via AgentMessagingService (circuit-broken at 5 hops/$10) |
+| Enterprise Event Bus | ✅ Activity events + WebSocket fan-out |
+| Presence | ✅ Redis-backed (Upstash) |
+| Backend health | ✅ 200 (`brain.neurecore.com/api/v1/health`) |
+
+### Migration Script
+A standalone migration script exists at `backend/scripts/hermes-migrate.cjs`:
+- Run: `node scripts/hermes-migrate.cjs <tenantId>` for a single tenant
+- Run without args to link all tenants
+- Idempotent: skips agents that already have `hermesAgentId`
+
+See `memory-bank-new/int-features/hermes-deployment.md` for full architecture details.
 
 ---
 
-*Document updated 2026-07-12 19:25 PKT*
+## 10. Screenshots Captured
+
+| File | Content |
+|------|---------|
+| `projects-pipeline.png` | Project pipeline showing the new project (ACTIVE) |
+| `calendar-events.png` | Calendar with 8 project milestone events |
+| `sheets-created.png` | Sheets page with all created spreadsheets |
+| `google-manage-docs-slides.png` | Google Manage page with Docs/Slides links |
+| `agents-running.png` | AI Employee marketplace showing RUNNING status |
+| `hermes-running.png` | Hermes activation verification |
+
+---
+
+## 11. Remaining Known Limitations
+
+1. **Project member API**: `POST /projects/:id/members` returns PERMISSION_DENIED for tenant OWNER role (requires SUPER_ADMIN). Members had to be inserted via direct DB.
+2. **No separate Hermes worker**: Execution runs in the main backend process. For heavy workloads, extract Hermes into a dedicated PM2 service.
+3. **A2A requires API trigger**: DB-created threads don't auto-execute agents. The `AgentMessagingService.send()` API must be called to trigger `HermesRuntimeService.execute()`.
+4. **OWNER role restrictions**: Some Hermes endpoints require SUPER_ADMIN. The frontend routes through the proper channels.
+
+---
+
+*Document updated 2026-07-12 19:50 PKT*
