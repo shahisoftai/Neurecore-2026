@@ -39,7 +39,9 @@ export const useThreadStore = create<ThreadState>()(
 
       setThreads: (threads) =>
         set({
-          threads: Array.isArray(threads) ? threads : [],
+          threads: Array.isArray(threads)
+            ? threads.filter((t): t is ThreadData => t !== null && t !== undefined && t.id !== undefined)
+            : [],
           lastFetchedAt: Date.now(),
           loading: false,
           error: null,
@@ -47,7 +49,7 @@ export const useThreadStore = create<ThreadState>()(
 
       addThread: (thread) =>
         set((s) => ({
-          threads: [thread, ...s.threads],
+          threads: [thread, ...s.threads].filter((t): t is ThreadData => t !== null && t !== undefined && t.id !== undefined),
         })),
 
       updateThread: (id, patch) =>
@@ -91,18 +93,22 @@ export const useThreadStore = create<ThreadState>()(
         unreadCount: state.unreadCount,
       }),
       merge: (persistedState, currentState) => {
-        const ps = (persistedState ?? {}) as Partial<ThreadState>;
+        const ps = (persistedState ?? {}) as { state?: Partial<ThreadState>; version?: number };
+        const state = ps?.state;
+        if (!state) return currentState;
         return {
           ...currentState,
-          ...ps,
-          threads: Array.isArray(ps.threads) ? ps.threads : currentState.threads,
+          ...state,
+          threads: Array.isArray(state.threads)
+            ? state.threads.filter((t): t is ThreadData => t !== null && t !== undefined && t.id !== undefined)
+            : currentState.threads,
           unreadCount:
-            typeof ps.unreadCount === 'number' && ps.unreadCount >= 0
-              ? ps.unreadCount
+            typeof state.unreadCount === 'number' && state.unreadCount >= 0
+              ? state.unreadCount
               : currentState.unreadCount,
           activeThreadId:
-            typeof ps.activeThreadId === 'string' || ps.activeThreadId === null
-              ? ps.activeThreadId
+            typeof state.activeThreadId === 'string' || state.activeThreadId === null
+              ? state.activeThreadId
               : currentState.activeThreadId,
         };
       },

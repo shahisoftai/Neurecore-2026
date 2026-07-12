@@ -78,8 +78,11 @@ export function useThreads(deps?: { threadService?: IThreadService }) {
   const createThread = useCallback(
     async (params: CreateThreadParams) => {
       const thread = await svc.create(params);
-      useThreadStore.getState().addThread(thread);
-      return thread;
+      if (thread && thread.id) {
+        useThreadStore.getState().addThread(thread);
+        return thread;
+      }
+      throw new Error('Invalid thread returned from server');
     },
     [svc],
   );

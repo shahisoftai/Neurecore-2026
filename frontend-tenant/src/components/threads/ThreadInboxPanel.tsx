@@ -40,9 +40,13 @@ export default function ThreadInboxPanel() {
     const title = window.prompt('Thread title:');
     if (!title?.trim()) return;
     try {
-      await createThread({ title: title.trim(), participants: [] });
-    } catch {
-      // error handled by store
+      const thread = await createThread({ title: title.trim(), participants: [] });
+      if (thread && thread.id) {
+        selectThread(thread.id);
+      }
+    } catch (err) {
+      console.error('Failed to create thread:', err);
+      alert('Failed to create thread. Please try again.');
     }
   }
 

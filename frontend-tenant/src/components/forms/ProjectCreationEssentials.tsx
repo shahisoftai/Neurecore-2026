@@ -20,6 +20,7 @@ import {
 import { ActionButton } from '@/components/creatio/ActionToolbar';
 import { customersService } from '@/services/customers.service';
 import { projectTypesService } from '@/services/projectTypes.service';
+import { tenantsService } from '@/services/tenants.service';
 import type { Customer } from '@/types/customers.types';
 import type {
   BudgetType,
@@ -85,10 +86,21 @@ export function ProjectCreationEssentials({
       .list({ status: 'ACTIVE' })
       .then(({ items }) => setCustomers(items))
       .catch(() => setCustomers([]));
-    void projectTypesService
-      .list({ limit: 100 })
+    void tenantsService
+      .getCurrent()
+      .then((tenant) => {
+        return projectTypesService.list({
+          limit: 100,
+          industry: tenant.industry ?? undefined,
+        });
+      })
       .then(({ items }) => setProjectTypes(items))
-      .catch(() => setProjectTypes([]));
+      .catch(() => {
+        void projectTypesService
+          .list({ limit: 100 })
+          .then(({ items }) => setProjectTypes(items))
+          .catch(() => setProjectTypes([]));
+      });
   }, []);
 
   useEffect(() => {

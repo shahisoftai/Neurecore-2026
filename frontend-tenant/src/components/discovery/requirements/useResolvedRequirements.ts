@@ -13,7 +13,7 @@ import type { ResolvedQuestion } from '../types';
 
 interface State {
   questions: ResolvedQuestion[];
-  loading: boolean;
+  loading: boolean | undefined;
   error: string | null;
 }
 
@@ -22,7 +22,7 @@ export function useResolvedRequirements(
 ): State & { refresh: () => Promise<void> } {
   const [state, setState] = useState<State>({
     questions: [],
-    loading: false,
+    loading: undefined,
     error: null,
   });
 

@@ -65,18 +65,20 @@ export function ProjectCreationDiscovery({
   const totalRequired = snapshot?.totalRequired ?? 0;
   const allRequiredAnswered = totalRequired > 0 && snapshot?.score === 100;
 
-  // For untyped projects (engine returns 0 required), auto-advance.
+  // For untyped projects (engine returns 0 required), auto-advance only
+  // after loading has definitively finished (reqLoading === false means "done",
+  // undefined means "not yet started" — we must not skip in that window).
   const noQuestions = useMemo(
-    () => !reqLoading && questions.length === 0,
+    () => reqLoading === false && questions.length === 0,
     [reqLoading, questions.length],
   );
 
   useEffect(() => {
-    if (noQuestions) {
+    if (noQuestions && projectId) {
       onComplete();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noQuestions]);
+  }, [noQuestions, projectId]);
 
   return (
     <div className="space-y-4" data-testid="discovery-host">

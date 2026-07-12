@@ -85,23 +85,29 @@ function toMessage(raw: any): ThreadMessage {
 export const threadService: IThreadService = {
   async list(): Promise<ThreadData[]> {
     const res = await api.get('/threads');
-    const threads: any[] = unwrap<any[]>(res, ['threads']) ??
-      unwrap<any[]>(res, ['data', 'threads']) ?? [];
+    const threads: any[] = unwrap<any[]>(res, ['data', 'threads']) ??
+      unwrap<any[]>(res, ['threads']) ??
+      unwrap<any[]>(res, ['data', 'data', 'threads']) ?? [];
     return Array.isArray(threads) ? threads.map(toThread) : [];
   },
 
   async get(threadId: string): Promise<ThreadData | null> {
     const res = await api.get(`/threads/${threadId}`);
-    const raw = unwrap<any>(res, ['thread']) ??
-      unwrap<any>(res, ['data', 'thread']);
+    const raw = unwrap<any>(res, ['data', 'thread']) ??
+      unwrap<any>(res, ['thread']) ??
+      unwrap<any>(res, ['data', 'data', 'thread']);
     return raw && typeof raw === 'object' && raw.id ? toThread(raw) : null;
   },
 
   async create(params: CreateThreadParams): Promise<ThreadData> {
     const res = await api.post('/threads', params);
-    const raw = unwrap<any>(res, ['thread']) ??
-      unwrap<any>(res, ['data', 'thread']);
-    return toThread(raw ?? {});
+    const raw = unwrap<any>(res, ['data', 'thread']) ??
+      unwrap<any>(res, ['thread']) ??
+      unwrap<any>(res, ['data', 'data', 'thread']);
+    if (!raw || typeof raw !== 'object' || !raw.id) {
+      throw new Error('Invalid thread response from server');
+    }
+    return toThread(raw);
   },
 
   async getMessages(
@@ -111,8 +117,9 @@ export const threadService: IThreadService = {
     const res = await api.get(`/threads/${threadId}/messages`, {
       params: { limit: opts?.limit ?? 50, ...(opts?.before ? { before: opts.before } : {}) },
     });
-    const msgs: any[] = unwrap<any[]>(res, ['messages']) ??
-      unwrap<any[]>(res, ['data', 'messages']) ?? [];
+    const msgs: any[] = unwrap<any[]>(res, ['data', 'messages']) ??
+      unwrap<any[]>(res, ['messages']) ??
+      unwrap<any[]>(res, ['data', 'data', 'messages']) ?? [];
     return Array.isArray(msgs) ? msgs.map(toMessage) : [];
   },
 
@@ -132,7 +139,8 @@ export const threadService: IThreadService = {
   async getUnreadCount(): Promise<number> {
     const res = await api.get('/threads/unread/count');
     const data = (res.data as any)?.data ?? res.data;
-    return typeof (data as any)?.count === 'number' ? (data as any).count : 0;
+    const count = (data as any)?.count ?? (data as any)?.data?.count ?? 0;
+    return typeof count === 'number' ? count : 0;
   },
 
   async close(threadId: string): Promise<void> {

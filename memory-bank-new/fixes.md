@@ -2775,3 +2775,108 @@ Round 1 of the AI Gateway implementation (FIX-034/FIX-035) had:
 - [ai-gateway-reference.md](ai-gateway/ai-gateway-reference.md)
 - [ai-gateway-imp-plan.md §0](ai-gateway/ai-gateway-imp-plan.md)
 
+---
+
+## FIX-039 — Project Creation Wizard Bug Fixes (2026-07-12 10:14 PKT)
+
+### Summary
+
+Two bugs in the project creation wizard (Essentials → Discovery → Review 3-step flow):
+
+1. **Project type dropdown** showed all 150+ industry templates instead of filtering to the tenant's industry
+2. **Discovery tab** auto-skipped before the question engine finished loading, jumping directly from Essentials → Review without ever showing Discovery
+
+### Root Cause
+
+#### Issue 1 — No industry filter passed to projectTypesService.list
+
+The `projectTypesService.list()` call in `ProjectCreationEssentials.tsx` accepted an `industry` filter parameter but never passed it. The tenant's `industry` field was available via `tenantsService.getCurrent()` but never used.
+
+**Evidence:** Backend `PrismaProjectTypeRepository.findAllTypes()` already supported `where.industry = options.industry` filtering. Frontend `ProjectTypesService.list()` accepted `industry?: string` in its options. The chain was complete but never wired.
+
+#### Issue 2 — Race condition in auto-advance logic
+
+`ProjectCreationDiscovery.tsx` computed `noQuestions = !reqLoading && questions.length === 0`. `useResolvedRequirements` initialized with `loading: false`. On mount:
+
+1. Initial render: `loading = false`, `questions = []` → `noQuestions = true`
+2. `useEffect([noQuestions])` fires with stale `noQuestions = true`
+3. `onComplete()` (→ `setStep('review')`) called before async `load()` sets `loading = true`
+
+The intended behavior (auto-skip for untyped projects with 0 required questions) conflicted with the loading state initialization.
+
+### Fix
+
+#### Fix 1 — Industry filter in ProjectCreationEssentials.tsx
+
+```typescript
+// Before
+void projectTypesService.list({ limit: 100 })
+
+// After
+void tenantsService
+  .getCurrent()
+  .then((tenant) =>
+    projectTypesService.list({
+      limit: 100,
+      industry: tenant.industry ?? undefined,
+    }),
+  )
+  .catch(() => {
+    // Graceful fallback: load all types if tenant fetch fails
+    void projectTypesService.list({ limit: 100 })...
+  })
+```
+
+#### Fix 2 — useResolvedRequirements.ts initial state
+
+```typescript
+// Before
+const [state, setState] = useState<State>({
+  questions: [],
+  loading: false,  // ← indistinguishable from "done loading with 0 questions"
+  error: null,
+});
+
+// After
+const [state, setState] = useState<State>({
+  questions: [],
+  loading: undefined,  // ← "not yet started"
+  error: null,
+});
+```
+
+#### Fix 2 — ProjectCreationDiscovery.tsx guard
+
+```typescript
+// Before
+const noQuestions = !reqLoading && questions.length === 0;
+useEffect(() => {
+  if (noQuestions) onComplete();
+}, [noQuestions]);
+
+// After
+const noQuestions = reqLoading === false && questions.length === 0;
+useEffect(() => {
+  if (noQuestions && projectId) onComplete();
+}, [noQuestions, projectId]);
+```
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `frontend-tenant/src/components/forms/ProjectCreationEssentials.tsx` | Added `tenantsService` import; `useEffect` now fetches tenant industry first and passes it to `projectTypesService.list()`; graceful fallback chain on error |
+| `frontend-tenant/src/components/discovery/requirements/useResolvedRequirements.ts` | `loading` initial state: `false` → `undefined`; interface type updated to `loading: boolean \| undefined` |
+| `frontend-tenant/src/components/forms/ProjectCreationDiscovery.tsx` | Guard changed `!reqLoading` → `reqLoading === false`; added `projectId` to useEffect deps |
+
+### Deploy note
+
+`deploy.sh tenant` fails due to `package-lock.json` drift (server has `lucide-react ^0.460.0`, local has `^1.7.0`). Workaround: rsync with `--exclude=package-lock.json`, then `npm run build` on server.
+
+### Acceptance
+
+- Project type dropdown on Essentials step shows only types matching tenant's industry
+- Discovery tab renders and loads questions before any auto-advance decision
+- Untyped projects (no `projectTypeId`) still auto-advance correctly after loading completes
+- All 3 services healthy after PM2 reload: brain/200, hq/200, cc/200
+
