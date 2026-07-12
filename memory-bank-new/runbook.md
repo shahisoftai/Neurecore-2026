@@ -344,6 +344,8 @@ for p in json.load(sys.stdin):
 - When you rotate the client secret, every existing tenant's refresh token continues to work **until Google revokes it** — typically only happens if (a) the OAuth app is deleted, (b) the OAuth consent screen is unpublished, or (c) Google invalidates tokens for security reasons. Practical impact for our use case: zero automatic disruption after a secret-only rotation.
 - However, the `state` payload issued during the **next** `POST /integrations/google/authorize` flow will be signed by the new secret; in-flight `state`s issued before the rotation continue to validate against the old secret. Once `backend` PM2 restarts, all `state`s issued post-restart are signed by the new secret and fail verification if the secret env hasn't been reloaded — always restart backend after the env file change.
 - The `access_token` re-exchange uses the *current* client_id+secret pair. If secret rotates mid-token-life, refresh still works (refresh tokens do not require the secret to be the same one used at original-issue time, only at *exchange* time, which uses the *current* configured secret).
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is read by the frontend login page. **Critical**: Next.js loads `.env.local` with higher priority than `.env.production`. If `.env.local` contains a placeholder value (`your-google-client-id.apps.googleusercontent.com`), it overrides the real client ID in `.env.production`. Always verify both files when the login page shows `GSI_LOGGER: The given client ID is not found`.
+- `GOOGLE_REDIRECT_URI` must be explicitly set in the backend `.env.production` for the Google Workspace integration (Gmail/Drive/Calendar) OAuth flow. Missing this variable causes `redirect_uri_mismatch` (Error 400) because the code falls back to the wrong default URL.
 
 **Steps**
 
@@ -406,9 +408,11 @@ for p in json.load(sys.stdin):
 **Failure-mode cheatsheet**
 
 | Symptom | Cause | Fix |
-|---|---|---|
+|---|---|---|---|
 | `Failed to start Google authorization` toast after rotation | Env not loaded | Restart `neurecore-backend`; check `pm2 logs` for "Google OAuth is not configured" |
 | Google returns `invalid_client` | Wrong secret typed; key rotation not propagated | Re-set `.env`, restart backend, retry consent |
+| `[GSI_LOGGER]: The given client ID is not found` on login page | Frontend `.env.local` overrides `.env.production` for `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (Next.js gives `.env.local` higher priority) | Fix `.env.local` on Contabo: `/opt/neurecore/frontend-tenant/.env.local`; rebuild frontend (`npx next build`); restart PM2 |
+| Google returns `redirect_uri_mismatch` (Error 400) on integration OAuth | `GOOGLE_REDIRECT_URI` missing from backend `.env.production` — falls back to wrong default URL | Add `GOOGLE_REDIRECT_URI=https://brain.neurecore.com/api/v1/integrations/google/callback` to `/opt/neurecore/backend/backend/.env.production`; restart backend with `--update-env` |
 | Existing tenant Gmail calls return 401 | Refresh token revoked (rare, only on full OAuth app deletion) | Admin: `POST /integrations/admin/google/:tenantId/disconnect`, ask tenant to reconnect |
 | OAuth callback lands on `brain.neurecore.com` instead of `hq.neurecore.com` | `FRONTEND_BASE_URL` not set, env fell back to a hard default | Confirm `TENANT_FRONTEND_BASE_URL=https://hq.neurecore.com` is set in `backend/.env.production`; restart backend |
 

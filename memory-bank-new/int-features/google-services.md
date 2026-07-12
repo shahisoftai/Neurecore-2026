@@ -359,7 +359,20 @@ Items previously listed as missing — **all implemented and in some cases furth
 | **G9** Sheets CSV import/export tool actions | `tools/built-in/csv.util.ts` extracted pure helpers (`colToLetter`, `parseCsv`, `toCsv`, `csvEscape`) supporting `, ; \t \|` delimiters + RFC-4180 quoted fields; `sheets.tool.ts` adds `import_csv` (creates a spreadsheet or writes into an existing one, sized to fit) and `export_csv` (range → CSV text with auto-range fallback to whole sheet) actions; covered by `csv.util.spec.ts` (22 cases including a full round-trip parity test) | ✅ **Fixed this session (Phase 3)** |
 | **G10** Client-secret rotation runbook | New §9 in `memory-bank-new/runbook.md` ("Google OAuth credential rotation (CLIENT_ID / CLIENT_SECRET)"). Covers: pre-flight env capture, OAuth client re-creation in Google Cloud, in-place `sed` + PM2 restart, OAuth round-trip smoke-test, per-tenant DB spot-check, `audit_log` row query, failure-mode cheatsheet for `invalid_client`/`invalid_grant`, escalation paths. | ✅ **Fixed this session (Phase 3)** |
 
-### 6.2 Remaining Issues
+### 6.2 Post-mortem: Google OAuth failures (2026-07-12)
+
+Two distinct Google OAuth failures were identified and fixed on this date:
+
+| Applies to | Error | Root Cause | Fix |
+|---|---|---|---|
+| **Login page** (GSI) | `401: invalid_client` / `[GSI_LOGGER]: The given client ID is not found` | Frontend `.env.local` had a placeholder value `your-google-client-id.apps.googleusercontent.com` which overrode the correct value in `.env.production` (Next.js loads `.env.local` with higher priority). | Updated `.env.local` with correct client ID, rebuilt frontend, restarted PM2. **Lesson**: `NEXT_PUBLIC_*` env vars must be correct in ALL env files that exist on Contabo — `.env.local` wins over `.env.production`. |
+| **Google Integration** (Settings page) | `400: redirect_uri_mismatch` | `GOOGLE_REDIRECT_URI` was missing from backend `.env.production`. The code fell back to the wrong default URL, which didn't match the registered redirect URI in Google Cloud Console. | Added `GOOGLE_REDIRECT_URI=https://brain.neurecore.com/api/v1/integrations/google/callback` to backend `.env.production`, restarted backend with `--update-env`. **Lesson**: Always verify all GOOGLE_* env vars are present after deploy. |
+
+**Preventive measures:**
+- Always run `grep -E '^GOOGLE_|^NEXT_PUBLIC_GOOGLE' /opt/neurecore/backend/backend/.env.production /opt/neurecore/frontend-tenant/.env.*` after a deploy to catch missing or placeholder values.
+- See `[runbook.md §9 failure-mode cheatsheet](../../runbook.md#9-google-oauth-credential-rotation-client_id--client_secret)` for the expanded troubleshooting table.
+
+### 6.4 Remaining Issues
 
 **All gaps listed in previous audits are now closed.** Remaining deferred items (out of Phase 4 scope, but worth tracking for a future wave):
 
@@ -370,7 +383,7 @@ Items previously listed as missing — **all implemented and in some cases furth
 | G13 | No `find_free_slots` cross-calendar tool wrapper (CalendarTool only checks primary) | Multi-calendar tenants cannot ask for a free slot across team calendars | ✅ Closed Phase 4 |
 | G14 | No Drive change-watch + webhook | Updates to files outside the agent (renamed, shared, deleted) are not reflected in `ContextTool.load_drive` until the agent re-lists | 🟢 Low |
 
-### 6.3 Phase 4 — Shipped 2026-07-07
+### 6.5 Phase 4 — Shipped 2026-07-07
 
 Full audit revealed 19 gaps after Phase-3. All critical and medium gaps implemented, plus full test coverage:
 
@@ -408,7 +421,7 @@ Full audit revealed 19 gaps after Phase-3. All critical and medium gaps implemen
 
 **Total: 173 tests across 15 suites, TypeScript compiles clean.**
 
-### 6.4 OAuth Flow Risks (Post-Phase-4)
+### 6.6 OAuth Flow Risks (Post-Phase-4)
 
 - G1 is **resolved** (see §2.6 and §6.1).
 - G7 (admin revoke) writes a permanent `audit_logs` row at `action='google.admin_revoke'` with `resource='integration_credential'`, `resourceId=<tenantId>` — queryable via `/settings/audit` UI and the existing `AuditService.findAll({ action: 'google.admin_revoke' })`.
@@ -625,6 +638,7 @@ Run: `npx jest --config jest.config.js src/modules/integrations/google/__tests__
 ```bash
 GOOGLE_CLIENT_ID=...                                        # Google Cloud Console — Web app OAuth client
 GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=https://brain.neurecore.com/api/v1/integrations/google/callback  # Must match Google Cloud Console
 GOOGLE_TOKEN_ENCRYPTION_KEY=<32+ char hex>                   # AES-256-GCM for credentials
 INTEGRATION_ENCRYPTION_KEY=<32+ char hex>                     # alt name read by some files
 TENANT_FRONTEND_BASE_URL=https://hq.neurecore.com            # post-OAuth-callback redirect target for tenants
@@ -633,6 +647,8 @@ ADMIN_FRONTEND_BASE_URL=https://cc.neurecore.com             # post-OAuth-callba
 # FRONTEND_BASE_URL=https://hq.neurecore.com
 # ADMIN_BASE_URL=https://cc.neurecore.com
 ```
+
+**Critical**: If `GOOGLE_REDIRECT_URI` is not set, the code falls through to a default that is typically wrong, causing `redirect_uri_mismatch` (Error 400). This was the root cause of the Google integration failure on 2026-07-12.
 
 **Google Cloud Console**:
 - OAuth consent screen: enabled for scopes `gmail.readonly`, `gmail.send`, `drive`, `calendar`, `spreadsheets`

@@ -219,7 +219,27 @@ Both frontends read from `/opt/neurecore/frontend-{tenant,admin}/.env.production
 | `NEXT_PUBLIC_ADMIN_URL` | `https://cc.neurecore.com` | `https://cc.neurecore.com` |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | set | not set |
 
-### 6.5 Never hardcode `localhost:3000` in production code
+### 6.5 `NEXT_PUBLIC_` vars: `.env.local` takes priority over `.env.production`
+
+Next.js loads env files in this priority order (highest first):
+1. `.env.local` (all environments)
+2. `.env.production` (production only)
+3. `.env`
+
+This means `.env.local` **overrides** `.env.production` for `NEXT_PUBLIC_*` vars. The login page (`frontend-tenant/src/app/login/page.tsx:10`) reads `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — if `.env.local` has a placeholder value (`your-google-client-id.apps.googleusercontent.com`), it will override the real value in `.env.production` and Google Sign-In will fail with `GSI_LOGGER: The given client ID is not found`.
+
+**On 2026-07-12 this was the root cause of the `invalid_client` error on the login page.**
+
+**Fix:** Update both `.env.local` and `.env.production` with the correct value, then rebuild:
+```bash
+ssh contabo
+cd /opt/neurecore/frontend-tenant
+sed -i 's|NEXT_PUBLIC_GOOGLE_CLIENT_ID=.*|NEXT_PUBLIC_GOOGLE_CLIENT_ID=<REAL_CLIENT_ID>|' .env.local .env.production
+npx next build
+pm2 restart neurecore-tenant
+```
+
+### 6.6 Never hardcode `localhost:3000` in production code
 
 A missing `NEXT_PUBLIC_*` env var should NOT silently fall back to a dev-only default. Browsers running the production build will then attempt to connect to `localhost:3000` (which is unreachable from the user's machine) and fail with cryptic errors.
 
@@ -311,3 +331,5 @@ These are hard-won. Read before doing a deploy.
 12. **Don't skip CORS preflight test** after editing `cors-proxy.js`. Run the `curl -X OPTIONS` recipe in §4.2.
 13. **Don't hardcode `localhost:3000` as a fallback** in production code. A missing `NEXT_PUBLIC_*` env var should derive from `window.location`, not silently fall back to a dev-only value. See §6.5.
 14. **Don't trust `npm run lint` as proof of a buildable codebase.** Always run `next build` / `nest build` before rsync. Lint does not catch missing destructures, wrong generics, or undefined names. See [deployment.md §10](deployment.md#10-pre-deploy-checklist).
+15. **Always set `GOOGLE_REDIRECT_URI` in backend `.env.production`.** Missing this env var causes `redirect_uri_mismatch` (Error 400) on the Google Workspace OAuth integration flow. The correct value is `https://brain.neurecore.com/api/v1/integrations/google/callback`. See [runbook.md §9](runbook.md#9-google-oauth-credential-rotation-client_id--client_secret) failure-mode cheatsheet.
+16. **Never leave a placeholder `your-google-client-id.apps.googleusercontent.com` in any `.env.*` file.** The login page reads `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. If `.env.local` has the placeholder and `.env.production` has the real value, `.env.local` wins (Next.js priority) and Google Sign-In fails with `[GSI_LOGGER]: The given client ID is not found`. See §6.5.
