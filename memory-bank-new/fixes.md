@@ -2880,3 +2880,13 @@ useEffect(() => {
 - Untyped projects (no `projectTypeId`) still auto-advance correctly after loading completes
 - All 3 services healthy after PM2 reload: brain/200, hq/200, cc/200
 
+### Bonus — Tenant industry remap (2026-07-12 10:20 PKT)
+
+`mali@live.com` tenant had `industry: 'ACCOUNTING'` which is **not one of the 15 seeded industry slugs**. When the industry filter was applied after FIX-039, it returned 0 types. Fixed by remapping tenant's industry to `financial-services` via direct Prisma update on Contabo:
+
+```bash
+ssh contabo "node -e \"const{PrismaClient}=require('...'); ...\""
+```
+
+Verified: tenant now returns `industry: 'financial-services'`; `GET /project-types?industry=financial-services` returns 10 types.
+

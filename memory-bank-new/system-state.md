@@ -5,6 +5,7 @@
 **2026-07-12 10:14 PKT — Project Creation Wizard Bug Fixes (Kilo):**
 - ✅ **Issue 1 — Project type dropdown shows all types, not tenant-industry filtered:** `ProjectCreationEssentials.tsx` now calls `tenantsService.getCurrent()` first, extracts `tenant.industry`, then passes it as `industry` filter to `projectTypesService.list({ industry: tenant.industry ?? undefined })`. Graceful fallback: if `getCurrent()` fails, still loads all types.
 - ✅ **Issue 2 — Discovery tab auto-skips before loading completes:** `useResolvedRequirements.ts` initial `loading` state changed from `false` → `undefined` to distinguish "not yet started" from "done loading". `ProjectCreationDiscovery.tsx` guard changed from `!reqLoading` → `reqLoading === false`. Added `projectId` to `useEffect` dependency.
+- ✅ **Tenant industry remapped:** `mali@live.com` tenant had `industry: 'ACCOUNTING'` which is not in the 15 seeded industry slugs (→ 0 filtered types). Remapped to `financial-services` via direct Prisma update on Contabo. Filter now returns 10 types.
 - ✅ **Build:** `tsc --noEmit` → 0 errors; `next build` → clean
 - ✅ **Contabo deploy:** rsync (excluding `package-lock.json` due to lockfile drift) → `npm run build` on server → PM2 reload → all services healthy (brain/200, hq/200, cc/200)
 - ⚠️ **Lockfile drift:** `deploy.sh tenant` fails due to `lucide-react` version mismatch (server `^0.460.0`, local `^1.7.0`). Workaround: rsync with `--exclude=package-lock.json` then build on server.
