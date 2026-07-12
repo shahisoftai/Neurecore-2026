@@ -5,20 +5,22 @@
 import { GoogleDriveService } from '../google-drive.service';
 import type { GoogleAuthClient } from '../google-auth.client';
 import type { ConfigService } from '@nestjs/config';
+import type { PrismaService } from '../../../infrastructure/database/prisma.service';
 
-class FakePrisma {
-  tenant = {
+const fakePrisma = {
+  tenant: {
     findUnique: jest.fn(),
     update: jest.fn(),
-  };
-  agent = {
+  },
+  agent: {
     findUnique: jest.fn(),
     findMany: jest.fn(),
     update: jest.fn(),
     count: jest.fn(),
-  };
-  $disconnect = jest.fn();
-}
+  },
+  integrationCredential: { findMany: jest.fn() },
+  $disconnect: jest.fn(),
+} as unknown as PrismaService;
 
 const authClient = {
   getAccessToken: jest.fn().mockResolvedValue('fake-access-token'),
@@ -29,10 +31,7 @@ const config = {
 } as unknown as ConfigService;
 
 function makeService(): GoogleDriveService {
-  const svc = new GoogleDriveService(authClient, config);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (svc as unknown as { prisma: FakePrisma }).prisma = new FakePrisma();
-  return svc;
+  return new GoogleDriveService(authClient, config, fakePrisma);
 }
 
 let fetchSpy: jest.SpyInstance;

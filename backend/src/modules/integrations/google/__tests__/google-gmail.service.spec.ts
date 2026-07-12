@@ -172,7 +172,7 @@ describe('GoogleGmailService.getMessage', () => {
       } as Response),
     );
 
-    const result = await svc.getMessage('msg-2', 'thread-2');
+    const result = await svc.getMessage('tenant-1', 'msg-2', 'thread-2');
 
     expect(result.id).toBe('msg-2');
     expect(result.threadId).toBe('thread-2');
@@ -189,7 +189,7 @@ describe('GoogleGmailService.getMessage', () => {
     const svc = makeService();
     (authClient.getAccessToken as jest.Mock).mockResolvedValueOnce(null);
 
-    await expect(svc.getMessage('msg-1', 'thread-1')).rejects.toThrow('Google is not connected');
+    await expect(svc.getMessage('tenant-1', 'msg-1', 'thread-1')).rejects.toThrow('Google is not connected');
   });
 });
 

@@ -213,9 +213,9 @@ describe('EmailTool', () => {
     });
 
     it('applies IMPORTANT and STARRED labels for urgent priority', async () => {
-      (mockGmail as any).authClient = {
-        getAccessToken: jest.fn().mockResolvedValue('fake-token'),
-      };
+      (mockGmail as any).getAccessToken = jest
+        .fn()
+        .mockResolvedValue('fake-token');
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         text: jest.fn().mockResolvedValue(''),

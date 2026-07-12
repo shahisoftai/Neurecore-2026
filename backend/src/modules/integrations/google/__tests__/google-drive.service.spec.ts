@@ -9,6 +9,7 @@
 import { GoogleDriveService } from '../google-drive.service';
 import type { GoogleAuthClient } from '../google-auth.client';
 import type { ConfigService } from '@nestjs/config';
+import type { PrismaService } from '../../../infrastructure/database/prisma.service';
 
 // Minimal mock for the Prisma client inside GoogleDriveService. Only fields
 // actually touched by the code under test are stubbed.
@@ -23,14 +24,11 @@ const prismaStub = {
     update: jest.fn(),
     count: jest.fn(),
   },
+  integrationCredential: { findMany: jest.fn() },
+  $disconnect: jest.fn(),
 };
 
-class FakePrisma {
-  tenant = prismaStub.tenant;
-  agent = prismaStub.agent;
-  integrationCredential = { findMany: jest.fn() };
-  $disconnect = jest.fn();
-}
+const fakePrisma = prismaStub as unknown as PrismaService;
 
 const authClient = {
   getAccessToken: jest.fn().mockResolvedValue('fake-access-token'),
@@ -44,12 +42,7 @@ const config = {
 } as unknown as ConfigService;
 
 function makeService(): GoogleDriveService {
-  // Direct construction; we override prisma after to avoid importing PrismaClient
-  // into the test graph (its constructor would require DATABASE_URL).
-  const svc = new GoogleDriveService(authClient, config);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (svc as unknown as { prisma: FakePrisma }).prisma = new FakePrisma();
-  return svc;
+  return new GoogleDriveService(authClient, config, fakePrisma);
 }
 
 interface FetchCall {

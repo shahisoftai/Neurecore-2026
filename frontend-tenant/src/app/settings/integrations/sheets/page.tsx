@@ -82,7 +82,7 @@ function SheetsContent() {
   const fetchSheets = useCallback(async (query: string): Promise<ListItem[]> => {
     if (!query.trim()) {
       try {
-        const files = await integrationsService.searchDrive('title:', {
+        const files = await integrationsService.searchDrive('', {
           mimeType: 'application/vnd.google-apps.spreadsheet',
           mode: 'name',
           pageSize: 25,

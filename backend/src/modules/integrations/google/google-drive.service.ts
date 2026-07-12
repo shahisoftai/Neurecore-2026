@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { GoogleAuthClient } from './google-auth.client';
 import type { IDriveService } from './drive-service.interface';
 
@@ -36,11 +36,11 @@ export class GoogleDriveService implements IDriveService {
   private readonly DRIVE_API = 'https://www.googleapis.com/drive/v3';
   private readonly DRIVE_UPLOAD_API =
     'https://www.googleapis.com/upload/drive/v3';
-  private readonly prisma = new PrismaClient();
 
   constructor(
     private readonly authClient: GoogleAuthClient,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async getAccessToken(tenantId: string): Promise<string | null> {
@@ -343,8 +343,12 @@ export class GoogleDriveService implements IDriveService {
   ): Promise<DriveFile[]> {
     const { pageSize = 25, mimeType, mode = 'name' } = options;
     const safe = query.replace(/'/g, "\\'");
-    const operator = mode === 'fulltext' ? 'fullText contains' : 'name contains';
-    let q = `${operator} '${safe}' and trashed=false`;
+    const hasQuery = safe.trim().length > 0;
+    let q = `trashed=false`;
+    if (hasQuery) {
+      const operator = mode === 'fulltext' ? 'fullText contains' : 'name contains';
+      q += ` and ${operator} '${safe}'`;
+    }
     if (mimeType) {
       q += ` and mimeType='${mimeType}'`;
     }

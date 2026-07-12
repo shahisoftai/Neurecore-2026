@@ -87,7 +87,7 @@ export class GoogleGmailService {
     }
 
     const detailPromises = listData.messages.map((m) =>
-      this.getMessage(m.id, m.threadId),
+      this.getMessage(tenantId, m.id, m.threadId),
     );
     const messages = await Promise.all(detailPromises);
 
@@ -95,13 +95,21 @@ export class GoogleGmailService {
   }
 
   /**
-   * Get a single message with parsed headers and snippet
+   * Get a single message with parsed headers and snippet.
+   * @param tenantId The tenant whose Google credentials to use (required).
+   * @param messageId Gmail message ID.
+   * @param threadId Optional thread ID (only used as a fallback if the
+   *                 response omits it).
    */
-  async getMessage(messageId: string, threadId: string): Promise<GmailMessage> {
+  async getMessage(
+    tenantId: string,
+    messageId: string,
+    threadId?: string,
+  ): Promise<GmailMessage> {
     const res = await this.authFetch(
       `${this.GMAIL_API}/messages/${messageId}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`,
       {},
-      threadId,
+      tenantId,
     );
 
     if (!res.ok) {
@@ -228,5 +236,14 @@ export class GoogleGmailService {
       labels: { id: string; name: string; type: string }[];
     };
     return data.labels ?? [];
+  }
+
+  /**
+   * Expose the underlying access token for tool callers (e.g. flag action)
+   * that need an Authorization bearer header for ad-hoc Gmail REST calls.
+   * Returns null when the tenant has not connected Google.
+   */
+  async getAccessToken(tenantId: string): Promise<string | null> {
+    return this.authClient.getAccessToken(tenantId);
   }
 }

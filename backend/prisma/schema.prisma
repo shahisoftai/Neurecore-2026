@@ -418,6 +418,9 @@ model Tenant {
   // Phase B: Google Workspace identifiers (cached after first connect)
   googleDriveRootFolderId String?
   googleCalendarId        String?
+  // Phase 5+: Connected Google account email (saved at OAuth callback so
+  // userinfo doesn't need to be re-queried on every status check).
+  googleAccountEmail      String?
 
   // WS-2: Onboarding state machine
   onboardingCompletedAt DateTime?

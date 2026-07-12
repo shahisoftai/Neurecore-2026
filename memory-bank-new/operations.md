@@ -187,6 +187,28 @@ Order matters: generate → build → migrate → restart.
 
 Intermittent `Can't reach database server` errors observed in `MissionFeedAiPrioritizer` and `SyncSchedulerService` (logged "0 succeeded, 0 failed" every 15 minutes). The `/api/v1/health` shallow check passes; deep queries sometimes fail. The pool retries automatically — if a deploy shows persistent errors, check Neon status page.
 
+### 5.7 Backend Google OAuth env checklist
+
+When adding/removing Google OAuth consumers, audit both local and Contabo env files. As of 2026-07-12, the following vars must be set in `/opt/neurecore/backend/backend/.env.production` (and the matching local `backend/.env.production` template):
+
+```ini
+GOOGLE_CLIENT_ID=<web-app OAuth client id>.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-…           # the matching secret
+GOOGLE_REDIRECT_URI=https://brain.neurecore.com/api/v1/integrations/google/callback
+GOOGLE_TOKEN_ENCRYPTION_KEY=<32+ char hex>  # AES-256-GCM for the per-tenant refresh tokens
+TENANT_FRONTEND_BASE_URL=https://hq.neurecore.com
+ADMIN_FRONTEND_BASE_URL=https://cc.neurecore.com
+```
+
+**Smoke-test after deploy:**
+```bash
+ssh contabo 'grep -E "^GOOGLE_" /opt/neurecore/backend/backend/.env.production'
+ssh contabo 'curl -s https://brain.neurecore.com/api/v1/integrations/google/status \
+  -H "Cookie: __Host-nc_at=<paste-from-browser>" | head -c 300'
+```
+
+If `health/status` returns 200 with the full payload (`email`, `scopes`, `connected:true`), the integration is healthy.
+
 ---
 
 ## 6. Frontends — specific gotchas

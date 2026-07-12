@@ -11,6 +11,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { IntegrationsService } from '../integrations.service';
 import { PrismaIntegrationCredentialStore } from '../services/integration-credential.store';
+import type { GoogleAuthClient } from '../google/google-auth.client';
 import type { PrismaService } from '../../../infrastructure/database/prisma.service';
 import type { ConfigService } from '@nestjs/config';
 
@@ -18,6 +19,11 @@ const credentialStore = {
   exists: jest.fn(),
   delete: jest.fn().mockResolvedValue(undefined),
 } as unknown as PrismaIntegrationCredentialStore;
+
+const authClient = {
+  getAccessToken: jest.fn(),
+  getCredentials: jest.fn(),
+} as unknown as GoogleAuthClient;
 
 const tenant = {
   findUnique: jest.fn(),
@@ -46,6 +52,7 @@ function makeService(): IntegrationsService {
     credentialStore,
     config,
     prisma,
+    authClient,
   );
 }
 
@@ -102,10 +109,14 @@ describe('IntegrationsService — G7 adminDisconnectGoogle', () => {
       'GOOGLE',
     );
     // Two tenant.update calls: one for credential delete (none), one for clear
-    // (yes — googleDriveRootFolderId/googleCalendarId = null).
+    // (yes — googleDriveRootFolderId/googleCalendarId/googleAccountEmail = null).
     expect(tenant.update).toHaveBeenCalledWith({
       where: { id: 'tenant-z' },
-      data: { googleDriveRootFolderId: null, googleCalendarId: null },
+      data: {
+        googleDriveRootFolderId: null,
+        googleCalendarId: null,
+        googleAccountEmail: null,
+      },
     });
   });
 });

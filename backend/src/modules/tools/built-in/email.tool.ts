@@ -196,7 +196,11 @@ export class EmailTool extends BaseStructuredTool {
     if (!input.messageId) {
       return { success: false, error: 'messageId is required for get_message' };
     }
-    const meta = await this.gmail.getMessage(input.messageId, input.threadId ?? '');
+    const meta = await this.gmail.getMessage(
+      tenantId,
+      input.messageId,
+      input.threadId,
+    );
     const body = await this.gmail.getMessageBody(input.messageId, tenantId);
     return {
       success: true,
@@ -298,7 +302,7 @@ export class EmailTool extends BaseStructuredTool {
         };
     }
 
-    const accessToken = await this.gmail['authClient'].getAccessToken(tenantId);
+    const accessToken = await this.gmail.getAccessToken(tenantId);
     if (!accessToken) {
       return { success: false, error: 'Google is not connected for this tenant' };
     }

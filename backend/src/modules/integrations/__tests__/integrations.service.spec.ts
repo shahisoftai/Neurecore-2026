@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { IntegrationsService } from '../integrations.service';
 import { PrismaIntegrationCredentialStore } from '../services/integration-credential.store';
+import type { GoogleAuthClient } from '../google/google-auth.client';
 import type { PrismaService } from '../../../infrastructure/database/prisma.service';
 import type { ConfigService } from '@nestjs/config';
 
@@ -15,6 +16,11 @@ const mockConfig = {
   get: jest.fn(),
 } as unknown as ConfigService;
 
+const mockAuthClient = {
+  getAccessToken: jest.fn(),
+  getCredentials: jest.fn(),
+} as unknown as GoogleAuthClient;
+
 const mockTenant = {
   findUnique: jest.fn(),
   update: jest.fn().mockResolvedValue(undefined),
@@ -27,7 +33,12 @@ const mockPrisma = {
 const originalFetch = global.fetch;
 
 function makeService(): IntegrationsService {
-  return new IntegrationsService(mockCredentialStore, mockConfig, mockPrisma);
+  return new IntegrationsService(
+    mockCredentialStore,
+    mockConfig,
+    mockPrisma,
+    mockAuthClient,
+  );
 }
 
 beforeEach(() => {
@@ -204,7 +215,11 @@ describe('IntegrationsService', () => {
       expect(mockCredentialStore.delete).toHaveBeenCalledWith('t-disconnect', 'GOOGLE');
       expect(mockTenant.update).toHaveBeenCalledWith({
         where: { id: 't-disconnect' },
-        data: { googleDriveRootFolderId: null, googleCalendarId: null },
+        data: {
+          googleDriveRootFolderId: null,
+          googleCalendarId: null,
+          googleAccountEmail: null,
+        },
       });
     });
   });

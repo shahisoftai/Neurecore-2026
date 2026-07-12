@@ -200,7 +200,7 @@ export class IntegrationsController {
 
   @Get('gmail/messages/:id')
   async getMessage(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.gmailService.getMessage(id, user.tenantId!);
+    return this.gmailService.getMessage(user.tenantId!, id);
   }
 
   @Get('gmail/messages/:id/body')

@@ -408,11 +408,16 @@ for p in json.load(sys.stdin):
 **Failure-mode cheatsheet**
 
 | Symptom | Cause | Fix |
-|---|---|---|---|
+|---|---|---|
 | `Failed to start Google authorization` toast after rotation | Env not loaded | Restart `neurecore-backend`; check `pm2 logs` for "Google OAuth is not configured" |
 | Google returns `invalid_client` | Wrong secret typed; key rotation not propagated | Re-set `.env`, restart backend, retry consent |
 | `[GSI_LOGGER]: The given client ID is not found` on login page | Frontend `.env.local` overrides `.env.production` for `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (Next.js gives `.env.local` higher priority) | Fix `.env.local` on Contabo: `/opt/neurecore/frontend-tenant/.env.local`; rebuild frontend (`npx next build`); restart PM2 |
 | Google returns `redirect_uri_mismatch` (Error 400) on integration OAuth | `GOOGLE_REDIRECT_URI` missing from backend `.env.production` — falls back to wrong default URL | Add `GOOGLE_REDIRECT_URI=https://brain.neurecore.com/api/v1/integrations/google/callback` to `/opt/neurecore/backend/backend/.env.production`; restart backend with `--update-env` |
+| Tenant Calendar/Sheets/Drive API calls return 401 silently or `BadRequestException` with no message | Latent bug fixed 2026-07-12: `GoogleGmailService.getMessage(messageId, threadId)` was missing `tenantId` — second arg was passed to `authFetch` as if it were the tenant | Code is fixed; if a tenant still hits this, run a one-off `node -e` to fetch the userinfo and confirm the access token is fresh, then collect backend `pm2 logs` during the request. |
+| Backend HMR or `npm run start` fails on `GoogleDriveService` constructor | Latent bug fixed 2026-07-12: `private readonly prisma = new PrismaClient()` instantiated a fresh Prisma client per process, escaping DI | Code is fixed; should never recur. If you see `PrismaClient is not a constructor`, ensure your build cache is fresh (`rm -rf dist` then `nest build`). |
+| Sheets list page is empty even though user has spreadsheets | Frontend used `searchDrive('title:')` literally; backend had no "list by mimeType only" mode | Code is fixed — pass empty string or rely on the default empty-query path which now omits the `name/fullText contains` clause. |
+| Manage page "Connected account" shows "—" but scope badges say Granted | OAuth scopes don't include `openid`; userinfo only returns email for the fresh token. `googleAccountEmail` cached at callback time, but for older tenants the field is null | Migration `20260712_google_account_email` adds the column; populated retroactively for the current tenant via DB. For new disconnects/reconnects, the field is set automatically. |
+| Calendar event creation returns 403 "writer access required" | Selected calendar is read-only (e.g. `Holidays in Pakistan`) | Select the user's primary calendar (e.g. `mnpiracha@gmail.com`) before creating events. No code change needed. |
 | Existing tenant Gmail calls return 401 | Refresh token revoked (rare, only on full OAuth app deletion) | Admin: `POST /integrations/admin/google/:tenantId/disconnect`, ask tenant to reconnect |
 | OAuth callback lands on `brain.neurecore.com` instead of `hq.neurecore.com` | `FRONTEND_BASE_URL` not set, env fell back to a hard default | Confirm `TENANT_FRONTEND_BASE_URL=https://hq.neurecore.com` is set in `backend/.env.production`; restart backend |
 

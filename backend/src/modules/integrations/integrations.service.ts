@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { IntegrationProvider, IntegrationStatus } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { PrismaIntegrationCredentialStore, GoogleCredentials } from './services/integration-credential.store';
+import { GoogleAuthClient } from './google/google-auth.client';
 
 const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
@@ -25,6 +26,7 @@ export class IntegrationsService {
     private readonly credentialStore: PrismaIntegrationCredentialStore,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly authClient: GoogleAuthClient,
   ) {}
 
   async initiateGoogleOAuth(
@@ -142,6 +144,16 @@ export class IntegrationsService {
       // Non-fatal — email lookup failed
     }
 
+    // Persist the resolved email on the Tenant so the Manage page can
+    // surface "Connected as xxx@gmail.com" without re-fetching userinfo
+    // (the Google OAuth scopes we request don't include `openid`, so
+    // /oauth2/v2/userinfo only returns email for the freshly-issued token).
+    if (email) {
+      await this.prisma.tenant
+        .update({ where: { id: tenantId }, data: { googleAccountEmail: email } })
+        .catch(() => undefined);
+    }
+
     this.logger.log(`Google OAuth connected for tenant ${tenantId}`);
     return { connected: true, email };
   }
@@ -151,7 +163,11 @@ export class IntegrationsService {
     // Clear cached Google identifiers on tenant
     await this.prisma.tenant.update({
       where: { id: tenantId },
-      data: { googleDriveRootFolderId: null, googleCalendarId: null },
+      data: {
+        googleDriveRootFolderId: null,
+        googleCalendarId: null,
+        googleAccountEmail: null,
+      },
     }).catch(() => {
       // Tenant update is best-effort cleanup
     });
@@ -208,11 +224,53 @@ export class IntegrationsService {
     if (!creds) return { connected: false };
 
     const googleCreds = creds as GoogleCredentials;
-    return {
+    const status: {
+      connected: boolean;
+      scopes?: string[];
+      expiresAt?: Date;
+      email?: string;
+    } = {
       connected: true,
       scopes: googleCreds.scopes,
       expiresAt: googleCreds.expiryDate ? new Date(googleCreds.expiryDate) : undefined,
     };
+
+    // 1) Prefer the persisted email (saved at OAuth time) so we don't
+    //    depend on userinfo scope after refresh.
+    const tenant = await this.prisma.tenant
+      .findUnique({ where: { id: tenantId }, select: { googleAccountEmail: true } })
+      .catch(() => null);
+    if (tenant?.googleAccountEmail) {
+      status.email = tenant.googleAccountEmail;
+      return status;
+    }
+
+    // 2) Fallback: best-effort userinfo (requires `openid` in granted scopes)
+    try {
+      const accessToken = await this.authClient.getAccessToken(tenantId);
+      if (accessToken) {
+        const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { email?: string };
+          if (data.email) {
+            status.email = data.email;
+            // Persist for next time
+            await this.prisma.tenant
+              .update({
+                where: { id: tenantId },
+                data: { googleAccountEmail: data.email },
+              })
+              .catch(() => undefined);
+          }
+        }
+      }
+    } catch {
+      // Email lookup is best-effort; don't fail the status call
+    }
+
+    return status;
   }
 
   async connectBrevo(tenantId: string, apiKey: string): Promise<{ connected: boolean }> {
