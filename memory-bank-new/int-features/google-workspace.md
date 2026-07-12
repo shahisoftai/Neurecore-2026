@@ -79,6 +79,15 @@ Run: `npx jest --config jest.config.js src/modules/integrations/google src/modul
 - G9 `SheetsTool.import_csv`/`export_csv` actions + pure CSV helpers
 - G10 Client-secret rotation runbook in `memory-bank-new/runbook.md` §9
 
+## Post-Phase-5 Fixes (2026-07-12)
+
+See `google-services.md §10` for the comprehensive 2026-07-12 audit:
+- **G-CRIT-1**: Fixed placeholder `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in `frontend-tenant/.env.local`
+- **G-CRIT-2**: Added missing `GOOGLE_TOKEN_ENCRYPTION_KEY` to `backend/.env`
+- **G-CRIT-3/Fixed CryptoService**: `ENCRYPTION_KEY` vs `GOOGLE_TOKEN_ENCRYPTION_KEY` mismatch; added dev-fallback for backward compat
+- **Live E2E verification**: Calendar, Sheets, Docs, Slides, Drive, Gmail all verified against mnpiracha@gmail.com
+- **728/728 tests pass**
+
 ### Forward-looking (deferred)
 | # | Gap | Priority |
 |---|-----|----------|

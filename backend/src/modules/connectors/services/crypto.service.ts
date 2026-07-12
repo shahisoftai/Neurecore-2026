@@ -33,20 +33,32 @@ export class CryptoService {
   private readonly key: Buffer;
 
   constructor() {
-    const hexKey = process.env['ENCRYPTION_KEY'];
+    const hexKey = process.env['ENCRYPTION_KEY'] || process.env['GOOGLE_TOKEN_ENCRYPTION_KEY'];
     const appSecret = process.env['APP_SECRET'];
+    const devFallback = scryptSync('dev-insecure-key', SALT, 32) as Buffer;
 
     if (hexKey) {
       this.key = Buffer.from(hexKey, 'hex');
+      this.logger.log(`Using explicit encryption key (${hexKey.substring(0, 8)}...)`);
     } else if (appSecret) {
       this.key = scryptSync(appSecret, SALT, 32) as Buffer;
+      this.logger.log('Using APP_SECRET derived key');
     } else {
       this.logger.warn(
         'ENCRYPTION_KEY and APP_SECRET are not set — using insecure dev key. SET THIS IN PRODUCTION.',
       );
-      this.key = scryptSync('dev-insecure-key', SALT, 32) as Buffer;
+      this.key = devFallback;
+    }
+
+    // Try decrypt with dev fallback if explicit key fails (backward compat)
+    // This allows transitioning from dev-fallback to explicit key without
+    // invalidating existing encrypted credentials.
+    if (hexKey) {
+      this._devFallback = devFallback;
     }
   }
+
+  private _devFallback: Buffer | null = null;
 
   encrypt(plaintext: string): string {
     const iv = randomBytes(IV_LENGTH);
@@ -70,11 +82,27 @@ export class CryptoService {
     const iv = Buffer.from(ivHex, 'hex');
     const tag = Buffer.from(tagHex, 'hex');
     const data = Buffer.from(dataHex, 'hex');
-    const decipher = createDecipheriv(ALGORITHM, this.key, iv, {
-      authTagLength: TAG_LENGTH,
-    });
-    decipher.setAuthTag(tag);
-    return decipher.update(data).toString('utf8') + decipher.final('utf8');
+
+    const tryDecrypt = (key: Buffer): string => {
+      const decipher = createDecipheriv(ALGORITHM, key, iv, {
+        authTagLength: TAG_LENGTH,
+      });
+      decipher.setAuthTag(tag);
+      return decipher.update(data).toString('utf8') + decipher.final('utf8');
+    };
+
+    try {
+      return tryDecrypt(this.key);
+    } catch {
+      if (this._devFallback) {
+        try {
+          return tryDecrypt(this._devFallback);
+        } catch {
+          throw new Error('Decryption failed with all available keys');
+        }
+      }
+      throw new Error('Decryption failed');
+    }
   }
 
   /** Returns true if the value looks like an encrypted ciphertext (iv:tag:data) */

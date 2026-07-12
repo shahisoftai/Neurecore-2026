@@ -796,6 +796,59 @@ All operations verified end-to-end against `mnpiracha@gmail.com` (tenant `mali@l
 
 ### 11.8 Deploy Notes
 
+## 10. Phase 5 — Full Verification (2026-07-12)
+
+### 10.1 Issues Fixed
+
+| # | Issue | File | Fix |
+|---|-------|------|-----|
+| G-CRIT-1 | `frontend-tenant/.env.local` had placeholder `your-google-client-id.apps.googleusercontent.com` overriding real value | `frontend-tenant/.env.local:41` | Set to `584510836530-pi64n9866hcuv5kuip2fnagsmhtjp3h0.apps.googleusercontent.com` |
+| G-CRIT-2 | `backend/.env` (dev) missing `GOOGLE_TOKEN_ENCRYPTION_KEY` | `backend/.env` | Added key from production env |
+| G-CRIT-3 | `CryptoService` reads `ENCRYPTION_KEY` but .env.production only had `GOOGLE_TOKEN_ENCRYPTION_KEY` | `backend/.env.production:150` | Added `ENCRYPTION_KEY` alias; updated `CryptoService` to also check `GOOGLE_TOKEN_ENCRYPTION_KEY` |
+| G-CRIT-4 | Existing encrypted credentials (stored with dev fallback key) couldn't be decrypted after setting `ENCRYPTION_KEY` to a different value | `crypto.service.ts:64-78` | `decrypt()` now falls back to dev key when primary key fails |
+| G-NET-1 | Backend couldn't connect to Upstash Redis from dev environment | `backend/.env` | Switched to local Redis (miniredis.js dev server) |
+
+### 10.2 Google Workspace End-to-End Verification (Live)
+
+All operations performed against `mnpiracha@gmail.com` Google account via NeureCore backend API with tenant `mali@live.com`:
+
+| Service | Operation | Result |
+|---------|-----------|--------|
+| **Auth/Login** | Login as `mali@live.com` | ✅ Token issued, JWT auth works |
+| **Google Status** | `GET /integrations/google/status` | ✅ Connected: true, 5 scopes, email: mnpiracha@gmail.com |
+| **Calendar** | `GET /integrations/calendar/list` | ✅ 3 calendars listed (Holidays, Family, Primary) |
+| **Calendar** | `GET /integrations/calendar/events?maxResults=5` | ✅ 5 events returned from primary calendar |
+| **Calendar** | `POST /integrations/calendar/events` — created "NeureCore AI Test - Calendar Integration" | ✅ Event created on mnpiracha@gmail.com calendar for 2026-07-13 14:00-15:00 UTC |
+| **Sheets** | `POST /integrations/sheets` — created "NeureCore AI - Task Tracker" with Tasks+Summary sheets | ✅ Spreadsheet ID: `1fAXZYvN2jvXQt-sMDPyqiTzfLKUFDbRWJmHOB5Ck1wc` |
+| **Sheets** | `POST /integrations/sheets/:id/values/Tasks!A1:F3` — wrote header + 2 data rows | ✅ 18 cells updated (3 rows × 6 cols) |
+| **Sheets** | `GET /integrations/sheets/:id/values/Tasks!A1:F3` — read data back | ✅ Values match written content |
+| **Docs** | `POST /integrations/docs` — created "NeureCore AI - Project Report" with HTML content | ✅ Doc ID: `1QhEMORdTuuS6OxwnAqRMbpuH4VcPtkr5BQiODbDzWB8` |
+| **Slides** | `POST /integrations/slides` — created "NeureCore AI - Presentation" with 3 slides | ✅ Presentation ID: `12cIrIaDMfi7VgihD4dPOc8YLD--4RgvDNCW5tEMHXcM` |
+| **Drive** | `POST /integrations/drive/folders` — created "NeureCore AI Workspace" folder | ✅ Folder with webViewLink returned |
+| **Drive** | `GET /integrations/drive/search?q=&pageSize=5` | ✅ 5 files found |
+| **Gmail** | `GET /integrations/gmail/labels` | ✅ 15 labels |
+| **Gmail** | `GET /integrations/gmail/inbox?maxResults=3` | ✅ 3 inbox messages |
+| **Gmail** | `POST /integrations/gmail/send` — sent test email to mali@live.com | ✅ Message sent (ID: `19f56ac4223c2912`) |
+
+### 10.3 Tasks & Projects Created
+
+- **Project**: "Google Workspace Integration Project" (ACTIVE)
+- **Tasks**: Complete Google Drive Integration, Implement Gmail Send/Read, Set up Google Calendar for AI, Create Documents and Reports
+
+### 10.4 Test Suite
+
+All **728 tests** across **76 suites** pass. Google-specific tests:
+- 132 tests in `src/modules/integrations/google/`, `src/modules/integrations/__tests__/`, and `csv.util.spec.ts`
+- 75 tests in `src/modules/tools/built-in/` (calendar, sheets, documents, email tools)
+
+### 10.5 Generated Google Workspace Artifacts
+
+| Artifact | URL |
+|----------|-----|
+| Spreadsheet: NeureCore AI - Task Tracker | https://docs.google.com/spreadsheets/d/1fAXZYvN2jvXQt-sMDPyqiTzfLKUFDbRWJmHOB5Ck1wc/edit |
+| Document: NeureCore AI - Project Report | https://docs.google.com/document/d/1QhEMORdTuuS6OxwnAqRMbpuH4VcPtkr5BQiODbDzWB8/edit |
+| Presentation: NeureCore AI - Presentation | https://docs.google.com/presentation/d/12cIrIaDMfi7VgihD4dPOc8YLD--4RgvDNCW5tEMHXcM/edit |
+
 Deployed to Contabo 2026-07-12 15:35 PKT:
 - **Backend**: rsync → pnpm install → prisma generate → nest build → PM2 restart (neurecore-backend)
 - **Tenant**: rsync → pnpm install --no-frozen-lockfile → npm run build → PM2 reload (neurecore-tenant)
