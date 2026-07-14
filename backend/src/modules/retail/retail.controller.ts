@@ -46,7 +46,7 @@ import type { JwtPayload } from '../auth/interfaces/token.interface';
   UserRole.ADMIN,
   UserRole.USER,
 )
-@Controller('v1/retail')
+@Controller({ path: 'retail', version: '1' })
 export class RetailController {
   constructor(
     private readonly retailService: RetailService,

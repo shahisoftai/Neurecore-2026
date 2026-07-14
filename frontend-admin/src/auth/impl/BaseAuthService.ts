@@ -90,15 +90,19 @@ export class BaseAuthService implements IAuthService {
     }
 
     const cachedUser = this.userRepository.getUser();
-    const cookie = this.tokenRepository.getAccessToken();
+    // Use CSRF cookie as session indicator — __Host-nc_at is HttpOnly
+    // (not readable via JS), but __Host-nc_csrf is not HttpOnly and is
+    // present whenever a session exists. See auth.md §16.3.
+    const hasSession = !!this.tokenRepository.getCsrfToken();
+    const hasCachedUser = !!cachedUser;
 
-    if (!cookie && !cachedUser) {
+    if (!hasSession && !hasCachedUser) {
       this.setState({ status: 'unauthenticated', reason: 'never_logged_in' });
       this.initialized = true;
       return;
     }
 
-    if (cookie && cachedUser) {
+    if (hasSession && hasCachedUser) {
       this.setState({ status: 'authenticated', user: cachedUser });
       // Best-effort refresh in the background; never await on boot.
       this.refetch().catch(() => {
@@ -108,8 +112,8 @@ export class BaseAuthService implements IAuthService {
       return;
     }
 
-    // Edge case: cookie OR cached user present, but not both.
-    if (cookie && !cachedUser) {
+    // Edge case: session indicator OR cached user present, but not both.
+    if (hasSession && !hasCachedUser) {
       // Validate by hitting /me.
       const res = await this.authApi.me();
       if (res.ok) {
@@ -120,14 +124,28 @@ export class BaseAuthService implements IAuthService {
         this.userRepository.clearUser();
         this.setState({ status: 'unauthenticated', reason: 'session_expired' });
       } else {
-        // Network / 5xx — keep cached state empty, set unauthenticated so the
-        // user is forced through /login, but DON'T touch the cookie (transient error).
         this.setState({ status: 'unauthenticated', reason: 'never_logged_in' });
       }
-    } else if (!cookie && cachedUser) {
-      // Cookie expired but cached user — clear user but don't redirect (page-level decision).
-      this.userRepository.clearUser();
-      this.setState({ status: 'unauthenticated', reason: 'session_expired' });
+    } else if (!hasSession && hasCachedUser) {
+      // CSRF cookie missing but cached user — likely a full-page navigation
+      // where the session is still valid. Try /me to validate; keep cached
+      // user until we know for sure.
+      const res = await this.authApi.me().catch(() => null);
+      if (res?.ok) {
+        this.userRepository.setUser(res.data);
+        this.setState({ status: 'authenticated', user: res.data });
+      } else if (res?.status === 401) {
+        this.tokenRepository.clearTokens();
+        this.userRepository.clearUser();
+        this.setState({ status: 'unauthenticated', reason: 'session_expired' });
+      } else {
+        // Network error or 5xx — keep cached user, stay authenticated
+        if (cachedUser) {
+          this.setState({ status: 'authenticated', user: cachedUser });
+        } else {
+          this.setState({ status: 'unauthenticated', reason: 'never_logged_in' });
+        }
+      }
     }
 
     this.initialized = true;

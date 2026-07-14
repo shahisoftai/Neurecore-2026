@@ -13,42 +13,60 @@
  * Responses / Completeness / Interview / Extraction modules respectively.
  */
 
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { ApiCommon } from '../../common/decorators/api-common.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RequirementsService } from './requirements/requirements.service';
 import { AdaptiveQuestioningService } from './requirements/adaptive-questioning.service';
-import { CompletenessService } from './completeness/completeness.service';
 import { ResponseService } from './responses/response.service';
-import { ProjectTypePacksService } from './project-type-packs/project-type-packs.service';
-import { ProjectTypesService } from '../project-types/project-types.service';
-import { PrismaService } from '../../infrastructure/database/prisma.service';
-import type { Project } from '../projects/interfaces/project.interface';
+import type { ProjectCompletenessService } from './clients/project-completeness.service';
 import type { ResolvedQuestion } from './requirements/interfaces/requirements.interface';
+
+interface RequestWithUser {
+  user?: { tenantId?: string };
+}
 
 @Controller({ path: 'projects/:projectId', version: '1' })
 @ApiCommon('information-engine')
 @UseGuards(JwtAuthGuard)
 export class EngineReadController {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly projectTypesService: ProjectTypesService,
-    private readonly projectTypePacksService: ProjectTypePacksService,
-    private readonly requirementsService: RequirementsService,
     private readonly adaptiveQuestioningService: AdaptiveQuestioningService,
     private readonly responseService: ResponseService,
-    private readonly completenessService: CompletenessService,
+    // Resolved lazily via ModuleRef to avoid a construction-time module cycle
+    // (ClientsModule imports ProjectsModule → InformationEngineModule →
+    // EngineReadModule). See ResponseController for the same pattern.
+    private readonly moduleRef: ModuleRef,
   ) {}
 
+  private projectCompleteness(): ProjectCompletenessService {
+    return this.moduleRef.get<ProjectCompletenessService>(
+      'PROJECT_COMPLETENESS_SERVICE',
+      { strict: false },
+    );
+  }
+
   @Get('information-requirements')
-  async getRequirements(@Param('projectId') projectId: string) {
-    const resolved = await this.resolveForProject(projectId);
+  async getRequirements(
+    @Param('projectId') projectId: string,
+    @Req() req: RequestWithUser,
+  ) {
+    const tenantId = req.user?.tenantId ?? '';
+    const resolved: ResolvedQuestion[] = await this.projectCompleteness()
+      .resolveApplicable(projectId, tenantId);
     return { questions: resolved };
   }
 
   @Get('next-question')
-  async getNextQuestion(@Param('projectId') projectId: string) {
-    const resolved = await this.resolveForProject(projectId);
+  async getNextQuestion(
+    @Param('projectId') projectId: string,
+    @Req() req: RequestWithUser,
+  ) {
+    const tenantId = req.user?.tenantId ?? '';
+    const resolved = await this.projectCompleteness().resolveApplicable(
+      projectId,
+      tenantId,
+    );
     const current = await this.responseService.listCurrent(
       'PROJECT',
       projectId,
@@ -83,44 +101,5 @@ export class EngineReadController {
     }
 
     return { question: next, existingResponse };
-  }
-
-  private async resolveForProject(
-    projectId: string,
-  ): Promise<ResolvedQuestion[]> {
-    const project: Pick<Project, 'projectTypeId' | 'customerId'> | null =
-      await this.prisma.project.findUnique({
-        where: { id: projectId },
-        select: { projectTypeId: true, customerId: true },
-      });
-    if (!project || !project.projectTypeId) return [];
-
-    const version = await this.projectTypesService.getCurrentVersion(
-      project.projectTypeId,
-      null,
-    );
-    if (!version) return [];
-
-    const links = await this.projectTypePacksService.listForProjectType(
-      project.projectTypeId,
-    );
-    const linkedPacks = links.map((l) => ({
-      key: l.questionPack.key,
-      questions: Array.isArray(l.questionPack.questions)
-        ? (l.questionPack.questions as never)
-        : [],
-    }));
-
-    return this.requirementsService.resolveForProjectType(
-      version.informationRequirements ?? [],
-      linkedPacks,
-      {
-        entityType: 'PROJECT',
-        entityId: projectId,
-        hasCustomer: !!project.customerId,
-        classification: null,
-        currentResponses: [],
-      },
-    );
   }
 }

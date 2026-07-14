@@ -14,6 +14,19 @@ import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
 import { EventsModule } from './modules/events/events.module';
+import { EnterpriseEventsModule } from './modules/enterprise-events/enterprise-events.module';
+import { ContextPlaneModule } from './modules/context-plane/context-plane.module';
+import { WorkRuntimeModule } from './modules/work-runtime/work-runtime.module';
+import { EnterpriseCognitionModule } from './modules/enterprise-cognition/enterprise-cognition.module';
+import { EnterpriseAutonomyModule } from './modules/enterprise-autonomy/enterprise-autonomy.module';
+import { EnterpriseOperatingSystemModule } from './modules/enterprise-operating-system/enterprise-operating-system.module';
+import { PlatformOperationsModule } from './modules/platform-operations/platform-operations.module';
+import { EnterpriseIntelligenceNetworkModule } from './modules/enterprise-intelligence-network/enterprise-intelligence-network.module';
+import { PlatformSDKModule } from './modules/platform-sdk/platform-sdk.module';
+import { CloudPlatformModule } from './modules/cloud-platform/cloud-platform.module';
+import { ApplicationFrameworkModule } from './modules/application-framework/application-framework.module';
+import { EnterpriseAIGovernanceModule } from './modules/enterprise-ai-governance/ai-governance.module';
+import { PlatformEvolutionModule } from './modules/platform-evolution/platform-evolution.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { MemoryModule } from './modules/memory/memory.module';
 import { ToolsModule } from './modules/tools/tools.module';
@@ -137,6 +150,7 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     TenantsModule,
     UsersModule,
     EventsModule,
+    EnterpriseEventsModule, // Enterprise Event Fabric (ADR-001, Phase 2) — @Global
 
     // Phase 2 — Agent Runtime
     AgentsModule,
@@ -147,6 +161,18 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     // Phase 3 — Governance, Observability, Notifications, Departments, Models
     GovernanceModule,
     HermesModule,
+    ContextPlaneModule, // Organizational Context Plane (ADR-002, Phase 3) — @Global
+    WorkRuntimeModule, // Governed Work Runtime (ADR-003/004, Phase 4)
+    EnterpriseCognitionModule, // Enterprise Cognitive Coordination Layer (Phase 5)
+    EnterpriseAutonomyModule, // Governed Autonomous Operations (Phase 6)
+    EnterpriseOperatingSystemModule, // Enterprise OS / Digital Twin (Phase 7)
+    PlatformOperationsModule, // Platform Hardening & Operations (Phase 8)
+    EnterpriseIntelligenceNetworkModule, // Knowledge Graph & Intelligence (Phase 9)
+    PlatformSDKModule, // Platform SDK & Extensibility (Phase 10)
+    CloudPlatformModule, // Cloud Platform & Federation (Phase 11)
+    ApplicationFrameworkModule, // Enterprise Applications Framework (Phase 12)
+    EnterpriseAIGovernanceModule, // AI Governance & Trust (Phase 13)
+    PlatformEvolutionModule, // Platform Evolution & Future Readiness (Phase 14)
     ObservabilityModule,
     NotificationsModule,
     DepartmentsModule,

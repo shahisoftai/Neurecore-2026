@@ -100,7 +100,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (user.passwordChangedAt) {
       const tokenIssuedBeforePasswordChange =
         payload.pwd === undefined ||
-        payload.pwd * 1000 < user.passwordChangedAt.getTime();
+        payload.pwd < Math.floor(user.passwordChangedAt.getTime() / 1000);
       if (tokenIssuedBeforePasswordChange) {
         throw new UnauthorizedException(
           'Token invalidated by recent password change',

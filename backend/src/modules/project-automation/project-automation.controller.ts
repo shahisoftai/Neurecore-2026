@@ -3,7 +3,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProjectAutomationService } from './project-automation.service';
 import { TriggerAutomationDto, ReplanAutomationDto } from './dto/trigger-automation.dto';
 
-@Controller('v1/projects/:projectId/automation')
+@Controller({ path: 'projects/:projectId/automation', version: '1' })
 @UseGuards(JwtAuthGuard)
 export class ProjectAutomationController {
   constructor(private readonly automationService: ProjectAutomationService) {}

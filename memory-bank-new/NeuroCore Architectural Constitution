@@ -680,3 +680,37 @@ NeuroCore exists to make this cycle continuous, transparent, intelligent and inc
 This is the enduring foundation upon which every future capability of NeuroCore shall be built.
 
 This constitution is intended to be stable over the long term. Future implementation plans, modules, and pull requests can be reviewed against it to ensure NeuroCore evolves consistently without drifting from its core vision.
+
+---
+
+# Amendments
+
+> Per Article XXVI (Long-Term Compatibility), amendments are **additive**. Original
+> article text above is preserved unchanged. Amendments clarify or extend, never
+> contradict. Ratified amendments are listed below with dates.
+
+## Amendment 1 — Enterprise Understanding (2026-07-14)
+
+**Basis:** `plans/enterprise-understanding-architecture-design.md` v2.2; ADR-011/012/013/014.
+**Architecture status:** FROZEN 2026-07-14 — no further architectural redesign unless a constitutional contradiction or critical implementation issue is discovered.
+
+### 1a. Preamble principle (addition to "The NeuroCore Principle")
+> **An organization is operated through understanding, not through forms. The user — or any system — brings an intent or an input.** NeuroCore's task is to understand it, recommend organizational action, and execute under governance. Understanding precedes action; action is governed; knowledge is the residue of both.
+
+### 1b. New Article XXVIII — Enterprise Understanding
+> NeuroCore shall accept enterprise inputs in their natural form — conversation, email, meeting, voice, document, sensor, or system event — through **channel-agnostic intake**, and interpret them into **entity-agnostic Enterprise Understanding**: candidate subjects, candidate entity kinds, inferred information (with source and confidence), and relationships to the enterprise graph. Enterprise Understanding is **descriptive** ("what is happening?") and produces no actions.
+>
+> From understanding, NeuroCore shall produce **Enterprise Recommendations** ("what could the organization do?") — one or more candidate organizational actions, which may create or update any enterprise entity (Project, Customer, Vendor, Contract, HR Case, Incident, Procurement, Asset, Invoice, Risk, Opportunity, Board Decision, Policy, Audit, Legal Matter), assign work, request approvals, simply record organizational knowledge, or recommend no action.
+>
+> Among competing recommendations, NeuroCore shall make an **Enterprise Decision** ("what will the organization do, by whom, in what order?") — prioritizing, composing, and resolving conflicts among candidate actions, and resolving human versus AI decision authority per organizational autonomy (Article XIV). A decision produces a governed plan; it is not execution.
+>
+> Understanding, recommendation, and decision shall be **explainable** (source, method, confidence), **reversible**, and **governed before commitment** (Article XIII). **Interpretation, recommendation, and decision are enterprise capabilities, not the property of any single interface** — Hermes and every other channel consume them; none owns them. **Enterprise Initiation (project creation) is one consumer of Enterprise Understanding, not the capability itself.**
+
+### 1c. Clarification to Article IV (Enterprise Information Engine)
+> The Enterprise Information Engine is an **internal capability** serving **every** entity kind. Users and entities need not interact with Information Requirements, Question Packs, or Entity Types directly. Higher-level capabilities (Enterprise Understanding) may present a simpler experience while consuming the EIE underneath. The EIE remains the single source of truth for information completeness for whichever entity is chosen, regardless of how information was acquired.
+
+### 1d. Clarification to Article V (Continuous Discovery)
+> Information may also be acquired by **interpreting unstructured enterprise inputs** into pre-filled Information Responses (with source and confidence) for whichever entity the input concerns. Interpretation is a step of discovery, not a replacement for it; completeness and gaps continue to be governed by the Enterprise Information Engine.
+
+### 1e. Reaffirmation of Article VIII (Hermes as the Organizational Interface)
+> Hermes consumes Enterprise Understanding as **one interaction channel**. Hermes does not own Enterprise Intake or the Enterprise Understanding Layer. Hermes remains the organizational *interface*, never the organizational *brain*.

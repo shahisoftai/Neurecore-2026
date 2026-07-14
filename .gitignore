@@ -54,6 +54,7 @@ docker-volumes/
 # Misc
 *.local
 *.tsbuildinfo
+*.bak
 
 # Temp folder (not part of main project)
 Temp/

@@ -18,7 +18,7 @@ import { HERMES_RUNTIME } from './interfaces/hermes-runtime.interface';
 import { AGENT_MESSAGING_GUARD } from './interfaces/IAgentMessagingGuard';
 import { PARTICIPANT_RESOLVER } from './interfaces/IParticipantResolver';
 import { ActivityService } from './services/activity.service';
-import { EnterpriseEventBusService } from './services/enterprise-event-bus.service';
+import { HermesActivityBusService } from './services/hermes-activity-bus.service';
 import { ParticipantResolver } from './services/participant-resolver.service';
 import { AgentMessagingService } from './services/agent-messaging.service';
 import { AgentMessagingGuard } from './services/agent-messaging.guard';
@@ -72,13 +72,13 @@ import { EventsModule } from '../events/events.module';
     ApprovalWorkflowEngine,
     ThreadService,
     { provide: THREAD_SERVICE, useExisting: ThreadService },
-    { provide: HERMES_EVENT_BUS, useExisting: EnterpriseEventBusService },
+    { provide: HERMES_EVENT_BUS, useExisting: HermesActivityBusService },
     { provide: ACTIVITY_SERVICE, useExisting: ActivityService },
     { provide: HERMES_RUNTIME, useExisting: HermesRuntimeService },
     { provide: AGENT_MESSAGING_GUARD, useExisting: AgentMessagingGuard },
     { provide: PARTICIPANT_RESOLVER, useExisting: ParticipantResolver },
     ActivityService,
-    EnterpriseEventBusService,
+    HermesActivityBusService,
     ParticipantResolver,
     AgentMessagingService,
     AgentMessagingGuard,
@@ -111,7 +111,7 @@ import { EventsModule } from '../events/events.module';
     ApprovalWorkflowEngine,
     ThreadService,
     ActivityService,
-    EnterpriseEventBusService,
+    HermesActivityBusService,
     ParticipantResolver,
     AgentMessagingService,
     AgentMessagingGuard,

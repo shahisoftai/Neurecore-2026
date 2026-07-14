@@ -19,6 +19,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantIsolated } from '../../common/guards/tenant-isolated.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/token.interface';
+import { UserRole } from '@prisma/client';
 import { CustomersService } from './customers.service';
 import {
   CreateCustomerDto,
@@ -27,11 +28,24 @@ import {
   ListCustomersQueryDto,
 } from './dto/customer.dto';
 
+const PLATFORM_ROLES: ReadonlySet<UserRole> = new Set([
+  UserRole.SUPER_ADMIN,
+  UserRole.PLATFORM_ADMIN,
+  UserRole.SECURITY_OFFICER,
+  UserRole.SUPPORT,
+]);
+
 @Controller({ path: 'customers', version: '1' })
 @ApiCommon('customers')
 @UseGuards(JwtAuthGuard)
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
+
+  private resolveTenantId(user: JwtPayload): string {
+    if (user.tenantId) return user.tenantId;
+    if (PLATFORM_ROLES.has(user.role as UserRole)) return '*';
+    throw new Error('Tenant ID required');
+  }
 
   @Post()
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateCustomerDto) {
@@ -44,7 +58,7 @@ export class CustomersController {
         billingInfo: dto.billingInfo,
         tags: dto.tags,
       },
-      user.tenantId!,
+      this.resolveTenantId(user),
     );
   }
 
@@ -55,7 +69,7 @@ export class CustomersController {
   ) {
     const page = query.page ? Number(query.page) : 1;
     const limit = query.limit ? Number(query.limit) : 20;
-    return this.customersService.findAll(user.tenantId!, {
+    return this.customersService.findAll(this.resolveTenantId(user), {
       search: query.search,
       status: query.status,
       page,
@@ -68,7 +82,7 @@ export class CustomersController {
   @Get(':id')
   @TenantIsolated()
   findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.customersService.findById(id, user.tenantId!);
+    return this.customersService.findById(id, this.resolveTenantId(user));
   }
 
   @Patch(':id')
@@ -77,7 +91,7 @@ export class CustomersController {
     @Param('id') id: string,
     @Body() dto: UpdateCustomerDto,
   ) {
-    return this.customersService.update(id, user.tenantId!, {
+    return this.customersService.update(id, this.resolveTenantId(user), {
       name: dto.name,
       industry: dto.industry,
       primaryEmail: dto.primaryEmail,
@@ -90,12 +104,12 @@ export class CustomersController {
 
   @Post(':id/archive')
   archive(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.customersService.archive(id, user.tenantId!);
+    return this.customersService.archive(id, this.resolveTenantId(user));
   }
 
   @Post(':id/unarchive')
   unarchive(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.customersService.unarchive(id, user.tenantId!);
+    return this.customersService.unarchive(id, this.resolveTenantId(user));
   }
 
   @Post(':id/contacts')
@@ -104,7 +118,7 @@ export class CustomersController {
     @Param('id') id: string,
     @Body() dto: AddCustomerContactDto,
   ) {
-    return this.customersService.addContact(id, user.tenantId!, {
+    return this.customersService.addContact(id, this.resolveTenantId(user), {
       name: dto.name,
       email: dto.email,
       phone: dto.phone,
@@ -115,6 +129,6 @@ export class CustomersController {
 
   @Get(':id/contacts')
   listContacts(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.customersService.listContacts(id, user.tenantId!);
+    return this.customersService.listContacts(id, this.resolveTenantId(user));
   }
 }

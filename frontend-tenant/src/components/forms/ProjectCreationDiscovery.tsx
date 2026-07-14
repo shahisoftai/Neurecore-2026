@@ -41,18 +41,25 @@ export function ProjectCreationDiscovery({
     useResolvedRequirements(projectId);
   const { question, existingResponse, loading: nextLoading, refresh: refreshNext } =
     useAdaptiveNext(projectId);
-  const { record } = useRecordResponse(projectId);
+  const { record, error: recordError } = useRecordResponse(projectId);
 
   // When the user submits an answer, re-fetch requirements + next + meter.
+  // Only advance if the write actually succeeded — useRecordResponse returns
+  // null on failure (and sets recordError), so we must not blindly refresh
+  // (which would re-fetch the same unanswered question and appear to "loop").
   async function handleRecord(value: unknown) {
     if (!question) return;
-    await record({
+    const result = await record({
       questionId: question.questionId,
       value,
       sourceType: 'USER_INPUT',
       sourceLabel: 'Discovery form',
       confidence: 100,
     });
+    if (result === null) {
+      // Write failed — recordError is set and surfaced via QuestionEngine.
+      return;
+    }
     await Promise.all([refreshReqs(), refreshNext(), refreshSnap()]);
   }
 
@@ -100,6 +107,14 @@ export function ProjectCreationDiscovery({
           onSkip={onSkip}
           onComplete={onComplete}
         />
+        {recordError ? (
+          <p
+            className="mt-2 text-xs text-rose-400"
+            data-testid="discovery-record-error"
+          >
+            Could not save your answer: {recordError}
+          </p>
+        ) : null}
       </div>
       <div className="flex justify-between gap-2 pt-3 border-t border-surface-border">
         <ActionButton variant="ghost" size="md" onClick={onBack}>

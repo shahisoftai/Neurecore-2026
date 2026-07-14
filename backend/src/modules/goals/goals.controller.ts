@@ -27,12 +27,26 @@ import type { GoalResponseDto } from './dto/goal-response.dto';
 import { TenantIsolated } from '../../common/guards/tenant-isolated.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/token.interface';
+import { UserRole } from '@prisma/client';
+
+const PLATFORM_ROLES: ReadonlySet<UserRole> = new Set([
+  UserRole.SUPER_ADMIN,
+  UserRole.PLATFORM_ADMIN,
+  UserRole.SECURITY_OFFICER,
+  UserRole.SUPPORT,
+]);
 
 @Controller({ path: 'goals', version: '1' })
 @ApiCommon('goals')
 @UseGuards(JwtAuthGuard)
 export class GoalsController {
   constructor(private readonly goalsService: GoalsService) {}
+
+  private resolveTenantId(user: JwtPayload): string {
+    if (user.tenantId) return user.tenantId;
+    if (PLATFORM_ROLES.has(user.role as UserRole)) return '*';
+    throw new Error('Tenant ID required');
+  }
 
   @Post()
   async create(@CurrentUser() user: JwtPayload, @Body() dto: CreateGoalDto) {
@@ -46,14 +60,14 @@ export class GoalsController {
       departmentId: dto.departmentId,
       targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
       projectId: dto.projectId,
-    }, user.tenantId!);
+    }, this.resolveTenantId(user));
   }
 
   @Get()
   async findAll(@CurrentUser() user: JwtPayload, @Query() query: ListGoalsDto): Promise<PaginatedResponse<GoalResponseDto>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const { data, total } = await this.goalsService.findAll(user.tenantId!, { ...query, page, limit });
+    const { data, total } = await this.goalsService.findAll(this.resolveTenantId(user), { ...query, page, limit });
     return {
       items: data as unknown as GoalResponseDto[],
       pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
@@ -62,28 +76,28 @@ export class GoalsController {
 
   @Get('tree')
   async getTree(@CurrentUser() user: JwtPayload) {
-    return this.goalsService.getGoalTree(user.tenantId!);
+    return this.goalsService.getGoalTree(this.resolveTenantId(user));
   }
 
   @Get('roots')
   async findRoots(@CurrentUser() user: JwtPayload) {
-    return this.goalsService.findRootGoals(user.tenantId!);
+    return this.goalsService.findRootGoals(this.resolveTenantId(user));
   }
 
   @Get('project/:projectId')
   async findByProject(@CurrentUser() user: JwtPayload, @Param('projectId') projectId: string) {
-    return this.goalsService.findByProjectId(projectId, user.tenantId!);
+    return this.goalsService.findByProjectId(projectId, this.resolveTenantId(user));
   }
 
   @Get(':id')
   @TenantIsolated()
   async findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.goalsService.findById(id, user.tenantId!);
+    return this.goalsService.findById(id, this.resolveTenantId(user));
   }
 
   @Get(':id/children')
   async findChildren(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.goalsService.findByParentId(id, user.tenantId!);
+    return this.goalsService.findByParentId(id, this.resolveTenantId(user));
   }
 
   @Put(':id')
@@ -92,7 +106,7 @@ export class GoalsController {
     @Param('id') id: string,
     @Body() dto: UpdateGoalDto,
   ) {
-    return this.goalsService.update(id, user.tenantId!, {
+    return this.goalsService.update(id, this.resolveTenantId(user), {
       ...dto,
       targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
       completedAt: dto.completedAt ? new Date(dto.completedAt) : undefined,
@@ -105,17 +119,17 @@ export class GoalsController {
     @Param('id') id: string,
     @Body('progress') progress: number,
   ) {
-    return this.goalsService.updateProgress(id, user.tenantId!, progress);
+    return this.goalsService.updateProgress(id, this.resolveTenantId(user), progress);
   }
 
   @Post(':id/recalculate-progress')
   async recalculateProgress(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.goalsService.recalculateProgressFromTasks(id, user.tenantId!);
+    return this.goalsService.recalculateProgressFromTasks(id, this.resolveTenantId(user));
   }
 
   @Delete(':id')
   async delete(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    await this.goalsService.delete(id, user.tenantId!);
+    await this.goalsService.delete(id, this.resolveTenantId(user));
     return { success: true, message: 'Goal deleted' };
   }
 }

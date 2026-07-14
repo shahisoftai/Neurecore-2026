@@ -56,7 +56,7 @@ export class PrismaGoalRepository implements IGoalRepository {
     const limit = options.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = { tenantId };
+    const where: Record<string, unknown> = tenantId !== '*' ? { tenantId } : {};
 
     if (status) where.status = status;
     if (level) where.level = level;

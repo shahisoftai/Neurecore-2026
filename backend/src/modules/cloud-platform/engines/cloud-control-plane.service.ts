@@ -1,0 +1,95 @@
+/**
+ * Cloud Control Plane — engines (Phase 11). Region/cluster registry, tenant
+ * placement (deterministic routing), failover coordination, replication
+ * tracking, global health aggregation. Models cloud topology — actual multi-
+ * region infrastructure (K8s, DNS, load balancers) is cloud operations.
+ */
+
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import type {
+  ClusterView, FailoverResult, GlobalHealth, ICloudPlatform, RegionView,
+  RoutingDecision, TenantPlacementView,
+} from '../contracts/cloud-platform.interface';
+
+@Injectable()
+export class CloudPlatform implements ICloudPlatform {
+  private readonly l = new Logger(CloudPlatform.name);
+  constructor(private readonly prisma: PrismaService) {}
+
+  async registerRegion(tenantId: string, name: string, endpoint: string): Promise<RegionView> {
+    const r = await this.prisma.cloudRegion.create({ data: { tenantId, name, endpoint } });
+    return { id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount: 0 };
+  }
+  async listRegions(tenantId: string): Promise<RegionView[]> {
+    return (await this.prisma.cloudRegion.findMany({ where: { tenantId }, include: { _count: { select: { clusters: true } } } })).map((r) => ({
+      id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount: (r as any)._count?.clusters ?? 0,
+    }));
+  }
+  async registerCluster(regionId: string, name: string, endpoint?: string): Promise<ClusterView> {
+    const c = await this.prisma.cloudCluster.create({ data: { regionId, name, endpoint: endpoint ?? null } });
+    const region = await this.prisma.cloudRegion.findUnique({ where: { id: regionId } });
+    return { id: c.id, regionName: region?.name ?? 'unknown', name: c.name, healthy: c.healthy, endpoint: c.endpoint };
+  }
+  async place(tenantId: string, primaryRegion: string, backupRegion?: string, residencyPolicy?: string): Promise<TenantPlacementView> {
+    const row = await this.prisma.tenantPlacement.upsert({
+      where: { tenantId },
+      create: { tenantId, primaryRegion, backupRegion: backupRegion ?? null, residencyPolicy: residencyPolicy ?? null },
+      update: { primaryRegion, backupRegion: backupRegion ?? null, residencyPolicy: residencyPolicy ?? null },
+    });
+    return { tenantId: row.tenantId, primaryRegion: row.primaryRegion, backupRegion: row.backupRegion, residencyPolicy: row.residencyPolicy, replicationEnabled: row.replicationEnabled, failoverStatus: row.failoverStatus };
+  }
+  async getPlacement(tenantId: string): Promise<TenantPlacementView | null> {
+    const row = await this.prisma.tenantPlacement.findUnique({ where: { tenantId } });
+    if (!row) return null;
+    return { tenantId: row.tenantId, primaryRegion: row.primaryRegion, backupRegion: row.backupRegion, residencyPolicy: row.residencyPolicy, replicationEnabled: row.replicationEnabled, failoverStatus: row.failoverStatus };
+  }
+
+  /** Deterministic routing: prefer primary if active, else fallback region if active, else fail. */
+  async route(tenantId: string): Promise<RoutingDecision> {
+    const placement = await this.getPlacement(tenantId);
+    if (!placement) return { region: 'unknown', endpoint: '', reason: 'no placement configured', healthy: false };
+    const check = async (regionName: string) => {
+      const r = await this.prisma.cloudRegion.findFirst({ where: { tenantId, name: regionName, status: 'ACTIVE' } });
+      return r ? { region: r.name, endpoint: r.endpoint, healthy: true } : null;
+    };
+    const primary = await check(placement.primaryRegion);
+    if (primary) return { ...primary, reason: 'primary-region-active' };
+    if (placement.backupRegion) {
+      const backup = await check(placement.backupRegion);
+      if (backup) return { ...backup, reason: 'primary-unavailable-fallback' };
+    }
+    return { region: placement.primaryRegion, endpoint: '', reason: 'no-healthy-region', healthy: false };
+  }
+
+  /** Simulate a failover — marks target region standby. Actual DNS/K8s failover is cloud infrastructure. */
+  async failover(tenantId: string, targetRegion: string): Promise<FailoverResult> {
+    const start = Date.now();
+    const placement = await this.getPlacement(tenantId);
+    if (!placement) return { success: false, fromRegion: 'unknown', toRegion: targetRegion, reason: 'no placement', durationMs: 0 };
+    // Update placement's failover status
+    await this.prisma.tenantPlacement.update({
+      where: { tenantId },
+      data: { failoverStatus: 'IN_PROGRESS', primaryRegion: targetRegion },
+    });
+    // Mark old primary's clusters as unhealthy (simulates infrastructure failover).
+    const oldRegion = await this.prisma.cloudRegion.findFirst({ where: { tenantId, name: placement.primaryRegion } });
+    if (oldRegion) {
+      await this.prisma.cloudCluster.updateMany({ where: { regionId: oldRegion.id }, data: { healthy: false } });
+    }
+    await this.prisma.tenantPlacement.update({ where: { tenantId }, data: { failoverStatus: 'ACTIVE' } });
+    return { success: true, fromRegion: placement.primaryRegion, toRegion: targetRegion, reason: 'failover-completed', durationMs: Date.now() - start };
+  }
+
+  async globalHealth(tenantId: string): Promise<GlobalHealth> {
+    const regions = await this.prisma.cloudRegion.findMany({ where: { tenantId }, include: { _count: { select: { clusters: true } } } });
+    const active = regions.filter((r) => r.status === 'ACTIVE').length;
+    const failoverActive = (await this.prisma.tenantPlacement.count({ where: { tenantId, failoverStatus: 'ACTIVE' } })) > 0;
+    const overall: GlobalHealth['overall'] = regions.length === 0 ? 'FAIR' : active >= regions.length ? 'GOOD' : 'FAIR';
+    return {
+      overall,
+      regions: regions.map((r) => ({ name: r.name, status: r.status as any, clusterCount: (r as any)._count?.clusters ?? 0 })),
+      failoverActive,
+    };
+  }
+}

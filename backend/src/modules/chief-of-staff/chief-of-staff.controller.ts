@@ -12,7 +12,7 @@ import type { JwtPayload } from '../auth/interfaces/token.interface';
 import { ChiefOfStaffService } from './chief-of-staff.service';
 import type { SendCosMessageDto } from './dto/cos.dto';
 
-@Controller('v1/projects/:projectId/cos')
+@Controller({ path: 'projects/:projectId/cos', version: '1' })
 @UseGuards(JwtAuthGuard)
 export class ChiefOfStaffController {
   constructor(private readonly cosService: ChiefOfStaffService) {}

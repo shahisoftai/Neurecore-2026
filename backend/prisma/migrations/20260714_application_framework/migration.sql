@@ -1,0 +1,12 @@
+CREATE TYPE "AppStatus" AS ENUM ('DRAFT','ACTIVE','DEPRECATED','RETIRED');
+CREATE TYPE "Edition" AS ENUM ('COMMUNITY','PROFESSIONAL','ENTERPRISE','GOVERNMENT','PRIVATE_CLOUD');
+CREATE TABLE "applications" ("id" TEXT NOT NULL PRIMARY KEY, "tenantId" TEXT NOT NULL, "name" TEXT NOT NULL, "version" TEXT NOT NULL DEFAULT '1.0.0', "vendor" TEXT, "domain" TEXT NOT NULL, "industry" TEXT, "description" TEXT, "status" "AppStatus" NOT NULL DEFAULT 'DRAFT', "edition" "Edition" NOT NULL DEFAULT 'ENTERPRISE', "requiredCapabilities" TEXT[] DEFAULT ARRAY[]::TEXT[], "icon" TEXT, "navigationJson" JSONB NOT NULL DEFAULT '{}', "metadataJson" JSONB NOT NULL DEFAULT '{}', "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(), "updatedAt" TIMESTAMP NOT NULL);
+CREATE UNIQUE INDEX ON "applications"("tenantId","name");
+CREATE INDEX ON "applications"("tenantId","domain");
+CREATE TABLE "domain_packages" ("id" TEXT NOT NULL PRIMARY KEY, "tenantId" TEXT NOT NULL, "name" TEXT NOT NULL, "domain" TEXT NOT NULL, "description" TEXT, "modules" TEXT[] DEFAULT ARRAY[]::TEXT[], "dependencies" TEXT[] DEFAULT ARRAY[]::TEXT[], "metadataJson" JSONB NOT NULL DEFAULT '{}', "createdAt" TIMESTAMP NOT NULL DEFAULT NOW());
+CREATE UNIQUE INDEX ON "domain_packages"("tenantId","name");
+CREATE TABLE "industry_solutions" ("id" TEXT NOT NULL PRIMARY KEY, "tenantId" TEXT NOT NULL, "name" TEXT NOT NULL, "industry" TEXT NOT NULL, "packages" TEXT[] DEFAULT ARRAY[]::TEXT[], "description" TEXT, "metadataJson" JSONB NOT NULL DEFAULT '{}', "createdAt" TIMESTAMP NOT NULL DEFAULT NOW());
+CREATE UNIQUE INDEX ON "industry_solutions"("tenantId","name");
+CREATE TABLE "workspaces" ("id" TEXT NOT NULL PRIMARY KEY, "tenantId" TEXT NOT NULL, "name" TEXT NOT NULL, "role" TEXT NOT NULL, "layoutJson" JSONB NOT NULL DEFAULT '{}', "dashboards" TEXT[] DEFAULT ARRAY[]::TEXT[], "metadataJson" JSONB NOT NULL DEFAULT '{}', "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(), "updatedAt" TIMESTAMP NOT NULL);
+CREATE UNIQUE INDEX ON "workspaces"("tenantId","name");
+-- DOWN: DROP TABLE workspaces, industry_solutions, domain_packages, applications; DROP TYPE Edition; DROP TYPE AppStatus;

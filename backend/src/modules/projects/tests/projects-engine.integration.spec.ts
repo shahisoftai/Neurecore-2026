@@ -22,6 +22,7 @@ import type {
 } from '../interfaces/project.interface';
 import type { ProjectTypeVersion } from '../../project-types/interfaces/project-type.interface';
 import { ProjectsAdapter } from '../../information-engine/clients/projects.adapter';
+import { ProjectCompletenessService } from '../../information-engine/clients/project-completeness.service';
 import { RequirementsService } from '../../information-engine/requirements/requirements.service';
 import { AdaptiveQuestioningService } from '../../information-engine/requirements/adaptive-questioning.service';
 import { ResponseService } from '../../information-engine/responses/response.service';
@@ -197,16 +198,37 @@ describe('ProjectsService.create — engine integration', () => {
     module: TestingModule;
   }> {
     // Construct ProjectsService directly — bypasses Nest DI complications.
+    const requirementsService = new RequirementsService();
+    const responseService = new ResponseService(
+      opts.responseRepo,
+      opts.sourceRepo as never,
+    );
+    const completenessService = new CompletenessService(opts.completenessRepo);
+    const projectTypePacksService = new ProjectTypePacksService(
+      opts.packRepo,
+      new QuestionPackService(opts.questionPackRepo),
+    );
+
+    // Phase 1.1: the shared ProjectCompletenessService owns the
+    // resolve→recompute sequence. It reads the project via the repository
+    // port, so ensure findById returns the created project.
+    const projectCompleteness = new ProjectCompletenessService(
+      opts.projectRepo,
+      opts.projectTypesService as never,
+      projectTypePacksService,
+      requirementsService,
+      responseService,
+      completenessService,
+    );
+
     const adapter = new ProjectsAdapter(
       opts.projectRepo,
       opts.projectTypesService as never,
-      new RequirementsService(),
-      new ResponseService(opts.responseRepo, opts.sourceRepo as never),
-      new CompletenessService(opts.completenessRepo),
-      new ProjectTypePacksService(
-        opts.packRepo,
-        new QuestionPackService(opts.questionPackRepo),
-      ),
+      requirementsService,
+      responseService,
+      completenessService,
+      projectTypePacksService,
+      projectCompleteness,
     );
 
     const service = new ProjectsService(
@@ -228,6 +250,9 @@ describe('ProjectsService.create — engine integration', () => {
     const completenessRepo = makeCompletenessRepo();
 
     projectRepo.create.mockResolvedValue(makeProject({ projectTypeId: null }));
+    projectRepo.findById.mockResolvedValue(
+      makeProject({ projectTypeId: null }),
+    );
 
     const { service, adapter } = await buildModule({
       projectRepo,
@@ -290,6 +315,13 @@ describe('ProjectsService.create — engine integration', () => {
     };
 
     projectRepo.create.mockResolvedValue(
+      makeProject({
+        projectTypeId: 'pt_1',
+        projectTypeVersion: 1,
+        customFieldValues: { taxYear: '2026' },
+      }),
+    );
+    projectRepo.findById.mockResolvedValue(
       makeProject({
         projectTypeId: 'pt_1',
         projectTypeVersion: 1,
@@ -382,6 +414,9 @@ describe('ProjectsService.create — engine integration', () => {
     projectRepo.create.mockResolvedValue(
       makeProject({ projectTypeId: 'pt_1', projectTypeVersion: 1 }),
     );
+    projectRepo.findById.mockResolvedValue(
+      makeProject({ projectTypeId: 'pt_1', projectTypeVersion: 1 }),
+    );
 
     const { service } = await buildModule({
       projectRepo,
@@ -421,6 +456,9 @@ describe('ProjectsService.create — engine integration', () => {
     });
 
     projectRepo.create.mockResolvedValue(
+      makeProject({ projectTypeId: 'pt_1', projectTypeVersion: 1 }),
+    );
+    projectRepo.findById.mockResolvedValue(
       makeProject({ projectTypeId: 'pt_1', projectTypeVersion: 1 }),
     );
 

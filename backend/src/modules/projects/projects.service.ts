@@ -38,7 +38,9 @@ export class ProjectsService {
     @Inject(PROJECT_REPOSITORY) private readonly repository: IProjectRepository,
     @Inject('PROJECT_TYPES_SERVICE')
     private readonly projectTypesService: ProjectTypesService,
-    @Optional() private readonly projectsAdapter?: ProjectsAdapter,
+    @Optional()
+    @Inject('PROJECTS_ADAPTER')
+    private readonly projectsAdapter?: ProjectsAdapter,
     @Optional() private readonly projectAutomation?: ProjectAutomationService,
     @Optional() private readonly goalTemplateService?: GoalTemplateService,
   ) {}

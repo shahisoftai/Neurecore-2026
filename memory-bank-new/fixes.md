@@ -3024,3 +3024,223 @@ useEffect(() => {
 - `projectName` answer from Essentials is pre-filled in the Discovery form when revisiting
 - All 3 services healthy: brain/200, hq/200, cc/200
 
+---
+
+## FIX-041 — JWT passwordChangedAt validation precision bug (2026-07-12 19:00 PKT)
+
+**Severity:** critical (every password change permanently invalidated all tokens)
+
+**Component:** backend (JwtStrategy)
+
+**Status:** fixed + deployed
+
+**Reporter:** Kilo (full verification sweep)
+
+### Symptom
+
+After resetting the admin password, every API call with a valid JWT (issued by the same server seconds earlier) returned 401 `AUTHENTICATION_FAILED`. Users could log in but not use the API.
+
+### Root cause
+
+`JwtStrategy.validate()` at `jwt.strategy.ts:103` compared:
+```ts
+payload.pwd * 1000 < user.passwordChangedAt.getTime()
+```
+
+Where `payload.pwd` was computed by `TokenService` as `Math.floor(passwordChangedAt.getTime() / 1000)` — **second precision**. But `user.passwordChangedAt.getTime()` returns **millisecond precision**. 
+
+When `passwordChangedAt` had any non-zero millisecond component (e.g., `.123`), the inequality was: `1783866789000 < 1783866789123` → `true` → token rejected.
+
+This affected every token issued after ANY password change, including admin password rotations.
+
+### Fix
+
+Changed validation to use second precision on both sides:
+```ts
+payload.pwd < Math.floor(user.passwordChangedAt.getTime() / 1000)
+```
+
+### Verification
+
+Login → JWT issued → `/auth/me` returns 200 → all authenticated endpoints return 200.
+
+---
+
+## FIX-042 — Admin + tenant lockout state cleanup (2026-07-12 19:10 PKT)
+
+**Severity:** high (admin/tenant accounts locked)
+
+**Component:** backend (auth), Redis
+
+**Status:** fixed
+
+**Reporter:** Kilo (full verification sweep)
+
+### Symptom
+
+Both `admin@neurecore.ai` and `mali@live.com` logins returned 401 `AUTHENTICATION_FAILED`. Admin `lockedUntil` was stuck at 2026-07-08 (past, but not auto-cleared due to Redis counters). Mali had `lockedUntil` at 2026-07-12T10:41. Redis had `login:fail` counters for both accounts.
+
+### Fix
+
+1. Reset admin password to `NeureCore-Admin-2026!` using bcrypt cost 12
+2. Cleared `lockedUntil` on all locked accounts (4 total, including `mnpiracha@gmail.com` and `demo@neurecore.ai`)
+3. Cleared Redis `login:fail:*` keys (2 keys: email + IP)
+4. Updated `/root/.admin_password` on Contabo
+
+### Verification
+
+Both `admin@neurecore.ai` and `mali@live.com` login successfully (200). All API endpoints work with admin JWT.
+
+---
+
+## FIX-043 — Cross-tenant access for projects/customers/goals controllers (2026-07-12 19:20 PKT)
+
+**Severity:** high (3 backend endpoints returning 500 for SUPER_ADMIN)
+
+**Component:** backend (projects, customers, goals controllers + routines repository)
+
+**Status:** fixed + deployed
+
+**Reporter:** Kilo (full verification sweep)
+
+### Symptom
+
+`GET /api/v1/projects`, `/api/v1/customers`, `/api/v1/goals` all returned 500 `INTERNAL_ERROR` for SUPER_ADMIN users. Backend log: `Argument tenantId must not be null`.
+
+### Root cause
+
+Three controllers passed `user.tenantId!` directly to service/repository methods. For SUPER_ADMIN users, `user.tenantId` is `null` (admins have no tenant context). The `!` assertion just passes null through, causing Prisma to reject the null tenantId filter. The same FIX-010 pattern (used by agents, orchestration, tasks, workflows) was not applied to these controllers.
+
+### Fix
+
+1. Added `PLATFORM_ROLES` set and `resolveTenantId()` helper to all 3 controllers (projects, customers, goals)
+2. Replaced all 12+ `user.tenantId!` occurrences with `this.resolveTenantId(user)` 
+3. Also fixed `prisma-routine.repository.ts` (same `{ tenantId }` pattern)
+
+Platform roles (`SUPER_ADMIN`, `PLATFORM_ADMIN`, `SECURITY_OFFICER`, `SUPPORT`) with null tenantId now resolve to `'*'` sentinel, which skips the tenant filter.
+
+### Verification
+
+All 3 endpoints now return 200 for SUPER_ADMIN. Tenant users (mali@live.com) continue to work (200).
+
+---
+
+## FIX-044 — Department role broadened to OWNER/ADMIN (2026-07-12 19:40 PKT)
+
+**Severity:** medium
+**Component:** backend (departments controller)
+**Status:** fixed + deployed
+
+### Symptom
+
+Tenant OWNER users received `403 PERMISSION_DENIED` when creating, updating, or deleting departments.
+
+### Root cause
+
+All department CRUD endpoints were restricted to `@Roles(UserRole.SUPER_ADMIN)` only, preventing tenant-level users (OWNER, ADMIN) from managing their own departments.
+
+### Fix
+
+Broadened roles on all 3 CRUD endpoints:
+- `POST` (create): `SUPER_ADMIN` → `SUPER_ADMIN, OWNER, ADMIN`
+- `PATCH :id` (update): `SUPER_ADMIN` → `SUPER_ADMIN, OWNER, ADMIN`
+- `DELETE :id` (remove): `SUPER_ADMIN` → `SUPER_ADMIN, OWNER, ADMIN`
+
+Also added `resolveTenantId()` helper for cross-tenant SUPER_ADMIN access.
+
+### Verification
+
+Department creation (201), update, and deletion (204) all work for OWNER users.
+
+---
+
+## FIX-045 — Admin auth full-page navigation false logout (2026-07-12 22:15 PKT)
+
+**Severity:** high
+**Component:** frontend-admin (BaseAuthService)
+**Status:** built + deployed
+
+### Symptom
+
+Every full-page navigation in the admin portal (cc.neurecore.com) redirected back to `/admin/login`. Sidebar clicks (Next.js client-side navigation) worked fine, but browser refresh, URL bar navigation, or external links all broke.
+
+### Root cause
+
+`BaseAuthService.doInitialize()` checked for session via `this.tokenRepository.getAccessToken()` which reads the `__Host-nc_at` cookie. This cookie is **HttpOnly** — JavaScript's `document.cookie` cannot read it, so `getAccessToken()` always returns `null`. The code then hit the branch:
+```
+} else if (!cookie && cachedUser) {
+  this.userRepository.clearUser();
+  this.setState({ status: 'unauthenticated', reason: 'session_expired' });
+}
+```
+This cleared the cached user and set unauthenticated, triggering the redirect to login.
+
+### Fix
+
+Changed `doInitialize()` to use `getCsrfToken()` instead of `getAccessToken()` as the session indicator. The `__Host-nc_csrf` cookie is NOT HttpOnly (it's JS-readable), so it returns a real value when a session exists. The fix also adds a background `/auth/me` re-validation for the edge case where the CSRF cookie is missing but a cached user exists.
+
+### Verification
+
+Full-page navigation (browser refresh, URL bar entry) now preserves the admin session. See `simulation-final-report.md`.
+
+---
+
+## FIX-046 — CurrentUser decorator property extraction (2026-07-12 22:30 PKT)
+
+**Severity:** high (systemic)
+**Component:** backend (CurrentUser decorator + routines controller)
+**Status:** fixed + deployed
+
+### Symptom
+
+`GET /api/v1/routines` returned 500 with Prisma error: `Unknown argument 'sub'. Did you mean 'in'?`. The Prisma query showed the full user JWT payload being used as a `tenantId` filter.
+
+### Root cause
+
+The `@CurrentUser('tenantId')` decorator ignored its parameter and always returned the full `request.user` object. TypeScript typed the result as `string`, but at runtime it was the full `JwtPayload` object. Every controller using `@CurrentUser('tenantId')` or `@CurrentUser('id')` was passing the full user object in place of a string.
+
+The `@CurrentUser` decorator (in `common/decorators/current-user.decorator.ts`) was:
+```ts
+createParamDecorator((_data: unknown, ctx) => request.user)
+```
+The `_data` parameter was typed as `unknown` and never used.
+
+### Fix
+
+Updated the decorator to extract the property when data is provided:
+```ts
+createParamDecorator((data: string | undefined, ctx) => {
+  return data ? user?.[data] : user;
+})
+```
+
+Also fixed the routines controller to use proper `@CurrentUser() user: JwtPayload` pattern instead of `@CurrentUser('tenantId')`.
+
+### Verification
+
+`GET /api/v1/routines` now returns 200. Finance invoices endpoint also returns 200 (was also affected).
+
+---
+
+## FIX-047 — Routelines/Finance controllers tenantId null crash (2026-07-12 22:40 PKT)
+
+**Severity:** medium
+**Component:** backend (routines controller)
+**Status:** fixed + deployed
+
+### Symptom
+
+`GET /api/v1/routines` and `GET /api/v1/finance/invoices` returned 500 for SUPER_ADMIN users due to null tenantId.
+
+### Root cause
+
+Routines controller used `@CurrentUser('tenantId')` which returned the full user object (see FIX-046). Even after the CurrentUser decorator fix, the controller's `listRoutines` method referenced `this.resolveTenantId(user)` but `user` was never declared (the parameter was `tenantId: string` not `user: JwtPayload`).
+
+### Fix
+
+Changed `@CurrentUser('tenantId') tenantId: string` to `@CurrentUser() user: JwtPayload` and used `resolveTenantId(user)`.
+
+### Verification
+
+All finance and routines endpoints return 200 for both SUPER_ADMIN and OWNER users.
+

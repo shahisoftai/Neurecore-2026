@@ -70,6 +70,18 @@ export class ResponseService implements IResponseService {
       await this.sourceService.verify(source.id, `${entityType}:${entityId}`);
     }
 
+    // Capture the prior current response BEFORE inserting the new one, so the
+    // supersede lookup cannot return the row we are about to create. Without
+    // this ordering the post-create lookup returns the newest row (itself),
+    // defeating supersession.
+    const previous = dto.skipSupersede
+      ? null
+      : await this.repo.findCurrentByEntityAndQuestion(
+          entityType,
+          entityId,
+          dto.questionId,
+        );
+
     const created = await this.repo.create({
       entityType,
       entityId,
@@ -83,18 +95,11 @@ export class ResponseService implements IResponseService {
       sourceId: source.id,
     });
 
-    if (!dto.skipSupersede) {
-      const previous = await this.repo.findCurrentByEntityAndQuestion(
-        entityType,
-        entityId,
-        dto.questionId,
+    if (previous && previous.id !== created.id) {
+      await this.repo.markSuperseded(previous.id, created.id);
+      this.logger.debug(
+        `Superseded response ${previous.id} → ${created.id} for ${entityType}/${entityId}/${dto.questionId}`,
       );
-      if (previous && previous.id !== created.id) {
-        await this.repo.markSuperseded(previous.id, created.id);
-        this.logger.debug(
-          `Superseded response ${previous.id} → ${created.id} for ${entityType}/${entityId}/${dto.questionId}`,
-        );
-      }
     }
 
     return created;

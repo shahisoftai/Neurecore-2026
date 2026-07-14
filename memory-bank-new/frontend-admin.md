@@ -1,6 +1,6 @@
 # Frontend-Admin (NeureCore admin console)
 
-**Last verified:** 2026-07-11 17:35 PKT (AI Gateway UI + Settings/AI Providers page live, admin chat CSRF fixed)
+**Last verified:** 2026-07-12 23:00 PKT (Admin auth full-page reload fixed — FIX-045; all admin routes verified accessible)
 **Live URL:** `https://cc.neurecore.com` (under `/admin/` basePath)
 **Internal port:** 3020
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-admin/`

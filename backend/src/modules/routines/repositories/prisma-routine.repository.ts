@@ -65,7 +65,7 @@ export class PrismaRoutineRepository implements IRoutineRepository {
     tenantId: string,
     options?: ListRoutinesOptions,
   ): Promise<{ routines: Routine[]; total: number }> {
-    const where: Prisma.RoutineWhereInput = { tenantId };
+    const where: Prisma.RoutineWhereInput = tenantId !== '*' ? { tenantId } : {};
 
     if (options?.status) {
       where.status = options.status;
@@ -319,7 +319,7 @@ export class PrismaRoutineRunRepository implements IRoutineRunRepository {
     tenantId: string,
     options?: ListRunsOptions,
   ): Promise<{ runs: RoutineRun[]; total: number }> {
-    const where: Prisma.RoutineRunWhereInput = { tenantId };
+    const where: Prisma.RoutineRunWhereInput = tenantId !== '*' ? { tenantId } : {};
 
     if (options?.status) {
       where.status = options.status as any;

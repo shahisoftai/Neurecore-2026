@@ -31,12 +31,26 @@ import type { ProjectResponseDto } from './dto/project-response.dto';
 import { TenantIsolated } from '../../common/guards/tenant-isolated.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/token.interface';
+import { UserRole } from '@prisma/client';
+
+const PLATFORM_ROLES: ReadonlySet<UserRole> = new Set([
+  UserRole.SUPER_ADMIN,
+  UserRole.PLATFORM_ADMIN,
+  UserRole.SECURITY_OFFICER,
+  UserRole.SUPPORT,
+]);
 
 @Controller({ path: 'projects', version: '1' })
 @ApiCommon('projects')
 @UseGuards(JwtAuthGuard)
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
+
+  private resolveTenantId(user: JwtPayload): string {
+    if (user.tenantId) return user.tenantId;
+    if (PLATFORM_ROLES.has(user.role as UserRole)) return '*';
+    throw new Error('Tenant ID required');
+  }
 
   @Post()
   async create(@CurrentUser() user: JwtPayload, @Body() dto: CreateProjectDto) {
@@ -58,7 +72,7 @@ export class ProjectsController {
         startDate: dto.startDate,
         customFieldValues: dto.customFieldValues,
       },
-      user.tenantId!,
+      this.resolveTenantId(user),
     );
   }
 
@@ -70,7 +84,7 @@ export class ProjectsController {
     const project = await this.projectsService.cloneFromProject(
       dto.sourceProjectId,
       dto.newName,
-      user.tenantId!,
+      this.resolveTenantId(user),
     );
     return {
       success: true,
@@ -86,7 +100,7 @@ export class ProjectsController {
   ): Promise<PaginatedResponse<ProjectResponseDto>> {
     const page = query.page ? Number(query.page) : 1;
     const limit = query.limit ? Number(query.limit) : 20;
-    const { data, total } = await this.projectsService.findAll(user.tenantId!, {
+    const { data, total } = await this.projectsService.findAll(this.resolveTenantId(user), {
       status: query.status,
       departmentId: query.departmentId,
       customerId: query.customerId,
@@ -107,7 +121,7 @@ export class ProjectsController {
 
   @Get('stats')
   async getStats(@CurrentUser() user: JwtPayload) {
-    return this.projectsService.getProjectStats(user.tenantId!);
+    return this.projectsService.getProjectStats(this.resolveTenantId(user));
   }
 
   @Get('department/:departmentId')
@@ -115,13 +129,13 @@ export class ProjectsController {
     @CurrentUser() user: JwtPayload,
     @Param('departmentId') departmentId: string,
   ) {
-    return this.projectsService.findByDepartment(departmentId, user.tenantId!);
+    return this.projectsService.findByDepartment(departmentId, this.resolveTenantId(user));
   }
 
   @Get(':id')
   @TenantIsolated()
   async findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.projectsService.findById(id, user.tenantId!);
+    return this.projectsService.findById(id, this.resolveTenantId(user));
   }
 
   @Patch(':id')
@@ -130,7 +144,7 @@ export class ProjectsController {
     @Param('id') id: string,
     @Body() dto: UpdateProjectDto,
   ) {
-    return this.projectsService.update(id, user.tenantId!, {
+    return this.projectsService.update(id, this.resolveTenantId(user), {
       name: dto.name,
       description: dto.description,
       departmentId: dto.departmentId,
@@ -159,7 +173,7 @@ export class ProjectsController {
   ): Promise<ActionResult<ProjectResponseDto>> {
     const project = await this.projectsService.transitionStatus(
       id,
-      user.tenantId!,
+      this.resolveTenantId(user),
       dto.status,
       dto.reason,
     );
@@ -173,7 +187,7 @@ export class ProjectsController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    await this.projectsService.delete(id, user.tenantId!);
+    await this.projectsService.delete(id, this.resolveTenantId(user));
   }
 
   @Post(':id/goals/:goalId')
@@ -185,7 +199,7 @@ export class ProjectsController {
     const project = await this.projectsService.addGoal(
       id,
       goalId,
-      user.tenantId!,
+      this.resolveTenantId(user),
     );
     return {
       success: true,
@@ -201,6 +215,6 @@ export class ProjectsController {
     @Param('id') id: string,
     @Param('goalId') goalId: string,
   ) {
-    await this.projectsService.removeGoal(id, goalId, user.tenantId!);
+    await this.projectsService.removeGoal(id, goalId, this.resolveTenantId(user));
   }
 }

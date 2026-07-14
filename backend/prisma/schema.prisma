@@ -3858,3 +3858,259 @@ model ModelCatalogAudit {
   @@index([createdAt])
   @@map("model_catalog_audits")
 }
+
+// ─────────────────── Enterprise AI Governance (Phase 13) ───────────────────
+
+enum TrustGrade {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  CRITICAL
+}
+
+enum AIPolicyCategory {
+  MODEL_USAGE
+  PROMPT
+  REASONING
+  EVIDENCE
+  CONFIDENCE
+  HUMAN_REVIEW
+  APPROVAL
+  RISK
+  ETHICS
+}
+
+enum CertificationStatus {
+  CERTIFIED
+  CONDITIONAL
+  REQUIRES_REVIEW
+  REJECTED
+  EXPIRED
+  REVOKED
+}
+
+enum ReviewDecision {
+  APPROVED
+  REJECTED
+  NEEDS_REVISION
+  ESCALATED
+}
+
+model TrustEvaluation {
+  id               String      @id @default(cuid())
+  tenantId         String
+  sourceType       String
+  sourceId         String
+  trustScore       TrustGrade  @default(GOOD)
+  evidenceQuality  TrustGrade  @default(GOOD)
+  reasoningQuality TrustGrade  @default(GOOD)
+  riskLevel        TrustGrade  @default(GOOD)
+  policyCompliant  Boolean     @default(true)
+  issues           String[]    @default([])
+  evidenceJson     Json        @default("{}")
+  createdAt        DateTime    @default(now())
+
+  @@index([tenantId, sourceType, createdAt])
+  @@map("trust_evaluations")
+}
+
+model AIHallucinationFlag {
+  id               String      @id @default(cuid())
+  tenantId         String
+  sourceType       String
+  sourceId         String
+  claim            String
+  evidenceGap      String
+  severity         TrustGrade  @default(FAIR)
+  recommendedAction String?
+  createdAt        DateTime    @default(now())
+
+  @@index([tenantId, sourceType])
+  @@map("ai_hallucination_flags")
+}
+
+model AIBiasFinding {
+  id              String      @id @default(cuid())
+  tenantId        String
+  category        String
+  detail          String
+  severity        TrustGrade  @default(FAIR)
+  recommendation  String?
+  createdAt       DateTime    @default(now())
+
+  @@index([tenantId, category])
+  @@map("ai_bias_findings")
+}
+
+model AIPolicy {
+  id        String            @id @default(cuid())
+  tenantId  String
+  name      String
+  category  AIPolicyCategory
+  version   Int               @default(1)
+  rulesJson Json              @default("{}")
+  active    Boolean           @default(true)
+  createdAt DateTime          @default(now())
+
+  @@unique([tenantId, name, version])
+  @@map("ai_policies")
+}
+
+model ModelRegistration {
+  id           String   @id @default(cuid())
+  tenantId     String
+  modelName    String
+  provider     String
+  capabilities String[] @default([])
+  limitations  String[] @default([])
+  status       String   @default("REGISTERED")
+  evaluatedAt  DateTime?
+  retiredAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  @@unique([tenantId, modelName])
+  @@map("ai_model_registry")
+}
+
+model HumanReviewRecord {
+  id          String         @id @default(cuid())
+  tenantId    String
+  sourceType  String
+  sourceId    String
+  reviewerId  String?
+  decision    ReviewDecision @default(NEEDS_REVISION)
+  reason      String?
+  reviewedAt  DateTime?
+  createdAt   DateTime       @default(now())
+
+  @@index([tenantId, sourceType])
+  @@map("ai_human_reviews")
+}
+
+// ─────────────────── Platform Evolution (Phase 14) ───────────────────
+
+enum TechMaturity {
+  EMERGING
+  TRIAL
+  ADOPT
+  HOLD
+  RETIRE
+}
+enum FeatureState {
+  PROPOSAL
+  RESEARCH
+  PROTOTYPE
+  PILOT
+  APPROVED
+  GA
+  DEPRECATED
+  RETIRED
+}
+enum ExperimentStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
+enum CapabilityDomain {
+  REASONING
+  PLANNING
+  MEMORY
+  KNOWLEDGE
+  AGENTS
+  AUTONOMY
+  VISION
+  SPEECH
+  WORKFLOW
+  SIMULATION
+  SEARCH
+}
+
+model TechnologyRadarEntry {
+  id          String       @id @default(cuid())
+  tenantId    String
+  name        String
+  category    String       // 'AI_MODEL','FRAMEWORK','DATABASE','PROTOCOL','SECURITY','CLOUD','VECTOR_DB','LANGUAGE','INFRA'
+  maturity    TechMaturity @default(TRIAL)
+  description String?
+  recommendation String?
+  metadataJson Json       @default("{}")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([tenantId, name])
+  @@map("tech_radar")
+}
+
+model BenchmarkRecord {
+  id            String   @id @default(cuid())
+  tenantId      String
+  modelName     String
+  provider      String
+  task          String   // 'reasoning_quality','latency','cost','hallucination','evidence','trust','runtime'
+  score         Float
+  metadataJson  Json     @default("{}")
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, modelName])
+  @@map("benchmark_records")
+}
+
+model Experiment {
+  id            String           @id @default(cuid())
+  tenantId      String
+  name          String
+  description   String?
+  status        ExperimentStatus @default(DRAFT)
+  resultsJson   Json             @default("{}")
+  affectProduction Boolean       @default(false)
+  createdAt     DateTime         @default(now())
+  completedAt   DateTime?
+
+  @@index([tenantId, status])
+  @@map("experiments")
+}
+
+model FeatureLifecycle {
+  id            String       @id @default(cuid())
+  tenantId      String
+  name          String
+  description   String?
+  state         FeatureState @default(PROPOSAL)
+  version       Int          @default(1)
+  metadataJson  Json         @default("{}")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([tenantId, name])
+  @@map("feature_lifecycle")
+}
+
+model CapabilityVersion {
+  id            String            @id @default(cuid())
+  tenantId      String
+  domain        CapabilityDomain
+  version       Int               @default(1)
+  description   String?
+  changes       String[]          @default([])
+  backwardCompatible Boolean      @default(true)
+  createdAt     DateTime          @default(now())
+
+  @@unique([tenantId, domain, version])
+  @@map("capability_versions")
+}
+
+model MigrationPlan {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  targetType    String   // 'MODEL','PROVIDER','SDK','APP','CLOUD','ONTOLOGY'
+  stepsJson     Json     @default("[]")
+  riskLevel     String   @default("LOW")
+  autoApply     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, targetType])
+  @@map("migration_plans")
+}

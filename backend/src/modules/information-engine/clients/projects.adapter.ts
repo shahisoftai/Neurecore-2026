@@ -22,6 +22,7 @@ import { RequirementsService } from '../requirements/requirements.service';
 import { ResponseService } from '../responses/response.service';
 import { CompletenessService } from '../completeness/completeness.service';
 import { ProjectTypePacksService } from '../project-type-packs/project-type-packs.service';
+import { ProjectCompletenessService } from './project-completeness.service';
 
 @Injectable()
 export class ProjectsAdapter {
@@ -35,6 +36,7 @@ export class ProjectsAdapter {
     private readonly responseService: ResponseService,
     private readonly completenessService: CompletenessService,
     private readonly projectTypePacksService: ProjectTypePacksService,
+    private readonly projectCompleteness: ProjectCompletenessService,
   ) {}
 
   async onProjectCreated(
@@ -97,29 +99,17 @@ export class ProjectsAdapter {
     // completeness because they're not counted in totalRequired.
     await this.seedMissingAsSystemResponses(project, resolved);
 
-    // Recompute against the responses we just wrote.
-    const current = await this.responseService.listCurrent(
-      'PROJECT',
+    // Recompute completeness against the responses we just wrote. Delegated
+    // to the shared ProjectCompletenessService so the resolve→recompute
+    // sequence lives in ONE place (Phase 1.1) and matches on local ids.
+    const snapshot = await this.projectCompleteness.recomputeForProject(
       project.id,
+      tenantId,
     );
-    await this.completenessService.recompute('PROJECT', project.id, {
-      questions: resolved.map((q) => ({
-        id: q.id,
-        label: q.label,
-        required: q.required,
-        ...(q.skipIfConfidenceGte !== undefined
-          ? { skipIfConfidenceGte: q.skipIfConfidenceGte }
-          : {}),
-      })),
-      responses: current.map((r) => ({
-        questionId: r.questionId,
-        value: r.value,
-        confidence: r.confidence,
-      })),
-    });
 
     this.logger.debug(
-      `ProjectsAdapter: wrote ${current.length} responses for project ${project.id}`,
+      `ProjectsAdapter: onProjectCreated ${project.id} → ` +
+        `${snapshot.score}% (${snapshot.totalResolved}/${snapshot.totalRequired})`,
     );
   }
 

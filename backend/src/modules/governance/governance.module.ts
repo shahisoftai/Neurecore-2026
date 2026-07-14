@@ -9,6 +9,7 @@ import { GovernanceRulesService } from './services/governance-rules.service';
 import { ApprovalsService } from './services/approvals.service';
 import { ApprovalScoringService } from './services/approval-scoring.service';
 import { ApprovalEnrichmentService } from './services/approval-enrichment.service';
+import { GOVERNANCE_EVALUATOR } from './interfaces/governance-evaluator.interface';
 
 @Module({
   controllers: [
@@ -22,12 +23,16 @@ import { ApprovalEnrichmentService } from './services/approval-enrichment.servic
     ApprovalsService,
     ApprovalScoringService,
     ApprovalEnrichmentService,
+    // ADR-009: expose governance evaluation as a port. GovernanceRulesService
+    // stays owned by governance/; consumers depend on the port.
+    { provide: GOVERNANCE_EVALUATOR, useExisting: GovernanceRulesService },
   ],
   exports: [
     GovernanceRulesService,
     ApprovalsService,
     ApprovalScoringService,
     ApprovalEnrichmentService,
+    GOVERNANCE_EVALUATOR,
   ],
 })
-export class GovernanceModule { }
+export class GovernanceModule {}

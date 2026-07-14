@@ -3,9 +3,9 @@
  */
 
 import {
+  Allow,
   IsBoolean,
   IsInt,
-  IsObject,
   IsOptional,
   IsString,
   Max,
@@ -22,7 +22,15 @@ export class RecordResponseDto {
   @IsString()
   questionId!: string;
 
-  @IsObject()
+  // An information response value may be any JSON type — string (TEXT/SELECT/
+  // DATE), number (NUMBER/CURRENCY), boolean (BOOLEAN), array (MULTI_SELECT),
+  // object, or null (SYSTEM "unanswered" seed rows). The Prisma column is
+  // `Json` and the service treats it as `unknown`, so we accept any value.
+  // @Allow keeps `value` whitelisted (not stripped by `whitelist:true`) while
+  // accepting primitives and null. @IsObject rejected every primitive answer
+  // (the Discovery "Save answer" loop bug); @IsDefined would reject the null
+  // seed rows the ProjectsAdapter writes for unanswered required questions.
+  @Allow()
   value!: unknown;
 
   @IsString()

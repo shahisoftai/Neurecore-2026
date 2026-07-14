@@ -30,6 +30,13 @@ import { UserRole } from '@prisma/client';
 import { ContextProvider } from '../context/controllers/context.controller';
 import type { ContextResponse } from '@/shared/types/context.types';
 
+const PLATFORM_ROLES: ReadonlySet<UserRole> = new Set([
+  UserRole.SUPER_ADMIN,
+  UserRole.PLATFORM_ADMIN,
+  UserRole.SECURITY_OFFICER,
+  UserRole.SUPPORT,
+]);
+
 @Controller({ path: 'departments', version: '1' })
 @ApiCommon('departments')
 @UseGuards(TierLimitsGuard)
@@ -38,6 +45,12 @@ export class DepartmentsController {
     private readonly departmentsService: DepartmentsService,
     private readonly contextProvider: ContextProvider,
   ) { }
+
+  private resolveTenantId(user: JwtPayload): string {
+    if (user.tenantId) return user.tenantId;
+    if (PLATFORM_ROLES.has(user.role as UserRole)) return '*';
+    throw new Error('Tenant ID required');
+  }
 
   @Get()
   @ApiOkResponse({ type: PaginatedResponse<DepartmentResponseDto> })
@@ -93,17 +106,15 @@ export class DepartmentsController {
   }
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN)
   @TierLimit('maxDepartments')
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateDepartmentDto) {
-    if (!user.tenantId) {
-      throw new Error('Tenant ID is required to create a department');
-    }
-    return this.departmentsService.create(dto, user.tenantId);
+    const tenantId = this.resolveTenantId(user);
+    return this.departmentsService.create(dto, tenantId);
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: JwtPayload,
@@ -121,7 +132,7 @@ export class DepartmentsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(
     @Param('id', ParseUUIDPipe) id: string,

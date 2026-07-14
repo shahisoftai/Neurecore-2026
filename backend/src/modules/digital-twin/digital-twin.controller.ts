@@ -5,7 +5,7 @@ import type { JwtPayload } from '../auth/interfaces/token.interface';
 import { DigitalTwinService } from './digital-twin.service';
 import { ActivityTimelineService } from './activity-timeline.service';
 
-@Controller('v1/projects/:projectId')
+@Controller({ path: 'projects/:projectId', version: '1' })
 @UseGuards(JwtAuthGuard)
 export class DigitalTwinController {
   constructor(

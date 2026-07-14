@@ -1,6 +1,16 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-12 11:00 PKT — Discovery tab stuck on "project name" bug fixed. Backend + frontend deployed to Contabo.
+**Last verified:** 2026-07-12 23:00 PKT — All fixes deployed. 6 systemic bugs resolved including CurrentUser decorator property extraction (FIX-046 affecting every controller using `@CurrentUser('property')`), admin auth full-page reload, routines/finance 500 errors, department permissions.
+
+**2026-07-12 23:00 PKT — Gap Fixes Batch (FIX-044 through FIX-047):**
+- ✅ **FIX-044: Department role broadened** — OWNER/ADMIN can now create/update/delete departments (was SUPER_ADMIN-only)
+- ✅ **FIX-045: Admin auth full-page navigation** — `doInitialize()` now uses `getCsrfToken()` (JS-readable) instead of `getAccessToken()` (HttpOnly, always null). Fixes false session expiry on browser refresh/URL bar navigation
+- ✅ **FIX-046: CurrentUser decorator property extraction (systemic fix)** — The `@CurrentUser('tenantId')` decorator ignored its parameter and returned the full user object. Every controller using `@CurrentUser('property')` was passing the full JwtPayload as a string. This affected ALL controllers using property extraction (routines, finance, departments, etc.). Fixed decorator to actually extract properties
+- ✅ **FIX-047: Routines + Finance null tenantId** — Routines controller had missing `resolveTenantId` implementation. Fixed the controller signature to use `@CurrentUser() user` instead of non-working `@CurrentUser('tenantId') tenantId`
+- ✅ **All API endpoints return 200** — Routines, Finance invoices, Finance expenses all verified working
+- ✅ **Department DELETE works** — 204 for OWNER role (was 403)
+
+**Earlier: 2026-07-12 Full Verification Sweep:**
 
 **2026-07-12 11:00 PKT — Discovery Tab Question Pre-fill Bug Fixes (FIX-040, Kilo):**
 - ✅ **Root cause — 3 bugs working together:** (1) `seedMissingAsSystemResponses` seeded all required questions with `SYSTEM null` → Discovery asked for answers already in Essentials. (2) Top-level project fields (`name`, `description`, `targetDate`) never seeded as InformationResponses. (3) `FormSkin` always initialized to `''` with no pre-fill from existing response.

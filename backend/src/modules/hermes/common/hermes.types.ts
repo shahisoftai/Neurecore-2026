@@ -51,8 +51,11 @@ export interface HermesSessionContext {
   userId?: string;
   tenantId: string;
   workspaceId?: string;
-  memoryContext?: string;
-  allowedTools: string[];
+  memoryContext?: string; // joined string of last 20 memory entries (actor-local)
+  allowedTools: string[]; // tool names from registry.getAllowedTools(type) (actor-local)
+  // Phase 3: organizational state obtained via the Context Plane (ADR-002).
+  // capabilityName → authorized capability context (access + provenance + data).
+  organization?: Record<string, unknown>;
 }
 
 export interface HermesEvent {

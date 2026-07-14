@@ -36,19 +36,24 @@ const ENTITY_TYPE_VALUES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * EnterpriseEventBusService — persisted EventBus (Phase 2).
+ * HermesActivityBusService — Hermes DOMAIN-INTERNAL activity bus.
  *
- * Replaces HermesEventBusService's in-memory fan-out with a write-through
- * to the canonical ActivityEvent table. Events without a tenantId are
- * dropped (security isolation). Falls back to in-memory emit for any
- * legacy subscribers.
+ * SCOPE (Phase 2, ADR-001 §12): this bus carries ONLY Hermes agent-lifecycle
+ * events (hermes:start, hermes:tool:*, hermes:end, hermes:error, …). These are
+ * domain-internal to Hermes; they never cross bounded contexts. It writes them
+ * through to the canonical ActivityEvent table (the activity feed) and projects
+ * to Socket.IO. Events without a tenantId are dropped (security isolation).
+ *
+ * It is NOT the Enterprise Event Fabric. Cross-capability enterprise events are
+ * owned by `EnterpriseEventTransport` (modules/enterprise-events). Hermes does
+ * NOT own enterprise transport (architecture test enforces this).
  *
  * Phase 9d (§16.4.2): also walks `DEPENDS_ON` edges to fan out
  * `dependency:updated` events to entities that depend on the changed one.
  */
 @Injectable()
-export class EnterpriseEventBusService implements IHermesEventBus {
-  private readonly logger = new Logger(EnterpriseEventBusService.name);
+export class HermesActivityBusService implements IHermesEventBus {
+  private readonly logger = new Logger(HermesActivityBusService.name);
   private readonly emitter = new EventEmitter();
 
   constructor(

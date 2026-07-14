@@ -59,7 +59,7 @@ async function bootstrap() {
 
   // Global prefix & versioning
   app.setGlobalPrefix('api');
-  app.enableVersioning({ type: VersioningType.URI });
+  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
   // CORS — frontend origins only
   const tenantFrontendUrl = config.get<string>('TENANT_FRONTEND_URL');

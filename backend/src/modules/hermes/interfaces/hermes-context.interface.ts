@@ -8,6 +8,8 @@ export interface IHermesContext {
     userId?: string;
     workspaceId?: string;
     threadId: string;
+    projectId?: string;
+    customerId?: string;
   }): Promise<HermesSessionContext>;
 }
 

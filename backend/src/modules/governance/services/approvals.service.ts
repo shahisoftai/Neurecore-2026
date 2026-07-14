@@ -3,9 +3,13 @@ import {
   Logger,
   NotFoundException,
   ForbiddenException,
+  Optional,
+  Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import type { ApprovalStatus, ApprovalPriority } from '@prisma/client';
+import { EVENT_TRANSPORT } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
+import type { IEnterpriseEventTransport } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
 
 export interface CreateApprovalInput {
   title: string;
@@ -24,7 +28,15 @@ export interface CreateApprovalInput {
 export class ApprovalsService {
   private readonly logger = new Logger(ApprovalsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Optional: publish enterprise.approval.granted/rejected so the Work Runtime
+    // (and Context Plane invalidation) can react. Non-transactional post-commit
+    // publish, guarded by deterministic idempotency key.
+    @Optional()
+    @Inject(EVENT_TRANSPORT)
+    private readonly transport?: IEnterpriseEventTransport,
+  ) {}
 
   async findAll(
     tenantId: string | null | undefined,
@@ -98,7 +110,7 @@ export class ApprovalsService {
       throw new ForbiddenException(`Approval request is already ${req.status}`);
     }
 
-    return this.prisma.approvalRequest.update({
+    const updated = await this.prisma.approvalRequest.update({
       where: { id },
       data: {
         status: decision.status,
@@ -108,6 +120,38 @@ export class ApprovalsService {
         rejectionReason: decision.rejectionReason,
       },
     });
+
+    // Publish the decision so paused Work Runtime runs (and caches) can react.
+    if (this.transport) {
+      const eventType =
+        decision.status === 'APPROVED'
+          ? 'enterprise.approval.granted'
+          : 'enterprise.approval.rejected';
+      try {
+        await this.transport.publish({
+          eventType,
+          tenantId,
+          actorType: 'HUMAN',
+          actorId: reviewerId,
+          idempotencyKey: `${eventType}.${id}`,
+          sourceModule: 'governance',
+          payload: {
+            approvalId: id,
+            resourceType: req.resourceType,
+            resourceId: req.resourceId ?? null,
+            decision: decision.status,
+            reviewerId,
+            reason: decision.rejectionReason ?? null,
+          },
+        });
+      } catch (e) {
+        this.logger.warn(
+          `Failed to publish ${eventType} for approval ${id}: ${e instanceof Error ? e.message : e}`,
+        );
+      }
+    }
+
+    return updated;
   }
 
   async cancel(id: string, tenantId: string, userId: string) {

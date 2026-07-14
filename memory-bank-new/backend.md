@@ -1,6 +1,6 @@
 # Backend (NeureCore NestJS API)
 
-**Last verified:** 2026-07-11 22:55 PKT — Comms pre-rollout engineering complete; WS security hardened; 6 comms Prisma migrations created + applied (47 total); A2A flag ambiguity resolved.
+**Last verified:** 2026-07-12 23:00 PKT — FIX-044 through FIX-047 deployed. Systemic fix: `@CurrentUser('property')` decorator now actually extracts properties (was returning full user object). All API endpoints 200.
 **Live URL:** `https://brain.neurecore.com/api/v1/`
 **Internal port:** 3003
 **Repo:** `git@github.com:Shahikhail01/neurecore.git` @ `9aec2fc` (AI Gateway deployed; working tree has uncommitted changes from FIX-028..031 + AI Gateway deploy fixes + 2026-07-11 comms implementation — see [fixes.md](fixes.md))
@@ -362,9 +362,15 @@ Note: local dev uses `:3000`, not `:3003`. CORS proxy on Contabo (`127.0.0.1:300
 2. **Neon pool timeouts** — `MissionFeedAiPrioritizer` and `SyncSchedulerService` log intermittent "Can't reach database server". `/health` still 200; deep queries sometimes fail. See [fixes.md §FIX-002](fixes.md).
 3. **No Sentry or APM** — only Prometheus metrics. Production errors rely on `pm2 logs`. See [future-plans.md §3.1](future-plans.md).
 4. **Local dev uses port 3000** but production uses 3003 — easy confusion. Be explicit when talking about either.
-5. **22 directories under `prisma/migrations/` but only 15 applied** — there's noise. `prisma migrate status` reports clean; ignore the extras.
-6. **Static asset root `apps/cdn/uploads/` must exist on Contabo and be readable by PM2's user.** First logo upload after deploy will create the directory; if permissions block it, deployments need `chown neurecore:neurecore apps/cdn -R` once.
-7. **Hermes module exists but is gated behind `HERMES_ENABLED=false`** by default. When enabled, all agent execution routes through `HermesRuntimeService` instead of `OfficialAgentGraph` directly. Auto-link (`HERMES_AUTO_LINK=true`) creates `HermesAgent` records for existing agents on first execution.
+5. **Static asset root `apps/cdn/uploads/` must exist on Contabo and be readable by PM2's user.** First logo upload after deploy will create the directory; if permissions block it, deployments need `chown neurecore:neurecore apps/cdn -R` once.
+6. **Hermes module exists but is gated behind `HERMES_ENABLED=false`** by default. When enabled, all agent execution routes through `HermesRuntimeService` instead of `OfficialAgentGraph` directly. Auto-link (`HERMES_AUTO_LINK=true`) creates `HermesAgent` records for existing agents on first execution.
+
+### Fixed issues (no longer applicable)
+- ❌ `@CurrentUser('property')` decorator ignored its parameter — **FIXED in FIX-046** (was returning full user object, affecting ALL controllers using property extraction)
+- ❌ 22 migration dirs with 15 applied — now **48 migrations applied**, all up to date
+- ❌ Routines endpoint 500 — **FIXED in FIX-047** (was passing full JwtPayload as tenantId)
+- ❌ Admin auth full-page navigation logout — **FIXED in FIX-045**
+- ❌ Department CRUD restricted to SUPER_ADMIN — **FIXED in FIX-044**
 
 ---
 

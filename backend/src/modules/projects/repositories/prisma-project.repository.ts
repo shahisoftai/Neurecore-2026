@@ -6,9 +6,12 @@
  * - DIP: implements IProjectRepository
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import { EVENT_TRANSPORT } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
+import type { IEnterpriseEventTransport } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
+import type { PublishEventInput } from '../../enterprise-events/contracts/enterprise-event.interface';
 import type {
   IProjectRepository,
   Project,
@@ -21,37 +24,76 @@ import type {
 export class PrismaProjectRepository implements IProjectRepository {
   private readonly logger = new Logger(PrismaProjectRepository.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Optional so the repository still stands alone in unit tests that don't
+    // wire the fabric. When present, state changes + outbox rows are written
+    // atomically (transactional outbox, ADR-001 §8).
+    @Optional()
+    @Inject(EVENT_TRANSPORT)
+    private readonly transport?: IEnterpriseEventTransport,
+  ) {}
 
   async create(data: CreateProjectInput, tenantId: string): Promise<Project> {
     this.logger.debug(`Creating project: ${data.name}`);
-    const project = await this.prisma.project.create({
-      data: {
-        tenantId,
-        name: data.name,
-        description: data.description ?? null,
-        departmentId: data.departmentId ?? null,
-        customerId: data.customerId ?? null,
-        projectTypeId: data.projectTypeId ?? null,
-        projectTypeVersion: data.projectTypeVersion ?? null,
-        budgetType: data.budgetType ?? null,
-        budgetAmount:
-          data.budgetAmount != null
-            ? new Prisma.Decimal(data.budgetAmount)
-            : null,
-        budgetCurrency: data.budgetCurrency ?? 'USD',
-        targetDate: this.toDate(data.targetDate),
-        startDate: this.toDate(data.startDate),
-        priority: data.priority ?? 'MEDIUM',
-        tags: data.tags ?? [],
-        goalIds: data.goalIds ?? [],
-        customFieldValues: data.customFieldValues as
-          | Prisma.InputJsonValue
-          | undefined,
-        metadata: (data.metadata as Prisma.InputJsonValue) ?? Prisma.JsonNull,
-        status: 'LEAD',
-      },
-    });
+    const createData: Prisma.ProjectUncheckedCreateInput = {
+      tenantId,
+      name: data.name,
+      description: data.description ?? null,
+      departmentId: data.departmentId ?? null,
+      customerId: data.customerId ?? null,
+      projectTypeId: data.projectTypeId ?? null,
+      projectTypeVersion: data.projectTypeVersion ?? null,
+      budgetType: data.budgetType ?? null,
+      budgetAmount:
+        data.budgetAmount != null
+          ? new Prisma.Decimal(data.budgetAmount)
+          : null,
+      budgetCurrency: data.budgetCurrency ?? 'USD',
+      targetDate: this.toDate(data.targetDate),
+      startDate: this.toDate(data.startDate),
+      priority: data.priority ?? 'MEDIUM',
+      tags: data.tags ?? [],
+      goalIds: data.goalIds ?? [],
+      customFieldValues: data.customFieldValues as
+        | Prisma.InputJsonValue
+        | undefined,
+      metadata: (data.metadata as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+      status: 'LEAD',
+    };
+
+    // Transactional outbox: create the project AND publish
+    // enterprise.project.created in the SAME transaction when the fabric is
+    // wired. Falls back to a plain create when the transport is absent.
+    if (this.transport) {
+      const created = await this.prisma.$transaction(async (tx) => {
+        const project = await tx.project.create({ data: createData });
+        await this.transport!.publish(
+          {
+            eventType: 'enterprise.project.created',
+            tenantId,
+            actorType: 'SYSTEM',
+            idempotencyKey: `project.created.${project.id}`,
+            sourceModule: 'projects',
+            payload: {
+              projectId: project.id,
+              name: project.name,
+              customerId: project.customerId,
+              projectTypeId: project.projectTypeId,
+              budgetAmount: project.budgetAmount
+                ? Number(project.budgetAmount)
+                : null,
+              status: project.status,
+            },
+          } as PublishEventInput,
+          tx,
+        );
+        return project;
+      });
+      return this.mapToProject(created);
+    }
+
+    const project = await this.prisma.project.create({ data: createData });
     return this.mapToProject(project);
   }
 
@@ -66,7 +108,7 @@ export class PrismaProjectRepository implements IProjectRepository {
     options: ListProjectsOptions,
     tenantId: string,
   ): Promise<{ data: Project[]; total: number }> {
-    const where: Record<string, unknown> = { tenantId };
+    const where: Record<string, unknown> = tenantId !== '*' ? { tenantId } : {};
     if (options.status) where.status = options.status;
     if (options.departmentId) where.departmentId = options.departmentId;
     if (options.customerId) where.customerId = options.customerId;
@@ -152,6 +194,76 @@ export class PrismaProjectRepository implements IProjectRepository {
     }
     if (data.lostReason !== undefined) updateData.lostReason = data.lostReason;
 
+    if (this.transport) {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const before = await tx.project.findUnique({
+          where: { id },
+          select: {
+            budgetAmount: true,
+            budgetCurrency: true,
+            targetDate: true,
+            startDate: true,
+          },
+        });
+        const project = await tx.project.update({
+          where: { id },
+          data: updateData as Prisma.ProjectUpdateInput,
+        });
+
+        // Budget changed?
+        const beforeBudget =
+          before?.budgetAmount != null ? Number(before.budgetAmount) : null;
+        const afterBudget =
+          project.budgetAmount != null ? Number(project.budgetAmount) : null;
+        if (data.budgetAmount !== undefined && beforeBudget !== afterBudget) {
+          await this.transport!.publish(
+            {
+              eventType: 'enterprise.project.budget.changed',
+              tenantId,
+              actorType: 'SYSTEM',
+              idempotencyKey: `project.budget.${id}.${afterBudget ?? 'null'}.${project.updatedAt.getTime()}`,
+              sourceModule: 'projects',
+              payload: {
+                projectId: id,
+                previousAmount: beforeBudget,
+                newAmount: afterBudget,
+                currency: project.budgetCurrency ?? 'USD',
+              },
+            } as PublishEventInput,
+            tx,
+          );
+        }
+
+        // Timeline changed?
+        const timelineChanged =
+          (data.targetDate !== undefined &&
+            before?.targetDate?.getTime() !== project.targetDate?.getTime()) ||
+          (data.startDate !== undefined &&
+            before?.startDate?.getTime() !== project.startDate?.getTime());
+        if (timelineChanged) {
+          await this.transport!.publish(
+            {
+              eventType: 'enterprise.project.timeline.changed',
+              tenantId,
+              actorType: 'SYSTEM',
+              idempotencyKey: `project.timeline.${id}.${project.updatedAt.getTime()}`,
+              sourceModule: 'projects',
+              payload: {
+                projectId: id,
+                previousStartDate: before?.startDate?.toISOString() ?? null,
+                newStartDate: project.startDate?.toISOString() ?? null,
+                previousTargetDate: before?.targetDate?.toISOString() ?? null,
+                newTargetDate: project.targetDate?.toISOString() ?? null,
+              },
+            } as PublishEventInput,
+            tx,
+          );
+        }
+        return project;
+      });
+      return this.mapToProject(updated);
+    }
+
     const project = await this.prisma.project.update({
       where: { id },
       data: updateData as Prisma.ProjectUpdateInput,
@@ -180,6 +292,40 @@ export class PrismaProjectRepository implements IProjectRepository {
     if (extras?.lostReason !== undefined) data.lostReason = extras.lostReason;
     if (extras?.completedAt !== undefined)
       data.completedAt = extras.completedAt;
+
+    if (this.transport) {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const before = await tx.project.findUnique({
+          where: { id },
+          select: { status: true },
+        });
+        const row = await tx.project.update({
+          where: { id },
+          data: data as Prisma.ProjectUpdateInput,
+        });
+        await this.transport!.publish(
+          {
+            eventType: 'enterprise.project.status.changed',
+            tenantId,
+            actorType: 'SYSTEM',
+            // Idempotency scoped to the exact transition so re-runs dedup but
+            // distinct transitions each publish once.
+            idempotencyKey: `project.status.${id}.${before?.status ?? 'UNKNOWN'}.${status}`,
+            sourceModule: 'projects',
+            payload: {
+              projectId: id,
+              fromStatus: before?.status ?? null,
+              toStatus: status,
+              reason: extras?.lostReason ?? null,
+            },
+          } as PublishEventInput,
+          tx,
+        );
+        return row;
+      });
+      return this.mapToProject(updated);
+    }
+
     const updated = await this.prisma.project.update({
       where: { id },
       data: data as Prisma.ProjectUpdateInput,

@@ -206,6 +206,76 @@
         ]
       }
     },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
     "/api/v1/auth/profile": {
       "get": {
         "operationId": "AuthController_profile",
@@ -667,6 +737,38 @@
             "Idempotency-Key": []
           }
         ]
+      },
+      "delete": {
+        "operationId": "TenantsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "tenants"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
       }
     },
     "/api/v1/tenants/me/current": {
@@ -741,6 +843,40 @@
     "/api/v1/tenants/{id}/suspend": {
       "patch": {
         "operationId": "TenantsController_suspend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "tenants"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tenants/{id}/activate": {
+      "patch": {
+        "operationId": "TenantsController_activate",
         "parameters": [
           {
             "name": "id",
@@ -1412,16 +1548,6 @@
             }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateAgentDto"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "",
@@ -3614,6 +3740,152 @@
         ]
       }
     },
+    "/api/v1/integrations/docs": {
+      "post": {
+        "operationId": "IntegrationsController_createGoogleDoc",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/docs/{documentId}": {
+      "get": {
+        "operationId": "IntegrationsController_getGoogleDoc",
+        "parameters": [
+          {
+            "name": "documentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/slides": {
+      "post": {
+        "operationId": "IntegrationsController_createGoogleSlides",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/slides/{presentationId}": {
+      "get": {
+        "operationId": "IntegrationsController_getGoogleSlides",
+        "parameters": [
+          {
+            "name": "presentationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
     "/api/v1/integrations/drive/search": {
       "get": {
         "operationId": "IntegrationsController_searchDriveFiles",
@@ -4252,6 +4524,281 @@
         },
         "tags": [
           "memory"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-memory": {
+      "post": {
+        "operationId": "ProjectMemoryController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-memory"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "ProjectMemoryController_findAll",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "authorId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "NOTE",
+                "INSIGHT",
+                "CONSTRAINT",
+                "RISK",
+                "OPPORTUNITY",
+                "LESSON"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "sourceEntityId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "project-memory"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-memory/search": {
+      "get": {
+        "operationId": "ProjectMemoryController_search",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-memory"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-memory/{id}": {
+      "get": {
+        "operationId": "ProjectMemoryController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-memory"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "ProjectMemoryController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-memory"
         ],
         "security": [
           {
@@ -5865,10 +6412,9 @@
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "Resource UUID",
-            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
+            "description": "Resource ID (CUID format)",
+            "example": "cm9p2x3ka0001abcdefgh",
             "schema": {
-              "format": "uuid",
               "type": "string"
             }
           }
@@ -5903,10 +6449,9 @@
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "Resource UUID",
-            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
+            "description": "Resource ID (CUID format)",
+            "example": "cm9p2x3ka0001abcdefgh",
             "schema": {
-              "format": "uuid",
               "type": "string"
             }
           }
@@ -5946,10 +6491,9 @@
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "Resource UUID",
-            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
+            "description": "Resource ID (CUID format)",
+            "example": "cm9p2x3ka0001abcdefgh",
             "schema": {
-              "format": "uuid",
               "type": "string"
             }
           }
@@ -5992,10 +6536,9 @@
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "Resource UUID",
-            "example": "9d2e1f4a-3b6c-4e8a-9f0b-1a2b3c4d5e6f",
+            "description": "Resource ID (CUID format)",
+            "example": "cm9p2x3ka0001abcdefgh",
             "schema": {
-              "format": "uuid",
               "type": "string"
             }
           }
@@ -6292,16 +6835,6 @@
             }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateDepartmentDto"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": ""
@@ -6564,6 +7097,684 @@
             "Idempotency-Key": []
           }
         ]
+      }
+    },
+    "/api/v1/admin/models/providers": {
+      "get": {
+        "operationId": "ModelsAdminController_listProviders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "ModelsAdminController_createProvider",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/admin/models/providers/{id}": {
+      "patch": {
+        "operationId": "ModelsAdminController_updateProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/admin/models": {
+      "get": {
+        "operationId": "ModelsAdminController_listModels",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "ModelsAdminController_createModel",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/admin/models/{id}": {
+      "patch": {
+        "operationId": "ModelsAdminController_updateModel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/admin/models/tenants/{tenantId}/overrides": {
+      "post": {
+        "operationId": "ModelsAdminController_upsertOverride",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/admin/models/tenants/{tenantId}/overrides/{id}": {
+      "delete": {
+        "operationId": "ModelsAdminController_deleteOverride",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/admin/models/health": {
+      "get": {
+        "operationId": "ModelsReadController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/admin/models/cost-summary": {
+      "get": {
+        "operationId": "ModelsReadController_costSummary",
+        "parameters": [
+          {
+            "name": "days",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/settings/ai/providers": {
+      "get": {
+        "operationId": "SettingsController_getAIProviders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "SettingsController_createAIProvider",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAIProviderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/settings/ai/providers/{id}": {
+      "get": {
+        "operationId": "SettingsController_getAIProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "SettingsController_updateAIProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAIProviderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "SettingsController_deleteAIProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/settings/ai/providers/{id}/toggle": {
+      "patch": {
+        "operationId": "SettingsController_toggleAIProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleProviderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/settings/ai/providers/{id}/set-default": {
+      "post": {
+        "operationId": "SettingsController_setDefaultAIProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/settings/ai/providers/{id}/test": {
+      "post": {
+        "operationId": "SettingsController_testAIProvider",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/settings/ai/providers/{providerId}/models": {
+      "get": {
+        "operationId": "SettingsController_getAIModels",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "SettingsController_addAIModel",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/settings/ai/providers/{providerId}/models/{modelId}": {
+      "patch": {
+        "operationId": "AiProvidersController_updateModel",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "AiProvidersController_deleteModel",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/settings/ai/providers/{providerId}/models/{modelId}/toggle": {
+      "patch": {
+        "operationId": "AiProvidersController_toggleModel",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/settings/ai/routing": {
+      "get": {
+        "operationId": "AiProvidersController_getRouting",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "operationId": "AiProvidersController_updateRouting",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/settings/ai/routing/reset": {
+      "post": {
+        "operationId": "AiProvidersController_resetRouting",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
       }
     },
     "/api/v1/chat/messages": {
@@ -8857,392 +10068,6 @@
         ]
       }
     },
-    "/api/v1/settings/ai/providers": {
-      "get": {
-        "operationId": "SettingsController_getAIProviders",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      },
-      "post": {
-        "operationId": "SettingsController_createAIProvider",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAIProviderDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/settings/ai/providers/{id}": {
-      "get": {
-        "operationId": "SettingsController_getAIProvider",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      },
-      "patch": {
-        "operationId": "SettingsController_updateAIProvider",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateAIProviderDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      },
-      "delete": {
-        "operationId": "SettingsController_deleteAIProvider",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/settings/ai/providers/{id}/toggle": {
-      "patch": {
-        "operationId": "SettingsController_toggleAIProvider",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ToggleProviderDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/settings/ai/providers/{id}/set-default": {
-      "post": {
-        "operationId": "SettingsController_setDefaultAIProvider",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/settings/ai/providers/{id}/test": {
-      "post": {
-        "operationId": "SettingsController_testAIProvider",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/settings/ai/providers/{providerId}/models": {
-      "get": {
-        "operationId": "SettingsController_getAIModels",
-        "parameters": [
-          {
-            "name": "providerId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      },
-      "post": {
-        "operationId": "SettingsController_addAIModel",
-        "parameters": [
-          {
-            "name": "providerId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
     "/api/v1/settings/tiers": {
       "get": {
         "operationId": "SettingsController_getTiers",
@@ -10197,100 +11022,6 @@
             }
           }
         ],
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/settings/ai/routing": {
-      "get": {
-        "operationId": "SettingsController_getAIRouting",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      },
-      "patch": {
-        "operationId": "SettingsController_updateAIRouting",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ],
-        "security": [
-          {
-            "JWT": []
-          },
-          {
-            "X-Tenant-ID": []
-          },
-          {
-            "Idempotency-Key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/settings/ai/routing/reset": {
-      "post": {
-        "operationId": "SettingsController_resetAIRouting",
-        "parameters": [],
         "responses": {
           "201": {
             "description": "",
@@ -11458,6 +12189,67 @@
       "delete": {
         "operationId": "UploadsController_deleteLogo",
         "summary": "Delete a previously-uploaded logo",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "uploads"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/uploads/agent-avatar": {
+      "post": {
+        "operationId": "UploadsController_uploadAgentAvatar",
+        "summary": "Upload an AI Employee avatar (PNG/JPEG/WEBP/SVG, ≤2MB)",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "uploads"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/uploads/agent-avatar/{key}": {
+      "delete": {
+        "operationId": "UploadsController_deleteAgentAvatar",
+        "summary": "Delete a previously-uploaded agent avatar",
         "parameters": [
           {
             "name": "key",
@@ -13580,6 +14372,14 @@
             }
           },
           {
+            "name": "projectId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "page",
             "required": false,
             "in": "query",
@@ -13659,6 +14459,50 @@
       "get": {
         "operationId": "GoalsController_findRoots",
         "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "goals"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/goals/project/{projectId}": {
+      "get": {
+        "operationId": "GoalsController_findByProject",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -13897,6 +14741,47 @@
         ]
       }
     },
+    "/api/v1/goals/{id}/recalculate-progress": {
+      "post": {
+        "operationId": "GoalsController_recalculateProgress",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "goals"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
     "/api/v1/projects": {
       "post": {
         "operationId": "ProjectsController_create",
@@ -13942,7 +14827,34 @@
         "operationId": "ProjectsController_findAll",
         "parameters": [
           {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "LEAD",
+                "PROPOSAL_SENT",
+                "WON",
+                "LOST",
+                "ACTIVE",
+                "ON_HOLD",
+                "REVIEW",
+                "COMPLETED",
+                "ARCHIVED"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "departmentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "customerId",
             "required": false,
             "in": "query",
             "schema": {
@@ -13976,6 +14888,41 @@
         ],
         "responses": {
           "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/clone": {
+      "post": {
+        "operationId": "ProjectsController_clone",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloneProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
             "description": ""
           }
         },
@@ -14104,7 +15051,7 @@
           }
         ]
       },
-      "put": {
+      "patch": {
         "operationId": "ProjectsController_update",
         "parameters": [
           {
@@ -14167,6 +15114,50 @@
         ],
         "responses": {
           "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/status": {
+      "patch": {
+        "operationId": "ProjectsController_transitionStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionProjectStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
             "description": ""
           }
         },
@@ -14265,6 +15256,4046 @@
           {
             "Idempotency-Key": []
           }
+        ]
+      }
+    },
+    "/api/v1/project-types": {
+      "post": {
+        "operationId": "ProjectTypesController_createType",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectTypeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-types"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "ProjectTypesController_findAll",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "industry",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "project-types"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-types/{id}": {
+      "get": {
+        "operationId": "ProjectTypesController_findTypeById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-types"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "ProjectTypesController_updateType",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectTypeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-types"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "ProjectTypesController_deleteType",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "project-types"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-types/{id}/versions": {
+      "get": {
+        "operationId": "ProjectTypesController_findVersions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-types"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "ProjectTypesController_createVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectTypeVersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-types"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-types/{id}/versions/current": {
+      "get": {
+        "operationId": "ProjectTypesController_getCurrentVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-types"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-types/versions/{versionId}": {
+      "get": {
+        "operationId": "ProjectTypesController_findVersionById",
+        "parameters": [
+          {
+            "name": "versionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-types"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/question-packs": {
+      "post": {
+        "operationId": "QuestionPackController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuestionPackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-question-packs"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "QuestionPackController_list",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isSystem",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "information-engine-question-packs"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/question-packs/{id}": {
+      "get": {
+        "operationId": "QuestionPackController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-question-packs"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "QuestionPackController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQuestionPackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-question-packs"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "QuestionPackController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "information-engine-question-packs"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-types/{projectTypeId}/packs": {
+      "get": {
+        "operationId": "ProjectTypePacksController_list",
+        "parameters": [
+          {
+            "name": "projectTypeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-project-type-packs"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "ProjectTypePacksController_replace",
+        "parameters": [
+          {
+            "name": "projectTypeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceProjectTypePacksDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-project-type-packs"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sources": {
+      "post": {
+        "operationId": "SourceController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSourceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-sources"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sources/{id}": {
+      "get": {
+        "operationId": "SourceController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-sources"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sources/{id}/verify": {
+      "post": {
+        "operationId": "SourceController_verify",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-sources"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/responses": {
+      "post": {
+        "operationId": "ResponseController_record",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordResponseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-responses"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "ResponseController_list",
+        "parameters": [
+          {
+            "name": "entityType",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-responses"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/completeness": {
+      "get": {
+        "operationId": "CompletenessController_get",
+        "parameters": [
+          {
+            "name": "entityType",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-completeness"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/completeness/recompute": {
+      "post": {
+        "operationId": "CompletenessController_recompute",
+        "parameters": [
+          {
+            "name": "entityType",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-completeness"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/interview/ask": {
+      "post": {
+        "operationId": "InterviewController_ask",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-interview"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/interview/answer": {
+      "post": {
+        "operationId": "InterviewController_answer",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "information-engine-interview"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/documents/extract": {
+      "post": {
+        "operationId": "ExtractionController_extract",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-extraction"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/documents/{documentId}/accept": {
+      "post": {
+        "operationId": "ExtractionController_accept",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "documentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "information-engine-extraction"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/documents/{documentId}": {
+      "get": {
+        "operationId": "ExtractionController_get",
+        "parameters": [
+          {
+            "name": "documentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-extraction"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/information-requirements": {
+      "get": {
+        "operationId": "EngineReadController_getRequirements",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "information-engine"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/next-question": {
+      "get": {
+        "operationId": "EngineReadController_getNextQuestion",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "information-engine"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/validate-completeness": {
+      "post": {
+        "operationId": "ContinuousDiscoveryController_validate",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "information-engine-continuous-discovery"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/discovery/weekly-recompute": {
+      "post": {
+        "operationId": "ContinuousDiscoveryController_weeklyRecompute",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "information-engine-continuous-discovery"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customers": {
+      "post": {
+        "operationId": "CustomersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "customers"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "CustomersController_findAll",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ACTIVE",
+                "INACTIVE",
+                "ARCHIVED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortKey",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "name",
+                "industry",
+                "status",
+                "createdAt",
+                "updatedAt"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDir",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customers"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customers/{id}": {
+      "get": {
+        "operationId": "CustomersController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "customers"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "CustomersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "customers"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customers/{id}/archive": {
+      "post": {
+        "operationId": "CustomersController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "customers"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customers/{id}/unarchive": {
+      "post": {
+        "operationId": "CustomersController_unarchive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "customers"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customers/{id}/contacts": {
+      "post": {
+        "operationId": "CustomersController_addContact",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddCustomerContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "customers"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "CustomersController_listContacts",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "customers"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/stages": {
+      "get": {
+        "operationId": "ProjectStagesController_list",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-stages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "ProjectStagesController_create",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-stages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/stages/{stageId}": {
+      "patch": {
+        "operationId": "ProjectStagesController_update",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "stageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-stages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "ProjectStagesController_delete",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "stageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "project-stages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/stages/reorder": {
+      "patch": {
+        "operationId": "ProjectStagesController_reorder",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderStagesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-stages"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/members": {
+      "get": {
+        "operationId": "ProjectMembersController_list",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-members"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "ProjectMembersController_assign",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-members"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/members/{memberId}/role": {
+      "patch": {
+        "operationId": "ProjectMembersController_reassignRole",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-members"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/members/{memberId}": {
+      "delete": {
+        "operationId": "ProjectMembersController_remove",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "project-members"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/members/chief-of-staff": {
+      "post": {
+        "operationId": "ProjectMembersController_autoAssignCos",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoAssignChiefOfStaffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-members"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/deliverables": {
+      "post": {
+        "operationId": "DeliverablesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "deliverables"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "DeliverablesController_findAll",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "goalId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "DRAFT",
+                "IN_REVIEW",
+                "APPROVED",
+                "REJECTED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "deliverables"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/deliverables/{id}": {
+      "get": {
+        "operationId": "DeliverablesController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "deliverables"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "DeliverablesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "deliverables"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "DeliverablesController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "deliverables"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/deliverables/{id}/versions": {
+      "get": {
+        "operationId": "DeliverablesController_findVersions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "deliverables"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "DeliverablesController_createVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeliverableVersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "deliverables"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/deliverables/{id}/versions/latest": {
+      "get": {
+        "operationId": "DeliverablesController_getLatestVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "deliverables"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/execution-log": {
+      "post": {
+        "operationId": "ExecutionLogController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLogEntryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "execution-log"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "ExecutionLogController_findAll",
+        "parameters": [
+          {
+            "name": "taskId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "execution-log"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/execution-log/task/{taskId}": {
+      "get": {
+        "operationId": "ExecutionLogController_findByTask",
+        "parameters": [
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "execution-log"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/approval-chains/resolve": {
+      "post": {
+        "operationId": "ApprovalChainsController_resolveChain",
+        "summary": "",
+        "description": "Resolve the approval chain for a deliverable.\nPOST /approval-chains/resolve",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveApprovalChainDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "approval-chains"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/approval-chains/pending": {
+      "get": {
+        "operationId": "ApprovalChainsController_findPending",
+        "summary": "",
+        "description": "Get pending approval workflows for the tenant.\nGET /approval-chains/pending",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "riskTier",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "approval-chains"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/approval-chains/{workflowId}/current-step": {
+      "get": {
+        "operationId": "ApprovalChainsController_getCurrentStep",
+        "summary": "",
+        "description": "Get the current step of an approval workflow.\nGET /approval-chains/:workflowId/current-step",
+        "parameters": [
+          {
+            "name": "workflowId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "approval-chains"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/approval-chains/steps/{stepId}/blocked": {
+      "get": {
+        "operationId": "ApprovalChainsController_isStepBlocked",
+        "summary": "",
+        "description": "Check if a step is blocked by its prior step.\nGET /approval-chains/steps/:stepId/blocked",
+        "parameters": [
+          {
+            "name": "stepId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "approval-chains"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/approval-chains/{workflowId}/advance": {
+      "post": {
+        "operationId": "ApprovalChainsController_advanceChain",
+        "summary": "",
+        "description": "Advance workflow to next sequential step.\nPOST /approval-chains/:workflowId/advance",
+        "parameters": [
+          {
+            "name": "workflowId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "approval-chains"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-decisions": {
+      "post": {
+        "operationId": "ProjectDecisionsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-decisions"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "ProjectDecisionsController_findAll",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "PROPOSED",
+                "APPROVED",
+                "REJECTED",
+                "SUPERSEDED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "linkedEntityId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "project-decisions"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-decisions/{id}": {
+      "get": {
+        "operationId": "ProjectDecisionsController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-decisions"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "ProjectDecisionsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-decisions"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-decisions/{id}/vote": {
+      "post": {
+        "operationId": "ProjectDecisionsController_castVote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CastVoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-decisions"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-decisions/{id}/approve": {
+      "post": {
+        "operationId": "ProjectDecisionsController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-decisions"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/automation": {
+      "get": {
+        "operationId": "ProjectAutomationController_getAutomationHistory",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/automation/latest": {
+      "get": {
+        "operationId": "ProjectAutomationController_getLatestAutomation",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/automation/trigger": {
+      "post": {
+        "operationId": "ProjectAutomationController_triggerAutomation",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/automation/replan": {
+      "post": {
+        "operationId": "ProjectAutomationController_replan",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/cos/messages": {
+      "post": {
+        "operationId": "ChiefOfStaffController_sendMessage",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/cos/snapshot": {
+      "get": {
+        "operationId": "ChiefOfStaffController_getSnapshot",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/digital-twin": {
+      "get": {
+        "operationId": "DigitalTwinController_getDigitalTwin",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/timeline": {
+      "get": {
+        "operationId": "DigitalTwinController_getTimeline",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "types",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-health/project/{projectId}": {
+      "get": {
+        "operationId": "ProjectHealthController_getHealth",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-health"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-health/project/{projectId}/recalculate": {
+      "post": {
+        "operationId": "ProjectHealthController_recalculateHealth",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-health"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-health/at-risk": {
+      "get": {
+        "operationId": "ProjectHealthController_getAtRiskProjects",
+        "parameters": [
+          {
+            "name": "threshold",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-health"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-health/analytics": {
+      "get": {
+        "operationId": "ProjectHealthController_getAnalytics",
+        "parameters": [
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "30d",
+                "90d",
+                "1y",
+                "all"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-health"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-health/bottlenecks": {
+      "get": {
+        "operationId": "ProjectHealthController_getBottlenecks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-health"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project-health/project/{projectId}/calculate-ai": {
+      "post": {
+        "operationId": "ProjectHealthController_calculateAIHealth",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "project-health"
+        ],
+        "security": [
+          {
+            "JWT": []
+          },
+          {
+            "X-Tenant-ID": []
+          },
+          {
+            "Idempotency-Key": []
+          }
+        ]
+      }
+    },
+    "/api/portal/request-access": {
+      "post": {
+        "operationId": "PortalController_requestAccess",
+        "summary": "Request portal access — returns a magic token for API clients",
+        "description": "Clients request access with their project ID and contact email. In production this would send an email; for API clients the token is returned directly.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/portal/validate": {
+      "post": {
+        "operationId": "PortalController_validateToken",
+        "summary": "Validate a portal token and return the session payload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/portal/refresh": {
+      "post": {
+        "operationId": "PortalController_refreshToken",
+        "summary": "Refresh a portal token — issues a fresh token with a new 7-day TTL",
+        "description": "The current token must still be valid; the new token is returned. The old token is invalidated.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/portal/projects/{projectId}": {
+      "get": {
+        "operationId": "PortalController_getProject",
+        "summary": "Get read-only project details for the client portal",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/portal/projects/{projectId}/documents": {
+      "get": {
+        "operationId": "PortalController_listDocuments",
+        "summary": "List documents uploaded to a project (CLIENT visibility)",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "portal"
+        ]
+      },
+      "post": {
+        "operationId": "PortalController_uploadDocument",
+        "summary": "Upload a document to a project (client → project)",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/portal/projects/{projectId}/documents/{documentId}": {
+      "delete": {
+        "operationId": "PortalController_unlinkDocument",
+        "summary": "Unlink (delete) a document the caller previously uploaded",
+        "description": "Only documents uploaded by the current contact can be unlinked.",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "documentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/portal/projects/{projectId}/deliverables/{deliverableId}/approve": {
+      "post": {
+        "operationId": "PortalController_approveDeliverable",
+        "summary": "Client-facing approval — marks a deliverable as APPROVED",
+        "description": "Only deliverables with clientFacing=true and status=IN_REVIEW can be approved.",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Function"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "portal"
         ]
       }
     },
@@ -18343,6 +23374,35 @@
           "password"
         ]
       },
+      "ForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "token",
+          "newPassword"
+        ]
+      },
       "AddressDto": {
         "type": "object",
         "properties": {
@@ -18651,52 +23711,6 @@
           "name"
         ]
       },
-      "UpdateAgentDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 100
-          },
-          "description": {
-            "type": "string",
-            "maxLength": 500
-          },
-          "status": {
-            "type": "object"
-          },
-          "model": {
-            "type": "string",
-            "maxLength": 100
-          },
-          "systemPrompt": {
-            "type": "string"
-          },
-          "instructions": {
-            "type": "string"
-          },
-          "budgetPerDay": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1000
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "config": {
-            "type": "object"
-          },
-          "metadata": {
-            "type": "object"
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        }
-      },
       "UpdatePermissionsDto": {
         "type": "object",
         "properties": {}
@@ -18859,34 +23873,77 @@
       "CreateMemoryDto": {
         "type": "object",
         "properties": {
-          "type": {
-            "type": "object"
+          "projectId": {
+            "type": "string"
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "authorType": {
+            "type": "string",
+            "enum": [
+              "HUMAN",
+              "AI",
+              "SYSTEM"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "NOTE",
+              "INSIGHT",
+              "CONSTRAINT",
+              "RISK",
+              "OPPORTUNITY",
+              "LESSON"
+            ]
           },
           "content": {
             "type": "string"
           },
-          "summary": {
+          "sourceEntityType": {
             "type": "string"
           },
-          "importance": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          },
-          "expiresAt": {
+          "sourceEntityId": {
             "type": "string"
           },
-          "agentId": {
-            "type": "string"
+          "isPinned": {
+            "type": "boolean"
           },
-          "metadata": {
-            "type": "object"
+          "isAiGenerated": {
+            "type": "boolean"
           }
         },
         "required": [
-          "type",
+          "projectId",
           "content"
         ]
+      },
+      "UpdateMemoryDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "NOTE",
+              "INSIGHT",
+              "CONSTRAINT",
+              "RISK",
+              "OPPORTUNITY",
+              "LESSON"
+            ]
+          },
+          "isPinned": {
+            "type": "boolean"
+          },
+          "supersededBy": {
+            "type": "string",
+            "nullable": true
+          }
+        }
       },
       "CreateGovernanceRuleDto": {
         "type": "object",
@@ -19700,26 +24757,6 @@
         "required": [
           "name"
         ]
-      },
-      "UpdateDepartmentDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "status": {
-            "type": "object"
-          },
-          "headAgentId": {
-            "type": "string"
-          },
-          "parentId": {
-            "type": "string"
-          }
-        }
       },
       "DeptStructureItemDto": {
         "type": "object",
@@ -20941,6 +25978,9 @@
           },
           "targetDate": {
             "type": "string"
+          },
+          "projectId": {
+            "type": "string"
           }
         },
         "required": [
@@ -21005,7 +26045,48 @@
           "departmentId": {
             "type": "string"
           },
+          "customerId": {
+            "type": "string"
+          },
+          "projectTypeId": {
+            "type": "string"
+          },
+          "projectTypeVersion": {
+            "type": "number"
+          },
+          "budgetType": {
+            "type": "string",
+            "enum": [
+              "FIXED_FEE",
+              "HOURLY",
+              "RETAINER"
+            ]
+          },
+          "budgetAmount": {
+            "type": "number"
+          },
+          "budgetCurrency": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "URGENT"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "targetDate": {
+            "type": "string"
+          },
+          "startDate": {
             "type": "string"
           },
           "goalIds": {
@@ -21013,10 +26094,28 @@
             "items": {
               "type": "string"
             }
+          },
+          "customFieldValues": {
+            "type": "object"
           }
         },
         "required": [
           "name"
+        ]
+      },
+      "CloneProjectDto": {
+        "type": "object",
+        "properties": {
+          "sourceProjectId": {
+            "type": "string"
+          },
+          "newName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceProjectId",
+          "newName"
         ]
       },
       "UpdateProjectDto": {
@@ -21029,12 +26128,64 @@
             "type": "string"
           },
           "status": {
-            "type": "object"
+            "type": "string",
+            "enum": [
+              "LEAD",
+              "PROPOSAL_SENT",
+              "WON",
+              "LOST",
+              "ACTIVE",
+              "ON_HOLD",
+              "REVIEW",
+              "COMPLETED",
+              "ARCHIVED"
+            ]
           },
           "departmentId": {
             "type": "string"
           },
+          "customerId": {
+            "type": "string"
+          },
+          "projectTypeId": {
+            "type": "string"
+          },
+          "projectTypeVersion": {
+            "type": "number"
+          },
+          "budgetType": {
+            "type": "string",
+            "enum": [
+              "FIXED_FEE",
+              "HOURLY",
+              "RETAINER"
+            ]
+          },
+          "budgetAmount": {
+            "type": "number"
+          },
+          "budgetCurrency": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "URGENT"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "targetDate": {
+            "type": "string"
+          },
+          "startDate": {
             "type": "string"
           },
           "goalIds": {
@@ -21043,10 +26194,876 @@
               "type": "string"
             }
           },
+          "customFieldValues": {
+            "type": "object"
+          },
+          "lostReason": {
+            "type": "string"
+          },
           "metadata": {
             "type": "object"
           }
         }
+      },
+      "TransitionProjectStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "LEAD",
+              "PROPOSAL_SENT",
+              "WON",
+              "LOST",
+              "ACTIVE",
+              "ON_HOLD",
+              "REVIEW",
+              "COMPLETED",
+              "ARCHIVED"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "CreateProjectTypeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "isSystem": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateProjectTypeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          }
+        }
+      },
+      "FieldSchemaItemDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "TEXT",
+              "NUMBER",
+              "DATE",
+              "SELECT",
+              "MULTI_SELECT"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "type"
+        ]
+      },
+      "StageTemplateItemDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "order": {
+            "type": "number"
+          },
+          "defaultDurationDays": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "order"
+        ]
+      },
+      "ApprovalStepDto": {
+        "type": "object",
+        "properties": {
+          "stepOrder": {
+            "type": "number"
+          },
+          "approverRole": {
+            "type": "string"
+          },
+          "approvalType": {
+            "type": "string",
+            "enum": [
+              "INTERNAL",
+              "CLIENT_FACING",
+              "DUAL"
+            ]
+          },
+          "riskTier": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "stepOrder",
+          "approverRole",
+          "approvalType"
+        ]
+      },
+      "CreateProjectTypeVersionDto": {
+        "type": "object",
+        "properties": {
+          "fieldSchema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldSchemaItemDto"
+            }
+          },
+          "stageTemplate": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageTemplateItemDto"
+            }
+          },
+          "approvalTemplate": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApprovalStepDto"
+            }
+          },
+          "goalTemplate": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "roleTemplate": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "fieldSchema",
+          "stageTemplate"
+        ]
+      },
+      "AppliesWhenRuleDto": {
+        "type": "object",
+        "properties": {
+          "hasCustomer": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "QuestionItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "helpText": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "TEXT",
+              "NUMBER",
+              "DATE",
+              "SELECT",
+              "MULTI_SELECT",
+              "BOOLEAN",
+              "CURRENCY"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "appliesWhen": {
+            "$ref": "#/components/schemas/AppliesWhenRuleDto"
+          },
+          "mapsTo": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "required": true,
+                "type": "string"
+              }
+            }
+          },
+          "skipIfConfidenceGte": {
+            "type": "number",
+            "minimum": 0
+          },
+          "askVia": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "type",
+          "required",
+          "mapsTo"
+        ]
+      },
+      "CreateQuestionPackDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionItemDto"
+            }
+          },
+          "isSystem": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "questions"
+        ]
+      },
+      "UpdateQuestionPackDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionItemDto"
+            }
+          }
+        }
+      },
+      "ReplaceProjectTypePacksDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateSourceDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "object"
+          },
+          "label": {
+            "type": "string"
+          },
+          "refType": {
+            "type": "string"
+          },
+          "refId": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "type",
+          "label",
+          "confidence"
+        ]
+      },
+      "RecordResponseDto": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "questionId": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "sourceLabel": {
+            "type": "string"
+          },
+          "sourceRefType": {
+            "type": "string"
+          },
+          "sourceRefId": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "skipSupersede": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "entityType",
+          "entityId",
+          "questionId",
+          "value",
+          "sourceType",
+          "sourceLabel"
+        ]
+      },
+      "CreateCustomerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "primaryEmail": {
+            "type": "string"
+          },
+          "primaryPhone": {
+            "type": "string"
+          },
+          "billingInfo": {
+            "type": "object"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateCustomerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "primaryEmail": {
+            "type": "string"
+          },
+          "primaryPhone": {
+            "type": "string"
+          },
+          "billingInfo": {
+            "type": "object"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE",
+              "ARCHIVED"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AddCustomerContactDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ]
+      },
+      "CreateStageDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "order": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "AT_RISK",
+              "COMPLETED",
+              "SKIPPED"
+            ]
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "order"
+        ]
+      },
+      "UpdateStageDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "AT_RISK",
+              "COMPLETED",
+              "SKIPPED"
+            ]
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          }
+        }
+      },
+      "ReorderStagesDto": {
+        "type": "object",
+        "properties": {
+          "orderedIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "orderedIds"
+        ]
+      },
+      "AssignMemberDto": {
+        "type": "object",
+        "properties": {
+          "actorId": {
+            "type": "string"
+          },
+          "actorType": {
+            "type": "string",
+            "enum": [
+              "HUMAN",
+              "AI",
+              "SYSTEM"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "PROJECT_DIRECTOR",
+              "PROJECT_MANAGER",
+              "RESEARCH_LEAD",
+              "QUALITY_LEAD",
+              "REVIEWER",
+              "COMPLIANCE_OFFICER",
+              "CLIENT_LIAISON",
+              "DOCUMENTATION_LEAD",
+              "KNOWLEDGE_MANAGER",
+              "CHIEF_OF_STAFF"
+            ]
+          }
+        },
+        "required": [
+          "actorId",
+          "actorType",
+          "role"
+        ]
+      },
+      "ReassignMemberDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "PROJECT_DIRECTOR",
+              "PROJECT_MANAGER",
+              "RESEARCH_LEAD",
+              "QUALITY_LEAD",
+              "REVIEWER",
+              "COMPLIANCE_OFFICER",
+              "CLIENT_LIAISON",
+              "DOCUMENTATION_LEAD",
+              "KNOWLEDGE_MANAGER",
+              "CHIEF_OF_STAFF"
+            ]
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "AutoAssignChiefOfStaffDto": {
+        "type": "object",
+        "properties": {
+          "actorId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actorId"
+        ]
+      },
+      "CreateDeliverableDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "goalId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "IN_REVIEW",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "riskTier": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          }
+        },
+        "required": [
+          "projectId",
+          "name"
+        ]
+      },
+      "UpdateDeliverableDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "IN_REVIEW",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "riskTier": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          }
+        }
+      },
+      "CreateDeliverableVersionDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "object"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "producedBy": {
+            "type": "string"
+          },
+          "producedByTaskId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "CreateLogEntryDto": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "actorType": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "taskId",
+          "action"
+        ]
+      },
+      "ResolveApprovalChainDto": {
+        "type": "object",
+        "properties": {
+          "deliverableId": {
+            "type": "string"
+          },
+          "projectTypeVersionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deliverableId",
+          "projectTypeVersionId"
+        ]
+      },
+      "CreateDecisionDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PROPOSED",
+              "APPROVED",
+              "REJECTED",
+              "SUPERSEDED"
+            ]
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "meetingNotes": {
+            "type": "string"
+          },
+          "effectiveDate": {
+            "type": "string"
+          },
+          "expiryDate": {
+            "type": "string"
+          },
+          "linkedEntityType": {
+            "type": "string"
+          },
+          "linkedEntityId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "title"
+        ]
+      },
+      "UpdateDecisionDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PROPOSED",
+              "APPROVED",
+              "REJECTED",
+              "SUPERSEDED"
+            ]
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "meetingNotes": {
+            "type": "string"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiryDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "supersededBy": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "CastVoteDto": {
+        "type": "object",
+        "properties": {
+          "vote": {
+            "type": "string",
+            "enum": [
+              "FOR",
+              "AGAINST",
+              "ABSTAIN"
+            ]
+          }
+        },
+        "required": [
+          "vote"
+        ]
+      },
+      "ApproveDecisionDto": {
+        "type": "object",
+        "properties": {
+          "approvedById": {
+            "type": "string"
+          },
+          "approvedByType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "approvedById"
+        ]
+      },
+      "Function": {
+        "type": "object",
+        "properties": {}
       },
       "WorkflowResponseDto": {
         "type": "object",
@@ -21186,10 +27203,6 @@
           "successRate",
           "status"
         ]
-      },
-      "Function": {
-        "type": "object",
-        "properties": {}
       },
       "ExecuteAIActionDto": {
         "type": "object",

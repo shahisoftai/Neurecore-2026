@@ -2,6 +2,8 @@ import { Injectable, Logger, NotFoundException, Inject, BadRequestException, Opt
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { Prisma } from '@prisma/client';
 import type { TaskPriority, TaskStatus } from '@prisma/client';
+import { EVENT_TRANSPORT } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
+import type { IEnterpriseEventTransport } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
 
 export const GOALS_SERVICE = 'GOALS_SERVICE';
 
@@ -11,7 +13,13 @@ export class TasksService {
 
   constructor(
     private readonly prisma: PrismaService,
+    // DEPRECATED (Phase 2, ADR-001 §12): the in-memory ProjectEventBus. Retained
+    // temporarily for the existing project-memory handlers; superseded by the
+    // durable Enterprise Event Fabric below.
     @Optional() private readonly eventBus?: any,
+    @Optional()
+    @Inject(EVENT_TRANSPORT)
+    private readonly transport?: IEnterpriseEventTransport,
   ) {}
 
   async findAll(options?: {
@@ -156,6 +164,28 @@ export class TasksService {
         });
       } catch (err) {
         this.logger.warn(`Failed to publish TaskCompleted event: ${err}`);
+      }
+    }
+
+    // Phase 2: durable enterprise event (the migrated, cross-capability path).
+    if (status === 'COMPLETED' && this.transport) {
+      try {
+        await this.transport.publish({
+          eventType: 'enterprise.task.completed',
+          tenantId,
+          actorType: 'SYSTEM',
+          idempotencyKey: `task.completed.${id}`,
+          sourceModule: 'orchestration',
+          payload: {
+            taskId: id,
+            projectId: updated.projectId,
+            goalId: updated.goalId,
+            status: 'COMPLETED',
+            title: updated.title,
+          },
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to publish enterprise.task.completed: ${err}`);
       }
     }
 

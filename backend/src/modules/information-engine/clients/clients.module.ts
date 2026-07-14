@@ -10,6 +10,8 @@
 
 import { Module, forwardRef } from '@nestjs/common';
 import { ProjectsAdapter } from './projects.adapter';
+import { ProjectCompletenessService } from './project-completeness.service';
+import { EieReactiveConsumer } from '../consumers/eie-reactive.consumer';
 import { RequirementsModule } from '../requirements/requirements.module';
 import { ResponsesModule } from '../responses/responses.module';
 import { CompletenessModule } from '../completeness/completeness.module';
@@ -30,7 +32,23 @@ import { ExtractionModule } from '../extraction/extraction.module';
     InterviewModule,
     ExtractionModule,
   ],
-  providers: [ProjectsAdapter],
-  exports: [ProjectsAdapter],
+  providers: [
+    ProjectsAdapter,
+    { provide: 'PROJECTS_ADAPTER', useExisting: ProjectsAdapter },
+    ProjectCompletenessService,
+    {
+      provide: 'PROJECT_COMPLETENESS_SERVICE',
+      useExisting: ProjectCompletenessService,
+    },
+    // Phase 2: capability-owned consumer reacting to enterprise events via the
+    // transport port (EnterpriseEventsModule is @Global).
+    EieReactiveConsumer,
+  ],
+  exports: [
+    ProjectsAdapter,
+    'PROJECTS_ADAPTER',
+    ProjectCompletenessService,
+    'PROJECT_COMPLETENESS_SERVICE',
+  ],
 })
 export class ClientsModule {}

@@ -48,7 +48,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
     options: ListCustomersOptions,
     tenantId: string,
   ): Promise<{ data: Customer[]; total: number }> {
-    const where: Record<string, unknown> = { tenantId };
+    const where: Record<string, unknown> = tenantId !== '*' ? { tenantId } : {};
     if (options.status) where.status = options.status;
     if (options.search) {
       where.OR = [

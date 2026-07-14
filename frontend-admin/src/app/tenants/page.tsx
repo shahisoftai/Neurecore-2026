@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AdminShell from '@/components/AdminShell';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import api from '@/services/api';
@@ -17,6 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function TenantsPage() {
   const user = useAdminAuth();
+  const router = useRouter();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +26,8 @@ export default function TenantsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 20;
+
+  const canEdit = user?.role === 'SUPER_ADMIN';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,7 +51,17 @@ export default function TenantsPage() {
     <AdminShell user={user}>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Tenants</h1>
-        <span className="text-sm text-gray-400">{total} total</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">{total} total</span>
+          {canEdit && (
+            <button
+              onClick={() => router.push('/tenants/new')}
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition"
+            >
+              + New Tenant
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-4">
