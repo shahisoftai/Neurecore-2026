@@ -6,6 +6,7 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import type {
   ClusterView, FailoverResult, GlobalHealth, ICloudPlatform, RegionView,
@@ -18,24 +19,24 @@ export class CloudPlatform implements ICloudPlatform {
   constructor(private readonly prisma: PrismaService) {}
 
   async registerRegion(tenantId: string, name: string, endpoint: string): Promise<RegionView> {
-    const r = await this.prisma.cloudRegion.create({ data: { tenantId, name, endpoint } });
+    const r = await this.prisma.cloudRegion.create({ data: { tenantId, name, endpoint } as Prisma.CloudRegionUncheckedCreateInput });
     return { id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount: 0 };
   }
   async listRegions(tenantId: string): Promise<RegionView[]> {
-    return (await this.prisma.cloudRegion.findMany({ where: { tenantId }, include: { _count: { select: { clusters: true } } } })).map((r) => ({
-      id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount: (r as any)._count?.clusters ?? 0,
+    return (await (this.prisma.cloudRegion.findMany as any)({ where: { tenantId }, include: { _count: { select: { clusters: true } } } })).map((r: any) => ({
+      id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount: r._count?.clusters ?? 0,
     }));
   }
   async registerCluster(regionId: string, name: string, endpoint?: string): Promise<ClusterView> {
-    const c = await this.prisma.cloudCluster.create({ data: { regionId, name, endpoint: endpoint ?? null } });
+    const c = await this.prisma.cloudCluster.create({ data: { regionId, name, endpoint: endpoint ?? null } as Prisma.CloudClusterUncheckedCreateInput });
     const region = await this.prisma.cloudRegion.findUnique({ where: { id: regionId } });
     return { id: c.id, regionName: region?.name ?? 'unknown', name: c.name, healthy: c.healthy, endpoint: c.endpoint };
   }
   async place(tenantId: string, primaryRegion: string, backupRegion?: string, residencyPolicy?: string): Promise<TenantPlacementView> {
     const row = await this.prisma.tenantPlacement.upsert({
       where: { tenantId },
-      create: { tenantId, primaryRegion, backupRegion: backupRegion ?? null, residencyPolicy: residencyPolicy ?? null },
-      update: { primaryRegion, backupRegion: backupRegion ?? null, residencyPolicy: residencyPolicy ?? null },
+      create: { tenantId, primaryRegion, backupRegion: backupRegion ?? null, residencyPolicy: residencyPolicy ?? null } as Prisma.TenantPlacementUncheckedCreateInput,
+      update: { primaryRegion, backupRegion: backupRegion ?? null, residencyPolicy: residencyPolicy ?? null } as Prisma.TenantPlacementUncheckedUpdateInput,
     });
     return { tenantId: row.tenantId, primaryRegion: row.primaryRegion, backupRegion: row.backupRegion, residencyPolicy: row.residencyPolicy, replicationEnabled: row.replicationEnabled, failoverStatus: row.failoverStatus };
   }
@@ -82,7 +83,7 @@ export class CloudPlatform implements ICloudPlatform {
   }
 
   async globalHealth(tenantId: string): Promise<GlobalHealth> {
-    const regions = await this.prisma.cloudRegion.findMany({ where: { tenantId }, include: { _count: { select: { clusters: true } } } });
+    const regions = await (this.prisma.cloudRegion.findMany as any)({ where: { tenantId }, include: { _count: { select: { clusters: true } } } }) as any[];
     const active = regions.filter((r) => r.status === 'ACTIVE').length;
     const failoverActive = (await this.prisma.tenantPlacement.count({ where: { tenantId, failoverStatus: 'ACTIVE' } })) > 0;
     const overall: GlobalHealth['overall'] = regions.length === 0 ? 'FAIR' : active >= regions.length ? 'GOOD' : 'FAIR';

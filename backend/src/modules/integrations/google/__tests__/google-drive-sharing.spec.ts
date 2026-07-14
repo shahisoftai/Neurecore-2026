@@ -5,7 +5,7 @@
 import { GoogleDriveService } from '../google-drive.service';
 import type { GoogleAuthClient } from '../google-auth.client';
 import type { ConfigService } from '@nestjs/config';
-import type { PrismaService } from '../../../infrastructure/database/prisma.service';
+import type { PrismaService } from '../../../../infrastructure/database/prisma.service';
 
 const fakePrisma = {
   tenant: {

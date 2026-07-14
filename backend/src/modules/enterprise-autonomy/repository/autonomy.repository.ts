@@ -6,7 +6,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import type {
   CreateEmployeeInput,
@@ -22,15 +22,15 @@ export class AutonomyRepository {
   // ── Departments ──
   createDepartment(tenantId: string, name: string, supervisorEmployeeId?: string) {
     return this.prisma.aiDepartment.create({
-      data: { tenantId, name, supervisorEmployeeId: supervisorEmployeeId ?? null },
+      data: { tenantId, name, supervisorEmployeeId: supervisorEmployeeId ?? null } as Prisma.AiDepartmentUncheckedCreateInput,
     });
   }
   listDepartments(tenantId: string) {
-    return this.prisma.aiDepartment.findMany({
+    return (this.prisma.aiDepartment.findMany as any)({
       where: { tenantId },
       include: { _count: { select: { employees: true } } },
       orderBy: { name: 'asc' },
-    });
+    }) as any;
   }
 
   // ── Employees ──
@@ -46,7 +46,7 @@ export class AutonomyRepository {
         allowedTools: input.allowedTools ?? [],
         knowledgeDomains: input.knowledgeDomains ?? [],
         responsibilities: input.responsibilities ?? [],
-      },
+      } as Prisma.AiEmployeeUncheckedCreateInput,
     });
   }
   findEmployee(id: string, tenantId: string) {

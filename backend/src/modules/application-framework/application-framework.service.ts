@@ -5,6 +5,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 export type AppStatus = 'DRAFT' | 'ACTIVE' | 'DEPRECATED' | 'RETIRED';
@@ -38,7 +39,7 @@ export interface IApplicationFramework {
 export class ApplicationFramework implements IApplicationFramework {
   constructor(private readonly prisma: PrismaService) {}
   async registerApp(tenantId: string, name: string, domain: string, version = '1.0.0') {
-    const a = await this.prisma.application.create({ data: { tenantId, name, domain, version } });
+    const a = await this.prisma.application.create({ data: { tenantId, name, domain, version } as Prisma.ApplicationUncheckedCreateInput });
     return { id: a.id, name: a.name, domain: a.domain, version: a.version, status: a.status as AppStatus, edition: a.edition as Edition };
   }
   async listApps(tenantId: string, domain?: string) {
@@ -63,7 +64,7 @@ export class ApplicationFramework implements IApplicationFramework {
     return (await this.prisma.industrySolution.findMany({ where: { tenantId } })).map((s) => ({ id: s.id, name: s.name, industry: s.industry, packages: s.packages }));
   }
   async createWorkspace(tenantId: string, name: string, role: string, dashboards: string[] = []) {
-    const w = await this.prisma.workspace.create({ data: { tenantId, name, role, dashboards } });
+    const w = await this.prisma.workspace.create({ data: { tenantId, name, role, dashboards } as Prisma.WorkspaceUncheckedCreateInput });
     return { id: w.id, name: w.name, role: w.role, dashboards: w.dashboards };
   }
   async listWorkspaces(tenantId: string) {

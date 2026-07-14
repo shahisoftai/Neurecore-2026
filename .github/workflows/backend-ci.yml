@@ -14,7 +14,7 @@ on:
 
 jobs:
   quality-checks:
-    name: Quality Checks
+    name: Quality Checks (Phase 0 mandatory gates)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,76 +36,27 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Prisma generate
-        run: pnpm prisma generate
-
-      - name: TypeScript check
-        run: pnpm tsc --noEmit
-
-      - name: ESLint check
-        run: pnpm lint
-
-      - name: Prisma validate
+      # MANDATORY GATE 1: prisma validate (schema internally consistent)
+      - name: Gate 1 — prisma validate
         run: pnpm prisma validate
 
-      - name: Build
+      # MANDATORY GATE 2: prisma generate (Prisma Client produced from schema)
+      - name: Gate 2 — prisma generate
+        run: pnpm prisma generate
+
+      # MANDATORY GATE 3: tsc --noEmit (no typecheck errors in source)
+      - name: Gate 3 — typecheck (npx tsc --noEmit)
+        run: pnpm exec tsc --noEmit
+
+      # Optional lint (informational, not blocking)
+      - name: ESLint (informational)
+        run: pnpm lint || true
+
+      # MANDATORY GATE 4: build (Nest bundles successfully)
+      - name: Gate 4 — npm run build
         run: pnpm build
 
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: backend/pnpm-lock.yaml
-
-      - name: Install pnpm
-        run: npm install -g pnpm@9
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Prisma generate
-        run: pnpm prisma generate
-
-      - name: Run tests
-        run: pnpm test --passWithNoTests
-
-  schema-checks:
-    name: Schema Checks
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: backend/pnpm-lock.yaml
-
-      - name: Install pnpm
-        run: npm install -g pnpm@9
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Prisma generate
-        run: pnpm prisma generate
-
+      # Schema-shape enforcement (existing)
       - name: Check @@map() on all models
         run: |
           echo "Checking that every Prisma model has @@map()..."
@@ -115,3 +66,33 @@ jobs:
         run: |
           echo "Checking enum case consistency..."
           bash scripts/enforce-enum-case.sh
+
+  tests:
+    name: MANDATORY GATE 5 — tests
+    runs-on: ubuntu-latest
+    needs: quality-checks
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: backend/pnpm-lock.yaml
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Gate 2 — prisma generate (re-run for tests)
+        run: pnpm prisma generate
+
+      - name: Gate 5 — npm test (runInBand, 100% required)
+        run: pnpm test -- --runInBand

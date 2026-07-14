@@ -4114,3 +4114,584 @@ model MigrationPlan {
   @@index([tenantId, targetType])
   @@map("migration_plans")
 }
+
+
+// ===== Auto-generated Phase 2-14 reconciliation (audit-remediation) =====
+// Source: backend/prisma/migrations/20260714_*.sql
+// Generated: 24 models + 14 enums — every column verified against parsed migration SQL.
+// DO NOT hand-edit; regenerate via /tmp/build_addendum.py.
+
+// ===== Phase 2-14 enums (auto-generated from raw SQL migrations) =====
+// Source: prisma/migrations/20260714_*.sql
+
+enum AppStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+  RETIRED
+}
+
+enum ConsumerInboxStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+  DEAD_LETTER
+}
+
+enum Edition {
+  COMMUNITY
+  PROFESSIONAL
+  ENTERPRISE
+  GOVERNMENT
+  PRIVATE_CLOUD
+}
+
+enum EnterpriseEventOutboxStatus {
+  PENDING
+  DISPATCHED
+  DEAD_LETTER
+}
+
+enum ExtensionKind {
+  PLUGIN
+  WORKFLOW
+  AGENT
+  CONNECTOR
+  DASHBOARD
+  ANALYTICS
+  VISUALIZATION
+  CUSTOM
+}
+
+enum MissionStatus {
+  CREATED
+  PLANNED
+  ASSIGNED
+  RUNNING
+  WAITING
+  ESCALATED
+  BLOCKED
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum ObservationSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum OntologyEntityKind {
+  EMPLOYEE
+  DEPARTMENT
+  PROJECT
+  CUSTOMER
+  SUPPLIER
+  PRODUCT
+  MISSION
+  WORK_RUN
+  RECOMMENDATION
+  STRATEGY
+  RISK
+  APPROVAL
+  GOVERNANCE_RULE
+  DOCUMENT
+  POLICY
+  EVENT
+  CAPABILITY
+  KNOWLEDGE_CLUSTER
+  CUSTOM
+}
+
+enum PlanningMemoryKind {
+  SUCCESSFUL_PLAN
+  FAILED_PLAN
+  APPROVAL_OUTCOME
+  EXECUTION_METRIC
+  PLAN_TEMPLATE
+}
+
+enum PluginStatus {
+  DRAFT
+  INSTALLED
+  VALIDATED
+  ENABLED
+  DISABLED
+  DEPRECATED
+  REMOVED
+}
+
+enum RegionStatus {
+  ACTIVE
+  DEGRADED
+  UNAVAILABLE
+  PLANNED
+}
+
+enum RelationshipKind {
+  DEPENDS_ON
+  OWNS
+  REPORTS_TO
+  INFLUENCES
+  IMPACTS
+  RELATED_TO
+  PRECEDES
+  CONFLICTS_WITH
+  SUPPORTS
+  DELEGATES_TO
+  RESOLVES
+  CREATED_BY
+  APPROVED_BY
+  PART_OF
+  CUSTOM
+}
+
+enum WorkRunStatus {
+  CREATED
+  PLANNING
+  PLANNED
+  RUNNING
+  WAITING_FOR_APPROVAL
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum WorkRunStepStatus {
+  PENDING
+  VALIDATING
+  DENIED
+  WAITING_FOR_APPROVAL
+  APPROVED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+  CANCELLED
+}
+
+// ===== Phase 2-14 models (auto-generated from raw SQL migrations) =====
+// Source: prisma/migrations/20260714_*.sql
+// Each model name derived from source prisma.<X>.* usage;
+// SQL table name preserved by @@map(). FK relations are NOT emitted
+// (project convention: raw tenantId String + per-tenant repo filtering).
+
+// 20260714_application_framework: applications
+model Application {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  name String  // nullable=False default=None sql=TEXT
+  version String  // nullable=False default='1.0.0' sql=TEXT
+  vendor String ?  // nullable=True default=None sql=TEXT
+  domain String  // nullable=False default=None sql=TEXT
+  industry String ?  // nullable=True default=None sql=TEXT
+  description String ?  // nullable=True default=None sql=TEXT
+  status AppStatus  // nullable=False default='DRAFT' sql=AppStatus
+  edition Edition  // nullable=False default='ENTERPRISE' sql=Edition
+  requiredCapabilities String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  icon String ?  // nullable=True default=None sql=TEXT
+  navigationJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  metadataJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  updatedAt DateTime  // nullable=False default=None sql=TIMESTAMP
+  @@unique([tenantId, name])
+  @@map("applications")
+}
+
+// 20260714_application_framework: domain_packages
+model DomainPackage {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  name String  // nullable=False default=None sql=TEXT
+  domain String  // nullable=False default=None sql=TEXT
+  description String ?  // nullable=True default=None sql=TEXT
+  modules String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  dependencies String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  metadataJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  @@unique([tenantId, name])
+  @@map("domain_packages")
+}
+
+// 20260714_application_framework: industry_solutions
+model IndustrySolution {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  name String  // nullable=False default=None sql=TEXT
+  industry String  // nullable=False default=None sql=TEXT
+  packages String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  description String ?  // nullable=True default=None sql=TEXT
+  metadataJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  @@unique([tenantId, name])
+  @@map("industry_solutions")
+}
+
+// 20260714_application_framework: workspaces
+model Workspace {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  name String  // nullable=False default=None sql=TEXT
+  role String  // nullable=False default=None sql=TEXT
+  layoutJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  dashboards String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  metadataJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  updatedAt DateTime  // nullable=False default=None sql=TIMESTAMP
+  @@unique([tenantId, name])
+  @@map("workspaces")
+}
+
+// 20260714_cloud_platform: cloud_regions
+model CloudRegion {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  name String  // nullable=False default=None sql=TEXT
+  status RegionStatus  // nullable=False default='ACTIVE' sql=RegionStatus
+  endpoint String  // nullable=False default=None sql=TEXT
+  metadataJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  updatedAt DateTime  // nullable=False default=None sql=TIMESTAMP
+  @@unique([tenantId, name])
+  @@map("cloud_regions")
+}
+
+// 20260714_cloud_platform: cloud_clusters
+model CloudCluster {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  regionId String  // nullable=False default=None sql=TEXT
+  name String  // nullable=False default=None sql=TEXT
+  healthy Boolean  @default(true)  // nullable=False default='true' sql=BOOLEAN
+  endpoint String ?  // nullable=True default=None sql=TEXT
+  metadataJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  updatedAt DateTime  // nullable=False default=None sql=TIMESTAMP
+  @@unique([regionId, name])
+  @@map("cloud_clusters")
+}
+
+// 20260714_cloud_platform: tenant_placements
+model TenantPlacement {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  primaryRegion String  // nullable=False default=None sql=TEXT
+  backupRegion String ?  // nullable=True default=None sql=TEXT
+  residencyPolicy String ?  // nullable=True default=None sql=TEXT
+  replicationEnabled Boolean  @default(false)  // nullable=False default='false' sql=BOOLEAN
+  failoverStatus String  // nullable=False default='NONE' sql=TEXT
+  metadataJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  updatedAt DateTime  // nullable=False default=None sql=TIMESTAMP
+  @@unique([tenantId])
+  @@map("tenant_placements")
+}
+
+// 20260714_enterprise_autonomy: ai_departments
+model AiDepartment {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  name String  // nullable=False default=None sql=TEXT
+  supervisorEmployeeId String ?  // nullable=True default=None sql=TEXT
+  metricsJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  updatedAt DateTime  // nullable=False default=None sql=TIMESTAMP(3)
+  @@unique([tenantId, name])
+  @@map("ai_departments")
+}
+
+// 20260714_enterprise_autonomy: ai_employees
+model AiEmployee {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  name String  // nullable=False default=None sql=TEXT
+  role String  // nullable=False default=None sql=TEXT
+  departmentId String ?  // nullable=True default=None sql=TEXT
+  supervisorEmployeeId String ?  // nullable=True default=None sql=TEXT
+  authorityCeiling Int  @default(50)  // nullable=False default='50' sql=INTEGER
+  allowedTools String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  knowledgeDomains String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  responsibilities String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  confidenceThreshold String  // nullable=False default='MEDIUM' sql=TEXT
+  escalationRules Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  delegationRules Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  currentWorkload Int  @default(0)  // nullable=False default='0' sql=INTEGER
+  availability String  // nullable=False default='AVAILABLE' sql=TEXT
+  healthStatus String  // nullable=False default='GOOD' sql=TEXT
+  metricsJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  updatedAt DateTime  // nullable=False default=None sql=TIMESTAMP(3)
+  @@map("ai_employees")
+}
+
+// 20260714_enterprise_autonomy: missions
+model Mission {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  title String  // nullable=False default=None sql=TEXT
+  description String ?  // nullable=True default=None sql=TEXT
+  status MissionStatus  // nullable=False default='CREATED' sql=MissionStatus
+  priority String  // nullable=False default='MEDIUM' sql=TEXT
+  assignedEmployeeId String ?  // nullable=True default=None sql=TEXT
+  departmentId String ?  // nullable=True default=None sql=TEXT
+  objective String  // nullable=False default=None sql=TEXT
+  planJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  workRunIds String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  escalationLevel Int  @default(0)  // nullable=False default='0' sql=INTEGER
+  createdById String  // nullable=False default=None sql=TEXT
+  version Int  @default(0)  // nullable=False default='0' sql=INTEGER
+  failureReason String ?  // nullable=True default=None sql=TEXT
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  plannedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  assignedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  startedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  completedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  cancelledAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  @@map("missions")
+}
+
+// 20260714_enterprise_autonomy: mission_observations
+model MissionObservation {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  missionId String ?  // nullable=True default=None sql=TEXT
+  watcher String  // nullable=False default=None sql=TEXT
+  observation String  // nullable=False default=None sql=TEXT
+  evidenceJson Json  @default("[]")  // nullable=False default='[]' sql=JSONB
+  severity ObservationSeverity  // nullable=False default='INFO' sql=ObservationSeverity
+  confidence String  // nullable=False default='MEDIUM' sql=TEXT
+  affectedDepartments String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  affectedProjects String[]  @default([])  // nullable=False default='ARRAY[]:' sql=TEXT[]
+  recommendedAction String ?  // nullable=True default=None sql=TEXT
+  requiresRuntime Boolean  @default(false)  // nullable=False default='false' sql=BOOLEAN
+  requiresApproval Boolean  @default(false)  // nullable=False default='false' sql=BOOLEAN
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  @@map("mission_observations")
+}
+
+// 20260714_enterprise_event_fabric: enterprise_event_outbox
+model EnterpriseEventOutbox {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  eventType String  // nullable=False default=None sql=TEXT
+  version Int  @default(1)  // nullable=False default='1' sql=INTEGER
+  tenantId String  // nullable=False default=None sql=TEXT
+  actorId String ?  // nullable=True default=None sql=TEXT
+  actorType String  // nullable=False default='SYSTEM' sql=TEXT
+  correlationId String  // nullable=False default=None sql=TEXT
+  causationId String ?  // nullable=True default=None sql=TEXT
+  idempotencyKey String  // nullable=False default=None sql=TEXT
+  sourceModule String  // nullable=False default=None sql=TEXT
+  payload Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  status EnterpriseEventOutboxStatus  // nullable=False default='PENDING' sql=EnterpriseEventOutboxStatus
+  retryCount Int  @default(0)  // nullable=False default='0' sql=INTEGER
+  lastError String ?  // nullable=True default=None sql=TEXT
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  dispatchedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  @@unique([tenantId, idempotencyKey])
+  @@map("enterprise_event_outbox")
+}
+
+// 20260714_enterprise_event_fabric: enterprise_event_inbox
+model EnterpriseEventInbox {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  eventId String  // nullable=False default=None sql=TEXT
+  consumerId String  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  status ConsumerInboxStatus  // nullable=False default='PENDING' sql=ConsumerInboxStatus
+  leaseToken String ?  // nullable=True default=None sql=TEXT
+  leaseExpiresAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  retryCount Int  @default(0)  // nullable=False default='0' sql=INTEGER
+  lastError String ?  // nullable=True default=None sql=TEXT
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  claimedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  processedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  @@unique([eventId, consumerId])
+  @@map("enterprise_event_inbox")
+}
+
+// 20260714_enterprise_event_fabric: enterprise_event_dead_letter
+model EnterpriseEventDeadLetter {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  originalEventId String  // nullable=False default=None sql=TEXT
+  eventType String  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  consumerId String  // nullable=False default=None sql=TEXT
+  payload Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  retryCount Int  // nullable=False default=None sql=INTEGER
+  lastError String  // nullable=False default=None sql=TEXT
+  replayStatus String  // nullable=False default='NONE' sql=TEXT
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  lastAttemptAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  replayedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  @@map("enterprise_event_dead_letter")
+}
+
+// 20260714_enterprise_event_fabric: enterprise_event_idempotency
+model EnterpriseEventIdempotency {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  idempotencyKey String  // nullable=False default=None sql=TEXT
+  consumerId String  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  @@unique([idempotencyKey, consumerId])
+  @@map("enterprise_event_idempotency")
+}
+
+// 20260714_enterprise_intelligence: ontology_versions
+model OntologyVersion {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  version Int  // nullable=False default=None sql=INT
+  schemaJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  @@unique([tenantId, version])
+  @@map("ontology_versions")
+}
+
+// 20260714_enterprise_intelligence: knowledge_nodes
+model KnowledgeNode {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  entityKind OntologyEntityKind  // nullable=False default=None sql=OntologyEntityKind
+  entityId String  // nullable=False default=None sql=TEXT
+  label String  // nullable=False default=None sql=TEXT
+  metadataJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  updatedAt DateTime  // nullable=False default=None sql=TIMESTAMP
+  @@unique([tenantId, entityKind, entityId])
+  @@map("knowledge_nodes")
+}
+
+// 20260714_enterprise_intelligence: knowledge_edges
+model KnowledgeEdge {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  sourceNodeId String  // nullable=False default=None sql=TEXT
+  targetNodeId String  // nullable=False default=None sql=TEXT
+  relationshipKind RelationshipKind  // nullable=False default=None sql=RelationshipKind
+  evidenceJson Json  @default("[]")  // nullable=False default='[]' sql=JSONB
+  confidence String  // nullable=False default='MEDIUM' sql=TEXT
+  ontologyVersion Int  @default(1)  // nullable=False default='1' sql=INT
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  @@unique([tenantId, sourceNodeId, targetNodeId, relationshipKind])
+  @@map("knowledge_edges")
+}
+
+// 20260714_enterprise_os: simulation_records
+model SimulationRecord {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  scenarioKind String  // nullable=False default=None sql=TEXT
+  scenarioLabel String  // nullable=False default=None sql=TEXT
+  baselineJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  projectedJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  outcomesJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  durationMs Int  @default(0)  // nullable=False default='0' sql=INTEGER
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  @@map("simulation_records")
+}
+
+// 20260714_planning_memory: planning_memory
+model PlanningMemory {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  kind PlanningMemoryKind  // nullable=False default=None sql=PlanningMemoryKind
+  objective String  // nullable=False default=None sql=TEXT
+  outcome String  // nullable=False default=None sql=TEXT
+  metrics Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  @@map("planning_memory")
+}
+
+// 20260714_platform_sdk: plugins
+model Plugin {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  name String  // nullable=False default=None sql=TEXT
+  kind ExtensionKind  // nullable=False default='PLUGIN' sql=ExtensionKind
+  version String  // nullable=False default='1.0.0' sql=TEXT
+  sdkVersion String  // nullable=False default='10.0.0' sql=TEXT
+  status PluginStatus  // nullable=False default='DRAFT' sql=PluginStatus
+  permissionsJson Json  @default("[]")  // nullable=False default='[]' sql=JSONB
+  metadataJson Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  signature String ?  // nullable=True default=None sql=TEXT
+  installedById String ?  // nullable=True default=None sql=TEXT
+  validated Boolean  @default(false)  // nullable=False default='false' sql=BOOLEAN
+  enabledAt DateTime ?  // nullable=True default=None sql=TIMESTAMP
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  updatedAt DateTime  // nullable=False default=None sql=TIMESTAMP
+  @@unique([tenantId, name, version])
+  @@map("plugins")
+}
+
+// 20260714_platform_sdk: extension_permissions
+model ExtensionPermission {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  pluginId String  // nullable=False default=None sql=TEXT
+  capability String  // nullable=False default=None sql=TEXT
+  granted Boolean  @default(false)  // nullable=False default='false' sql=BOOLEAN
+  reason String ?  // nullable=True default=None sql=TEXT
+  createdAt DateTime  @default(now())  // nullable=False default='NOW()' sql=TIMESTAMP
+  @@unique([tenantId, pluginId, capability])
+  @@map("extension_permissions")
+}
+
+// 20260714_work_runtime: work_runs
+model WorkRun {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  workspaceId String ?  // nullable=True default=None sql=TEXT
+  threadId String ?  // nullable=True default=None sql=TEXT
+  actorType String  // nullable=False default='HUMAN' sql=TEXT
+  actorId String  // nullable=False default=None sql=TEXT
+  hermesAgentId String ?  // nullable=True default=None sql=TEXT
+  request String  // nullable=False default=None sql=TEXT
+  status WorkRunStatus  // nullable=False default='CREATED' sql=WorkRunStatus
+  currentStepIndex Int  @default(0)  // nullable=False default='0' sql=INTEGER
+  contextProvenance Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  planVersion Int  @default(0)  // nullable=False default='0' sql=INTEGER
+  plan Json ?  // nullable=True default=None sql=JSONB
+  summary String ?  // nullable=True default=None sql=TEXT
+  failureCode String ?  // nullable=True default=None sql=TEXT
+  failureReason String ?  // nullable=True default=None sql=TEXT
+  version Int  @default(0)  // nullable=False default='0' sql=INTEGER
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  startedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  pausedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  completedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  cancelledAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  failedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  @@map("work_runs")
+}
+
+// 20260714_work_runtime: work_run_steps
+model WorkRunStep {
+  id String  @id @default(cuid())  // nullable=False default=None sql=TEXT
+  runId String  // nullable=False default=None sql=TEXT
+  tenantId String  // nullable=False default=None sql=TEXT
+  sequence Int  // nullable=False default=None sql=INTEGER
+  toolName String  // nullable=False default=None sql=TEXT
+  capability String  // nullable=False default=None sql=TEXT
+  operationType String  // nullable=False default=None sql=TEXT
+  input Json  @default("{}")  // nullable=False default='{}' sql=JSONB
+  status WorkRunStepStatus  // nullable=False default='PENDING' sql=WorkRunStepStatus
+  governanceDecision String ?  // nullable=True default=None sql=TEXT
+  governanceReason String ?  // nullable=True default=None sql=TEXT
+  policySource String ?  // nullable=True default=None sql=TEXT
+  approvalId String ?  // nullable=True default=None sql=TEXT
+  idempotencyKey String ?  // nullable=True default=None sql=TEXT
+  attemptCount Int  @default(0)  // nullable=False default='0' sql=INTEGER
+  result Json ?  // nullable=True default=None sql=JSONB
+  errorCode String ?  // nullable=True default=None sql=TEXT
+  errorMessage String ?  // nullable=True default=None sql=TEXT
+  createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
+  startedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  completedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
+  @@unique([tenantId, idempotencyKey])
+  @@map("work_run_steps")
+}

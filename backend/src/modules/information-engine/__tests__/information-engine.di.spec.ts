@@ -15,6 +15,7 @@
  */
 
 import { ProjectsAdapter } from '../clients/projects.adapter';
+import { ProjectCompletenessService } from '../clients/project-completeness.service';
 import { RequirementsService } from '../requirements/requirements.service';
 import { AdaptiveQuestioningService } from '../requirements/adaptive-questioning.service';
 import { ResponseService } from '../responses/response.service';
@@ -55,6 +56,14 @@ describe('FIX-027 prevention — Information Engine service-level DI smoke', () 
       new ProjectTypePacksService(
         makeRepoMock(),
         new QuestionPackService(makeRepoMock()),
+      ),
+      new ProjectCompletenessService(
+        makeRepoMock(),
+        makeRepoMock() as never,
+        makeRepoMock(),
+        makeRepoMock(),
+        makeRepoMock(),
+        makeRepoMock(),
       ),
     );
     expect(adapter).toBeDefined();

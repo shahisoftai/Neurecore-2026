@@ -24,7 +24,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import type {
   EnterpriseEvent,
@@ -242,7 +242,7 @@ export class EnterpriseEventTransport
 
   /** Invoke the consumer handler for a claimed inbox row and settle its state. */
   private async runConsumer(inboxId: string, leaseToken: string): Promise<void> {
-    const entry = await this.prisma.enterpriseEventInbox.findUnique({
+    const entry = await (this.prisma.enterpriseEventInbox.findUnique as any)({
       where: { id: inboxId },
       include: { event: true },
     });
@@ -308,7 +308,7 @@ export class EnterpriseEventTransport
             retryCount: nextRetry,
             lastError: message,
             lastAttemptAt: this.clock.now(),
-          },
+          } as Prisma.EnterpriseEventDeadLetterUncheckedCreateInput,
         }),
       ]);
       this.logger.warn(

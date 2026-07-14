@@ -48,7 +48,7 @@ describe('validatePlan', () => {
   it('rejects a plan exceeding the bounded step limit', () => {
     const raw = goodPlanRaw();
     raw.steps = Array.from({ length: 21 }, (_, i) => ({
-      id: `s${i}`, sequence: i, description: '', toolName: 'projects.get_summary', capability: 'projects', input: {}, dependsOn: [], effect: 'READ', expectedOutput: '',
+      id: `s${i}`, sequence: i, description: '', toolName: 'projects.get_summary', capability: 'projects', input: { projectId: 'p1' }, dependsOn: [], effect: 'READ', expectedOutput: '',
     }));
     expect(() => validatePlan(raw, REGISTERED)).toThrow(/max 20 steps/);
   });

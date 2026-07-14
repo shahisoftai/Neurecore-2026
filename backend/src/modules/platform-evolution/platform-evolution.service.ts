@@ -6,6 +6,7 @@
  * and plans, NEVER auto-execute, NEVER self-modify.
  */
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 export interface TechRadarView { id: string; name: string; category: string; maturity: string; description: string | null; recommendation: string | null }
@@ -66,7 +67,7 @@ export class PlatformEvolution implements IPlatformEvolution {
     return { id: r.id, name: r.name, status: r.status, affectProduction: r.affectProduction };
   }
   async completeExperiment(tenantId: string, id: string, results: Record<string, unknown>) {
-    const r = await this.prisma.experiment.update({ where: { id }, data: { status: 'COMPLETED' as any, resultsJson: results, completedAt: new Date() } });
+    const r = await this.prisma.experiment.update({ where: { id }, data: { status: 'COMPLETED' as any, resultsJson: results as Prisma.InputJsonValue, completedAt: new Date() } });
     return { id: r.id, name: r.name, status: r.status, affectProduction: r.affectProduction };
   }
   async listExperiments(tenantId: string) {

@@ -6,6 +6,7 @@
  * — never percentages. No automatic policy rewriting or governance bypass.
  */
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 export type TrustGrade = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'CRITICAL';
@@ -56,7 +57,7 @@ export class AIGovernancePlatform implements IAIGovernancePlatform {
     const risk: TrustGrade = issues.length >= 3 ? 'CRITICAL' : issues.length >= 2 ? 'POOR' : issues.length >= 1 ? 'FAIR' : 'GOOD';
     const trust: TrustGrade = evidenceGrade === 'POOR' ? 'POOR' : evidenceGrade === 'FAIR' ? 'FAIR' : evidenceGrade === 'GOOD' && reasoningGrade !== 'POOR' ? 'GOOD' : 'FAIR';
     const row = await this.prisma.trustEvaluation.create({
-      data: { tenantId, sourceType, sourceId, trustScore: trust, evidenceQuality: evidenceGrade, reasoningQuality: reasoningGrade, riskLevel: risk, policyCompliant: issues.length === 0, issues, evidenceJson: evidence },
+      data: { tenantId, sourceType, sourceId, trustScore: trust, evidenceQuality: evidenceGrade, reasoningQuality: reasoningGrade, riskLevel: risk, policyCompliant: issues.length === 0, issues, evidenceJson: evidence as Prisma.InputJsonValue },
     });
     return { id: row.id, sourceType: row.sourceType, trustScore: row.trustScore as TrustGrade, evidenceQuality: row.evidenceQuality as TrustGrade, reasoningQuality: row.reasoningQuality as TrustGrade, riskLevel: row.riskLevel as TrustGrade, policyCompliant: row.policyCompliant, issues: row.issues, createdAt: row.createdAt.toISOString() };
   }
@@ -79,7 +80,7 @@ export class AIGovernancePlatform implements IAIGovernancePlatform {
     return (await this.prisma.aIBiasFinding.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' }, take: 50 })).map((r) => ({ id: r.id, category: r.category, detail: r.detail, severity: r.severity as TrustGrade, recommendation: r.recommendation }));
   }
   async createPolicy(tenantId: string, name: string, category: string, rules: Record<string, unknown> = {}): Promise<AIPolicyView> {
-    const row = await this.prisma.aIPolicy.create({ data: { tenantId, name, category: category as any, rulesJson: rules } });
+    const row = await this.prisma.aIPolicy.create({ data: { tenantId, name, category: category as any, rulesJson: rules as Prisma.InputJsonValue } });
     return { id: row.id, name: row.name, category: row.category, version: row.version, active: row.active };
   }
   async listPolicies(tenantId: string): Promise<AIPolicyView[]> {
