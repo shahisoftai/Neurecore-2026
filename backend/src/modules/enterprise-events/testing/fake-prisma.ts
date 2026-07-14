@@ -1,10 +1,14 @@
 /**
  * In-memory fake Prisma modelling the Enterprise Event Fabric tables with the
  * semantics the transport relies on: conditional updateMany (atomic
- * compare-and-set), (tenantId,idempotencyKey) + (eventId,consumerId) unique
- * constraints, and $transaction (interactive callback). Used by fabric tests
- * so they run deterministically without a live DB (matches the codebase's
- * mocked-repository test style).
+ * compare-and-set), (tenantId,idempotencyKey) + (eventId,consumerId) +
+ * (tenantId,idempotencyKey,consumerId) unique constraints, and $transaction
+ * (interactive callback). Used by fabric tests so they run deterministically
+ * without a live DB (matches the codebase's mocked-repository test style).
+ *
+ * Audit-remediation: the idempotency table unique was widened from
+ * (idempotencyKey, consumerId) to (tenantId, idempotencyKey, consumerId) so
+ * cross-tenant entries are distinct ledger records.
  *
  * This is a TEST DOUBLE — not production code.
  */
@@ -168,7 +172,7 @@ export class FakePrisma {
   });
   enterpriseEventDeadLetter = new Table('dl', [], { replayStatus: 'NONE' });
   enterpriseEventIdempotency = new Table('idem', [
-    ['idempotencyKey', 'consumerId'],
+    ['tenantId', 'idempotencyKey', 'consumerId'],
   ]);
   activityEvent = new Table('activity', [['sourceEventId']]);
 

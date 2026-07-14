@@ -4537,7 +4537,7 @@ model EnterpriseEventIdempotency {
   consumerId String  // nullable=False default=None sql=TEXT
   tenantId String  // nullable=False default=None sql=TEXT
   createdAt DateTime  @default(now())  // nullable=False default='CURRENT_TIMESTAMP' sql=TIMESTAMP(3)
-  @@unique([idempotencyKey, consumerId])
+  @@unique([tenantId, idempotencyKey, consumerId])
   @@map("enterprise_event_idempotency")
 }
 
