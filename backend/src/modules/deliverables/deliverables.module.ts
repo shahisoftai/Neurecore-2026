@@ -28,6 +28,6 @@ import { ContinuousDiscoveryModule } from '../information-engine/cron/continuous
       useClass: PrismaDeliverableRepository,
     },
   ],
-  exports: [DeliverablesService],
+  exports: [DeliverablesService, DELIVERABLE_REPOSITORY],
 })
 export class DeliverablesModule {}

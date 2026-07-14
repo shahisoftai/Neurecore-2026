@@ -15,6 +15,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiCommon } from '../../common/decorators/api-common.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -34,16 +35,20 @@ export class ApprovalChainsController {
 
   /**
    * Resolve the approval chain for a deliverable.
+   *
+   * Audit-remediation fix: the previous implementation forwarded
+   * `user.tenantId` as the `riskTier` positional argument of the service,
+   * which compared a UUID against risk-tier names and always 404'd. The
+   * service now derives riskTier from the deliverable using its own
+   * repository port.
+   *
    * POST /approval-chains/resolve
    */
   @Post('resolve')
   @HttpCode(HttpStatus.OK)
   async resolveChain(@CurrentUser() user: JwtPayload, @Body() dto: ResolveApprovalChainDto) {
-    return this.chainService.resolveChain(
-      dto.deliverableId,
-      dto.projectTypeVersionId,
-      user.tenantId ?? '',
-    );
+    const tenantId = requireTenantId(user);
+    return this.chainService.resolveChain(tenantId, dto.deliverableId, dto.projectTypeVersionId);
   }
 
   /**
@@ -55,10 +60,8 @@ export class ApprovalChainsController {
     @CurrentUser() user: JwtPayload,
     @Query() query: ListApprovalWorkflowsDto,
   ) {
-    return this.chainService.findPendingWorkflows(
-      user.tenantId ?? '',
-      query.riskTier,
-    );
+    const tenantId = requireTenantId(user);
+    return this.chainService.findPendingWorkflows(tenantId, query.riskTier);
   }
 
   /**
@@ -66,8 +69,9 @@ export class ApprovalChainsController {
    * GET /approval-chains/:workflowId/current-step
    */
   @Get(':workflowId/current-step')
-  async getCurrentStep(@Param('workflowId') workflowId: string) {
-    return this.chainService.getCurrentStep(workflowId);
+  async getCurrentStep(@CurrentUser() user: JwtPayload, @Param('workflowId') workflowId: string) {
+    const tenantId = requireTenantId(user);
+    return this.chainService.getCurrentStep(tenantId, workflowId);
   }
 
   /**
@@ -75,8 +79,9 @@ export class ApprovalChainsController {
    * GET /approval-chains/steps/:stepId/blocked
    */
   @Get('steps/:stepId/blocked')
-  async isStepBlocked(@Param('stepId') stepId: string) {
-    const blocked = await this.chainService.isStepBlocked(stepId);
+  async isStepBlocked(@CurrentUser() user: JwtPayload, @Param('stepId') stepId: string) {
+    const tenantId = requireTenantId(user);
+    const blocked = await this.chainService.isStepBlocked(tenantId, stepId);
     return { blocked };
   }
 
@@ -86,7 +91,19 @@ export class ApprovalChainsController {
    */
   @Post(':workflowId/advance')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async advanceChain(@Param('workflowId') workflowId: string) {
-    await this.chainService.advanceChain(workflowId);
+  async advanceChain(@CurrentUser() user: JwtPayload, @Param('workflowId') workflowId: string) {
+    const tenantId = requireTenantId(user);
+    await this.chainService.advanceChain(tenantId, workflowId);
   }
+}
+
+/**
+ * Helpers
+ */
+function requireTenantId(user: JwtPayload): string {
+  const tenantId = (user && (user as { tenantId?: string | null }).tenantId) ?? null;
+  if (!tenantId) {
+    throw new ForbiddenException('Tenant context is required for approval-chain operations');
+  }
+  return tenantId;
 }

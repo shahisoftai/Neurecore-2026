@@ -26,25 +26,28 @@ export class PrismaApprovalChainRepository implements IApprovalChainRepository {
 
   async findWorkflowById(
     workflowId: string,
+    tenantId: string,
   ): Promise<(ApprovalWorkflow & { steps: ApprovalWorkflowStep[] }) | null> {
     return this.prisma.approvalWorkflow.findFirst({
-      where: { id: workflowId },
+      where: { id: workflowId, tenantId },
       include: { steps: { orderBy: { stepOrder: 'asc' } } },
     });
   }
 
   async updateWorkflow(
     workflowId: string,
+    tenantId: string,
     data: { status?: 'APPROVED'; completedAt?: Date; currentStep?: number },
   ): Promise<void> {
     await this.prisma.approvalWorkflow.update({
-      where: { id: workflowId },
+      where: { id: workflowId, tenantId },
       data: data as Record<string, unknown>,
     });
   }
 
   async findStepWithWorkflow(
     stepId: string,
+    tenantId: string,
   ): Promise<
     | (ApprovalWorkflowStep & {
         approvalWorkflow: ApprovalWorkflow & { steps: ApprovalWorkflowStep[] };
@@ -52,7 +55,7 @@ export class PrismaApprovalChainRepository implements IApprovalChainRepository {
     | null
   > {
     return this.prisma.approvalWorkflowStep.findFirst({
-      where: { id: stepId },
+      where: { id: stepId, approvalWorkflow: { tenantId } },
       include: {
         approvalWorkflow: { include: { steps: { orderBy: { stepOrder: 'asc' } } } },
       },

@@ -5,9 +5,13 @@
  * - Filters approvalTemplate by riskTier matching deliverable's riskTier
  * - Ordered, sequential step progression
  * - blockedByPriorStep enforcement
+ * - Tenant isolation: every operation takes tenantId and queries/updates only
+ *   rows belonging to that tenant.
  *
  * SOLID: Single Responsibility — owns approval chain resolution only.
- * DIP: depends on IApprovalChainRepository abstraction.
+ * DIP: depends on IApprovalChainRepository abstraction. Cross-module reads of
+ * Deliverable data go through DELIVERABLE_REPOSITORY (also a port), so this
+ * module never touches prisma directly.
  */
 
 import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
@@ -18,6 +22,10 @@ import type {
   IApprovalChainRepository,
 } from './interfaces/approval-chain.interface';
 import { APPROVAL_CHAIN_REPOSITORY } from './interfaces/approval-chain.interface';
+import {
+  DELIVERABLE_REPOSITORY,
+  type IDeliverableRepository,
+} from '../deliverables/interfaces/deliverable.interface';
 
 @Injectable()
 export class ApprovalChainsService {
@@ -26,20 +34,43 @@ export class ApprovalChainsService {
   constructor(
     @Inject(APPROVAL_CHAIN_REPOSITORY)
     private readonly repository: IApprovalChainRepository,
+    @Inject(DELIVERABLE_REPOSITORY)
+    private readonly deliverableRepository: IDeliverableRepository,
   ) {}
 
   /**
    * Resolve the approval chain for a deliverable.
-   * Filters the project type's approvalTemplate by riskTier matching the deliverable's tier,
-   * then returns ordered steps in sequential chain order.
+   *
+   * Bug fix (audit-remediation): the previous implementation accepted a
+   * `riskTier` parameter; the controller was passing `user.tenantId` into it,
+   * so every call returned 404 ("No approval steps found for risk tier
+   * '<UUID>'"). The riskTier must be derived from the deliverable and the
+   * deliverable must belong to the tenant.
+   *
+   * Filters the project type's approvalTemplate by riskTier matching the
+   * deliverable's tier, then returns ordered steps in sequential chain order.
    */
   async resolveChain(
+    tenantId: string,
     deliverableId: string,
     projectTypeVersionId: string,
-    riskTier: string,
   ): Promise<ApprovalChainResolution> {
-    const version = await this.repository.findProjectTypeVersionById(projectTypeVersionId);
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
 
+    const deliverable = await this.deliverableRepository.findById(deliverableId, tenantId);
+    if (!deliverable) {
+      throw new NotFoundException(`Deliverable ${deliverableId} not found in tenant ${tenantId}`);
+    }
+    if (!deliverable.riskTier) {
+      throw new BadRequestException(
+        `Deliverable ${deliverableId} has no riskTier; cannot resolve chain`,
+      );
+    }
+    const riskTier: string = deliverable.riskTier;
+
+    const version = await this.repository.findProjectTypeVersionById(projectTypeVersionId);
     if (!version) {
       throw new NotFoundException(`ProjectTypeVersion ${projectTypeVersionId} not found`);
     }
@@ -78,7 +109,7 @@ export class ApprovalChainsService {
     }));
 
     this.logger.debug(
-      `Resolved ${matchingSteps.length} approval steps for deliverable ${deliverableId} (riskTier=${riskTier})`,
+      `Resolved ${matchingSteps.length} approval steps for tenant=${tenantId} deliverable=${deliverableId} (riskTier=${riskTier})`,
     );
 
     return {
@@ -91,38 +122,46 @@ export class ApprovalChainsService {
 
   /**
    * Advance an approval workflow to the next sequential step.
-   * Called after a step is approved/rejected.
+   * Tenant-scoped: refuses to operate on another tenant's workflow.
    */
-  async advanceChain(workflowId: string): Promise<void> {
-    const workflow = await this.repository.findWorkflowById(workflowId);
+  async advanceChain(tenantId: string, workflowId: string): Promise<void> {
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+    const workflow = await this.repository.findWorkflowById(workflowId, tenantId);
 
     if (!workflow) {
-      throw new NotFoundException(`ApprovalWorkflow ${workflowId} not found`);
+      throw new NotFoundException(`ApprovalWorkflow ${workflowId} not found in tenant ${tenantId}`);
     }
 
     const currentStepIdx = workflow.currentStep;
     const nextStep = workflow.steps[currentStepIdx + 1];
 
     if (!nextStep) {
-      await this.repository.updateWorkflow(workflowId, {
+      await this.repository.updateWorkflow(workflowId, tenantId, {
         status: 'APPROVED',
         completedAt: new Date(),
       });
-      this.logger.log(`ApprovalWorkflow ${workflowId} completed — no more steps`);
+      this.logger.log(`ApprovalWorkflow ${workflowId} completed for tenant ${tenantId} — no more steps`);
       return;
     }
 
-    await this.repository.updateWorkflow(workflowId, {
+    await this.repository.updateWorkflow(workflowId, tenantId, {
       currentStep: currentStepIdx + 1,
     });
-    this.logger.debug(`ApprovalWorkflow ${workflowId} advanced to step ${currentStepIdx + 1}`);
+    this.logger.debug(`ApprovalWorkflow ${workflowId} (tenant ${tenantId}) advanced to step ${currentStepIdx + 1}`);
   }
 
   /**
    * Check if a step is blocked by its prior step in a sequential chain.
+   * Tenant-scoped: returns false (the safe, non-leaky answer) for any step the
+   * tenant does not own.
    */
-  async isStepBlocked(stepId: string): Promise<boolean> {
-    const step = await this.repository.findStepWithWorkflow(stepId);
+  async isStepBlocked(tenantId: string, stepId: string): Promise<boolean> {
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+    const step = await this.repository.findStepWithWorkflow(stepId, tenantId);
 
     if (!step) return false;
     if (!step.blockedByPriorStep) return false;
@@ -146,9 +185,13 @@ export class ApprovalChainsService {
 
   /**
    * Get the current pending step for a workflow.
+   * Tenant-scoped: returns null for cross-tenant lookups.
    */
-  async getCurrentStep(workflowId: string) {
-    const workflow = await this.repository.findWorkflowById(workflowId);
+  async getCurrentStep(tenantId: string, workflowId: string) {
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+    const workflow = await this.repository.findWorkflowById(workflowId, tenantId);
 
     if (!workflow) return null;
     return workflow.steps[workflow.currentStep] ?? null;
