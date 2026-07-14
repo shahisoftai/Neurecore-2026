@@ -96,3 +96,66 @@ jobs:
 
       - name: Gate 5 — npm test (runInBand, 100% required)
         run: pnpm test -- --runInBand
+
+  # Optional, opt-in: real PostgreSQL tests for work-runtime and
+  # approval-chains. These are GATED on DATABASE_TEST_URL being set at the
+  # job level (operator secret). Without the secret they are skipped, so
+  # the gating does not break the default CI pipeline.
+  # Run by setting secrets:
+  #   settings.DATABASE_TEST_URL (required)
+  #   secrets.P4_PHASE_4_ENABLE_DB_TESTS = 'true'  (required to enable)
+  p4-db-tests:
+    name: P4 real-DB integration (opt-in)
+    runs-on: ubuntu-latest
+    needs: tests
+    if: ${{ secrets.P4_PHASE_4_ENABLE_DB_TESTS == 'true' }}
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_TEST_URL: ${{ secrets.DATABASE_TEST_URL }}
+      P4_PHASE_4_ENABLE_DB_TESTS: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: backend/pnpm-lock.yaml
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run real-DB tests (work-runtime + approval-chains)
+        run: |
+          pnpm prisma migrate deploy || pnpm prisma db push --skip-generate
+          pnpm prisma generate
+          pnpm test -- --runInBand --testPathPatterns 'work-runtime-db|approval-chains-db'
+        env:
+          DATABASE_TEST_URL: ${{ secrets.DATABASE_TEST_URL }}
+
+  # Always-on companion: confirms that without DATABASE_TEST_URL the gated
+  # suites are skipped (not failed). This is the safety net for the gating.
+  p4-db-tests-skip-confirmed:
+    name: P4 DB tests gating (always-on)
+    runs-on: ubuntu-latest
+    needs: tests
+    if: ${{ secrets.P4_PHASE_4_ENABLE_DB_TESTS != 'true' }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Confirm gating skips when DATABASE_TEST_URL is unset
+        run: |
+          unset DATABASE_TEST_URL
+          pnpm install --frozen-lockfile
+          # Should report 14 skipped, not 0 tests found.
+          pnpm test -- --runInBand --testPathPatterns 'work-runtime-db|approval-chains-db' 2>&1 | tee db-skip.out
+          grep -q '14 skipped' db-skip.out || (echo "ERROR: DB suites were not skipped as expected" && exit 1)
+        shell: bash
