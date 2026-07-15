@@ -67,8 +67,19 @@ export class PlatformEvolution implements IPlatformEvolution {
     return { id: r.id, name: r.name, status: r.status, affectProduction: r.affectProduction };
   }
   async completeExperiment(tenantId: string, id: string, results: Record<string, unknown>) {
-    const r = await this.prisma.experiment.update({ where: { id }, data: { status: 'COMPLETED' as any, resultsJson: results as Prisma.InputJsonValue, completedAt: new Date() } });
-    return { id: r.id, name: r.name, status: r.status, affectProduction: r.affectProduction };
+    // Audit-remediation: pre-fix code used update with `where: { id }` —
+    // missing tenantId in the WHERE. A Tenant B JWT could complete Tenant
+    // A's experiment by guessing the cuid. Fix: read+updateMany under
+    // (id, tenantId); refuse on count=0 or missing findFirst.
+    const owned = await this.prisma.experiment.findFirst({ where: { id, tenantId } });
+    if (!owned) throw new Error('experiment not found for tenant');
+    const u = await this.prisma.experiment.updateMany({
+      where: { id, tenantId },
+      data: { status: 'COMPLETED' as any, resultsJson: results as Prisma.InputJsonValue, completedAt: new Date() },
+    });
+    if (u.count === 0) throw new Error('experiment not found for tenant');
+    const after = await this.prisma.experiment.findFirst({ where: { id, tenantId } });
+    return { id: after!.id, name: after!.name, status: after!.status, affectProduction: after!.affectProduction };
   }
   async listExperiments(tenantId: string) {
     return (await this.prisma.experiment.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' }, take: 50 })).map((r) => ({ id: r.id, name: r.name, status: r.status, affectProduction: r.affectProduction }));
@@ -79,8 +90,20 @@ export class PlatformEvolution implements IPlatformEvolution {
     return { id: r.id, name: r.name, state: r.state, version: r.version };
   }
   async advanceFeature(tenantId: string, id: string, state: string) {
-    const r = await this.prisma.featureLifecycle.update({ where: { id }, data: { state: state as any } });
-    return { id: r.id, name: r.name, state: r.state, version: r.version };
+    // Audit-remediation: pre-fix code used update with `where: { id }` —
+    // missing tenantId in the WHERE. A Tenant B JWT could advance Tenant
+    // A's feature through its lifecycle by guessing the cuid. Fix:
+    // read+updateMany under (id, tenantId); refuse on count=0 or
+    // missing findFirst.
+    const owned = await this.prisma.featureLifecycle.findFirst({ where: { id, tenantId } });
+    if (!owned) throw new Error('feature not found for tenant');
+    const u = await this.prisma.featureLifecycle.updateMany({
+      where: { id, tenantId },
+      data: { state: state as any },
+    });
+    if (u.count === 0) throw new Error('feature not found for tenant');
+    const after = await this.prisma.featureLifecycle.findFirst({ where: { id, tenantId } });
+    return { id: after!.id, name: after!.name, state: after!.state, version: after!.version };
   }
   async listFeatures(tenantId: string) {
     return (await this.prisma.featureLifecycle.findMany({ where: { tenantId }, orderBy: { updatedAt: 'desc' }, take: 50 })).map((r) => ({ id: r.id, name: r.name, state: r.state, version: r.version }));
