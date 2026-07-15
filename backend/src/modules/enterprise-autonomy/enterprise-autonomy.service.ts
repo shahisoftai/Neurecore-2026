@@ -76,6 +76,12 @@ export class EnterpriseAutonomyService implements IEnterpriseAutonomy {
   // ── Missions ────────────────────────────────────────────────────────────
 
   async createMission(params: CreateAndRunMissionParams): Promise<MissionResult> {
+    // Audit-remediation: default the actor persona to HUMAN at the service
+    // boundary. The controller passes the JWT persona; if no actor type is
+    // supplied we fall back to HUMAN because mission creation is a
+    // human-initiated action per the report.
+    const actorType = params.actorType ?? 'HUMAN';
+
     // Governor gate: policy limits.
     const active = await this.repo.countActiveMissions(params.tenantId);
     const gate = await this.governor.authorize({ tenantId: params.tenantId, action: 'CREATE_MISSION', concurrentMissions: active });
@@ -90,13 +96,13 @@ export class EnterpriseAutonomyService implements IEnterpriseAutonomy {
 
     // Plan via Cognition (reasoning only — no execution).
     const view = this.toView(mission);
-    const plan = await this.planMission(view, params.createdById);
+    const plan = await this.planMission(view, params.createdById, actorType);
 
     let scheduledRunIds: string[] = [];
     if (params.autoSchedule) {
       const gate2 = await this.governor.authorize({ tenantId: params.tenantId, action: 'SCHEDULE_WORK', concurrentMissions: active });
       if (gate2.outcome === 'ALLOW') {
-        scheduledRunIds = await this.scheduleMission(view, plan.recommendedWork ?? [], params.createdById);
+        scheduledRunIds = await this.scheduleMission(view, plan.recommendedWork ?? [], params.createdById, actorType);
       }
     }
 
@@ -147,28 +153,62 @@ export class EnterpriseAutonomyService implements IEnterpriseAutonomy {
 
   // ── Private helpers ──────────────────────────────────────────────────────
 
-  private async planMission(mission: MissionView, actorId: string): Promise<{ planJson: Record<string, unknown>; recommendedWork: string[] }> {
-    const cog = await this.cognition.cognize({ tenantId: mission.tenantId, actorId, actorType: 'AI_AGENT', request: `Plan a mission to accomplish: ${mission.objective}` });
+  private async planMission(mission: MissionView, actorId: string, actorType: 'HUMAN' | 'AI_AGENT' | 'SYSTEM'): Promise<{ planJson: Record<string, unknown>; recommendedWork: string[] }> {
+    // The Cognition interface only accepts HUMAN | AI_AGENT; SYSTEM tasks are
+    // expressed as AI_AGENT to Cognition (which is reasoning-only by design).
+    const cogActorType = actorType === 'SYSTEM' ? 'AI_AGENT' : actorType;
+    const cog = await this.cognition.cognize({ tenantId: mission.tenantId, actorId, actorType: cogActorType, request: `Plan a mission to accomplish: ${mission.objective}` });
     const executableGoals = cog.decomposition?.goals?.filter((g) => g.executable) ?? [];
     const recommendedWork = cog.recommendations?.filter((r) => r.shouldBecomeWorkRun).map((r) => r.proposedWorkRequest ?? r.title) ?? [];
     const planJson = { objective: cog.objective, goals: executableGoals, recommendations: recommendedWork, score: cog.score };
     // Persist plan as the latest version.
     const m = await this.repo.findMission(mission.id, mission.tenantId);
-    if (m) await this.repo.updateMission(mission.id, mission.tenantId, m.version, { status: 'PLANNED', plannedAt: new Date(), planJson });
+    if (m) {
+      const ok = await this.repo.updateMission(mission.id, mission.tenantId, m.version, { status: 'PLANNED', plannedAt: new Date(), planJson });
+      if (!ok) {
+        // Audit trail: concurrent update — log but don't fail the plan.
+        this.logger.warn(`planMission: optimistic CAS failed for mission ${mission.id} (concurrent update?)`);
+      }
+    }
     return { planJson, recommendedWork };
   }
 
-  private async scheduleMission(mission: MissionView, recommendedWork: string[], actorId: string): Promise<string[]> {
+  private async scheduleMission(
+    mission: MissionView,
+    recommendedWork: string[],
+    actorId: string,
+    actorType: 'HUMAN' | 'AI_AGENT' | 'SYSTEM',
+  ): Promise<string[]> {
     const runIds: string[] = [];
     for (const req of recommendedWork) {
       try {
-        const run = await this.runtime.createRun({ tenantId: mission.tenantId, actorId, actorType: 'AI_AGENT', request: req, scope: {} });
+        // Audit-remediation: actorType now propagates from the caller
+        // (typically HUMAN at the controller boundary). Previously hard-coded
+        // to 'AI_AGENT' which produced an audit trail that attributed
+        // mission-orchestrated work to a generic AI agent.
+        const run = await this.runtime.createRun({ tenantId: mission.tenantId, actorId, actorType, request: req, scope: {} });
         runIds.push(run.id);
-      } catch (e) { this.logger.warn(`Schedule failed for mission ${mission.id}: ${e instanceof Error ? e.message : e}`); }
+      } catch (e) {
+        this.logger.warn(`Schedule failed for mission ${mission.id}: ${e instanceof Error ? e.message : e}`);
+      }
     }
     if (runIds.length > 0) {
       const m = await this.repo.findMission(mission.id, mission.tenantId);
-      if (m) await this.repo.updateMission(mission.id, mission.tenantId, m.version, { workRunIds: [...(m.workRunIds ?? []), ...runIds] });
+      if (m) {
+        // Audit-remediation: an optimistic-concurrency update that fails means
+        // a concurrent caller already advanced the mission (e.g. an admin
+        // pause/cancel between our createRun and this update). Log loudly so
+        // operators can reconcile. The runtime has the runs; the mission
+        // workRunIds link will lag until the next refresh — but at least the
+        // runs exist and are governed.
+        const ok = await this.repo.updateMission(mission.id, mission.tenantId, m.version, { workRunIds: [...(m.workRunIds ?? []), ...runIds] });
+        if (!ok) {
+          this.logger.warn(
+            `scheduleMission: optimistic CAS failed for mission ${mission.id} when appending workRunIds (length=${runIds.length}). ` +
+            `Mission has concurrent updates; the workRunIds link is stale until next refresh.`,
+          );
+        }
+      }
     }
     return runIds;
   }

@@ -58,7 +58,19 @@ export class AutonomyRepository {
       orderBy: { name: 'asc' },
     });
   }
+  /**
+   * Audit-remediation: only mutate `availability` when delta != 0. The
+   * original implementation unconditionally overwrote availability based on
+   * sign(delta), so a no-op delta=0 reset availability to AVAILABLE even when
+   * the employee was legitimately BUSY (e.g. an overloaded employee whose
+   * current workload counter was at 5 would be flipped to AVAILABLE by any
+   * no-op delta).
+   */
   async adjustWorkload(id: string, tenantId: string, delta: number) {
+    if (delta === 0) {
+      // No-op; do not touch availability.
+      return;
+    }
     await this.prisma.aiEmployee.updateMany({
       where: { id, tenantId },
       data: { currentWorkload: { increment: delta }, availability: delta > 0 ? 'BUSY' : 'AVAILABLE' },

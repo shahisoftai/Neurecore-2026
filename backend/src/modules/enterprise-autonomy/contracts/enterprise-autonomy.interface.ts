@@ -226,6 +226,17 @@ export interface IEnterpriseHealthService {
 
 export const ENTERPRISE_AUTONOMY = Symbol('ENTERPRISE_AUTONOMY');
 export interface CreateAndRunMissionParams extends CreateMissionInput {
+  /**
+   * Audit-remediation: actor type of the caller (typically the human who
+   * initiated the mission). Before this field, scheduleMission
+   * (enterprise-autonomy.service.ts:165) hard-coded actorType='AI_AGENT'
+   * which produced an audit trail that attributed every mission-orchestrated
+   * Work Run to a generic AI agent instead of the human operator. The
+   * planned run must be attributed to whoever initiated it, so we thread
+   * the actorType through and the controller decides the persona at the
+   * boundary.
+   */
+  actorType?: 'HUMAN' | 'AI_AGENT' | 'SYSTEM';
   /** If true, planned work is scheduled to the governed Work Runtime. Default false. */
   autoSchedule?: boolean;
 }

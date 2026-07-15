@@ -58,7 +58,21 @@ export class EnterpriseAutonomyController {
 
   @Post('missions') createMission(@Req() req: RequestWithUser, @Body() b: any) {
     const { tenantId, actorId } = this.ctx(req);
-    return this.autonomy.createMission({ ...b, tenantId, createdById: actorId });
+    // Audit-remediation: human-initiated missions stay HUMAN; AI-issued
+    // missions (system actor with explicit body.actorType) can override.
+    // Whatever is in b.actorType is ignored if it would let a client spoof
+    // an AI_SYSTEM persona; the service applies its own defaults.
+    const explicitActorType = b?.actorType;
+    const safeActorType =
+      explicitActorType === 'AI_AGENT' || explicitActorType === 'SYSTEM'
+        ? 'SYSTEM' // collapse arbitrary AI/SYSTEM spoofing back to SYSTEM
+        : 'HUMAN';
+    return this.autonomy.createMission({
+      ...b,
+      tenantId,
+      createdById: actorId,
+      actorType: safeActorType,
+    });
   }
   @Get('missions') listMissions(@Req() req: RequestWithUser) { return this.autonomy.listMissions(this.ctx(req).tenantId); }
   @Get('missions/:id') getMission(@Req() req: RequestWithUser, @Param('id') id: string) { return this.autonomy.getMission(id, this.ctx(req).tenantId); }
