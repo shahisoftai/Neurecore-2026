@@ -21,6 +21,18 @@ export interface PlatformHealth {
   aiWorkforce: { employeeCount: number; availabilityRatio: number };
   computedAt: string;
   issues: string[];
+  /**
+   * Audit-remediation: which layer health values were obtained by an actual
+   * runtime probe (DB ping, event-fabric consumer status, etc.) versus
+   * assumed because the platform didn't probe that layer. Consumers can
+   * programmatically distinguish assumed ('ASSUMED') from probed ('PROBE').
+   */
+  layerProvenance?: Record<'p1Eie' | 'p2EventFabric' | 'p3ContextPlane' | 'p4WorkRuntime' | 'p5Cognition' | 'p6Autonomy' | 'p7Eos', 'PROBE' | 'ASSUMED'>;
+  /**
+   * Same for infrastructure components — Redis and LLM provider are not
+   * currently probed at runtime; database and event-fabric are.
+   */
+  infrastructureProvenance?: Record<'database' | 'redis' | 'eventFabric' | 'llmProvider', 'PROBE' | 'ASSUMED'>;
 }
 
 // ── Audit ───────────────────────────────────────────────────────────────────
@@ -94,6 +106,13 @@ export interface DeploymentStatus {
   lastDeployedAt: string | null;
   healthGateOk: boolean;
   rollbackAvailable: boolean;
+  /**
+   * Audit-remediation: explicit mode field. STUB means the operation is
+   * contract-ready but no external CI/CD or deployment target is wired yet.
+   * CONFIGURED means a deploy target is reachable and the metrics above
+   * are real values.
+   */
+  mode: 'STUB' | 'CONFIGURED';
 }
 
 // ── Backup (stub) ───────────────────────────────────────────────────────────
@@ -102,6 +121,14 @@ export interface BackupVerification {
   lastBackupAt: string | null;
   sizeBytes: number;
   checksum: string | null;
+  /**
+   * Audit-remediation: explicit mode field. STUB means the operation is
+   * contract-ready but no external backup infrastructure is wired yet.
+   * CONFIGURED means a real backup target is reachable. Callers can
+   * distinguish a confirmed offline backup from a still-implementation
+   * surface.
+   */
+  mode: 'STUB' | 'CONFIGURED';
 }
 
 // ── Ports ───────────────────────────────────────────────────────────────────
