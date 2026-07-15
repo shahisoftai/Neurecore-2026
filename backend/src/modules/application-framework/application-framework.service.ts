@@ -19,7 +19,13 @@ export interface WorkspaceView { id: string; name: string; role: string; dashboa
 export const APP_FRAMEWORK = Symbol('APP_FRAMEWORK');
 export interface IApplicationFramework {
   // Applications
-  registerApp(tenantId: string, name: string, domain: string, version?: string): Promise<AppView>;
+  /**
+   * Audit-remediation: registerApp accepts an optional `edition` so the
+   * schema's `Edition` enum is exercised. Previously only `name`,
+   * `domain`, and `version` were accepted and `edition` defaulted to
+   * ENTERPRISE.
+   */
+  registerApp(tenantId: string, name: string, domain: string, version?: string, edition?: Edition): Promise<AppView>;
   listApps(tenantId: string, domain?: string): Promise<AppView[]>;
   activate(tenantId: string, appId: string): Promise<AppView>;
   // Domain packages
@@ -38,16 +44,27 @@ export interface IApplicationFramework {
 @Injectable()
 export class ApplicationFramework implements IApplicationFramework {
   constructor(private readonly prisma: PrismaService) {}
-  async registerApp(tenantId: string, name: string, domain: string, version = '1.0.0') {
-    const a = await this.prisma.application.create({ data: { tenantId, name, domain, version } as Prisma.ApplicationUncheckedCreateInput });
+  async registerApp(tenantId: string, name: string, domain: string, version = '1.0.0', edition: Edition = 'ENTERPRISE') {
+    const a = await this.prisma.application.create({ data: { tenantId, name, domain, version, edition } as Prisma.ApplicationUncheckedCreateInput });
     return { id: a.id, name: a.name, domain: a.domain, version: a.version, status: a.status as AppStatus, edition: a.edition as Edition };
   }
   async listApps(tenantId: string, domain?: string) {
     return (await this.prisma.application.findMany({ where: { tenantId, ...(domain ? { domain } : {}) } })).map((a) => ({ id: a.id, name: a.name, domain: a.domain, version: a.version, status: a.status as AppStatus, edition: a.edition as Edition }));
   }
   async activate(tenantId: string, appId: string) {
-    const a = await this.prisma.application.update({ where: { id: appId }, data: { status: 'ACTIVE' as any } });
-    return { id: a.id, name: a.name, domain: a.domain, version: a.version, status: a.status as AppStatus, edition: a.edition as Edition };
+    // Audit-remediation: prisma.application.update({ where: { id } })
+    // was used previously — missing tenantId in the WHERE clause
+    // means a Tenant B JWT could activate Tenant A's application.
+    // Fix: read+updateMany under (id, tenantId); refuse on count=0.
+    const owned = await this.prisma.application.findFirst({ where: { id: appId, tenantId } });
+    if (!owned) throw new Error('application not found for tenant');
+    const u = await this.prisma.application.updateMany({
+      where: { id: appId, tenantId },
+      data: { status: 'ACTIVE' as any },
+    });
+    if (u.count === 0) throw new Error('application not found for tenant');
+    const after = await this.prisma.application.findFirst({ where: { id: appId, tenantId } });
+    return { id: after!.id, name: after!.name, domain: after!.domain, version: after!.version, status: after!.status as AppStatus, edition: after!.edition as Edition };
   }
   async registerDomain(tenantId: string, name: string, domain: string, modules: string[] = []) {
     const d = await this.prisma.domainPackage.create({ data: { tenantId, name, domain, modules } });
