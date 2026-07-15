@@ -144,7 +144,16 @@ export class ContextIdentityResolver {
 
     if (agent) {
       const authorityEnum = this.extractAuthorityEnum(agent.config, agent.metadata);
-      const authorityLevel = AUTHORITY_ENUM_TO_LEVEL[authorityEnum] ?? 20;
+      // Audit-remediation: an unknown authority enum MUST escalate to
+      // unresolved-identity (null) rather than silently defaulting to a
+      // numeric authority. The plane maps null → DENY for everything.
+      const authorityLevel = AUTHORITY_ENUM_TO_LEVEL[authorityEnum];
+      if (authorityLevel == null) {
+        this.logger.warn(
+          `Agent ${agentId} (tenant ${tenantId}) has unrecognized authorityLevel "${authorityEnum}" — escalating to unresolved identity (DENY)`,
+        );
+        return null;
+      }
       return {
         employeeId: agent.id,
         employeeType: 'AI_AGENT',
@@ -165,6 +174,11 @@ export class ContextIdentityResolver {
       select: { id: true, name: true, type: true, isActive: true },
     });
     if (hermes) {
+      // Audit-remediation: a HermesAgent has no authority config (it is an
+      // execution profile, not an authority-bearing entity). Treat as 0;
+      // the plane maps identity with authorityLevel=0 to the unresolved
+      // fail-safe state because a Hermes-only profile is incapable of
+      // any capability access by default.
       return {
         employeeId: hermes.id,
         employeeType: 'AI_AGENT',
@@ -172,7 +186,7 @@ export class ContextIdentityResolver {
         role: hermes.type,
         departmentId: null,
         departmentName: null,
-        authorityLevel: 20, // conservative default for a bare execution profile
+        authorityLevel: 0,
         autonomyLevel: 0,
         resolvedFrom: 'hermesAgent.type',
       };
@@ -191,7 +205,16 @@ export class ContextIdentityResolver {
     });
     if (!user) return null;
     const role = String(user.role ?? 'MEMBER');
-    const authorityLevel = HUMAN_ROLE_TO_AUTHORITY[role] ?? 40;
+    // Audit-remediation: unknown roles MUST escalate to unresolved identity
+    // (null) rather than silently defaulting to a numeric authority.
+    // The plane maps null → DENY for everything.
+    const authorityLevel = HUMAN_ROLE_TO_AUTHORITY[role];
+    if (authorityLevel == null) {
+      this.logger.warn(
+        `User ${userId} (tenant ${tenantId}) has unrecognized role "${role}" — escalating to unresolved identity (DENY)`,
+      );
+      return null;
+    }
     return {
       employeeId: user.id,
       employeeType: 'HUMAN',

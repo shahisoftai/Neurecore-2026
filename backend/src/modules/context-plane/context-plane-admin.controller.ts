@@ -43,8 +43,20 @@ export class ContextPlaneAdminController {
 
   @Get('cache-stats')
   cacheStats(@Req() req: RequestWithUser) {
-    if (!req.user?.tenantId) throw new ForbiddenException('tenant required');
-    return this.cache.stats();
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) throw new ForbiddenException('tenant required');
+    // Return only the caller's tenant counters, never the aggregate.
+    const all = this.cache.stats();
+    const tenantStats = all.byTenant[tenantId] ?? {
+      hits: 0, misses: 0, invalidations: 0, size: 0,
+    };
+    return {
+      tenantId,
+      size: tenantStats.size,
+      hits: tenantStats.hits,
+      misses: tenantStats.misses,
+      invalidations: tenantStats.invalidations,
+    };
   }
 
   /**
