@@ -28,7 +28,7 @@ export class PluginManager implements IPluginManager {
 
   async install(tenantId: string, name: string, kind: ExtensionKind, version = '1.0.0', permissions?: string[]): Promise<PluginView> {
     const row = await this.prisma.plugin.create({
-      data: { tenantId, name, kind, version, sdkVersion: CURRENT_SDK_VERSION, status: 'INSTALLED', permissionsJson: (permissions ?? []) as Prisma.InputJsonValue } as Prisma.PluginUncheckedCreateInput,
+      data: { tenantId, name, kind, version, sdkVersion: CURRENT_SDK_VERSION, status: 'INSTALLED', updatedAt: new Date(), permissionsJson: (permissions ?? []) as Prisma.InputJsonValue } as Prisma.PluginUncheckedCreateInput,
     });
     return this.view(row);
   }

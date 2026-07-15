@@ -28,8 +28,8 @@ describeDb('PlatformEvolution — REAL PostgreSQL (DATABASE_TEST_URL)', () => {
     await prisma.$connect();
     await prisma.$executeRawUnsafe(`
       TRUNCATE TABLE
-        migration_plans, capability_versions, feature_lifecycles,
-        experiments, benchmark_records, tech_radar
+        migration_plans, capability_versions, feature_lifecycle,
+        experiments, benchmark_records, technology_radar_entries
       RESTART IDENTITY CASCADE
     `);
     pe = new PlatformEvolution(prisma as any);
@@ -40,8 +40,8 @@ describeDb('PlatformEvolution — REAL PostgreSQL (DATABASE_TEST_URL)', () => {
   beforeEach(async () => {
     await prisma.$executeRawUnsafe(`
       TRUNCATE TABLE
-        migration_plans, capability_versions, feature_lifecycles,
-        experiments, benchmark_records, tech_radar
+        migration_plans, capability_versions, feature_lifecycle,
+        experiments, benchmark_records, technology_radar_entries
       RESTART IDENTITY CASCADE
     `);
   });
