@@ -166,7 +166,7 @@ describeDb('CloudPlatform — REAL PostgreSQL (DATABASE_TEST_URL)', () => {
       expect(r1).not.toBeNull();
       const r1Id = r1!.id;
       await prisma.cloudCluster.create({
-        data: { regionId: r1Id, name: 'c-old', healthy: true } as Prisma.CloudClusterUncheckedCreateInput,
+        data: { regionId: r1Id, name: 'c-old', healthy: true, updatedAt: new Date() } as Prisma.CloudClusterUncheckedCreateInput,
       });
       const r = await cp.failover('tenant-a', 'eu-west-1');
       expect(r.success).toBe(true);

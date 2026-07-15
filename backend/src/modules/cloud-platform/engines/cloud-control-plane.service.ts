@@ -23,9 +23,13 @@ export class CloudPlatform implements ICloudPlatform {
     return { id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount: 0 };
   }
   async listRegions(tenantId: string): Promise<RegionView[]> {
-    return (await (this.prisma.cloudRegion.findMany as any)({ where: { tenantId }, include: { _count: { select: { clusters: true } } } })).map((r: any) => ({
-      id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount: r._count?.clusters ?? 0,
-    }));
+    const regions = await this.prisma.cloudRegion.findMany({ where: { tenantId } });
+    const result: RegionView[] = [];
+    for (const r of regions) {
+      const clusterCount = await this.prisma.cloudCluster.count({ where: { regionId: r.id } });
+      result.push({ id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount });
+    }
+    return result;
   }
   /**
    * Audit-remediation: registerCluster previously took only regionId and
@@ -122,13 +126,18 @@ export class CloudPlatform implements ICloudPlatform {
   }
 
   async globalHealth(tenantId: string): Promise<GlobalHealth> {
-    const regions = await (this.prisma.cloudRegion.findMany as any)({ where: { tenantId }, include: { _count: { select: { clusters: true } } } }) as any[];
+    const regions = await this.prisma.cloudRegion.findMany({ where: { tenantId } });
     const active = regions.filter((r) => r.status === 'ACTIVE').length;
     const failoverActive = (await this.prisma.tenantPlacement.count({ where: { tenantId, failoverStatus: 'ACTIVE' } })) > 0;
     const overall: GlobalHealth['overall'] = regions.length === 0 ? 'FAIR' : active >= regions.length ? 'GOOD' : 'FAIR';
+    const regionViews: GlobalHealth['regions'] = [];
+    for (const r of regions) {
+      const clusterCount = await this.prisma.cloudCluster.count({ where: { regionId: r.id } });
+      regionViews.push({ name: r.name, status: r.status as any, clusterCount });
+    }
     return {
       overall,
-      regions: regions.map((r) => ({ name: r.name, status: r.status as any, clusterCount: (r as any)._count?.clusters ?? 0 })),
+      regions: regionViews,
       failoverActive,
     };
   }
