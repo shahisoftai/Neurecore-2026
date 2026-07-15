@@ -118,6 +118,7 @@ describeDb('AutonomyRepository — REAL PostgreSQL (DATABASE_TEST_URL)', () => {
         data: {
           tenantId: 't', name: 'Bot', role: 'AI',
           currentWorkload: 5, availability: 'BUSY',
+          confidenceThreshold: 'MEDIUM', updatedAt: new Date(),
         } as Prisma.AiEmployeeUncheckedCreateInput,
       });
       await (repo as any).adjustWorkload('e_1', 't', 0);
@@ -131,6 +132,7 @@ describeDb('AutonomyRepository — REAL PostgreSQL (DATABASE_TEST_URL)', () => {
         data: {
           tenantId: 't', name: 'Bot', role: 'AI',
           currentWorkload: 2, availability: 'AVAILABLE',
+          confidenceThreshold: 'MEDIUM', updatedAt: new Date(),
         } as Prisma.AiEmployeeUncheckedCreateInput,
       });
       await (repo as any).adjustWorkload('e_1', 't', 3);
