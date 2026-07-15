@@ -39,27 +39,50 @@ export class PluginManager implements IPluginManager {
     const perms = (row.permissionsJson ?? []) as string[];
     for (const p of perms) { if (!ALLOWED_CAPABILITIES.has(p)) issues.push(`disallowed capability: ${p}`); }
     if (issues.length === 0) {
-      await this.prisma.plugin.update({ where: { id: pluginId }, data: { status: 'VALIDATED', validated: true } });
+      // Audit-remediation: updateMany with compound (id, tenantId) where
+      // — Prisma will surface count=0 when the row exists but belongs
+      // to another tenant. The service then re-fetches and returns the
+      // post-update view. This makes cross-tenant writes impossible.
+      const updated = await this.prisma.plugin.updateMany({
+        where: { id: pluginId, tenantId },
+        data: { status: 'VALIDATED', validated: true },
+      });
+      if (updated.count === 0) {
+        return { ok: false, issues: ['plugin not found'] };
+      }
     }
     return { ok: issues.length === 0, issues };
   }
   async enable(pluginId: string, tenantId: string): Promise<PluginView> {
+    // Audit-remediation: read+update under (id, tenantId). Cross-tenant
+    // access throws 'not found for tenant' first to avoid leaking
+    // which plugins exist in adjacent tenants.
     const row = await this.prisma.plugin.findFirst({ where: { id: pluginId, tenantId } });
-    if (!row || row.status !== 'VALIDATED') throw new Error('plugin must be VALIDATED before enabling');
-    const updated = await this.prisma.plugin.update({ where: { id: pluginId }, data: { status: 'ENABLED', enabledAt: new Date() } });
-    return this.view(updated);
+    if (!row) throw new Error('plugin not found for tenant');
+    if (row.status !== 'VALIDATED') throw new Error('plugin must be VALIDATED before enabling');
+    const u = await this.prisma.plugin.updateMany({ where: { id: pluginId, tenantId }, data: { status: 'ENABLED', enabledAt: new Date() } });
+    if (u.count === 0) throw new Error('plugin not found for tenant');
+    const after = await this.prisma.plugin.findFirst({ where: { id: pluginId, tenantId } });
+    return this.view(after);
   }
   async disable(pluginId: string, tenantId: string): Promise<PluginView> {
-    const updated = await this.prisma.plugin.update({ where: { id: pluginId }, data: { status: 'DISABLED' } });
-    return this.view(updated);
+    // Audit-remediation: compound (id, tenantId) write — was bare id.
+    const u = await this.prisma.plugin.updateMany({ where: { id: pluginId, tenantId }, data: { status: 'DISABLED' } });
+    if (u.count === 0) throw new Error('plugin not found for tenant');
+    const after = await this.prisma.plugin.findFirst({ where: { id: pluginId, tenantId } });
+    return this.view(after);
   }
   async deprecate(pluginId: string, tenantId: string): Promise<PluginView> {
-    const updated = await this.prisma.plugin.update({ where: { id: pluginId }, data: { status: 'DEPRECATED' } });
-    return this.view(updated);
+    const u = await this.prisma.plugin.updateMany({ where: { id: pluginId, tenantId }, data: { status: 'DEPRECATED' } });
+    if (u.count === 0) throw new Error('plugin not found for tenant');
+    const after = await this.prisma.plugin.findFirst({ where: { id: pluginId, tenantId } });
+    return this.view(after);
   }
   async remove(pluginId: string, tenantId: string): Promise<PluginView> {
-    const updated = await this.prisma.plugin.update({ where: { id: pluginId }, data: { status: 'REMOVED' } });
-    return this.view(updated);
+    const u = await this.prisma.plugin.updateMany({ where: { id: pluginId, tenantId }, data: { status: 'REMOVED' } });
+    if (u.count === 0) throw new Error('plugin not found for tenant');
+    const after = await this.prisma.plugin.findFirst({ where: { id: pluginId, tenantId } });
+    return this.view(after);
   }
   async get(pluginId: string, tenantId: string): Promise<PluginView | null> {
     const row = await this.prisma.plugin.findFirst({ where: { id: pluginId, tenantId } });
@@ -115,6 +138,12 @@ export class PlatformSDK implements IPlatformSDK {
     const plugin = await this.pm.install(tenantId, name, kind, '1.0.0', permissions);
     if (permissions) await this.pem.grant(tenantId, plugin.id, permissions);
     await this.pm.validate(plugin.id, tenantId);
-    return (this.pm.get(plugin.id, tenantId) as Promise<PluginView>);
+    // Audit-remediation: previously the return type was cast
+    // `Promise<PluginView>` even though `get()` returns `Promise<PluginView
+    // | null>`. If a tenant with an unverifiable plugin passed validation,
+    // null could silently flow through. Re-fetch and throw explicitly.
+    const after = await this.pm.get(plugin.id, tenantId);
+    if (!after) throw new Error('installAndValidate: plugin disappeared post-validate');
+    return after;
   }
 }
