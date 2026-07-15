@@ -19,7 +19,7 @@ export class CloudPlatformController {
 
   @Get('regions') regions(@Req() req: ReqWithUser) { return this.cloud.listRegions(this.t(req)); }
   @Post('regions') addRegion(@Req() req: ReqWithUser, @Body() b: { name: string; endpoint: string }) { return this.cloud.registerRegion(this.t(req), b.name, b.endpoint); }
-  @Post('clusters') addCluster(@Req() req: ReqWithUser, @Body() b: { regionId: string; name: string; endpoint?: string }) { return this.cloud.registerCluster(b.regionId, b.name, b.endpoint); }
+  @Post('clusters') addCluster(@Req() req: ReqWithUser, @Body() b: { regionId: string; name: string; endpoint?: string }) { return this.cloud.registerCluster(this.t(req), b.regionId, b.name, b.endpoint); }
   @Post('place') place(@Req() req: ReqWithUser, @Body() b: { primary: string; backup?: string; residency?: string }) { return this.cloud.place(this.t(req), b.primary, b.backup, b.residency); }
   @Get('route') route(@Req() req: ReqWithUser) { return this.cloud.route(this.t(req)); }
   @Post('failover') failover(@Req() req: ReqWithUser, @Body() b: { target: string }) { return this.cloud.failover(this.t(req), b.target); }

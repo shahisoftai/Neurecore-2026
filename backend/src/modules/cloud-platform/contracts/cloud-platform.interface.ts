@@ -21,7 +21,13 @@ export interface ICloudPlatform {
   registerRegion(tenantId: string, name: string, endpoint: string): Promise<RegionView>;
   listRegions(tenantId: string): Promise<RegionView[]>;
   // Clusters
-  registerCluster(regionId: string, name: string, endpoint?: string): Promise<ClusterView>;
+  /**
+   * Audit-remediation: registerCluster takes tenantId so the service can
+   * refuse cross-tenant topology writes. The previous interface
+   * accepted a free regionId, letting a Tenant B JWT register a cluster
+   * against Tenant A's region.
+   */
+  registerCluster(tenantId: string, regionId: string, name: string, endpoint?: string): Promise<ClusterView>;
   // Tenant placement (deterministic routing)
   place(tenantId: string, primaryRegion: string, backupRegion?: string, residencyPolicy?: string): Promise<TenantPlacementView>;
   getPlacement(tenantId: string): Promise<TenantPlacementView | null>;

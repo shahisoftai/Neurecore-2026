@@ -27,10 +27,23 @@ export class CloudPlatform implements ICloudPlatform {
       id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount: r._count?.clusters ?? 0,
     }));
   }
-  async registerCluster(regionId: string, name: string, endpoint?: string): Promise<ClusterView> {
-    const c = await this.prisma.cloudCluster.create({ data: { regionId, name, endpoint: endpoint ?? null } as Prisma.CloudClusterUncheckedCreateInput });
-    const region = await this.prisma.cloudRegion.findUnique({ where: { id: regionId } });
-    return { id: c.id, regionName: region?.name ?? 'unknown', name: c.name, healthy: c.healthy, endpoint: c.endpoint };
+  /**
+   * Audit-remediation: registerCluster previously took only regionId and
+   * wrote a cluster row referencing it. A Tenant B JWT could submit a
+   * regionId belonging to Tenant A and the cluster write would go
+   * through — cross-tenant topology injection. Fix: the service now
+   * requires a tenantId parameter and refuses to write when the
+   * regionId does not belong to that tenant.
+   */
+  async registerCluster(tenantId: string, regionId: string, name: string, endpoint?: string): Promise<ClusterView> {
+    const region = await this.prisma.cloudRegion.findFirst({
+      where: { id: regionId, tenantId },
+    });
+    if (!region) throw new Error('region not found for tenant');
+    const c = await this.prisma.cloudCluster.create({
+      data: { regionId, name, endpoint: endpoint ?? null } as Prisma.CloudClusterUncheckedCreateInput,
+    });
+    return { id: c.id, regionName: region.name, name: c.name, healthy: c.healthy, endpoint: c.endpoint };
   }
   async place(tenantId: string, primaryRegion: string, backupRegion?: string, residencyPolicy?: string): Promise<TenantPlacementView> {
     const row = await this.prisma.tenantPlacement.upsert({
@@ -63,11 +76,37 @@ export class CloudPlatform implements ICloudPlatform {
     return { region: placement.primaryRegion, endpoint: '', reason: 'no-healthy-region', healthy: false };
   }
 
-  /** Simulate a failover — marks target region standby. Actual DNS/K8s failover is cloud infrastructure. */
+  /**
+   * Simulate a failover — marks target region standby. Actual DNS/K8s
+   * failover is cloud infrastructure.
+   *
+   * Audit-remediation: previously the service accepted any
+   * `targetRegion` string. A tenant could specify a region that does
+   * not belong to them, or a non-ACTIVE region, and the upsert would
+   * persist the bad value — breaking subsequent `route()` calls.
+   * Fix: validate targetRegion against the tenant's ACTIVE regions
+   * before any mutation.
+   */
   async failover(tenantId: string, targetRegion: string): Promise<FailoverResult> {
     const start = Date.now();
     const placement = await this.getPlacement(tenantId);
     if (!placement) return { success: false, fromRegion: 'unknown', toRegion: targetRegion, reason: 'no placement', durationMs: 0 };
+
+    // Audit-remediation: validate that targetRegion is an ACTIVE region
+    // registered to this tenant, otherwise refuse.
+    const target = await this.prisma.cloudRegion.findFirst({
+      where: { tenantId, name: targetRegion, status: 'ACTIVE' },
+    });
+    if (!target) {
+      return {
+        success: false,
+        fromRegion: placement.primaryRegion,
+        toRegion: targetRegion,
+        reason: 'target region not found or not ACTIVE for this tenant',
+        durationMs: Date.now() - start,
+      };
+    }
+
     // Update placement's failover status
     await this.prisma.tenantPlacement.update({
       where: { tenantId },
