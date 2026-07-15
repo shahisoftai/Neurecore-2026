@@ -60,7 +60,7 @@ export class KnowledgeGraph implements IKnowledgeGraph {
   async upsertNode(tenantId: string, entityKind: string, entityId: string, label: string, metadata?: Record<string, unknown>): Promise<KnowledgeNodeView> {
     const row = await this.prisma.knowledgeNode.upsert({
       where: { tenantId_entityKind_entityId: { tenantId, entityKind: entityKind as any, entityId } },
-      create: { tenantId, entityKind: entityKind as any, entityId, label, metadataJson: (metadata ?? {}) as Prisma.InputJsonValue } as Prisma.KnowledgeNodeUncheckedCreateInput,
+      create: { tenantId, entityKind: entityKind as any, entityId, label, metadataJson: (metadata ?? {}) as Prisma.InputJsonValue, updatedAt: new Date() } as Prisma.KnowledgeNodeUncheckedCreateInput,
       update: { label, metadataJson: (metadata ?? {}) as Prisma.InputJsonValue, updatedAt: new Date() } as Prisma.KnowledgeNodeUncheckedUpdateInput,
     });
     return { id: row.id, tenantId: row.tenantId, entityKind: row.entityKind, entityId: row.entityId, label: row.label, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };

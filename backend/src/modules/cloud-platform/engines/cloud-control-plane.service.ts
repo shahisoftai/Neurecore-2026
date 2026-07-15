@@ -19,7 +19,7 @@ export class CloudPlatform implements ICloudPlatform {
   constructor(private readonly prisma: PrismaService) {}
 
   async registerRegion(tenantId: string, name: string, endpoint: string): Promise<RegionView> {
-    const r = await this.prisma.cloudRegion.create({ data: { tenantId, name, endpoint } as Prisma.CloudRegionUncheckedCreateInput });
+    const r = await this.prisma.cloudRegion.create({ data: { tenantId, name, endpoint, updatedAt: new Date() } as Prisma.CloudRegionUncheckedCreateInput });
     return { id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount: 0 };
   }
   async listRegions(tenantId: string): Promise<RegionView[]> {

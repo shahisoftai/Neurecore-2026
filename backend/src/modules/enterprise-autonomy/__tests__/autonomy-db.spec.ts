@@ -78,15 +78,15 @@ describeDb('AutonomyRepository — REAL PostgreSQL (DATABASE_TEST_URL)', () => {
 
   describe('optimistic concurrency on mission.version', () => {
     it('first writer at version=0 wins; second writer at the same version loses', async () => {
-      await repo.createMission({
+      const m = await repo.createMission({
         tenantId: 'tenant-a', createdById: 'u',
         title: 'M', objective: 'o',
       });
-      const ok1 = await repo.updateMission('m_1', 'tenant-a', 0, { status: 'PLANNED' });
-      const ok2 = await repo.updateMission('m_1', 'tenant-a', 0, { status: 'RUNNING' });
+      const ok1 = await repo.updateMission(m.id, 'tenant-a', 0, { status: 'PLANNED' });
+      const ok2 = await repo.updateMission(m.id, 'tenant-a', 0, { status: 'RUNNING' });
       expect(ok1).toBe(true);
       expect(ok2).toBe(false);
-      const row = await repo.findMission('m_1', 'tenant-a');
+      const row = await repo.findMission(m.id, 'tenant-a');
       expect(row!.status).toBe('PLANNED');
       expect((row as any).version).toBe(1);
     });
@@ -96,10 +96,10 @@ describeDb('AutonomyRepository — REAL PostgreSQL (DATABASE_TEST_URL)', () => {
 
   describe('countActiveMissions', () => {
     it('counts CREATED/PLANNED/ASSIGNED/RUNNING/WAITING/ESCALATED only', async () => {
-      await repo.createMission({ tenantId: 't', createdById: 'u', title: 'M', objective: 'o' });
-      await prisma.mission.update({ where: { id: 'm_1' }, data: { status: 'COMPLETED' } });
-      await repo.createMission({ tenantId: 't', createdById: 'u', title: 'M2', objective: 'o2' });
-      await prisma.mission.update({ where: { id: 'm_2' }, data: { status: 'CANCELLED' } });
+      const m1 = await repo.createMission({ tenantId: 't', createdById: 'u', title: 'M', objective: 'o' });
+      await prisma.mission.update({ where: { id: m1.id }, data: { status: 'COMPLETED' } });
+      const m2 = await repo.createMission({ tenantId: 't', createdById: 'u', title: 'M2', objective: 'o2' });
+      await prisma.mission.update({ where: { id: m2.id }, data: { status: 'CANCELLED' } });
       expect(await repo.countActiveMissions('t')).toBe(0);
 
       await repo.createMission({ tenantId: 't', createdById: 'u', title: 'M3', objective: 'o3' });
@@ -114,29 +114,29 @@ describeDb('AutonomyRepository — REAL PostgreSQL (DATABASE_TEST_URL)', () => {
       // Seed an ai_employees row directly via Prisma using UncheckedCreateInput
       // so the typed Prisma client accepts the partial payload (defaults fill the
       // rest at the DB layer).
-      await prisma.aiEmployee.create({
+      const e1 = await prisma.aiEmployee.create({
         data: {
           tenantId: 't', name: 'Bot', role: 'AI',
           currentWorkload: 5, availability: 'BUSY',
-          confidenceThreshold: 'MEDIUM', updatedAt: new Date(),
+          confidenceThreshold: 'MEDIUM', healthStatus: 'GOOD', updatedAt: new Date(),
         } as Prisma.AiEmployeeUncheckedCreateInput,
       });
-      await (repo as any).adjustWorkload('e_1', 't', 0);
-      const after = await prisma.aiEmployee.findUnique({ where: { id: 'e_1' } });
+      await (repo as any).adjustWorkload(e1.id, 't', 0);
+      const after = await prisma.aiEmployee.findUnique({ where: { id: e1.id } });
       expect(after!.availability).toBe('BUSY'); // not reset to AVAILABLE
       expect(after!.currentWorkload).toBe(5);    // not touched
     });
 
     it('positive delta increments workload and sets availability to BUSY', async () => {
-      await prisma.aiEmployee.create({
+      const e1 = await prisma.aiEmployee.create({
         data: {
           tenantId: 't', name: 'Bot', role: 'AI',
           currentWorkload: 2, availability: 'AVAILABLE',
-          confidenceThreshold: 'MEDIUM', updatedAt: new Date(),
+          confidenceThreshold: 'MEDIUM', healthStatus: 'GOOD', updatedAt: new Date(),
         } as Prisma.AiEmployeeUncheckedCreateInput,
       });
-      await (repo as any).adjustWorkload('e_1', 't', 3);
-      const after = await prisma.aiEmployee.findUnique({ where: { id: 'e_1' } });
+      await (repo as any).adjustWorkload(e1.id, 't', 3);
+      const after = await prisma.aiEmployee.findUnique({ where: { id: e1.id } });
       expect(after!.currentWorkload).toBe(5);
       expect(after!.availability).toBe('BUSY');
     });
