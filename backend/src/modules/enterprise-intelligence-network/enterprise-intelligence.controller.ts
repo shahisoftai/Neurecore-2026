@@ -19,7 +19,10 @@ export class EnterpriseIntelligenceController {
 
   @Get('health') health(@Req() req: ReqWithUser) { return this.ein.health(this.ctx(req).tenantId); }
   @Get('search') search(@Req() req: ReqWithUser, @Body('query') query: string) { return this.ein.search(this.ctx(req).tenantId, query); }
-  @Post('reason') reason(@Req() req: ReqWithUser, @Body('question') q: string) { return this.ein.reason(this.ctx(req).tenantId, q); }
+  @Post('reason') reason(@Req() req: ReqWithUser, @Body('question') q: string) {
+    const c = this.ctx(req);
+    return this.ein.reason(c.tenantId, c.actorId, q);
+  }
   @Get('discover') discover(@Req() req: ReqWithUser) { return this.ein.discover(this.ctx(req).tenantId); }
   @Post('refresh') refresh(@Req() req: ReqWithUser) { return this.ein.refresh(this.ctx(req).tenantId, this.ctx(req).actorId); }
   @Get('traverse/:nodeId') traverse(@Req() req: ReqWithUser, @Param('nodeId') id: string) { return this.ein.graph().traverse(this.ctx(req).tenantId, id); }

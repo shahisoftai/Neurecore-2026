@@ -82,14 +82,20 @@ export interface ISemanticSearch {
 
 export const KNOWLEDGE_REASONER = Symbol('KNOWLEDGE_REASONER');
 export interface IKnowledgeReasoner {
-  reason(tenantId: string, question: string, context?: Record<string, unknown>): Promise<ReasoningAnswer>;
+  /**
+   * Audit-remediation (pre-simulation baseline scan): actorId was
+   * previously hard-coded to 'system' inside the reasoner. We propagate
+   * the caller's actorId so the Cognition audit trail is
+   * distinguishable between runs.
+   */
+  reason(tenantId: string, actorId: string, question: string, context?: Record<string, unknown>): Promise<ReasoningAnswer>;
 }
 
 export const ENTERPRISE_INTELLIGENCE = Symbol('ENTERPRISE_INTELLIGENCE');
 export interface IEnterpriseIntelligenceNetwork {
   graph(): IKnowledgeGraph;
   search(tenantId: string, query: string): Promise<SearchResult[]>;
-  reason(tenantId: string, question: string): Promise<ReasoningAnswer>;
+  reason(tenantId: string, actorId: string, question: string): Promise<ReasoningAnswer>;
   discover(tenantId: string): Promise<EnterpriseDiscoveryFinding[]>;
   health(tenantId: string): Promise<KnowledgeHealth>;
   refresh(tenantId: string, actorId: string): Promise<KnowledgeEdgeView[]>;

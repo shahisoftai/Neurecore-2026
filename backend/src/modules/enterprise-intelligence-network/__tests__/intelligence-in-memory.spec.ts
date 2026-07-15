@@ -332,8 +332,20 @@ describe('KnowledgeReasoner (proxy cognition)', () => {
       }),
     };
     const reasoner = new KnowledgeReasoner(kg, cog as any);
-    const r = await reasoner.reason('t1', 'campaign status');
+    const r = await reasoner.reason('t1', 'alice', 'campaign status');
     expect(r.answer).toBe('campaign is on track');
     expect(r.evidence.length).toBeGreaterThan(0);
+  });
+
+  it('propagates caller actorId to cognition (audit-remediation regression)', async () => {
+    const p = makePrisma();
+    const kg = new KnowledgeGraph(p);
+    await kg.upsertNode('t1', 'PROJECT', 'p1', 'P1');
+    const seen: any[] = [];
+    const fakeCog = { cognize: async (input: any) => { seen.push(input); return { objective: { reasoning: { conclusion: 'ok' } }, recommendations: [] }; } };
+    const reasoner = new KnowledgeReasoner(kg, fakeCog as any);
+    await reasoner.reason('t1', 'alice', 'a question');
+    expect(seen).toHaveLength(1);
+    expect(seen[0].actorId).toBe('alice');
   });
 });

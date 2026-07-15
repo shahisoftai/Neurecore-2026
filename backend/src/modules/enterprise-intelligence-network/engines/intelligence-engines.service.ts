@@ -204,11 +204,11 @@ export class KnowledgeReasoner implements IKnowledgeReasoner {
     private readonly graph: KnowledgeGraph,
     @Inject(ENTERPRISE_COGNITION) private readonly cognition: IEnterpriseCognition,
   ) {}
-  async reason(tenantId: string, question: string, _context?: Record<string, unknown>): Promise<ReasoningAnswer> {
+  async reason(tenantId: string, actorId: string, question: string, _context?: Record<string, unknown>): Promise<ReasoningAnswer> {
     // Query the graph for relevant nodes, then use Cognition to synthesize.
     const nodes = await this.graph.searchNodes(tenantId, question.split(' ').find((w) => w.length > 3) ?? question, 5);
     const evidence = nodes.map((n) => ({ source: 'GRAPH', detail: `${n.entityKind}: ${n.label}` }));
-    const cog = await this.cognition.cognize({ tenantId, actorId: 'system', actorType: 'AI_AGENT', request: `Knowledge reasoning: ${question}. Known entities: ${evidence.map((e) => e.detail).join('; ')}. Answer concisely with evidence.` }).catch(() => null);
+    const cog = await this.cognition.cognize({ tenantId, actorId, actorType: 'AI_AGENT', request: `Knowledge reasoning: ${question}. Known entities: ${evidence.map((e) => e.detail).join('; ')}. Answer concisely with evidence.` }).catch(() => null);
     return {
       question,
       answer: cog?.recommendations?.[0]?.title ?? cog?.objective?.reasoning?.conclusion ?? 'Unable to derive answer from current knowledge graph.',
@@ -229,7 +229,7 @@ export class EnterpriseIntelligenceNetwork implements IEnterpriseIntelligenceNet
   ) {}
   graph = () => this.kg;
   search = (t: string, q: string) => this.searchEng.search(t, q);
-  reason = (t: string, q: string) => this.reasoner.reason(t, q);
+  reason = (t: string, actorId: string, q: string) => this.reasoner.reason(t, actorId, q);
   discover = async (tenantId: string): Promise<EnterpriseDiscoveryFinding[]> => {
     const h = await this.kg.health(tenantId);
     const findings: EnterpriseDiscoveryFinding[] = [];
