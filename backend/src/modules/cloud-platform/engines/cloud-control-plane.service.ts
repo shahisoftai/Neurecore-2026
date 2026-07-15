@@ -19,7 +19,7 @@ export class CloudPlatform implements ICloudPlatform {
   constructor(private readonly prisma: PrismaService) {}
 
   async registerRegion(tenantId: string, name: string, endpoint: string): Promise<RegionView> {
-    const r = await this.prisma.cloudRegion.create({ data: { tenantId, name, endpoint, updatedAt: new Date() } as Prisma.CloudRegionUncheckedCreateInput });
+    const r = await this.prisma.cloudRegion.create({ data: { tenantId, name, endpoint, status: 'ACTIVE' as any, updatedAt: new Date() } as Prisma.CloudRegionUncheckedCreateInput });
     return { id: r.id, name: r.name, status: r.status as any, endpoint: r.endpoint, clusterCount: 0 };
   }
   async listRegions(tenantId: string): Promise<RegionView[]> {
@@ -41,14 +41,14 @@ export class CloudPlatform implements ICloudPlatform {
     });
     if (!region) throw new Error('region not found for tenant');
     const c = await this.prisma.cloudCluster.create({
-      data: { regionId, name, endpoint: endpoint ?? null } as Prisma.CloudClusterUncheckedCreateInput,
+      data: { regionId, name, endpoint: endpoint ?? null, updatedAt: new Date() } as Prisma.CloudClusterUncheckedCreateInput,
     });
     return { id: c.id, regionName: region.name, name: c.name, healthy: c.healthy, endpoint: c.endpoint };
   }
   async place(tenantId: string, primaryRegion: string, backupRegion?: string, residencyPolicy?: string): Promise<TenantPlacementView> {
     const row = await this.prisma.tenantPlacement.upsert({
       where: { tenantId },
-      create: { tenantId, primaryRegion, backupRegion: backupRegion ?? null, residencyPolicy: residencyPolicy ?? null } as Prisma.TenantPlacementUncheckedCreateInput,
+      create: { tenantId, primaryRegion, backupRegion: backupRegion ?? null, residencyPolicy: residencyPolicy ?? null, failoverStatus: 'NONE', updatedAt: new Date() } as Prisma.TenantPlacementUncheckedCreateInput,
       update: { primaryRegion, backupRegion: backupRegion ?? null, residencyPolicy: residencyPolicy ?? null } as Prisma.TenantPlacementUncheckedUpdateInput,
     });
     return { tenantId: row.tenantId, primaryRegion: row.primaryRegion, backupRegion: row.backupRegion, residencyPolicy: row.residencyPolicy, replicationEnabled: row.replicationEnabled, failoverStatus: row.failoverStatus };

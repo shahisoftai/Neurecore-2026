@@ -45,7 +45,7 @@ export interface IApplicationFramework {
 export class ApplicationFramework implements IApplicationFramework {
   constructor(private readonly prisma: PrismaService) {}
   async registerApp(tenantId: string, name: string, domain: string, version = '1.0.0', edition: Edition = 'ENTERPRISE') {
-    const a = await this.prisma.application.create({ data: { tenantId, name, domain, version, edition, status: 'DRAFT' as any } as Prisma.ApplicationUncheckedCreateInput });
+    const a = await this.prisma.application.create({ data: { tenantId, name, domain, version, edition, status: 'DRAFT' as any, updatedAt: new Date() } as Prisma.ApplicationUncheckedCreateInput });
     return { id: a.id, name: a.name, domain: a.domain, version: a.version, status: a.status as AppStatus, edition: a.edition as Edition };
   }
   async listApps(tenantId: string, domain?: string) {
