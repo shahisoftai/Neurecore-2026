@@ -81,6 +81,13 @@ class FakePrisma {
       for (const c of matched) Object.assign(c, data);
       return { count: matched.length };
     },
+    count: async ({ where }: any = {}) => {
+      const matched = this.clusters.filter((c) => {
+        for (const [k, v] of Object.entries(where ?? {})) if (c[k] !== v) return false;
+        return true;
+      });
+      return matched.length;
+    },
   };
 
   tenantPlacement = {
