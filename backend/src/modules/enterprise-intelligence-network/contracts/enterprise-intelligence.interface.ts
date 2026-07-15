@@ -67,7 +67,12 @@ export interface IEntityResolver {
 
 export const RELATIONSHIP_ENGINE = Symbol('RELATIONSHIP_ENGINE');
 export interface IRelationshipEngine {
-  infer(tenantId: string): Promise<KnowledgeEdgeView[]>;
+  /**
+   * Inferred an actorId so the audit trail distinguishes the operator
+   * who triggered the inference from a hard-coded 'system' string
+   * (audit-remediation).
+   */
+  infer(tenantId: string, actorId: string): Promise<KnowledgeEdgeView[]>;
 }
 
 export const SEMANTIC_SEARCH = Symbol('SEMANTIC_SEARCH');

@@ -74,12 +74,18 @@ export class KnowledgeGraph implements IKnowledgeGraph {
     return { id: row.id, tenantId: row.tenantId, sourceNodeId: row.sourceNodeId, targetNodeId: row.targetNodeId, relationshipKind: row.relationshipKind, evidence: (row.evidenceJson ?? []) as any[], confidence: row.confidence as any, ontologyVersion: row.ontologyVersion, createdAt: row.createdAt.toISOString() };
   }
   async traverse(tenantId: string, nodeId: string, depth = 2): Promise<GraphQueryResult[]> {
+    // Audit-remediation: bound the depth and the visited-node count
+    // so a high-fanout graph cannot be used to DoS this method. The
+    // BFS visits at most MAX_VISITED nodes; the depth is also capped.
+    const MAX_VISITED = 200;
+    const MAX_DEPTH = 8;
+    const effectiveDepth = Math.min(Math.max(depth, 1), MAX_DEPTH);
     const seen = new Set<string>();
     const queue: { nodeId: string; d: number }[] = [{ nodeId, d: 0 }];
     const results: (KnowledgeNodeView & { outgoing: KnowledgeEdgeView[]; incoming: KnowledgeEdgeView[] })[] = [];
-    while (queue.length > 0) {
+    while (queue.length > 0 && seen.size < MAX_VISITED) {
       const { nodeId: nid, d } = queue.shift()!;
-      if (seen.has(nid) || d > depth) continue;
+      if (seen.has(nid) || d > effectiveDepth) continue;
       seen.add(nid);
       const node = await this.prisma.knowledgeNode.findFirst({ where: { id: nid, tenantId } });
       if (!node) continue;
@@ -91,7 +97,12 @@ export class KnowledgeGraph implements IKnowledgeGraph {
       const out = outgoing.map((e) => ({ id: e.id, tenantId: e.tenantId, sourceNodeId: e.sourceNodeId, targetNodeId: e.targetNodeId, relationshipKind: e.relationshipKind, evidence: (e.evidenceJson ?? []) as any[], confidence: e.confidence as any, ontologyVersion: e.ontologyVersion, createdAt: e.createdAt.toISOString() }));
       const inc = incoming.map((e) => ({ id: e.id, tenantId: e.tenantId, sourceNodeId: e.sourceNodeId, targetNodeId: e.targetNodeId, relationshipKind: e.relationshipKind, evidence: (e.evidenceJson ?? []) as any[], confidence: e.confidence as any, ontologyVersion: e.ontologyVersion, createdAt: e.createdAt.toISOString() }));
       results.push({ ...nodeView, outgoing: out, incoming: inc });
-      if (d < depth) for (const e of outgoing) queue.push({ nodeId: e.targetNodeId, d: d + 1 });
+      if (d < effectiveDepth) {
+        for (const e of outgoing) {
+          if (seen.size >= MAX_VISITED) break;
+          queue.push({ nodeId: e.targetNodeId, d: d + 1 });
+        }
+      }
     }
     return results.map((r) => ({ node: { id: r.id, tenantId: r.tenantId, entityKind: r.entityKind, entityId: r.entityId, label: r.label, createdAt: r.createdAt, updatedAt: r.updatedAt }, outgoingEdges: r.outgoing, incomingEdges: r.incoming }));
   }
@@ -108,10 +119,24 @@ export class KnowledgeGraph implements IKnowledgeGraph {
     const [nodeCount, edgeCount, orphanCount, versionCount] = await Promise.all([
       this.prisma.knowledgeNode.count({ where: { tenantId } }),
       this.prisma.knowledgeEdge.count({ where: { tenantId } }),
-      this.prisma.$queryRawUnsafe<{ count: bigint }[]>(`SELECT COUNT(*) as count FROM knowledge_nodes n LEFT JOIN knowledge_edges e1 ON n.id = e1."sourceNodeId" LEFT JOIN knowledge_edges e2 ON n.id = e2."targetNodeId" WHERE n."tenantId" = '${tenantId}' AND e1.id IS NULL AND e2.id IS NULL`,).catch(() => [{ count: 0n }]),
+      // Audit-remediation: the previous implementation built a raw SQL
+      // string by interpolating `tenantId` directly. That is a text-injection
+      // hazard; the tenantId comes through the controller from a JWT,
+      // but the same flow trusts the JWT value as the only line of
+      // defense. Replace the string template with a parameterized
+      // Prisma.sql query so the tenantId is bound by the driver.
+      this.prisma.$queryRaw(Prisma.sql`
+        SELECT COUNT(*)::bigint AS count
+        FROM knowledge_nodes AS n
+        LEFT JOIN knowledge_edges AS e1 ON e1."sourceNodeId" = n.id AND e1."tenantId" = ${tenantId}
+        LEFT JOIN knowledge_edges AS e2 ON e2."targetNodeId" = n.id AND e2."tenantId" = ${tenantId}
+        WHERE n."tenantId" = ${tenantId}
+          AND e1.id IS NULL
+          AND e2.id IS NULL
+        `).then((rows: any[]) => rows[0]?.count ?? 0n).catch(() => 0n),
       this.prisma.ontologyVersion.count({ where: { tenantId } }),
     ]);
-    const orphaned = Number(orphanCount?.[0]?.count ?? 0);
+    const orphaned = Number(orphanCount ?? 0);
     return { nodeCount, edgeCount, orphanNodes: orphaned, ontologyVersions: versionCount, consistencyGrade: orphaned === 0 ? 'EXCELLENT' : 'GOOD' };
   }
 }
@@ -135,8 +160,10 @@ export class RelationshipEngine implements IRelationshipEngine {
     @Inject(CONTEXT_PLANE) private readonly plane: IOrganizationalContextPlane,
     private readonly graph: KnowledgeGraph,
   ) {}
-  async infer(tenantId: string): Promise<KnowledgeEdgeView[]> {
-    const ctx = await this.plane.assemble({ tenantId, actorId: 'system', actorType: 'AI_AGENT', scope: {} }).catch(() => null);
+  async infer(tenantId: string, actorId: string): Promise<KnowledgeEdgeView[]> {
+    // Audit-remediation: actorId is propagated from the caller rather
+    // than hard-coded 'system' so the audit trail is distinguishable.
+    const ctx = await this.plane.assemble({ tenantId, actorId, actorType: 'AI_AGENT', scope: {} }).catch(() => null);
     if (!ctx) return [];
     const edges: KnowledgeEdgeView[] = [];
     const caps = ctx.capabilities ?? {};
@@ -210,5 +237,5 @@ export class EnterpriseIntelligenceNetwork implements IEnterpriseIntelligenceNet
     return findings;
   };
   health = (t: string) => this.kg.health(t);
-  refresh = (t: string, _a: string) => this.relationship.infer(t);
+  refresh = (t: string, a: string) => this.relationship.infer(t, a);
 }
