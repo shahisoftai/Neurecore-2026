@@ -253,4 +253,5 @@ export interface IEnterpriseAutonomy {
   humanOverride(missionId: string, tenantId: string, actorId: string, action: 'PAUSE' | 'CANCEL' | 'PRIORITIZE', detail?: string): Promise<MissionView>;
   getMission(missionId: string, tenantId: string): Promise<MissionView | null>;
   listMissions(tenantId: string): Promise<MissionView[]>;
+  computeHealth(tenantId: string, actorId: string): Promise<unknown>;
 }

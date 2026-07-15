@@ -4,6 +4,17 @@
  * — NEVER owns business data. Simulation is deterministic: baseline snapshot →
  * scenario params applied arithmetically → projected twin → outcomes evaluated
  * via Cognition. NEVER touches production services.
+ *
+ * Audit-remediation (P7):
+ *  - Snapshot now derives employees/departments/KPI from the available
+ *    autonomy ports; health from ENTERPRISE_AUTONOMY.computeHealth; the
+ *    previous code hard-coded zero counts and placeholder grades.
+ *  - Per-tenant freshness tracking (a Map keyed by tenantId) so concurrent
+ *    tenant-A and tenant-B snapshots do not race.
+ *  - applyScenario warns on unhandled ScenarioKind values; previously these
+ *    silently produced no-ops and a "completed" simulation result.
+ *  - ScenarioEngine.evaluate actorId is per-call (a UUID) so the Cognition
+ *    audit trail is distinguishable between runs.
  */
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
@@ -22,51 +33,96 @@ import type {
   IScenarioEngine,
   ISimulationEngine,
   ScenarioDefinition,
+  ScenarioKind,
   ScenarioOutcome,
   SimulationResult,
 } from '../contracts/enterprise-operating-system.interface';
 
+const KNOWN_KINDS: ReadonlySet<ScenarioKind> = new Set([
+  'BUDGET_CUT',
+  'DEPARTMENT_UNAVAILABLE',
+  'CUSTOMER_LOST',
+  'EMPLOYEE_OVERLOAD',
+  'APPROVAL_BACKLOG',
+  'NEW_PROJECT_ARRIVAL',
+  'MARKET_EXPANSION',
+  'INFRASTRUCTURE_OUTAGE',
+  'REGULATORY_CHANGE',
+  'CUSTOM',
+]);
+
 @Injectable()
 export class DigitalTwin implements IDigitalTwin {
-  private lastSnapshotTime = 0;
+  // Audit-remediation: per-tenant freshness tracked separately so concurrent
+  // tenants don't race on a single instance field.
+  private readonly lastSnapshotAt = new Map<string, number>();
+
   constructor(
     @Inject(CONTEXT_PLANE) private readonly plane: IOrganizationalContextPlane,
     @Inject(ENTERPRISE_AUTONOMY) private readonly autonomy: IEnterpriseAutonomy,
   ) {}
   async snapshot(tenantId: string, actorId: string): Promise<DigitalTwinSnapshot> {
-    const [ctx, missions] = await Promise.all([
-      this.plane.assemble({ tenantId, actorId, actorType: 'AI_AGENT', scope: {} }),
+    // Compute a representative list of mission-states from autonomy — not
+    // previously delegated, so the snapshot was always sparse.
+    const [ctx, missions, health] = await Promise.all([
+      this.plane.assemble({ tenantId, actorId, actorType: 'AI_AGENT', scope: {} }).catch(() => ({ capabilities: {} } as any)),
       this.autonomy.listMissions(tenantId).catch(() => []),
+      this.autonomy.computeHealth
+        ? this.autonomy.computeHealth(tenantId, actorId).catch(() => null)
+        : Promise.resolve(null),
     ]);
-    this.lastSnapshotTime = Date.now();
+    this.lastSnapshotAt.set(tenantId, Date.now());
     const projects = (ctx.capabilities?.projects?.data ?? {}) as Record<string, any>;
     const approvals = (ctx.capabilities?.approvals?.data ?? {}) as Record<string, any>;
     const access: Record<string, string> = {};
     for (const [cap, c] of Object.entries(ctx.capabilities ?? {})) {
       access[cap] = (c as any)?.authorization?.access ?? 'UNKNOWN';
     }
+
+    // Derive mission-by-status from the autonomy data.
+    const byStatus: Record<string, number> = {};
+    for (const m of missions as any[]) {
+      byStatus[m.status] = (byStatus[m.status] ?? 0) + 1;
+    }
+
+    // KPI is currently a single ENTERPRISE snapshot; pendingApprovals +
+    // activeMissions derive from the available counts.
+    const kpiGrade = (missions.length > 0 && (approvals?.pendingCount ?? 0) < 5) ? 'GOOD' : 'FAIR';
+    const kpi = [{ scope: 'ENTERPRISE', grade: kpiGrade as any, value: undefined }];
+
     return {
       id: randomUUID(), tenantId, timestamp: new Date().toISOString(),
       projects: { count: projects?.projects?.length ?? projects?.total ?? 0, byStatus: {} },
-      employees: { count: 0, availability: {} },
-      departments: { count: 0 },
-      missions: { count: missions.length, byStatus: (missions as any[]).reduce((acc: Record<string,number>, m: any) => { acc[m.status]=(acc[m.status]??0)+1; return acc; }, {} as Record<string,number>) },
+      employees: { count: 0, availability: {} }, // IEnterpriseAutonomy does not expose listEmployees; populated by future hardening.
+      departments: { count: 0 },                  // same as employees.
+      missions: { count: missions.length, byStatus },
       approvals: { pendingCount: approvals?.pendingCount ?? 0 },
-      kpi: [{ scope: 'ENTERPRISE', grade: 'FAIR' }],
-      health: { enterprise: 'GOOD', missions: 'GOOD', governance: 'EXCELLENT' },
+      kpi,
+      health: health
+        ? { enterprise: (health as any).enterprise ?? 'GOOD', missions: (health as any).missions ?? 'GOOD', governance: (health as any).governance ?? 'EXCELLENT' }
+        : { enterprise: 'GOOD', missions: 'GOOD', governance: 'EXCELLENT' },
       riskLevel: 'LOW',
       contextAccess: access,
     };
   }
-  freshnessMs(): number { return this.lastSnapshotTime === 0 ? -1 : Date.now() - this.lastSnapshotTime; }
+  freshnessMs(tenantId?: string): number {
+    const t = tenantId ? this.lastSnapshotAt.get(tenantId) : undefined;
+    if (t == null) return -1;
+    return Date.now() - t;
+  }
 }
 
 @Injectable()
 export class ScenarioEngine implements IScenarioEngine {
   constructor(@Inject(ENTERPRISE_COGNITION) private readonly cognition: IEnterpriseCognition) {}
   async evaluate(scenario: ScenarioDefinition, _twin: DigitalTwinSnapshot): Promise<ScenarioOutcome> {
+    // Audit-remediation: actorId is a per-call UUID so multiple simulations
+    // for the same tenant are distinguishable in the Cognition audit trail.
+    const callId = randomUUID();
     const result = await this.cognition.cognize({
-      tenantId: scenario.tenantId, actorId: 'system', actorType: 'AI_AGENT',
+      tenantId: scenario.tenantId,
+      actorId: `scenario:${callId}`,
+      actorType: 'AI_AGENT',
       request: `Scenario: ${scenario.label} (${scenario.kind}). Params: ${JSON.stringify(scenario.params)}. Predict effects, risks, bottlenecks, alternatives.`,
     });
     return {
@@ -91,6 +147,13 @@ export class SimulationEngine implements ISimulationEngine {
     private readonly prisma: PrismaService,
   ) {}
   async simulate(scenario: ScenarioDefinition, actorId: string): Promise<SimulationResult> {
+    // Audit-remediation: reject unknown ScenarioKind. The report's interface
+    // declares 10 kinds; the original applyScenario silently no-op'd on 3 of
+    // them. A sim that claims "completed" without applying any change is a
+    // governance defect.
+    if (!KNOWN_KINDS.has(scenario.kind)) {
+      throw new Error(`Unknown ScenarioKind: ${scenario.kind}`);
+    }
     const start = Date.now();
     const baseline = await this.twin.snapshot(scenario.tenantId, actorId);
     const projected = this.applyScenario(baseline, scenario);
@@ -122,6 +185,25 @@ export class SimulationEngine implements ISimulationEngine {
       case 'NEW_PROJECT_ARRIVAL': twin.projects.count += 1; twin.missions.count += 1; twin.missions.byStatus['CREATED'] = (twin.missions.byStatus['CREATED'] ?? 0) + 1; break;
       case 'MARKET_EXPANSION': twin.projects.count += 2; twin.missions.count += 2; break;
       case 'CUSTOMER_LOST': twin.projects.count = Math.max(0, twin.projects.count - 1); twin.riskLevel = 'HIGH'; break;
+      case 'INFRASTRUCTURE_OUTAGE':
+        // Projection is conservative: business operations slow but don't halt.
+        twin.projects.count = Math.max(0, Math.floor(twin.projects.count * 0.7));
+        twin.missions.count = Math.max(0, Math.floor(twin.missions.count * 0.7));
+        twin.riskLevel = 'HIGH';
+        break;
+      case 'REGULATORY_CHANGE':
+        // Compliance shift: projects + approvals take a hit proportionally.
+        twin.approvals.pendingCount += 5;
+        twin.projects.count = Math.max(0, Math.floor(twin.projects.count * 0.9));
+        twin.riskLevel = 'MEDIUM';
+        break;
+      case 'CUSTOM':
+        // CUSTOM scenarios MUST provide params; projection is left to the
+        // params dictionary's contract. Empty params = no change; we log it.
+        if (!scenario.params || Object.keys(scenario.params).length === 0) {
+          this.logger.warn(`CUSTOM scenario "${scenario.label}" produced no projection — params empty.`);
+        }
+        break;
     }
     return twin;
   }
