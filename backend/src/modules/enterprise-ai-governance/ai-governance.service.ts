@@ -98,8 +98,19 @@ export class AIGovernancePlatform implements IAIGovernancePlatform {
     return { id: row.id, sourceType: row.sourceType, sourceId: row.sourceId, decision: row.decision, reason: row.reason, reviewedAt: row.reviewedAt?.toISOString?.() ?? null };
   }
   async decideReview(tenantId: string, reviewId: string, decision: string, reviewerId: string, reason?: string): Promise<ReviewView> {
-    const row = await this.prisma.humanReviewRecord.update({ where: { id: reviewId }, data: { decision: decision as any, reviewerId, reason: reason ?? null, reviewedAt: new Date() } });
-    return { id: row.id, sourceType: row.sourceType, sourceId: row.sourceId, decision: row.decision, reason: row.reason, reviewedAt: row.reviewedAt?.toISOString?.() ?? null };
+    // Audit-remediation: prisma.humanReviewRecord.update({ where: { id } })
+    // was used previously — missing tenantId in WHERE means a Tenant B
+    // JWT could decide Tenant A's review. Fix: read+updateMany under
+    // (id, tenantId); refuse on count=0 or missing findFirst.
+    const owned = await this.prisma.humanReviewRecord.findFirst({ where: { id: reviewId, tenantId } });
+    if (!owned) throw new Error('review not found for tenant');
+    const u = await this.prisma.humanReviewRecord.updateMany({
+      where: { id: reviewId, tenantId },
+      data: { decision: decision as any, reviewerId, reason: reason ?? null, reviewedAt: new Date() },
+    });
+    if (u.count === 0) throw new Error('review not found for tenant');
+    const after = await this.prisma.humanReviewRecord.findFirst({ where: { id: reviewId, tenantId } });
+    return { id: after!.id, sourceType: after!.sourceType, sourceId: after!.sourceId, decision: after!.decision, reason: after!.reason, reviewedAt: after!.reviewedAt?.toISOString?.() ?? null };
   }
   async listReviews(tenantId: string): Promise<ReviewView[]> {
     return (await this.prisma.humanReviewRecord.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' }, take: 50 })).map((r) => ({ id: r.id, sourceType: r.sourceType, sourceId: r.sourceId, decision: r.decision, reason: r.reason, reviewedAt: r.reviewedAt?.toISOString?.() ?? null }));
