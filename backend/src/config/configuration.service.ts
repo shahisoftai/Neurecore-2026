@@ -20,6 +20,7 @@ import type {
   AiConfig,
   FeatureFlagsConfig,
   ObservabilityConfig,
+  BrevoConfig,
   Environment,
 } from './env.loader';
 
@@ -63,6 +64,9 @@ export interface IConfigService {
 
   // Observability
   getObservability(): ObservabilityConfig;
+
+  // Brevo
+  getBrevo(): BrevoConfig;
 
   // All config
   getAll(): AppEnvironment;
@@ -222,14 +226,14 @@ export class ConfigurationService implements IConfigService {
     };
   }
 
-/**
- * Get AI configuration
- *
- * Per ai-gateway-imp-plan.md §3.1 row S31: API keys and per-model
- * defaults have moved to the gateway catalog (DB-backed). Only
- * non-secret gateway knobs live here.
- */
-getAi(): AiConfig {
+  /**
+   * Get AI configuration
+   *
+   * Per ai-gateway-imp-plan.md §3.1 row S31: API keys and per-model
+   * defaults have moved to the gateway catalog (DB-backed). Only
+   * non-secret gateway knobs live here.
+   */
+  getAi(): AiConfig {
     return {
       AI_STREAMING_ENABLED: this.get<boolean>('AI_STREAMING_ENABLED') ?? true,
       AI_FUNCTION_CALLING_ENABLED:
@@ -284,6 +288,28 @@ getAi(): AiConfig {
   }
 
   /**
+   * Get Brevo configuration.
+   *
+   * `masterApiKey` is the platform-level key decoded from BREVO_MASTER_API_KEY
+   * (or the legacy BREVO_API base64 blob). When a per-tenant key exists it is
+   * preferred; this master key is the fallback used to bootstrap new tenants.
+   */
+  getBrevo(): BrevoConfig {
+    return {
+      masterApiKey: this.get<string>('BREVO_MASTER_API_KEY') || null,
+      fromAddress:
+        this.get<string>('EMAIL_FROM_ADDRESS') ||
+        this.get<string>('SMTP_FROM') ||
+        '',
+      fromName: this.get<string>('EMAIL_FROM_NAME') || 'NeureCore',
+      replyTo: this.get<string>('EMAIL_REPLY_TO') || null,
+      dailyLimit: this.get<number>('BREVO_DAILY_LIMIT') || 300,
+      apiBaseUrl:
+        this.get<string>('BREVO_API_BASE_URL') || 'https://api.brevo.com/v3',
+    };
+  }
+
+  /**
    * Get all configuration
    */
   getAll(): AppEnvironment {
@@ -329,6 +355,9 @@ getAi(): AiConfig {
 
       // Observability
       ...this.getObservability(),
+
+      // Brevo
+      ...this.getBrevo(),
 
       // Upload
       MAX_FILE_SIZE: this.get<number>('MAX_FILE_SIZE') || 10485760,

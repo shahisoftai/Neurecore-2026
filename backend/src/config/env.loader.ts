@@ -16,6 +16,46 @@ export type SecurityConfig = Record<string, any>;
 export type AiConfig = Record<string, any>;
 export type FeatureFlagsConfig = Record<string, any>;
 export type ObservabilityConfig = Record<string, any>;
+export type BrevoConfig = {
+  masterApiKey: string | null;
+  fromAddress: string;
+  fromName: string;
+  replyTo: string | null;
+  dailyLimit: number;
+  apiBaseUrl: string;
+};
+
+/**
+ * Decode Brevo master API key.
+ *
+ * Supports two formats:
+ *   1. Bare key: `xkeysib-...`
+ *   2. Base64-wrapped JSON: `eyJhcGlfa2V5IjoieGtleXNpYi0...` → {"api_key":"xkeysib-..."}
+ *
+ * Returns null if no usable key is present.
+ */
+export const decodeBrevoMasterKey = (raw: unknown): string | null => {
+  if (typeof raw !== 'string' || raw.length === 0) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('xkeysib-') || trimmed.startsWith('xsmtpsib-')) {
+    return trimmed;
+  }
+  try {
+    const decoded = Buffer.from(trimmed, 'base64').toString('utf8');
+    if (decoded && decoded !== trimmed) {
+      const parsed = JSON.parse(decoded) as {
+        api_key?: string;
+        apiKey?: string;
+      };
+      const key = parsed.api_key ?? parsed.apiKey;
+      if (typeof key === 'string' && key.length > 0) return key;
+    }
+  } catch {
+    /* fallthrough */
+  }
+  return null;
+};
 
 /**
  * Lightweight validate function compatible with Nest `ConfigModule.forRoot({ validate })`.
@@ -40,6 +80,21 @@ export const validate = (rawEnv: Record<string, unknown>): AppEnvironment => {
   // provide a safe default for PORT in local dev
   if (!env.PORT) env.PORT = 3000;
   if (!env.NODE_ENV) env.NODE_ENV = 'development';
+
+  // Normalize Brevo master key. Accept either a base64-wrapped JSON or a bare key.
+  // Prefer BREVO_MASTER_API_KEY; fall back to BREVO_API (legacy base64 form).
+  const brevoRaw: string =
+    (typeof env.BREVO_MASTER_API_KEY === 'string' &&
+      env.BREVO_MASTER_API_KEY) ||
+    (typeof env.BREVO_API === 'string' && env.BREVO_API) ||
+    '';
+  const decoded = decodeBrevoMasterKey(brevoRaw);
+  if (decoded) {
+    env.BREVO_MASTER_API_KEY = decoded;
+    if (!env.BREVO_API) {
+      (env as Record<string, string>).BREVO_API = brevoRaw;
+    }
+  }
 
   return env as AppEnvironment;
 };

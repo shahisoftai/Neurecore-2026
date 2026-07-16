@@ -8,13 +8,13 @@ const WARNING_THRESHOLD = 240;
 export class BrevoUsageService {
   private readonly logger = new Logger(BrevoUsageService.name);
 
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private todayUtc(): Date {
     const now = new Date();
-    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    return new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
   }
 
   async recordSend(tenantId: string): Promise<void> {
@@ -35,12 +35,27 @@ export class BrevoUsageService {
   }
 
   async checkLimit(tenantId: string): Promise<void> {
-    const count = await this.getTodayCount(tenantId);
-    if (count >= DAILY_LIMIT) {
+    return this.checkLimitFor(tenantId, 1);
+  }
+
+  async checkLimitFor(tenantId: string, count: number): Promise<void> {
+    if (count <= 0) return;
+    const used = await this.getTodayCount(tenantId);
+    if (used + count > DAILY_LIMIT) {
       throw new BadRequestException(
-        `Brevo daily limit reached (${count}/${DAILY_LIMIT}). Upgrade plan or wait until tomorrow (UTC).`,
+        `Brevo daily limit would be exceeded (${used}+${count} > ${DAILY_LIMIT}). Upgrade plan or wait until tomorrow (UTC).`,
       );
     }
+  }
+
+  async recordSendBatch(tenantId: string, count: number): Promise<void> {
+    if (count <= 0) return;
+    const date = this.todayUtc();
+    await this.prisma.brevoUsageCounter.upsert({
+      where: { tenantId_date: { tenantId, date } },
+      create: { tenantId, date, sentCount: count },
+      update: { sentCount: { increment: count } },
+    });
   }
 
   async getStatus(tenantId: string) {

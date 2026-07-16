@@ -77,6 +77,13 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: 'integrations',
+    label: 'Integrations',
+    items: [
+      { label: 'Brevo Email', href: '/admin/brevo', icon: '✉' },
+    ],
+  },
+  {
     id: 'settings',
     label: 'Settings',
     items: [

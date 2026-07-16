@@ -59,9 +59,14 @@ export default tseslint.config(
   {
     // Test files can have different rules
     name: 'test-files',
-    files: ['test/**/*.ts', 'src/**/*.spec.ts'],
+    files: ['test/**/*.ts', 'src/**/*.spec.ts', 'src/**/__tests__/**/*.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-base-to-string': 'off',
     },
   },
 );

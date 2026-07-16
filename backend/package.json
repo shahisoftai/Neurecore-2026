@@ -35,6 +35,7 @@
     "seed:question-packs:check": "node prisma/seed-question-packs.cjs --check",
     "seed:project-types:check": "node prisma/seed-project-types.cjs --check",
     "seed:onboarding-allocator": "node prisma/seed-onboarding-allocator.cjs",
+    "brevo:bootstrap": "node scripts/brevo-bootstrap-tenant.cjs",
     "test:seed:question-packs": "node scripts/test-seed-idempotency.mjs question-packs",
     "test:seed:project-types": "node scripts/test-seed-idempotency.mjs project-types",
     "test:industries-sync": "node scripts/check-industries-sync.mjs"

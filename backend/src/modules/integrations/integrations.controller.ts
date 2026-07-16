@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Body,
   Query,
@@ -10,6 +11,8 @@ import {
   HttpStatus,
   Logger,
   Res,
+  Headers,
+  Req,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -25,6 +28,10 @@ import { GoogleSheetsService } from './google/google-sheets.service';
 import { GoogleDocsService } from './google/google-docs.service';
 import { GoogleSlidesService } from './google/google-slides.service';
 import { BrevoUsageService } from './brevo/brevo-usage.service';
+import { BrevoEmailService } from './brevo/brevo-email.service';
+import { BrevoWebhookService } from './brevo/brevo-webhook.service';
+import { BrevoSuppressionService } from './brevo/brevo-suppression.service';
+import { AdminBrevoService } from './brevo/admin-brevo.service';
 import { Public } from '../../common/decorators/roles.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
@@ -53,6 +60,10 @@ export class IntegrationsController {
     private readonly docsService: GoogleDocsService,
     private readonly slidesService: GoogleSlidesService,
     private readonly brevoUsage: BrevoUsageService,
+    private readonly brevoEmail: BrevoEmailService,
+    private readonly brevoWebhook: BrevoWebhookService,
+    private readonly adminBrevo: AdminBrevoService,
+    private readonly brevoSuppressions: BrevoSuppressionService,
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
@@ -183,7 +194,169 @@ export class IntegrationsController {
   @HttpCode(HttpStatus.OK)
   async disconnectBrevo(@CurrentUser() user: JwtPayload) {
     await this.integrationsService.disconnectBrevo(user.tenantId!);
+    this.brevoEmail.invalidate(user.tenantId!);
     return { success: true };
+  }
+
+  @Get('brevo/validate')
+  async validateBrevo(@CurrentUser() user: JwtPayload) {
+    return this.brevoEmail.validateApiKey(user.tenantId!);
+  }
+
+  @Post('brevo/test-send')
+  @HttpCode(HttpStatus.OK)
+  async testSendBrevo(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { to: string; subject?: string; htmlContent?: string },
+  ) {
+    if (!body?.to) {
+      return { success: false, error: 'to is required' };
+    }
+    try {
+      const result = await this.brevoEmail.sendEmail(user.tenantId!, {
+        to: body.to,
+        subject: body.subject ?? 'Neurecore Brevo test email',
+        htmlContent:
+          body.htmlContent ??
+          '<p>This is a test email from Neurecore. If you received it, Brevo is configured correctly.</p>',
+      });
+      return { success: true, ...result };
+    } catch (err) {
+      return {
+        success: false,
+        error: (err as Error).message ?? 'Unknown error',
+      };
+    }
+  }
+
+  // Per-tenant sender identity (overrides EMAIL_FROM_ADDRESS env).
+
+  @Get('brevo/sender')
+  async getBrevoSender(@CurrentUser() user: JwtPayload) {
+    const identity = await this.brevoEmail.getTenantIdentity(user.tenantId!);
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId! },
+      select: {
+        brevoSenderEmail: true,
+        brevoSenderName: true,
+        brevoReplyToEmail: true,
+      },
+    });
+    return {
+      tenant: {
+        brevoSenderEmail: tenant?.brevoSenderEmail ?? null,
+        brevoSenderName: tenant?.brevoSenderName ?? null,
+        brevoReplyToEmail: tenant?.brevoReplyToEmail ?? null,
+      },
+      resolved: identity,
+    };
+  }
+
+  @Put('brevo/sender')
+  @HttpCode(HttpStatus.OK)
+  async setBrevoSender(
+    @CurrentUser() user: JwtPayload,
+    @Body()
+    body: {
+      brevoSenderEmail: string;
+      brevoSenderName?: string;
+      brevoReplyToEmail?: string;
+    },
+  ) {
+    if (!body?.brevoSenderEmail) {
+      return { success: false, error: 'brevoSenderEmail is required' };
+    }
+    if (!/.+@.+\..+/.test(body.brevoSenderEmail)) {
+      return {
+        success: false,
+        error: 'brevoSenderEmail must be a valid email',
+      };
+    }
+    await this.prisma.tenant.update({
+      where: { id: user.tenantId! },
+      data: {
+        brevoSenderEmail: body.brevoSenderEmail,
+        brevoSenderName: body.brevoSenderName ?? null,
+        brevoReplyToEmail: body.brevoReplyToEmail ?? null,
+      },
+    });
+    this.brevoEmail.invalidateIdentity(user.tenantId!);
+    return { success: true };
+  }
+
+  @Delete('brevo/sender')
+  @HttpCode(HttpStatus.OK)
+  async clearBrevoSender(@CurrentUser() user: JwtPayload) {
+    await this.prisma.tenant.update({
+      where: { id: user.tenantId! },
+      data: {
+        brevoSenderEmail: null,
+        brevoSenderName: null,
+        brevoReplyToEmail: null,
+      },
+    });
+    this.brevoEmail.invalidateIdentity(user.tenantId!);
+    return { success: true };
+  }
+
+  // Bulk send — up to 50 recipients per call.
+
+  @Post('brevo/send-batch')
+  @HttpCode(HttpStatus.OK)
+  async sendBrevoBatch(
+    @CurrentUser() user: JwtPayload,
+    @Body()
+    body: {
+      recipients: { to: string; variables?: Record<string, string> }[];
+      subject: string;
+      htmlContent: string;
+      textContent?: string;
+      signature?: string;
+      tags?: string[];
+    },
+  ) {
+    if (!body?.recipients || !Array.isArray(body.recipients)) {
+      return { success: false, error: 'recipients (array) is required' };
+    }
+    try {
+      const result = await this.brevoEmail.sendBatch(user.tenantId!, body);
+      return { success: true, ...result };
+    } catch (err) {
+      return {
+        success: false,
+        error: (err as Error).message ?? 'Unknown error',
+      };
+    }
+  }
+
+  // Recent webhook events for the tenant (delivery / bounce / open / click).
+
+  @Get('brevo/events')
+  async listBrevoEvents(
+    @CurrentUser() user: JwtPayload,
+    @Query('messageId') messageId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.brevoWebhook.listRecent(user.tenantId!, {
+      messageId,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  // ─── Webhook (public; signed via BREVO_WEBHOOK_SECRET). ─────────────
+
+  @Public()
+  @Post('brevo/webhook')
+  @HttpCode(HttpStatus.OK)
+  async receiveBrevoWebhook(
+    @Body() _body: unknown,
+    @Headers('x-brevo-signature') headerSignature?: string,
+    @Query('signature') querySignature?: string,
+    @Req() req?: { rawBody?: Buffer },
+  ): Promise<{ accepted: boolean; duplicate?: boolean; reason?: string }> {
+    const raw = req?.rawBody?.toString('utf8') ?? '';
+    const sig = headerSignature ?? querySignature;
+    return this.brevoWebhook.handle(raw, sig);
   }
 
   // ─── Gmail endpoints ────────────────────────────────────────
@@ -430,7 +603,12 @@ export class IntegrationsController {
   @HttpCode(HttpStatus.OK)
   async createGoogleSlides(
     @CurrentUser() user: JwtPayload,
-    @Body() body: { title: string; slides?: { title: string; body?: string }[]; parentId?: string },
+    @Body()
+    body: {
+      title: string;
+      slides?: { title: string; body?: string }[];
+      parentId?: string;
+    },
   ) {
     return this.slidesService.createPresentation(user.tenantId!, body);
   }
@@ -602,9 +780,8 @@ export class IntegrationsController {
     @Param('tenantId') tenantId: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<{ tenantId: string; revoked: true; hadCalendar: boolean }> {
-    const result = await this.integrationsService.adminDisconnectGoogle(
-      tenantId,
-    );
+    const result =
+      await this.integrationsService.adminDisconnectGoogle(tenantId);
 
     if (this.audit) {
       await this.audit.log({
@@ -618,9 +795,192 @@ export class IntegrationsController {
       });
     }
 
+    this.logger.log(`Admin ${user.sub} revoked Google for tenant ${tenantId}`);
+    return result;
+  }
+
+  // ─── Platform-level Brevo admin (BREVO-ADMIN) ─────────────────────────
+
+  @Get('admin/brevo/platform-status')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
+  async getBrevoPlatformStats() {
+    return this.adminBrevo.platformStats();
+  }
+
+  @Get('admin/brevo/tenants')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
+  async listBrevoTenants() {
+    return this.adminBrevo.listTenantRows();
+  }
+
+  @Get('admin/brevo/usage-series')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
+  async getBrevoUsageSeries() {
+    return this.adminBrevo.usageSeries();
+  }
+
+  @Get('admin/brevo/health')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
+  async getBrevoHealth() {
+    return this.adminBrevo.healthCheck();
+  }
+
+  @Get('admin/brevo/events')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
+  async listAdminBrevoEvents(
+    @Query('tenantId') tenantId?: string,
+    @Query('eventType') eventType?: string,
+    @Query('messageId') messageId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.adminBrevo.listEvents({
+      tenantId,
+      eventType,
+      messageId,
+      from: from ? new Date(from) : undefined,
+      to: to ? new Date(to) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+  }
+
+  @Post('admin/brevo/tenants/:tenantId/disconnect')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async adminDisconnectBrevo(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const result = await this.adminBrevo.disconnectTenant(tenantId);
+    if (this.audit) {
+      await this.audit.log({
+        actor: user.sub,
+        action: 'brevo.admin_revoke',
+        resource: 'integration_credential',
+        resourceId: tenantId,
+        tenantId,
+        result: 'success',
+        details: {
+          hadCredential: result.hadCredential,
+          hadSenderIdentity: result.hadSenderIdentity,
+        },
+      });
+    }
     this.logger.log(
-      `Admin ${user.sub} revoked Google for tenant ${tenantId}`,
+      `Admin ${user.sub} revoked Brevo for tenant ${tenantId} (hadCredential=${result.hadCredential})`,
     );
     return result;
+  }
+
+  @Post('admin/brevo/tenants/:tenantId/reset-quota')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async adminResetBrevoQuota(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const result = await this.adminBrevo.resetTodayQuota(tenantId);
+    if (this.audit) {
+      await this.audit.log({
+        actor: user.sub,
+        action: 'brevo.admin_reset_quota',
+        resource: 'brevo_usage_counter',
+        resourceId: tenantId,
+        tenantId,
+        result: 'success',
+        details: { previousCount: result.previousCount },
+      });
+    }
+    return result;
+  }
+
+  // ─── Suppression list (admin) ────────────────────────────────────
+
+  @Get('admin/brevo/suppressions')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
+  async listBrevoSuppressions(
+    @Query('email') email?: string,
+    @Query('reason') reason?: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const tt: string | null | undefined = tenantId;
+    return this.brevoSuppressions.list({
+      email,
+      reason: (reason ?? undefined) as never,
+      tenantId:
+        tt === 'null'
+          ? null
+          : tt === undefined
+            ? undefined
+            : tt,
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+  }
+
+  @Post('admin/brevo/suppressions')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async addBrevoSuppression(
+    @Body()
+    body: {
+      email: string;
+      reason:
+        | 'BOUNCE_HARD'
+        | 'UNSUBSCRIBE'
+        | 'ADMIN_BLOCK'
+        | 'SPAM_COMPLAINT'
+        | 'MANUAL';
+      tenantId?: string | null;
+      details?: Record<string, unknown>;
+    },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    if (!body?.email || !body?.reason) {
+      return { success: false, error: 'email and reason are required' };
+    }
+    const r = await this.brevoSuppressions.upsert({
+      email: body.email,
+      reason: body.reason,
+      tenantId: body.tenantId ?? null,
+      addedBy: user.sub,
+      details: body.details ?? {},
+    });
+    if (this.audit) {
+      await this.audit.log({
+        actor: user.sub,
+        action: 'brevo.admin_suppression_add',
+        resource: 'brevo_suppression',
+        resourceId: body.email,
+        result: 'success',
+        details: { reason: body.reason, tenantId: body.tenantId ?? null },
+      });
+    }
+    return { success: true, ...r };
+  }
+
+  @Delete('admin/brevo/suppressions/:id')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async removeBrevoSuppression(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const r = await this.brevoSuppressions.remove(id);
+    if (r.deleted && this.audit) {
+      await this.audit.log({
+        actor: user.sub,
+        action: 'brevo.admin_suppression_remove',
+        resource: 'brevo_suppression',
+        resourceId: id,
+        result: 'success',
+      });
+    }
+    return r;
   }
 }

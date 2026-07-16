@@ -422,6 +422,12 @@ model Tenant {
   // userinfo doesn't need to be re-queried on every status check).
   googleAccountEmail      String?
 
+  // Per-tenant Brevo sender identity (overrides global EMAIL_FROM_ADDRESS).
+  // Falls back to env-level config when null.
+  brevoSenderEmail  String?
+  brevoSenderName   String?
+  brevoReplyToEmail String?
+
   // WS-2: Onboarding state machine
   onboardingCompletedAt DateTime?
   onboardingStep        String?
@@ -486,6 +492,7 @@ model Tenant {
   onboardingInvitations      OnboardingInvitation[]
   onboardingChecklistEntries OnboardingChecklistEntry[]
   brevoUsageCounters         BrevoUsageCounter[]
+  brevoSuppressions          BrevoSuppression[]  
 
   // Phase 5 back-relations - Routines
   routines    Routine[]
@@ -2491,6 +2498,78 @@ model BrevoUsageCounter {
   @@unique([tenantId, date])
   @@index([tenantId])
   @@map("brevo_usage_counters")
+}
+
+// ─── Brevo Webhook Events (delivery, open, click, bounce, spam, unsubscribe) ──
+
+enum BrevoWebhookEventType {
+  DELIVERED
+  OPEN
+  CLICK
+  BOUNCE_HARD
+  BOUNCE_SOFT
+  SPAM
+  UNSUBSCRIBE
+  BLOCKED
+  ERROR
+  REQUEST
+}
+
+model BrevoWebhookEvent {
+  id         String              @id @default(uuid())
+  tenantId   String?
+  // Brevo event id (from payload) — idempotency key
+  externalId String?
+  eventType  BrevoWebhookEventType
+  email      String
+  messageId  String?
+  // Free-form JSON returned by Brevo (raw event + reasoning)
+  payload    Json
+  occurredAt DateTime
+  receivedAt DateTime             @default(now())
+
+  @@unique([externalId, eventType])
+  @@index([tenantId, receivedAt])
+  @@index([messageId])
+  @@index([eventType, receivedAt])
+  @@map("brevo_webhook_events")
+}
+
+// ─── Brevo Suppression List (hard-bounce + unsubscribe + admin-blocked) ────
+//
+// Built up implicitly from webhook events (BOUNCE_HARD, UNSUBSCRIBE) and from
+// admin-initiated blocks. read+write paths enforce:
+//   • unique per (tenantId, email) — first writer wins
+//   • sender-side check before every sendEmail / sendBatch to avoid re-sending
+
+enum BrevoSuppressionReason {
+  BOUNCE_HARD
+  UNSUBSCRIBE
+  ADMIN_BLOCK
+  SPAM_COMPLAINT
+  MANUAL
+}
+
+model BrevoSuppression {
+  id          String                 @id @default(uuid())
+  tenantId    String?
+  // Optional tenant — null entries are platform-wide suppressions (admins added).
+  tenant      Tenant?                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email       String
+  reason      BrevoSuppressionReason
+  // Free-form payload (e.g. Brevo bounce reason, admin note)
+  details     Json                   @default("{}")
+  addedBy     String? // userId or "system"
+  expiresAt   DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  // Scoped uniqueness: at most one row per (tenant | global, email)
+  @@unique([tenantId, email])
+  @@index([email])
+  @@index([reason])
+  @@index([tenantId, reason, createdAt])
+  @@map("brevo_suppressions")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

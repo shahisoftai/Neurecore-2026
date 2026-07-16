@@ -172,18 +172,32 @@ export class EnterpriseEventTransport
       // Even with zero consumers we mark DISPATCHED so the outbox drains;
       // the event remains durably stored for audit/replay.
       for (const c of targets) {
-        await this.prisma.enterpriseEventInbox.upsert({
-          where: {
-            eventId_consumerId: { eventId: evt.id, consumerId: c.consumerId },
-          },
-          create: {
-            eventId: evt.id,
-            consumerId: c.consumerId,
-            tenantId: evt.tenantId,
-            status: 'PENDING',
-          },
-          update: {}, // idempotent: never duplicate an inbox row
-        });
+        try {
+          await this.prisma.enterpriseEventInbox.upsert({
+            where: {
+              eventId_consumerId: { eventId: evt.id, consumerId: c.consumerId },
+            },
+            create: {
+              eventId: evt.id,
+              consumerId: c.consumerId,
+              tenantId: evt.tenantId,
+              status: 'PENDING',
+            },
+            update: {}, // idempotent: never duplicate an inbox row
+          });
+        } catch (e: unknown) {
+          // Defensive: even though upsert is supposed to be atomic, a concurrent
+          // worker can still race and produce P2002. Swallow it — the existing
+          // row is equivalent to what we would have created.
+          if (
+            typeof e === 'object' &&
+            e !== null &&
+            (e as { code?: string }).code === 'P2002'
+          ) {
+            continue;
+          }
+          throw e;
+        }
       }
       await this.prisma.enterpriseEventOutbox.update({
         where: { id: evt.id },

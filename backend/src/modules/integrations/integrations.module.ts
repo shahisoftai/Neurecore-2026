@@ -4,6 +4,9 @@ import { IntegrationsService } from './integrations.service';
 import { PrismaIntegrationCredentialStore } from './services/integration-credential.store';
 import { BrevoEmailService } from './brevo/brevo-email.service';
 import { BrevoUsageService } from './brevo/brevo-usage.service';
+import { BrevoWebhookService } from './brevo/brevo-webhook.service';
+import { BrevoSuppressionService } from './brevo/brevo-suppression.service';
+import { AdminBrevoService } from './brevo/admin-brevo.service';
 import { CryptoService } from '../connectors/services/crypto.service';
 import { GoogleAuthClient } from './google/google-auth.client';
 import { GoogleGmailService } from './google/google-gmail.service';
@@ -26,6 +29,9 @@ import { EmailProviderFactory } from './email/email-provider.factory';
     PrismaIntegrationCredentialStore,
     BrevoEmailService,
     BrevoUsageService,
+    BrevoWebhookService,
+    BrevoSuppressionService,
+    AdminBrevoService,
     CryptoService,
     GoogleAuthClient,
     GoogleGmailService,
@@ -43,6 +49,9 @@ import { EmailProviderFactory } from './email/email-provider.factory';
     IntegrationsService,
     BrevoEmailService,
     BrevoUsageService,
+    BrevoWebhookService,
+    BrevoSuppressionService,
+    AdminBrevoService,
     GoogleAuthClient,
     GoogleGmailService,
     GoogleCalendarService,
