@@ -242,16 +242,24 @@ export class EnterpriseEventTransport
 
   /** Invoke the consumer handler for a claimed inbox row and settle its state. */
   private async runConsumer(inboxId: string, leaseToken: string): Promise<void> {
-    const entry = await (this.prisma.enterpriseEventInbox.findUnique as any)({
+    const entry = await this.prisma.enterpriseEventInbox.findUnique({
       where: { id: inboxId },
-      include: { event: true },
     });
     if (!entry || entry.leaseToken !== leaseToken) return; // lost lease
+
+    const event = await this.prisma.enterpriseEventOutbox.findUnique({
+      where: { id: entry.eventId },
+    });
+    if (!event) {
+      this.logger.error(`Event ${entry.eventId} not found for inbox ${inboxId}`);
+      await this.releaseFailed(inboxId, leaseToken, 'event not found');
+      return;
+    }
 
     const consumer = this.consumers.find(
       (c) => c.consumerId === entry.consumerId,
     );
-    const evt = this.toEnterpriseEvent(entry.event);
+    const evt = this.toEnterpriseEvent(event);
 
     if (!consumer) {
       // Consumer no longer registered — leave PENDING is wrong; mark FAILED so
