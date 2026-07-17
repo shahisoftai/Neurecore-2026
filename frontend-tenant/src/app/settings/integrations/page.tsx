@@ -156,8 +156,12 @@ function BrevoIntegrationCard({
   onDisconnect: () => void;
   loading: boolean;
 }) {
-  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
+  const [showSetupDialog, setShowSetupDialog] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [usage, setUsage] = useState<{
     sentToday: number;
     dailyLimit: number;
@@ -165,15 +169,41 @@ function BrevoIntegrationCard({
     isAtLimit: boolean;
   } | null>(null);
 
-  const handleConnect = () => {
-    if (apiKey.trim()) {
-      onConnect(apiKey.trim());
-      setShowApiKeyDialog(false);
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleConnect = async () => {
+    if (!apiKey.trim()) return;
+    setApiKeyError(null);
+    setIsValidating(true);
+    try {
+      await onConnect(apiKey.trim());
+      setShowSetupDialog(false);
       setApiKey('');
+      showToast('Brevo connected successfully! Your AI agents can now send emails.', 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Invalid API key or connection failed';
+      setApiKeyError(message);
+      showToast(message, 'error');
+    } finally {
+      setIsValidating(false);
     }
   };
 
-  // Fetch usage when connected
+  const handleDisconnect = async () => {
+    if (!confirm('Disconnect Brevo? Agent email aliases will stop working and any scheduled emails may fail.')) {
+      return;
+    }
+    try {
+      await onDisconnect();
+      showToast('Brevo disconnected. Email sending is now disabled.', 'success');
+    } catch {
+      showToast('Failed to disconnect Brevo. Please try again.', 'error');
+    }
+  };
+
   useEffect(() => {
     if (!integration.connected) {
       setUsage(null);
@@ -190,12 +220,12 @@ function BrevoIntegrationCard({
       <Card className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center flex-shrink-0">
               <Mail className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm">Brevo (Email Relay)</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{integration.description}</p>
+              <h3 className="font-semibold text-sm">Brevo Email</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Transactional &amp; bulk email relay</p>
             </div>
           </div>
           <Badge variant={integration.connected ? 'default' : 'secondary'}>
@@ -211,65 +241,293 @@ function BrevoIntegrationCard({
           </Badge>
         </div>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-border/50">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">What this does:</strong> Brevo enables AI agents to send emails
+            on behalf of your organization. This includes project updates, notifications, alerts, and bulk
+            communications to stakeholders.
+          </p>
+        </div>
+
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`mt-3 px-3 py-2 rounded-lg text-xs flex items-center gap-2 ${
+              toast.type === 'success'
+                ? 'bg-green-500/15 border border-green-500/30 text-green-600'
+                : 'bg-red-500/15 border border-red-500/30 text-red-600'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+            ) : (
+              <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
+            )}
+            {toast.message}
+          </motion.div>
+        )}
+
+        <div className="mt-4 flex gap-2 flex-wrap">
           {integration.connected ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {usage && (
                 <Badge
                   variant={usage.isAtLimit ? 'destructive' : usage.isAtWarning ? 'secondary' : 'outline'}
                   className="text-xs"
                 >
-                  {usage.sentToday}/{usage.dailyLimit} today
+                  {usage.sentToday}/{usage.dailyLimit} emails today
                 </Badge>
               )}
-              <Button variant="destructive" size="sm" onClick={onDisconnect} disabled={loading}>
+              <Button variant="outline" size="sm" onClick={() => setShowGuide(true)}>
+                <ExternalLink className="w-3.5 h-3.5" />
+                Setup Guide
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleDisconnect} disabled={loading}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unlink className="w-4 h-4" />}
                 Disconnect
               </Button>
             </div>
           ) : (
-            <Button size="sm" onClick={() => setShowApiKeyDialog(true)} disabled={loading}>
+            <Button size="sm" onClick={() => setShowSetupDialog(true)} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
-              Connect Brevo
+              Setup Brevo
             </Button>
           )}
         </div>
       </Card>
 
-      <Dialog open={showApiKeyDialog} onOpenChange={setShowApiKeyDialog}>
-        <DialogContent>
+      <Dialog open={showSetupDialog} onOpenChange={setShowSetupDialog}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Connect Brevo</DialogTitle>
-            <DialogDescription>
-              Enter your Brevo API key to enable agent email aliases. Get your API key from{' '}
-              <a
-                href="https://app.brevo.com/settings/keys"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline"
-              >
-                Brevo Settings <ExternalLink className="w-3 h-3 inline" />
-              </a>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-orange-500" />
+              Connect Brevo Email
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed">
+              Follow these steps to enable AI agents to send emails on your behalf.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="brevo-api-key">API Key</Label>
-            <Input
-              id="brevo-api-key"
-              type="password"
-              placeholder="xkeys-xxxxx..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="mt-2"
-            />
+
+          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-3">
+              <div className="flex gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 font-semibold mt-0.5">1</div>
+                <div>
+                  <p className="text-sm font-medium">Create Brevo Account</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Sign up at{' '}
+                    <a href="https://www.brevo.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">brevo.com</a>
+                    {' '}or log in to your existing account.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 font-semibold mt-0.5">2</div>
+                <div>
+                  <p className="text-sm font-medium">Get Your API Key</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Go to <strong>Settings → API Keys</strong> in Brevo and create a new API key.
+                  </p>
+                  <a
+                    href="https://app.brevo.com/settings/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary underline mt-1"
+                  >
+                    Open Brevo API Keys <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 font-semibold mt-0.5">3</div>
+                <div>
+                  <p className="text-sm font-medium">Verify Your Sending Domain</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    In Brevo, go to <strong>Senders → Domains</strong> and add your domain (e.g., yourcompany.com).
+                    This is required for reliable email delivery and to avoid spam filters.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 font-semibold mt-0.5">4</div>
+                <div>
+                  <p className="text-sm font-medium">Create a Sender Identity</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    In Brevo, go to <strong>Senders → Senders</strong> and create a sender with:
+                  </p>
+                  <ul className="text-xs text-muted-foreground mt-1 ml-3 list-disc space-y-0.5">
+                    <li><strong>From Name:</strong> Your organization name (e.g., &quot;Acme Corp&quot;)</li>
+                    <li><strong>From Email:</strong> An email on your verified domain (e.g., &quot;notifications@yourcompany.com&quot;)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <div className="w-6 h-6 rounded-full bg-green-500 text-white text-xs flex items-center justify-center flex-shrink-0 font-semibold mt-0.5">5</div>
+                <div>
+                  <p className="text-sm font-medium">Paste API Key Below</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Copy the API key from Brevo and paste it below to complete the connection.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4 space-y-2">
+              <Label htmlFor="brevo-api-key" className="text-sm font-medium">
+                Brevo API Key <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="brevo-api-key"
+                type="password"
+                placeholder="xkeys-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                value={apiKey}
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  setApiKeyError(null);
+                }}
+                className={apiKeyError ? 'border-destructive focus-visible:ring-destructive' : ''}
+              />
+              {apiKeyError && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <XCircle className="w-3 h-3" />
+                  {apiKeyError}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Your API key is encrypted and stored securely. It is only used to send emails through Brevo.
+              </p>
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setShowApiKeyDialog(false)}>
+
+          <DialogFooter className="gap-2">
+            <Button variant="secondary" onClick={() => { setShowSetupDialog(false); setApiKey(''); setApiKeyError(null); }}>
               Cancel
             </Button>
-            <Button onClick={handleConnect} disabled={!apiKey.trim()}>
-              Connect
+            <Button onClick={handleConnect} disabled={!apiKey.trim() || isValidating}>
+              {isValidating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Validating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Connect Brevo
+                </>
+              )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showGuide} onOpenChange={setShowGuide}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-orange-500" />
+              Brevo Setup Guide
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              Complete guide to setting up Brevo for your AI email agents.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto text-sm">
+            <div className="space-y-3">
+              <div className="border rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-5 h-5 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center">1</div>
+                  Create Brevo Account
+                </div>
+                <p className="text-xs text-muted-foreground pl-7">
+                  If you don&apos;t have a Brevo account, sign up at{' '}
+                  <a href="https://www.brevo.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">brevo.com</a>.
+                  The free plan includes 300 emails/day.
+                </p>
+              </div>
+
+              <div className="border rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-5 h-5 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center">2</div>
+                  Get Your API Key
+                </div>
+                <p className="text-xs text-muted-foreground pl-7">
+                  After logging into Brevo, navigate to <strong>Settings → API Keys</strong> and create a new key.
+                  Make sure to copy it immediately as Brevo won&apos;t show it again.
+                </p>
+                <a
+                  href="https://app.brevo.com/settings/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary underline ml-7"
+                >
+                  Open Brevo API Keys <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </div>
+
+              <div className="border rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-5 h-5 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center">3</div>
+                  Verify Your Sending Domain
+                </div>
+                <p className="text-xs text-muted-foreground pl-7">
+                  <strong>Why this matters:</strong> Unverified domains often land in spam. Brevo requires DNS
+                  verification (DKIM, SPF, DMARC) to ensure deliverability.
+                </p>
+                <p className="text-xs text-muted-foreground pl-7">
+                  Go to <strong>Senders → Domains</strong> and add your company domain. Brevo will provide
+                  DNS records to add to your domain registrar.
+                </p>
+              </div>
+
+              <div className="border rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-5 h-5 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center">4</div>
+                  Create Sender Identity
+                </div>
+                <p className="text-xs text-muted-foreground pl-7">
+                  Go to <strong>Senders → Senders</strong> and create a sender:
+                </p>
+                <ul className="text-xs text-muted-foreground pl-7 list-disc ml-4 space-y-1">
+                  <li><strong>From Name:</strong> Your organization name (e.g., &quot;Acme Corp AI&quot;)</li>
+                  <li><strong>From Email:</strong> Use your verified domain (e.g., &quot;noreply@yourcompany.com&quot;)</li>
+                  <li><strong>Reply-To:</strong> A monitored inbox where replies go</li>
+                </ul>
+              </div>
+
+              <div className="border rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-5 h-5 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center">5</div>
+                  Connect to Platform
+                </div>
+                <p className="text-xs text-muted-foreground pl-7">
+                  Enter your Brevo API key in the connection dialog above. Once connected, AI agents
+                  can send emails using your verified sender identity.
+                </p>
+              </div>
+
+              <div className="border rounded-lg p-3 bg-amber-500/10 border-amber-500/20 space-y-2">
+                <div className="flex items-center gap-2 font-medium text-amber-600">
+                  <div className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center">!</div>
+                  Important Notes
+                </div>
+                <ul className="text-xs text-muted-foreground pl-7 list-disc space-y-1">
+                  <li>Your daily sending limit depends on your Brevo plan</li>
+                  <li>Monitor your usage via the badge on the integration card</li>
+                  <li>Bounces and unsubscribes are tracked automatically</li>
+                  <li>For production, use a dedicated domain separate from personal email</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setShowGuide(false)}>Got It</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

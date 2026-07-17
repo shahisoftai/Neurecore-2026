@@ -1,7 +1,7 @@
-# Brevo Email Integration — Audit (2026-07-16)
+# Brevo Email Integration — Audit (2026-07-17)
 
-> **Phase-1 (core wiring + master-key bootstrap) + Phase-2 (smoke scripts + unit tests) + Phase-3 (webhooks + bulk send + per-tenant sender identity) + Phase-4 (admin dashboard + suppression list + client-side route guard) — all shipped same day.**
-> This audit reflects the current state of `neurecore/backend/src/modules/integrations/brevo/`, `neurecore/backend/prisma/`, `neurecore/frontend-admin/src/app/admin/brevo/`, and `memory-bank-new/runbook.md` after the Phase-1 → Phase-4 fixes shipped. See §8 for the change list and new file references.
+> **Phase-1 (core wiring + master-key bootstrap) + Phase-2 (smoke scripts + unit tests) + Phase-3 (webhooks + bulk send + per-tenant sender identity) + Phase-4 (admin dashboard + suppression list + client-side route guard) + Phase-5 (tenant UI enhanced setup experience).**
+> This audit reflects the current state of `neurecore/backend/src/modules/integrations/brevo/`, `neurecore/backend/prisma/`, `neurecore/frontend-admin/src/app/admin/brevo/`, `neurecore/frontend-tenant/src/app/settings/integrations/`, and `memory-bank-new/int-features/brevo.md` after the Phase-1 → Phase-5 changes. See §8 for the change list and new file references.
 
 ## 1. Overview
 
@@ -28,8 +28,11 @@ NeureCore uses [Brevo](https://www.brevo.com) as its transactional email relay. 
 | Platform-wide stats | `AdminBrevoService.platformStats()` | `GET /admin/brevo/platform-status` | n/a | ✅ Overview KPI cards | n/a |
 | Usage series (30-day chart) | `AdminBrevoService.usageSeries()` | `GET /admin/brevo/usage-series` | n/a | ✅ `AreaChart` + `Sparkline` | n/a |
 | Brevo account health probe | `AdminBrevoService.healthCheck()` | `GET /admin/brevo/health` | n/a | ✅ live probe + colored badge | n/a |
+| **Tenant setup wizard (Phase-5)** | n/a | n/a | ✅ 5-step setup dialog + separate setup guide | n/a | n/a |
+| **Toast notifications (Phase-5)** | n/a | n/a | ✅ success/error toasts with auto-dismiss | n/a | n/a |
+| **Sender identity setup guidance (Phase-5)** | n/a | n/a | ✅ detailed instructions in setup wizard | n/a | n/a |
 
-All eleven Brevo services (4 backend services + 2 providers + 1 factory + 4 admin-side modules) are wired in `integrations.module.ts`. **187 tests** pass across 15 suites (was 116 before — +71 across the four phases). All admin routes are `@Roles(SUPER_ADMIN, PLATFORM_ADMIN)`-guarded; the tenant dashboard also gates `/admin/brevo/*` with the new `useRequirePlatformAdmin` hook (defense-in-depth on top of the backend role guard).
+All eleven Brevo services (4 backend services + 2 providers + 1 factory + 4 admin-side modules) are wired in `integrations.module.ts`. **187 tests** pass across 15 suites (was 116 before — +71 across the four phases). Phase-5 is a frontend-only enhancement; no new backend tests required. All admin routes are `@Roles(SUPER_ADMIN, PLATFORM_ADMIN)`-guarded; the tenant dashboard also gates `/admin/brevo/*` with the new `useRequirePlatformAdmin` hook (defense-in-depth on top of the backend role guard).
 
 ---
 
@@ -290,6 +293,19 @@ Run: `pnpm run test:unit src/modules/integrations/brevo`
 - `src/hooks/useAdminBrevo.ts` — overview hook + events hook.
 - `src/components/sidebar/navigation.config.ts` — new "Integrations" group with `Brevo Email (✉)` entry.
 
+### Phase-5 (tenant UI enhanced setup experience — 2026-07-17)
+- `frontend-tenant/src/app/settings/integrations/page.tsx` — `BrevoIntegrationCard` completely redesigned:
+  - **5-step setup wizard** — Create account → Get API key → Verify domain → Create sender → Connect
+  - **Comprehensive setup guide dialog** — Accessible anytime via "Setup Guide" button, includes:
+    - Why domain verification matters (spam prevention)
+    - How to create sender identity (From Name, From Email, Reply-To)
+    - Important notes on daily limits, bounces, production recommendations
+  - **Toast notifications** — Auto-dismissing success/error toasts (4s) replacing inline banners
+  - **API key validation** — Loading state during connection with clear error messages
+  - **"What this does" explanation** — Descriptive text explaining Brevo's purpose for AI agents
+  - **Usage display** — Shows daily email limit badge when connected
+  - **Disconnect confirmation** — Warns about impact on scheduled emails
+
 ---
 
 ## 9. Operational Runbook
@@ -389,3 +405,9 @@ If `BREVO_WEBHOOK_SECRET` is empty, `verifySignature` returns `true` after a `WA
 | `src/services/adminBrevo.service.ts` | axios client (8 endpoints) |
 | `src/hooks/useAdminBrevo.ts` | overview + events hooks |
 | `src/types/adminBrevo.types.ts` | all DTOs |
+
+### 11.3 Frontend tenant (Phase-5)
+
+| Path | Purpose |
+|---|---|
+| `frontend-tenant/src/app/settings/integrations/page.tsx` | Enhanced `BrevoIntegrationCard` with setup wizard, guide, toasts |
