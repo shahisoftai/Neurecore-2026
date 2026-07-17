@@ -1,0 +1,199 @@
+NeuroCore Simulation-3 Master Execution Guide
+
+Version: Production Readiness Simulation
+Scenario Duration: 2 Months
+Purpose: Validate NeuroCore as a production-grade autonomous operating platform using a realistic emergency nutrition programme executed entirely through the UI and APIs.
+
+Simulation Objective
+
+Run an end-to-end two-month emergency nutrition programme without manual database edits.
+
+Exercise CRM, project management, AI employees, workflows, Brevo email, Google Workspace, approvals, memory, reporting and audit logs.
+
+Record evidence for every action and classify failures as Critical, High, Medium or Low.
+
+Do not modify source code during execution. Remediation is a separate phase.
+
+Programme Scenario
+
+Customer: Ministry of Health.
+
+Programme: Two-Month Flood Emergency Nutrition Response.
+
+Budget: USD 850,000.
+
+Coverage: 4 districts, 40,000 households, 18,000 children under five, 6,000 pregnant/lactating women.
+
+Partners: UNICEF, WFP, WHO, Provincial Health Department and two NGOs.
+
+Outputs: Rapid assessment, screening, referral, treatment support, monitoring and final report.
+
+Mandatory AI Personas
+
+Executive Director: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Programme Director: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Nutrition Coordinator: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+MEAL Manager: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Finance Manager: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+HR Manager: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Supply Chain Manager: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Logistics Manager: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Community Mobilization Lead: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Medical Coordinator: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Communications Officer: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Data Analyst: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Security Officer: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Grant Manager: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Project Manager: receive TOR automatically, maintain memory, communicate with other AI employees, complete assigned work, request approvals when required, never exceed permissions.
+
+Execution Rules
+
+Everything must be created through the application as a real customer would.
+
+Every generated entity must be linked correctly (customer, project, stages, tasks, approvals, communications, emails, meetings).
+
+Every AI answer must be grounded in stored project knowledge.
+
+Capture screenshots, API responses and audit IDs where available.
+
+Retry transient failures up to three times before marking FAILED.
+
+Detailed Simulation Phases
+
+Week 1: Create lead, qualify opportunity, schedule meetings, send proposal via Brevo, create customer, create project, sync meetings with Google Workspace.
+
+Week 2: Discovery interview, collect objectives, KPIs, beneficiaries, risks, donors, reporting requirements, produce >95% completeness.
+
+Week 3: Auto-create departments, AI employees, workspaces, knowledge base, dashboards, approvals and communication channels.
+
+Week 4: Generate WBS, logframe, implementation plan, Gantt, procurement plan, risk register, budget and monitoring framework.
+
+Week 5: Generate 200+ tasks with dependencies, priorities, owners and approval chains. Validate no duplicates or orphan records.
+
+Week 6: Run collaboration: procurement requests, finance approvals, HR recruitment, logistics updates, donor communications, executive decisions.
+
+Week 7: Inject failures: AI timeout, Redis restart, worker restart, Brevo error, Google Calendar outage, malformed LLM output. Verify retries and recovery.
+
+Week 8: Produce reports, dashboards, lessons learned, close project, archive knowledge, generate executive audit.
+
+Validation Checklist
+
+CRM pipeline transitions
+
+Discovery completeness
+
+Permission enforcement
+
+Cross-tenant isolation
+
+Email delivery and threading
+
+Calendar synchronization
+
+Task dependencies
+
+Workflow automation
+
+Knowledge retrieval
+
+AI reasoning
+
+Hallucination detection
+
+Approval routing
+
+Queue health
+
+Redis health
+
+PostgreSQL health
+
+Audit trail completeness
+
+Performance under concurrent load
+
+Failure Injection
+
+Duplicate customer creation
+
+Duplicate project name
+
+Concurrent editing by two users
+
+Invalid budget
+
+Missing donor email
+
+Brevo HTTP 429
+
+Google Workspace unavailable
+
+Redis restart
+
+Worker crash
+
+LLM timeout
+
+Malformed LLM response
+
+Network interruption
+
+Acceptance Criteria
+
+All critical workflows complete without manual intervention.
+
+No recursion loops, deadlocks or crashes.
+
+No cross-tenant data leakage.
+
+No hallucinated project information.
+
+Brevo and Google Workspace function correctly.
+
+All actions recorded in audit log with timestamps and trace identifiers.
+
+Overall Production Readiness Score >= 90/100.
+
+Final Report Template
+
+Executive Summary
+
+Timeline of Events
+
+Evidence Collected
+
+Critical Findings
+
+Architecture Weaknesses
+
+AI Quality Assessment
+
+Security Assessment
+
+Workflow Assessment
+
+Integration Assessment
+
+Performance Metrics
+
+Recommendations
+
+Prioritized Remediation Roadmap
+
+Production Readiness Score
+
+Confidence Score

@@ -1,0 +1,14 @@
+{
+  "status": "error",
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "message": "\nInvalid `this.prisma.task.create()` invocation in\n/home/najeeb/Linux-Dev/neurecore-2026/neurecore/backend/dist/src/modules/orchestration/services/tasks.service.js:66:33\n\n  63     return task;\n  64 }\n  65 async create(input, tenantId) {\n→ 66     return this.prisma.task.create(\nForeign key constraint violated: `tasks_agentId_fkey (index)`",
+    "details": {
+      "stack": "PrismaClientKnownRequestError: \nInvalid `this.prisma.task.create()` invocation in\n/home/najeeb/Linux-Dev/neurecore-2026/neurecore/backend/dist/src/modules/orchestration/services/tasks.service.js:66:33\n\n  63     return task;\n  64 }\n  65 async create(input, tenantId) {\n→ 66     return this.prisma.task.create(\nForeign key constraint violated: `tasks_agentId_fkey (index)`\n    at $n.handleRequestError (/home/najeeb/Linux-Dev/neurecore-2026/neurecore/backend/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/runtime/library.js:121:7315)\n    at $n.handleAndLogRequestError (/home/najeeb/Linux-Dev/neurecore-2026/neurecore/backend/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/runtime/library.js:121:6623)\n    at $n.request (/home/najeeb/Linux-Dev/neurecore-2026/neurecore/backend/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/runtime/library.js:121:6307)\n    at async l (/home/najeeb/Linux-Dev/neurecore-2026/neurecore/backend/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/runtime/library.js:130:9633)"
+    }
+  },
+  "meta": {
+    "timestamp": "2026-07-16T11:37:35.808Z",
+    "requestId": "598b74af-59e5-43d6-912b-7871e9c51344"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "day": 17,
+  "budget": {
+    "total": 850000,
+    "spent": 378227,
+    "committed": 0
+  },
+  "totalDecisions": 20,
+  "totalEvents": 2,
+  "injections": {
+    "events": [
+      {
+        "type": "SECURITY_BREACH",
+        "severity": "HIGH",
+        "financialImpact": -29913,
+        "timelineImpact": 3,
+        "districts": [],
+        "description": "Security incident compromises beneficiary data",
+        "key": "security_breach",
+        "day": 17,
+        "timestamp": "2026-07-16T18:06:51.316Z",
+        "isCascade": false
+      }
+    ],
+    "hallucinations": [],
+    "hiddenInfos": [],
+    "ethics": [],
+    "cascades": []
+  }
+}

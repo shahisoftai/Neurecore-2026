@@ -1,8 +1,8 @@
 # NeureCore — Auth & Login System (Authoritative Reference)
 
-**Last updated:** 2026-07-07 (FIX-020 SHIPPED — see [int-features/auth-architecture.md](int-features/auth-architecture.md) for the new single source of truth. The 10-phase refactor is complete and deployed to production on 2026-07-07.)
+**Last updated:** 2026-07-17 (RBAC update — Frontend Admin restricted to SUPER_ADMIN only; see [user-roles.md](user-roles.md))
 **Audience:** Anyone (human or AI) modifying or debugging login, sessions, or cookies in the NeureCore platform.
-**TL;DR:** Both frontends (admin + tenant) and the NestJS backend use **cookie-only authentication** (HttpOnly `__Host-nc_at` + `__Host-nc_rt` + `__Host-nc_csrf`). API calls are **same-origin** (Next.js `rewrites()` proxy `/api/v1/*` → backend on `127.0.0.1:3003`). Refresh tokens are tracked in **families** with reuse detection. Per-account **lockout** after 5 failures in 10 minutes. CSRF double-submit on all state-changing requests. Password changes invalidate all outstanding tokens.
+**TL;DR:** Both frontends (admin + tenant) and the NestJS backend use **cookie-only authentication** (HttpOnly `__Host-nc_at` + `__Host-nc_rt` + `__Host-nc_csrf`). API calls are **same-origin** (Next.js `rewrites()` proxy `/api/v1/*` → backend on `127.0.0.1:3003`). Refresh tokens are tracked in **families** with reuse detection. Per-account **lockout** after 5 failures in 10 minutes. CSRF double-submit on all state-changing requests. Password changes invalidate all outstanding tokens. **Frontend Admin (cc.neurecore.com) is SUPER_ADMIN only** — all other roles are redirected.
 
 > ## ⚠️ DO NOT CORRUPT THE AUTH SYSTEM
 >
@@ -579,6 +579,20 @@ The shims are still exported (for the 21 tenant pages + 24 admin pages that impo
 // admin:  src/hooks/useAdminAuth.ts → re-exports auth/hooks/useAdminAuth.ts
 // Both internals live in src/auth/hooks/.
 ```
+
+### 16.5 Frontend Admin SUPER_ADMIN-only access (2026-07-17)
+
+Per [user-roles.md](user-roles.md), Frontend Admin (cc.neurecore.com) is restricted to SUPER_ADMIN only.
+
+**Implementation:**
+- `frontend-admin/src/middleware.ts` — Server-side Next.js middleware decodes JWT from `auth-token` cookie and checks `role === 'SUPER_ADMIN'`. Non-SUPER_ADMIN users are redirected to `/login?reason=insufficient`.
+- `frontend-admin/src/auth/impl/AuthService.ts` — `ADMIN_ROLES` changed from `['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SECURITY_OFFICER', 'SUPPORT']` to `['SUPER_ADMIN']` only. Non-SUPER_ADMIN login fails with "Admin portal access restricted to SUPER_ADMIN only."
+- `frontend-admin/src/auth/hooks/useAdminAuth.ts` — Enforces `ADMIN_ROLES = ['SUPER_ADMIN']`
+- `frontend-admin/src/auth/hooks/useRequirePlatformAdmin.ts` — Enforces `PLATFORM_ADMIN_ROLES = ['SUPER_ADMIN']`
+
+**Frontend Tenant access:** All 8 roles (SUPER_ADMIN, PLATFORM_ADMIN, SECURITY_OFFICER, SUPPORT, OWNER, ADMIN, USER, AUDITOR) can access hq.neurecore.com via `useTenantAuth()`.
+
+**Backend note:** API 403 errors on POST/PATCH/DELETE are expected when CSRF protection is enabled (`CSRF_ENABLED=true` on production). Browser SPAs automatically include `X-CSRF-Token` header; direct API calls require manual CSRF handling.
 
 ---
 

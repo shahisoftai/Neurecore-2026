@@ -32,7 +32,7 @@ Always managed through `/opt/neurecore/ecosystem.config.js`. **Never** create th
 | PM2 name | What | Port |
 |---|---|---|
 | `neurecore-backend` | NestJS | 3003 |
-| `neurecore-tenant` | Next.js (hq.neurecore.com) | 3005 |
+| `neurecore-tenant` | Next.js (hq.neurecore.com) | 3001 |
 | `neurecore-admin` | Next.js (cc.neurecore.com) | 3020 |
 | `neurecore-cors-proxy` | dev CORS sidecar | 3004 |
 
@@ -68,7 +68,7 @@ ssh contabo 'pm2 resurrect --help'    # if not running, run it
 
 ```
 /usr/local/lsws/conf/vhosts/
-├── hq.neurecore.com/vhost.conf      # → 127.0.0.1:3005
+├── hq.neurecore.com/vhost.conf      # → 127.0.0.1:3001
 ├── cc.neurecore.com/vhost.conf      # → 127.0.0.1:3020
 └── brain.neurecore.com/vhost.conf   # → 127.0.0.1:3003
 ```
@@ -90,7 +90,7 @@ ssh contabo 'systemctl restart lsws'             # or: kill -HUP $(pidof litespe
 
 ### 3.4 Vhost quirks
 
-- **`hq.neurecore.com`** has a catch-all rewrite: `RewriteRule ^(.*)$ http://neurecore_tenant/$1 [P,L]` — every path (including `/api/v1/*`) is proxied to the tenant Next.js on port 3005. Tenant's `NEXT_PUBLIC_API_URL=/api/v1` means it makes relative requests that hit this proxy, which forwards to Next.js, which itself has internal fetch logic to call backend. **Net result:** `/api/v1/agents` returns `401` (auth required, expected); `/api/v1/auth/login` on GET returns `404` because Next.js can't serve a route that the backend owns.
+- **`hq.neurecore.com`** has a catch-all rewrite: `RewriteRule ^(.*)$ http://neurecore_tenant/$1 [P,L]` — every path (including `/api/v1/*`) is proxied to the tenant Next.js on port 3001. Tenant's `NEXT_PUBLIC_API_URL=/api/v1` means it makes relative requests that hit this proxy, which forwards to Next.js, which itself has internal fetch logic to call backend. **Net result:** `/api/v1/agents` returns `401` (auth required, expected); `/api/v1/auth/login` on GET returns `404` because Next.js can't serve a route that the backend owns.
 - **`cc.neurecore.com`** rewrites `/` and **21** admin paths (admin, login, agents, agents-pool, audit, billing, brain, connectors, departments-pool, dept-templates, features, industries, infrastructure, models, monitoring, overview, packages, security, settings, strategy, tenants, tier-templates, tiers, users) to `/admin/<path>` inside Next.js, then catch-all proxies. The admin frontend's `NEXT_PUBLIC_API_URL=https://brain.neurecore.com/api/v1` is absolute — the browser calls backend directly. Phase 10 added six new pool routes (`/agents-pool`, `/departments-pool`, `/industries`, `/tiers`, `/features`, `/packages`); three legacy routes (`/agent-templates`, `/dept-templates`, `/tier-templates`) 302-redirect to the new ones.
 - **`brain.neurecore.com`** has an extProcessor `nodeapi` that proxies to `127.0.0.1:3003`. CORS headers are added by the vhost itself (not by NestJS).
 

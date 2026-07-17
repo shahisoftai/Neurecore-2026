@@ -18,6 +18,12 @@ export default function AdminLoginPage() {
     } else if (state.status === 'unauthenticated' && state.reason === 'locked_out' && state.lockoutRemainingSeconds) {
       setError(`Too many attempts. Try again in ${Math.ceil(state.lockoutRemainingSeconds / 60)} minute(s).`);
     }
+    // Check URL for middleware redirect reason
+    const urlParams = new URLSearchParams(window.location.search);
+    const reason = urlParams.get('reason');
+    if (reason === 'insufficient') {
+      setError('Admin portal access restricted to SUPER_ADMIN only.');
+    }
   }, [state, router]);
 
   async function handleSubmit(e: FormEvent) {

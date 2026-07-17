@@ -1,10 +1,12 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { AgentsController } from './agents.controller';
 import { DeploymentController } from './deployment.controller';
+import { AgentInvocationsController } from './agent-invocations.controller';
 import { AgentsService } from './services/agents.service';
 import { AgentPlannerService } from './services/agent-planner.service';
 import { AgentExecutorService } from './services/agent-executor.service';
 import { AgentEvaluatorService } from './services/agent-evaluator.service';
+import { AgentInvocationsService } from './services/agent-invocations.service';
 import { DeploymentService } from './services/deployment.service';
 import { EventsModule } from '../events/events.module';
 import { ToolsModule } from '../tools/tools.module';
@@ -17,6 +19,7 @@ import { AgentStateMachine } from './langgraph/agent-state-machine';
 import { OfficialAgentGraph } from './langgraph/langgraph-official';
 import { AgentCheckpointService } from './langgraph/checkpoint.service';
 import { SecurityModule } from './security/security.module';
+import { AIGatewayModule } from '../ai-gateway/ai-gateway.module';
 
 /**
  * AgentsModule
@@ -32,17 +35,20 @@ import { SecurityModule } from './security/security.module';
     GovernanceModule,
     ModelsModule,
     SecurityModule,
+    AIGatewayModule,
   ],
   controllers: [
     AgentsController,
     DeploymentController,
     AgentStreamingController,
+    AgentInvocationsController,
   ],
   providers: [
     AgentsService,
     AgentPlannerService,
     AgentExecutorService,
     AgentEvaluatorService,
+    AgentInvocationsService,
     DeploymentService,
     AgentStreamingService,
     AgentStateMachine,
@@ -54,6 +60,7 @@ import { SecurityModule } from './security/security.module';
     AgentPlannerService,
     AgentExecutorService,
     AgentEvaluatorService,
+    AgentInvocationsService,
     DeploymentService,
     AgentStreamingService,
     AgentStateMachine,

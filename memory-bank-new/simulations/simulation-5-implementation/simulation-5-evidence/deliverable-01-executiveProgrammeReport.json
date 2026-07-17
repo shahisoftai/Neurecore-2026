@@ -1,0 +1,58 @@
+{
+  "title": "Simulation-5: Executive Programme Report",
+  "simulationId": "ddfbe08c-c9fa-40e6-9d45-9864e553a42b",
+  "scenario": "Emergency Nutrition Programme - 60 day AEIC",
+  "tenantId": null,
+  "startDate": "2026-07-16T16:44:46.032Z",
+  "endDate": "2026-07-16T16:44:46.677Z",
+  "durationDays": 60,
+  "budget": {
+    "total": 850000,
+    "spent": 850000,
+    "committed": 0
+  },
+  "summary": "Simulation-5: Autonomous Executive Intelligence Challenge (AEIC) completed on Day 60.\n================================================================\nScenario: Emergency Nutrition Programme\nDuration: 60 days\nBudget: $850,000 spent of $850,000 (100.0%)\n\nPERFORMANCE METRICS\n- Decisions Made: 85\n- Reality Events: 1\n- Cascades Handled: 1\n- AI Debates: 20\n- Auditor Challenges: 119\n- Devil's Advocate Challenges: 60\n- Hallucination Tests: 15 (12 correctly rejected)\n- Hidden Info Tests: 11 (8 correctly coordinated)\n- Ethics Dilemmas: 9\n- Counterfactual Analyses: 85\n- Learning Updates: 8\n\nEVALUATION RESULT\n- Overall Score: 82/100\n- Grade: B+\n- Verdict: SUCCESS\n- Production Ready: YES\n\nThis adversarial examination tested NeuroCore's AI workforce under simulated stress conditions.\nThe simulation engine was deliberately hostile to expose weaknesses in decision-making,\nevidence gathering, AI collaboration, and adaptability.",
+  "evaluation": {
+    "decisionQuality": 65,
+    "evidenceQuality": 70,
+    "aiCollaboration": 100,
+    "adaptability": 60,
+    "longTermPlanning": 100,
+    "governance": 100,
+    "workflowExecution": 100,
+    "security": 100,
+    "performance": 80,
+    "costEfficiency": 100,
+    "overallScore": 82,
+    "grade": "B+",
+    "verdict": "SUCCESS",
+    "strengths": [
+      "Effective AI-to-AI collaboration and debate",
+      "Strong ethical governance"
+    ],
+    "weaknesses": [
+      "Decision quality requires improvement",
+      "Adaptability to events needs improvement"
+    ],
+    "recommendations": [
+      "Invest in decision-support tools and evidence gathering frameworks",
+      "Implement mandatory evidence validation before decisions",
+      "Develop more robust contingency planning capabilities"
+    ],
+    "productionReady": true,
+    "blockers": []
+  },
+  "keyMetrics": {
+    "totalDecisions": 85,
+    "totalEvents": 1,
+    "cascadesHandled": 1,
+    "debates": 20,
+    "auditorChallenges": 119,
+    "devilAdvocateChallenges": 60,
+    "hallucinationsTested": 15,
+    "hiddenInfoTests": 11,
+    "ethicsDilemmas": 9,
+    "learningUpdates": 8,
+    "counterfactualAnalyses": 85
+  }
+}

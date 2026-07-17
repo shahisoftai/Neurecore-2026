@@ -1,0 +1,30 @@
+{
+  "title": "Risk Evolution Timeline",
+  "totalEvents": 1,
+  "events": [
+    {
+      "type": "POLITICAL_RESTRICTIONS",
+      "severity": "MEDIUM",
+      "financialImpact": -21287,
+      "timelineImpact": 4,
+      "districts": [
+        "D"
+      ],
+      "description": "Political instability restricts access",
+      "key": "political_restrictions",
+      "day": 60,
+      "timestamp": "2026-07-16T16:44:46.657Z",
+      "isCascade": false
+    }
+  ],
+  "cascades": [
+    {
+      "cascadeId": "422fb561-33cf-4037-a20d-26bf4866cfb8",
+      "simulationDay": 8,
+      "parentEvent": "currency_collapse",
+      "totalStages": 2,
+      "stages": 2,
+      "timestamp": "2026-07-16T16:44:46.135Z"
+    }
+  ]
+}

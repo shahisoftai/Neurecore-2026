@@ -1,0 +1,45 @@
+{
+  "day": 32,
+  "budget": {
+    "total": 850000,
+    "spent": 850000,
+    "committed": 0
+  },
+  "activeEvents": 3,
+  "totalDecisions": 44,
+  "totalEvents": 3,
+  "injections": {
+    "events": [
+      {
+        "type": "REDIS_OUTAGE",
+        "severity": "MEDIUM",
+        "financialImpact": -8742,
+        "timelineImpact": 1,
+        "districts": [],
+        "description": "Redis cache server fails",
+        "key": "redis_outage",
+        "day": 32,
+        "timestamp": "2026-07-16T16:44:46.302Z",
+        "isCascade": false
+      }
+    ],
+    "hallucinations": [],
+    "hiddenInfos": [
+      {
+        "information": "MEAL data shows District C SAM rates are 40% higher than initial assessment.",
+        "sourceDepartment": "MEAL",
+        "category": "OPERATIONAL",
+        "targetDepartments": [
+          "Nutrition",
+          "Programme Management",
+          "Finance"
+        ],
+        "correctConclusion": "Emergency supply request and resource reallocation needed for District C.",
+        "day": 32,
+        "timestamp": "2026-07-16T16:44:46.302Z"
+      }
+    ],
+    "ethics": [],
+    "cascades": []
+  }
+}

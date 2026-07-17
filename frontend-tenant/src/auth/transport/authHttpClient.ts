@@ -23,7 +23,7 @@ const tokens = new CookieTokenRepository();
 export const authHttpClient: AxiosInstance = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
+  withCredentials: false,
   timeout: 30_000,
 });
 

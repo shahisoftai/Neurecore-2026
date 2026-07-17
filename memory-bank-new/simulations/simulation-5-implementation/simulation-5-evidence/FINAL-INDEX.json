@@ -1,0 +1,28 @@
+{
+  "simulationId": "ddfbe08c-c9fa-40e6-9d45-9864e553a42b",
+  "title": "Simulation-5: Autonomous Executive Intelligence Challenge - Complete Report",
+  "durationDays": 60,
+  "overallScore": 82,
+  "grade": "B+",
+  "verdict": "SUCCESS",
+  "productionReady": true,
+  "completedAt": "2026-07-16T16:44:46.677Z",
+  "totalDeliverables": 15,
+  "deliverables": [
+    "executiveProgrammeReport",
+    "decisionLedger",
+    "boardMeetingMinutes",
+    "aiDebateLog",
+    "knowledgeEvolutionReport",
+    "confidenceCalibrationReport",
+    "counterfactualAnalysisReport",
+    "ethicalDecisionReport",
+    "riskEvolutionTimeline",
+    "autonomousLearningReport",
+    "independentAuditorReport",
+    "productionReadinessCertificate",
+    "aiExecutiveScorecards",
+    "departmentPerformanceReviews",
+    "organizationalIntelligenceMaturityReport"
+  ]
+}

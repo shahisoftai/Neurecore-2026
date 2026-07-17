@@ -39,15 +39,15 @@ export class AuthService extends BaseAuthService {
     throw new AuthError('unknown', 'Google sign-in is not available in the admin portal.');
   }
 
-  // Override login to also enforce admin-role allow-list locally.
+  // Override login to enforce SUPER_ADMIN-only access for admin portal.
+  // Per user-roles.md: Only SUPER_ADMIN may access Frontend Admin (cc.neurecore.com)
   override async login(payload: LoginPayload): Promise<void> {
     await super.login(payload);
     const user = this.getUser();
     if (!user) return;
-    const ADMIN_ROLES = ['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SECURITY_OFFICER', 'SUPPORT'];
-    if (!ADMIN_ROLES.includes(user.role)) {
+    if (user.role !== 'SUPER_ADMIN') {
       await super.logout();
-      throw new AuthError('unknown', 'Insufficient permissions for admin portal.');
+      throw new AuthError('unknown', 'Admin portal access restricted to SUPER_ADMIN only.');
     }
   }
 }

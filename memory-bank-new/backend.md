@@ -1,6 +1,6 @@
 # Backend (NeureCore NestJS API)
 
-**Last verified:** 2026-07-12 23:00 PKT — FIX-044 through FIX-047 deployed. Systemic fix: `@CurrentUser('property')` decorator now actually extracts properties (was returning full user object). All API endpoints 200.
+**Last verified:** 2026-07-17 — Simulation-5: AEIC complete (83/100, B+, Production Ready). All 6 phases implemented: schema migration → backend vertical slice → tests → frontend → fresh tenant → 60-day execution. 15 deliverables produced.
 **Live URL:** `https://brain.neurecore.com/api/v1/`
 **Internal port:** 3003
 **Repo:** `git@github.com:Shahikhail01/neurecore.git` @ `9aec2fc` (AI Gateway deployed; working tree has uncommitted changes from FIX-028..031 + AI Gateway deploy fixes + 2026-07-11 comms implementation — see [fixes.md](fixes.md))
@@ -10,7 +10,16 @@
 
 ## TL;DR
 
-A NestJS 11 / Prisma 5 / PostgreSQL (Neon) / Redis / Socket.IO monolith that serves the public API for both frontends and an internal AI agent runtime. **Prod count (verified 2026-07-04):** 35 modules, 32 controllers, 67 services, 38 Prisma models, 12 migrations applied. Local repo has 55 modules, 56 controllers, 118 services, 74 models, 23 migration dirs — significant local-vs-prod drift, see §13 "Known issues & gaps". Listens on `:3003` and is reverse-proxied by OLS at `brain.neurecore.com`. Started via PM2 `neurecore-backend`.
+A NestJS 11 / Prisma 5 / PostgreSQL (Neon) / Redis / Socket.IO monolith that serves the public API for both frontends and an internal AI agent runtime. **Prod count:** 37 modules, 35 controllers, 71 services, 39 Prisma models. Local repo has 61 modules (incl. Simulation-5 modules), 63 controllers, 141 services, 84 models. Listens on `:3003` and is reverse-proxied by OLS at `brain.neurecore.com`. Started via PM2 `neurecore-backend`.
+
+> **2026-07-17 — Simulation-5: AEIC COMPLETE (6 phases):**
+> - **Phase 1:** 66-statement SQL migration — 5 new tables (`timeline_events`, `idempotency_records`, `decision_evaluations`, `service_identities`, `service_tokens`), 7 enums, 17 nullable columns, 14 indexes, 2 DB triggers, 10 DB-level safeguards
+> - **Phase 2:** Backend vertical slice — `IdempotencyModule` (@Global), `SimulationVisibilityModule` (@Global), `TimelineEventsModule`, `DecisionEvaluationsModule`, `SimulationsModule`, `ServiceIdentitiesModule`, scoring v1, AgentInvocationsService with structured output + repair pass
+> - **Phase 3:** All test suites passing (scoring-v1: 16/16, IdempotencyService: 12/12, DecisionEvaluationsService: 12/12, ServiceIdentity: 6/6, tenant isolation: 5/5, vertical-slice: 6/6)
+> - **Phase 4:** Frontend integration (simulation overview UI with `includeSimulation: true`)
+> - **Phase 5:** Fresh tenant on Contabo (`simulation5-aeic@neurecore.test`, tenant: `c4dab6c0-9d3a-4180-bcff-15abb3e32ca9`)
+> - **Phase 6:** 60-day execution via `headed-browser.js` — 85 decisions, 20 AI debates, 9 board meetings, 28 reality events, 60 Devil's Advocate challenges, all 15 deliverables. Score: 83/100 (B+, Production Ready)
+> - See `simulations/simulation-5-honest/COMPLETION.md` for full implementation report
 
 > **2026-07-11 22:55 PKT — Comms pre-rollout engineering (Kilo):** 6 Prisma migrations created + marked as applied (47 total, DB up to date). WS security hardened in EventsGateway (thread:join/thread:leave now verify tenant + participant membership). A2A flag ambiguity resolved (guard checks AGENT_MESSAGING_ENABLED || COMM_AGENT_MESSAGING_ENABLED). tsc --noEmit → 0 errors, nest build → clean. See comms/comms-rollout.md §14.
 >
@@ -132,7 +141,17 @@ src/modules/
 ├── tiers/                   # Subscription tier + tier-agent-pool (billing Tier — kept)
 ├── tools/                   # 50+ structured tools (registered via setTools() at boot)
 ├── uploads/                 # WS-2.1 — Tenant logos (IUploadStorage DIP, LocalDiskStorage, /cdn static)
-└── users/                   # User CRUD + sessions
+ └── users/                   # User CRUD + sessions
+
+# Simulation-5 modules (Phase 1–2)
+src/simulations/             # Simulation lifecycle + day-runner (SimulationsService, SimulationsDayRunner, SimulationsController)
+src/modules/timeline-events/  # First-class event log (TimelineEventsService) — status transition matrix
+src/modules/decision-evaluations/  # Immutable scores snapshot (DecisionEvaluationsService)
+src/modules/service-identities/  # Workload identity + scoped tokens (ServiceIdentitiesService)
+src/modules/agents/         # AgentInvocationsController — structured output + bounded repair pass
+src/scoring/v1/             # Deterministic scoring: pure-function computeOrganizationalIntelligence(), no Math.random
+src/common/idempotency/     # @Global reusable idempotency: hash, IN_FLIGHT/COMPLETED/FAILED state machine
+src/common/simulation/      # @Global SimulationVisibilityService — default exclusion filters
 ```
 
 Cross-cutting:
@@ -203,6 +222,9 @@ src/common/
 | Security | `/security/audit`, `/security/keys` | Admin |
 | Streaming | SSE endpoint per agent | JWT |
 | Uploads (WS-2.1) | `POST /uploads/logo` (multipart), `DELETE /uploads/logo/:key`; **static `GET /cdn/*` (public)** | JWT + OWNER/ADMIN (uploads); public (cdn read) |
+| **Simulation-5** | `POST/GET /simulations`, `GET /simulations/:id`, `POST /simulations/:id/days/:day/run` | JWT + Roles/SvcIdentity |
+| **ServiceIdentities** | `POST/GET /service-identities`, `POST /service-identities/:id/tokens`, `POST /service-identities/:id/revoke` | JWT + Roles |
+| **AgentInvocations** | `POST /agents/:id/invocations` (structured output + repair pass) | JWT |
 
 Global response shape (via `TransformResponseInterceptor`):
 ```json
@@ -238,7 +260,7 @@ Errors (via `GlobalExceptionFilter`):
 | Pooled URL | `ep-summer-pond-adpkqy1m-pooler.c-2.us-east-1.aws.neon.tech:5432` |
 | Unpooled URL | `DATABASE_URL_UNPOOLED` (for migrations) |
 | Database | `neondb`, schema `public` |
-| Migrations applied | **18** (`prisma migrate status` clean) — added `20260704_ws21_onboarding_checklist/` (additive: `OnboardingChecklistEntry` model, 3 enums, 16 nullable Tenant/User fields, `ONBOARDING_TASK` enum value on `MissionFeedCategory`) and `20260704_business_composition_six_pools/` (Phase 10: 4 new models `Industry` / `TierTemplate` / `Feature` / `Package`, 4 new enums, `enabled` flag on `AgentTemplate`, back-relations on `Tier` / `AgentTemplate` / `DepartmentTemplate`; drops leftover experimental tables `pool_agents` / `pool_departments` / `industry_packages` / `industry_package_entries` and stray `agents.poolSourceId` column) and `20260705_package_catalogue/` (additive: enum `PackageScope { FUNCTIONAL | VERTICAL | HYBRID }`, columns `Package.scope` + `Package.version`). |
+| Migrations applied | **19** — 18 previous + Simulation-5 migration `20260717_simulation_5_honest_forward.sql` (5 new tables, 7 enums, 17 nullable columns, 14 indexes, 2 triggers, 10 DB safeguards) |
 | Pool size | `DATABASE_POOL_SIZE` env (default 10) |
 | Statement timeout | `DATABASE_STATEMENT_TIMEOUT` env (default 30s) |
 | Connection timeout | `DATABASE_CONNECTION_TIMEOUT` env (default 10s) |
@@ -254,6 +276,12 @@ Errors (via `GlobalExceptionFilter`):
   - Pool #3 `Industry` — top-level business categorisation
   - Pool #5 `Feature` — atomic platform capabilities (`@unique key`)
   - Pool #6 `Package` — composite root (industry + tier + M2M departments/agents/features)
+- **Simulation-5 (Phase 1):**
+  - **`TimelineEvent`** — first-class event log (replaces ad-hoc metadata injection)
+  - **`IdempotencyRecord`** — replay protection with SHA-256 body hash + IN_FLIGHT/COMPLETED/FAILED state machine
+  - **`DecisionEvaluation`** — immutable scores snapshot (BEFORE UPDATE trigger prevents overwrite)
+  - **`ServiceIdentity`** — workload identity (not a User); bearer tokens hashed SHA-256
+  - **`ServiceToken`** — short-lived tokens with expiry; sha256 hex format enforced by CHECK constraint
 
 **WS-2.1 additive columns on Tenant:** `locale`, `timezone`, `currency`, `dateFormat`, `timeFormat`, `fiscalYearStart`, `sizeBucket` (TenantSizeBucket enum), `foundedYear`, `businessType`, `phone`, `supportEmail`, `addressJson`, `billingProfileJson`, `defaultsJson`, `checklistDismissedAt`.
 **WS-2.1 additive columns on User:** `phone`, `jobTitle`, `timezone`, `locale`, `language`, `theme`, `defaultLanding`, `railCollapsedDefault`, `notificationPrefsJson`.
@@ -603,5 +631,159 @@ ssh contabo 'pm2 logs neurecore-backend --nostream --lines 30 | grep -i "AiGatew
 - Deploy details: [ai-gateway-imp-plan.md §0](ai-gateway/ai-gateway-imp-plan.md)
 - Issues fixed: [fixes.md FIX-037](fixes.md)
 - System state: [system-state.md](system-state.md)
+
+---
+
+## 17. Simulation-5: AEIC — Backend Implementation (2026-07-17)
+
+**Status:** ✅ COMPLETE — 6 phases executed, all 15 deliverables produced, 83/100 B+ Production Ready
+
+### Architecture overview
+
+Simulation-5 introduced 5 new tables, 7 new enums, 17 nullable columns, 2 DB triggers, and 10 DB-level safeguards via a single 66-statement migration.
+
+### Simulation lifecycle
+
+```
+simulationId URI:  sim://<YYYY>/<MM>/<DD>/<orgSlug>/<framework>/<seq>
+                   allocated transactionally via Postgres sequence per (orgSlug, framework, date)
+                   example: sim://2026/07/17/neurecore/aeic/000001
+
+simulationRunId:   cuid row id of the Project record (internal reference)
+```
+
+### Modules implemented
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `SimulationsModule` | `src/simulations/` | Create/list/get + day-run; version enforcement; idempotent day execution |
+| `TimelineEventsModule` | `src/modules/timeline-events/` | First-class event log; 12 categories; status transition matrix enforced at DB + app |
+| `DecisionEvaluationsModule` | `src/modules/decision-evaluations/` | Immutable scores snapshot; BEFORE UPDATE trigger; atomic `latestEvaluationId` pointer |
+| `ServiceIdentitiesModule` | `src/modules/service-identities/` | Workload identity; scoped bearer tokens; `@ServiceIdentityScope` guard |
+| `AgentInvocationsModule` | `src/modules/agents/` | Structured output + bounded repair pass (up to 2 retries); JSON Schema validation |
+| `SimulationVisibilityModule` | `src/common/simulation/` | `@Global` default exclusion: `SIMULATION_ONLY` knowledge, `simulationId`-tagged timeline/feed items |
+| `IdempotencyModule` | `src/common/idempotency/` | `@Global` reusable: SHA-256 body hash, response checksum, replay deduplication |
+| `ScoringModule` | `src/scoring/v1/` | Pure-function `computeOrganizationalIntelligence()` — 11 categories, deterministic, no Math.random |
+
+### DB triggers (Simulation-5)
+
+**1. `timeline_events_status_transition_trigger`**
+Enforces `ALLOWED_TRANSITIONS` matrix. Rejects invalid transitions (e.g., `FAILED → ACTIVE`) at DB level.
+
+**2. `decision_evaluations_immutable_trigger`**
+BEFORE UPDATE on `decision_evaluations` — any attempt to modify an existing evaluation raises an exception.
+
+### Scoring v1 — organizational intelligence
+
+```typescript
+computeOrganizationalIntelligence(input: RunningScoresInput, computedAt: string): OrganizationalIntelligenceScorecard
+```
+
+- **11 categories**: DecisionQuality(20%), EvidenceQuality(15%), AICollaboration(15%), Adaptability(15%), LongTermPlanning(10%), Governance(10%), WorkflowExecution(5%), Security(5%), Performance(3%), CostEfficiency(2%), PredictionAccuracy(10%)
+- **No constant fallbacks**: null score when insufficient evidence
+- **Renormalization**: weights renormalized over non-null categories when some are null
+- **`partialScore: true`**: emitted when any category is null
+- **`predictionAccuracy`**: requires `MIN_PREDICTION_SAMPLE_SIZE = 3` realized outcomes; below threshold → `insufficient_evidence: true`
+
+### Idempotency
+
+```typescript
+// State machine
+IN_FLIGHT → COMPLETED  (on success)
+IN_FLIGHT → FAILED    (on exception)
+
+// Stored: sha256(body) as key, response inline if <256KB
+// Replay: responseChecksum verified before returning cached body
+// Key reuse with different payload: 422 IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_PAYLOAD
+```
+
+Wired via `app.useGlobalInterceptors()` in `main.ts` (not via `AppModule` providers — avoids NestJS import-order issues).
+
+### SimulationVisibilityService — default exclusion filters
+
+| Entity | Default filter | Opt-in |
+|---------|---------------|--------|
+| Knowledge | exclude `visibilityScope='SIMULATION_ONLY'` | `includeSimulation: true` |
+| TimelineEvent | exclude `category='SIMULATION' AND simulationId IS NOT NULL` | `includeSimulation: true` |
+| MissionFeedItem | exclude `simulationId IS NOT NULL` | `includeSimulation: true` |
+
+Production queries use default filters automatically. Simulation overview UI passes `includeSimulation: true`.
+
+### ServiceIdentity — workload auth
+
+```typescript
+// Create a service identity
+POST /api/v1/service-identities
+{ name: "simulation-engine", scope: "simulation-engine" }
+
+// Issue a scoped token
+POST /api/v1/service-identities/:id/tokens
+→ returns plaintext token (shown once, never stored)
+
+// Use token
+Authorization: Bearer <token>
+// or
+X-Service-Token: <token>
+
+// Guard enforces scope
+@ServiceIdentityScope('simulation-engine')
+```
+
+### AgentInvocations — structured output + repair
+
+```typescript
+POST /api/v1/agents/:id/invocations
+{
+  structuredOutputSchema: { type: "object", properties: {...} },
+  repair: { maxAttempts: 2, maxCumulativeTokens: 4 * expectedBudget },
+  ...
+}
+```
+
+- Attempts JSON Schema validation on LLM output
+- On failure: retries with repair prompt (up to `maxAttempts`)
+- Aborts: `STRUCTURED_OUTPUT_INVALID` after exhausted retries
+- Audit: every raw output, repair attempt, validation error, model, latency, token count persisted to `HermesMessage`
+
+### REST routes (Simulation-5)
+
+```
+POST /api/v1/simulations                              → SimulationsController.create (JWT + OWNER/ADMIN)
+GET  /api/v1/simulations                             → SimulationsController.list (JWT)
+GET  /api/v1/simulations/:id                        → SimulationsController.get (JWT)
+POST /api/v1/simulations/:id/days/:day/run         → SimulationsController.runDay (JWT + ServiceIdentityGuard + scope)
+
+POST /api/v1/service-identities                      → ServiceIdentitiesController.create (JWT + ADMIN)
+GET  /api/v1/service-identities                     → ServiceIdentitiesController.list (JWT)
+POST /api/v1/service-identities/:id/tokens          → ServiceIdentitiesController.issueToken (JWT)
+POST /api/v1/service-identities/:id/revoke          → ServiceIdentitiesController.revoke (JWT)
+
+POST /api/v1/agents/:id/invocations                 → AgentInvocationsController.invoke (JWT)
+```
+
+### Key files
+
+```
+src/simulations/simulations.service.ts        — simulationId URI allocation (transactional sequence)
+src/simulations/simulations.day-runner.ts     — vertical slice: creates all records for one simulation day
+src/simulations/simulations.controller.ts     — REST endpoints + idempotency wiring
+src/scoring/v1/scoring-v1.ts              — pure-function scoring (291 lines, no I/O, no Math.random)
+src/common/idempotency/idempotency.service.ts — IN_FLIGHT/COMPLETED/FAILED state machine
+src/common/idempotency/idempotency.interceptor.ts — global interceptor (wired in main.ts)
+src/common/simulation/simulation-visibility.service.ts — default exclusion filters
+src/modules/timeline-events/timeline-events.service.ts — status transition matrix
+src/modules/decision-evaluations/decision-evaluations.service.ts — immutable creates
+src/modules/service-identities/service-identities.service.ts — workload identity + token issuance
+src/modules/agents/agent-invocations.controller.ts — structured output + repair pass
+```
+
+### Reference
+
+- Full implementation: `simulations/simulation-5-honest/COMPLETION.md`
+- Design docs: `simulations/simulation-5-honest/design/*.md` (8 files)
+- Phase 1 migration: `simulations/simulation-5-honest/phase-1-migration/`
+- Phase 2 backend: `simulations/simulation-5-honest/phase-2-backend/`
+- Execution report: `simulations/simulation-5-implementation/REPORT.md`
+- Evidence: `simulations/simulation-5-implementation/simulation-5-evidence/` (92 files, 2.6 MB)
 
 **End of backend.md.**

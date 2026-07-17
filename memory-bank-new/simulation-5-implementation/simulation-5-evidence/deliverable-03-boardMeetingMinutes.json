@@ -1,0 +1,1555 @@
+{
+  "title": "Board Meeting Minutes",
+  "totalMeetings": 9,
+  "meetings": [
+    {
+      "meetingId": "f5956c4a-1310-48a8-bf8e-33aac7a662c6",
+      "date": "2026-07-16T18:06:51.112Z",
+      "simulationDay": 1,
+      "status": "COMPLETED",
+      "chairPerson": "Executive Director",
+      "location": "Virtual HQ Boardroom",
+      "agendaItems": [
+        {
+          "item": "Current Status",
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "duration": 10
+        }
+      ],
+      "discussions": [
+        {
+          "item": "Current Status",
+          "summary": "Current Status discussed. Budget at 0.0%.",
+          "consensus": false,
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "summary": "Budget Review discussed. Budget at 0.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "summary": "Risk Assessment discussed. Budget at 0.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "summary": "Donor Relations Update discussed. Budget at 0.0%.",
+          "consensus": false,
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "summary": "Operations Update discussed. Budget at 0.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "summary": "Security Briefing discussed. Budget at 0.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "summary": "Communications Review discussed. Budget at 0.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "summary": "HR Matters discussed. Budget at 0.0%.",
+          "consensus": false,
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "summary": "MEAL Report discussed. Budget at 0.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "summary": "Procurement Update discussed. Budget at 0.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "summary": "Outstanding Decisions discussed. Budget at 0.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "summary": "Blocked Work discussed. Budget at 0.0%.",
+          "consensus": false,
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "summary": "New Threats discussed. Budget at 0.0%.",
+          "consensus": true,
+          "duration": 10
+        }
+      ],
+      "keyDecisions": [
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 63
+        }
+      ],
+      "actionItems": [
+        {
+          "item": "Follow up on outstanding decisions",
+          "owner": "Programme Director"
+        }
+      ],
+      "risksRaised": [
+        {
+          "risk": "Supply chain",
+          "mitigation": "Alternative supplier identified"
+        }
+      ],
+      "budgetStatus": {
+        "total": 850000,
+        "spent": 0,
+        "remaining": 850000
+      }
+    },
+    {
+      "meetingId": "b631490c-6cfe-4546-975c-7a674dc564ca",
+      "date": "2026-07-16T18:06:51.256Z",
+      "simulationDay": 8,
+      "status": "COMPLETED",
+      "chairPerson": "Executive Director",
+      "location": "Virtual HQ Boardroom",
+      "agendaItems": [
+        {
+          "item": "Current Status",
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "duration": 10
+        }
+      ],
+      "discussions": [
+        {
+          "item": "Current Status",
+          "summary": "Current Status discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "summary": "Budget Review discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "summary": "Risk Assessment discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "summary": "Donor Relations Update discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "summary": "Operations Update discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "summary": "Security Briefing discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "summary": "Communications Review discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "summary": "HR Matters discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "summary": "MEAL Report discussed. Budget at 11.7%.",
+          "consensus": false,
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "summary": "Procurement Update discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "summary": "Outstanding Decisions discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "summary": "Blocked Work discussed. Budget at 11.7%.",
+          "consensus": false,
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "summary": "New Threats discussed. Budget at 11.7%.",
+          "consensus": true,
+          "duration": 10
+        }
+      ],
+      "keyDecisions": [
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 78
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 82
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 79
+        }
+      ],
+      "actionItems": [
+        {
+          "item": "Follow up on outstanding decisions",
+          "owner": "Programme Director"
+        }
+      ],
+      "risksRaised": [
+        {
+          "risk": "Supply chain",
+          "mitigation": "Alternative supplier identified"
+        }
+      ],
+      "budgetStatus": {
+        "total": 850000,
+        "spent": 99169,
+        "remaining": 750831
+      }
+    },
+    {
+      "meetingId": "98650441-a1ce-459a-8421-a8528a56bdd3",
+      "date": "2026-07-16T18:06:51.307Z",
+      "simulationDay": 15,
+      "status": "COMPLETED",
+      "chairPerson": "Executive Director",
+      "location": "Virtual HQ Boardroom",
+      "agendaItems": [
+        {
+          "item": "Current Status",
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "duration": 10
+        }
+      ],
+      "discussions": [
+        {
+          "item": "Current Status",
+          "summary": "Current Status discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "summary": "Budget Review discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "summary": "Risk Assessment discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "summary": "Donor Relations Update discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "summary": "Operations Update discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "summary": "Security Briefing discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "summary": "Communications Review discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "summary": "HR Matters discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "summary": "MEAL Report discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "summary": "Procurement Update discussed. Budget at 36.0%.",
+          "consensus": false,
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "summary": "Outstanding Decisions discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "summary": "Blocked Work discussed. Budget at 36.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "summary": "New Threats discussed. Budget at 36.0%.",
+          "consensus": false,
+          "duration": 10
+        }
+      ],
+      "keyDecisions": [
+        {
+          "decision": "Activate emergency response protocol",
+          "quality": 69
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 82
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 67
+        }
+      ],
+      "actionItems": [
+        {
+          "item": "Follow up on outstanding decisions",
+          "owner": "Programme Director"
+        }
+      ],
+      "risksRaised": [
+        {
+          "risk": "Supply chain",
+          "mitigation": "Alternative supplier identified"
+        }
+      ],
+      "budgetStatus": {
+        "total": 850000,
+        "spent": 305813,
+        "remaining": 544187
+      }
+    },
+    {
+      "meetingId": "232150db-d8a6-4e87-882e-43ef8979bedd",
+      "date": "2026-07-16T18:06:51.348Z",
+      "simulationDay": 22,
+      "status": "COMPLETED",
+      "chairPerson": "Executive Director",
+      "location": "Virtual HQ Boardroom",
+      "agendaItems": [
+        {
+          "item": "Current Status",
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "duration": 10
+        }
+      ],
+      "discussions": [
+        {
+          "item": "Current Status",
+          "summary": "Current Status discussed. Budget at 51.2%.",
+          "consensus": false,
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "summary": "Budget Review discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "summary": "Risk Assessment discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "summary": "Donor Relations Update discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "summary": "Operations Update discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "summary": "Security Briefing discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "summary": "Communications Review discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "summary": "HR Matters discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "summary": "MEAL Report discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "summary": "Procurement Update discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "summary": "Outstanding Decisions discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "summary": "Blocked Work discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "summary": "New Threats discussed. Budget at 51.2%.",
+          "consensus": true,
+          "duration": 10
+        }
+      ],
+      "keyDecisions": [
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 78
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 65
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 60
+        }
+      ],
+      "actionItems": [
+        {
+          "item": "Follow up on outstanding decisions",
+          "owner": "Programme Director"
+        }
+      ],
+      "risksRaised": [
+        {
+          "risk": "Supply chain",
+          "mitigation": "Alternative supplier identified"
+        }
+      ],
+      "budgetStatus": {
+        "total": 850000,
+        "spent": 434895,
+        "remaining": 415105
+      }
+    },
+    {
+      "meetingId": "87a2a608-2507-4592-8ff4-64e07e79858a",
+      "date": "2026-07-16T18:06:51.394Z",
+      "simulationDay": 29,
+      "status": "COMPLETED",
+      "chairPerson": "Executive Director",
+      "location": "Virtual HQ Boardroom",
+      "agendaItems": [
+        {
+          "item": "Current Status",
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "duration": 10
+        }
+      ],
+      "discussions": [
+        {
+          "item": "Current Status",
+          "summary": "Current Status discussed. Budget at 88.4%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "summary": "Budget Review discussed. Budget at 88.4%.",
+          "consensus": false,
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "summary": "Risk Assessment discussed. Budget at 88.4%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "summary": "Donor Relations Update discussed. Budget at 88.4%.",
+          "consensus": false,
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "summary": "Operations Update discussed. Budget at 88.4%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "summary": "Security Briefing discussed. Budget at 88.4%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "summary": "Communications Review discussed. Budget at 88.4%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "summary": "HR Matters discussed. Budget at 88.4%.",
+          "consensus": false,
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "summary": "MEAL Report discussed. Budget at 88.4%.",
+          "consensus": false,
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "summary": "Procurement Update discussed. Budget at 88.4%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "summary": "Outstanding Decisions discussed. Budget at 88.4%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "summary": "Blocked Work discussed. Budget at 88.4%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "summary": "New Threats discussed. Budget at 88.4%.",
+          "consensus": true,
+          "duration": 10
+        }
+      ],
+      "keyDecisions": [
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 64
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 88
+        },
+        {
+          "decision": "Activate emergency response protocol",
+          "quality": 63
+        }
+      ],
+      "actionItems": [
+        {
+          "item": "Follow up on outstanding decisions",
+          "owner": "Programme Director"
+        }
+      ],
+      "risksRaised": [
+        {
+          "risk": "Supply chain",
+          "mitigation": "Alternative supplier identified"
+        }
+      ],
+      "budgetStatus": {
+        "total": 850000,
+        "spent": 751809,
+        "remaining": 98191
+      }
+    },
+    {
+      "meetingId": "aef6d23e-bf81-46ee-b523-3807b7aa43f2",
+      "date": "2026-07-16T18:06:51.451Z",
+      "simulationDay": 36,
+      "status": "COMPLETED",
+      "chairPerson": "Executive Director",
+      "location": "Virtual HQ Boardroom",
+      "agendaItems": [
+        {
+          "item": "Current Status",
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "duration": 10
+        }
+      ],
+      "discussions": [
+        {
+          "item": "Current Status",
+          "summary": "Current Status discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "summary": "Budget Review discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "summary": "Risk Assessment discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "summary": "Donor Relations Update discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "summary": "Operations Update discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "summary": "Security Briefing discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "summary": "Communications Review discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "summary": "HR Matters discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "summary": "MEAL Report discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "summary": "Procurement Update discussed. Budget at 100.0%.",
+          "consensus": false,
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "summary": "Outstanding Decisions discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "summary": "Blocked Work discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "summary": "New Threats discussed. Budget at 100.0%.",
+          "consensus": true,
+          "duration": 10
+        }
+      ],
+      "keyDecisions": [
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 65
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 62
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 70
+        }
+      ],
+      "actionItems": [
+        {
+          "item": "Follow up on outstanding decisions",
+          "owner": "Programme Director"
+        }
+      ],
+      "risksRaised": [
+        {
+          "risk": "Supply chain",
+          "mitigation": "Alternative supplier identified"
+        }
+      ],
+      "budgetStatus": {
+        "total": 850000,
+        "spent": 850000,
+        "remaining": 0
+      }
+    },
+    {
+      "meetingId": "46d7ccd9-ce54-421c-bd1f-63639ae2095e",
+      "date": "2026-07-16T18:06:51.514Z",
+      "simulationDay": 43,
+      "status": "COMPLETED",
+      "chairPerson": "Executive Director",
+      "location": "Virtual HQ Boardroom",
+      "agendaItems": [
+        {
+          "item": "Current Status",
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "duration": 10
+        }
+      ],
+      "discussions": [
+        {
+          "item": "Current Status",
+          "summary": "Current Status discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "summary": "Budget Review discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "summary": "Risk Assessment discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "summary": "Donor Relations Update discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "summary": "Operations Update discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "summary": "Security Briefing discussed. Budget at 101.0%.",
+          "consensus": false,
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "summary": "Communications Review discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "summary": "HR Matters discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "summary": "MEAL Report discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "summary": "Procurement Update discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "summary": "Outstanding Decisions discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "summary": "Blocked Work discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "summary": "New Threats discussed. Budget at 101.0%.",
+          "consensus": true,
+          "duration": 10
+        }
+      ],
+      "keyDecisions": [
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 76
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 62
+        },
+        {
+          "decision": "Activate emergency response protocol",
+          "quality": 82
+        }
+      ],
+      "actionItems": [
+        {
+          "item": "Follow up on outstanding decisions",
+          "owner": "Programme Director"
+        }
+      ],
+      "risksRaised": [
+        {
+          "risk": "Supply chain",
+          "mitigation": "Alternative supplier identified"
+        }
+      ],
+      "budgetStatus": {
+        "total": 850000,
+        "spent": 858671,
+        "remaining": -8671
+      }
+    },
+    {
+      "meetingId": "19a5e3c3-3854-43b3-9f88-9802f087364b",
+      "date": "2026-07-16T18:06:51.590Z",
+      "simulationDay": 50,
+      "status": "COMPLETED",
+      "chairPerson": "Executive Director",
+      "location": "Virtual HQ Boardroom",
+      "agendaItems": [
+        {
+          "item": "Current Status",
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "duration": 10
+        }
+      ],
+      "discussions": [
+        {
+          "item": "Current Status",
+          "summary": "Current Status discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "summary": "Budget Review discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "summary": "Risk Assessment discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "summary": "Donor Relations Update discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "summary": "Operations Update discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "summary": "Security Briefing discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "summary": "Communications Review discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "summary": "HR Matters discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "summary": "MEAL Report discussed. Budget at 107.3%.",
+          "consensus": false,
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "summary": "Procurement Update discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "summary": "Outstanding Decisions discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "summary": "Blocked Work discussed. Budget at 107.3%.",
+          "consensus": false,
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "summary": "New Threats discussed. Budget at 107.3%.",
+          "consensus": true,
+          "duration": 10
+        }
+      ],
+      "keyDecisions": [
+        {
+          "decision": "Activate emergency response protocol",
+          "quality": 69
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 86
+        },
+        {
+          "decision": "Activate emergency response protocol",
+          "quality": 81
+        }
+      ],
+      "actionItems": [
+        {
+          "item": "Follow up on outstanding decisions",
+          "owner": "Programme Director"
+        }
+      ],
+      "risksRaised": [
+        {
+          "risk": "Supply chain",
+          "mitigation": "Alternative supplier identified"
+        }
+      ],
+      "budgetStatus": {
+        "total": 850000,
+        "spent": 911830,
+        "remaining": -61830
+      }
+    },
+    {
+      "meetingId": "3a9d6331-eb5f-4e1a-aa80-96794da20f68",
+      "date": "2026-07-16T18:06:51.700Z",
+      "simulationDay": 57,
+      "status": "COMPLETED",
+      "chairPerson": "Executive Director",
+      "location": "Virtual HQ Boardroom",
+      "agendaItems": [
+        {
+          "item": "Current Status",
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "duration": 10
+        }
+      ],
+      "discussions": [
+        {
+          "item": "Current Status",
+          "summary": "Current Status discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Budget Review",
+          "summary": "Budget Review discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Risk Assessment",
+          "summary": "Risk Assessment discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Donor Relations Update",
+          "summary": "Donor Relations Update discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Operations Update",
+          "summary": "Operations Update discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 15
+        },
+        {
+          "item": "Security Briefing",
+          "summary": "Security Briefing discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Communications Review",
+          "summary": "Communications Review discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "HR Matters",
+          "summary": "HR Matters discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "MEAL Report",
+          "summary": "MEAL Report discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Procurement Update",
+          "summary": "Procurement Update discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 5
+        },
+        {
+          "item": "Outstanding Decisions",
+          "summary": "Outstanding Decisions discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 10
+        },
+        {
+          "item": "Blocked Work",
+          "summary": "Blocked Work discussed. Budget at 100.6%.",
+          "consensus": false,
+          "duration": 5
+        },
+        {
+          "item": "New Threats",
+          "summary": "New Threats discussed. Budget at 100.6%.",
+          "consensus": true,
+          "duration": 10
+        }
+      ],
+      "keyDecisions": [
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 77
+        },
+        {
+          "decision": "Continue with minor adjustments",
+          "quality": 76
+        },
+        {
+          "decision": "Activate emergency response protocol",
+          "quality": 81
+        }
+      ],
+      "actionItems": [
+        {
+          "item": "Follow up on outstanding decisions",
+          "owner": "Programme Director"
+        }
+      ],
+      "risksRaised": [
+        {
+          "risk": "Supply chain",
+          "mitigation": "Alternative supplier identified"
+        }
+      ],
+      "budgetStatus": {
+        "total": 850000,
+        "spent": 854906,
+        "remaining": -4906
+      }
+    }
+  ]
+}

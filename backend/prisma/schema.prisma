@@ -527,6 +527,7 @@ model Tenant {
 
   // Phase 3 (EAOS-3) back-relations
   missionFeedItems    MissionFeedItem[]
+
   aiActionInvocations AIActionInvocation[]
 
   // EAOS-4 back-relations - Knowledge Hub
@@ -546,6 +547,13 @@ model Tenant {
   // AI Gateway catalog back-relations
   modelOverrides TenantModelOverride[]
   retentionPolicies    RetentionPolicy[]
+
+  // Phase 1 simulation-5 back-relations
+  timelineEvents       TimelineEvent[]
+  idempotencyRecords   IdempotencyRecord[]
+  decisionEvaluations  DecisionEvaluation[]
+  serviceIdentities    ServiceIdentity[]
+  serviceTokens        ServiceToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -932,6 +940,9 @@ model Task {
   executionLogs        ExecutionLog[]
   executionLogEntries  TaskExecutionLogEntry[]
 
+  // Phase 1 simulation-5 field
+  simulationId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -943,6 +954,7 @@ model Task {
   @@index([goalId])
   @@index([stageId])
   @@index([projectId])
+  @@index([simulationId])
   @@map("tasks")
 }
 
@@ -1226,9 +1238,13 @@ model ApprovalRequest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Phase 1 simulation-5 field
+  simulationId String?
+
   @@index([tenantId])
   @@index([status])
   @@index([requestedById])
+  @@index([simulationId])
   @@map("approval_requests")
 }
 
@@ -1550,9 +1566,13 @@ model Routine {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Phase 1 simulation-5 field
+  simulationId String?
+
   @@index([tenantId])
   @@index([status])
   @@index([ownerAgentId])
+  @@index([simulationId])
   @@map("routines")
 }
 
@@ -2156,6 +2176,10 @@ model Project {
   // Phase 3A — Automation audit trail
   automationLogs ProjectAutomationLog[]
 
+  // Phase 1 simulation-5 back-relations
+  timelineEvents TimelineEvent[]
+
+  @@unique([tenantId, name])
   @@index([tenantId])
   @@index([status])
   @@index([departmentId])
@@ -2364,10 +2388,26 @@ model ProjectDecision {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
+  // Phase 1 simulation-5 fields (added 2026-07-16)
+  simulationId         String?
+  expectedOutcome      String?        @db.Text
+  actualOutcome        String?        @db.Text
+  confidenceEstimate   Int?
+  counterfactualBest   String?        @db.Text
+  lessonsLearned       String?        @db.Text
+  evidenceRefs         Json?
+  latestEvaluationId   String?
+  simulationRunId      String?
+
+  evaluations DecisionEvaluation[]
+
   @@index([projectId])
   @@index([status])
   @@index([approvedById])
   @@index([linkedEntityId])
+  @@index([simulationId])
+  @@index([simulationRunId])
+  @@index([latestEvaluationId])
   @@map("project_decisions")
 }
 
@@ -3042,10 +3082,14 @@ model MissionFeedItem {
   detectedAt    DateTime            @default(now())
   createdAt     DateTime            @default(now())
 
+  // Phase 1 simulation-5 field
+  simulationId  String?
+
   @@index([tenantId, userId, dismissedAt])
   @@index([tenantId, priority, detectedAt])
   @@index([tenantId, category])
   @@index([sourceEventId])
+  @@index([simulationId])
   @@map("mission_feed_items")
 }
 
@@ -3151,7 +3195,9 @@ model KnowledgeEntry {
   retrievalCount  Int       @default(0)
   lastRetrievedAt DateTime?
 
-  // Effective dating
+  // Phase 1 simulation-5 fields
+  simulationId    String?
+  visibilityScope String?  @default("TENANT")
   effectiveFrom DateTime  @default(now())
   effectiveTo   DateTime?
 
@@ -3162,6 +3208,8 @@ model KnowledgeEntry {
   @@index([tenantId, type])
   @@index([tenantId, status])
   @@index([tenantId, departmentId])
+  @@index([simulationId])
+  @@index([visibilityScope])
   @@map("knowledge_entries")
 }
 
@@ -3403,6 +3451,9 @@ model HermesMessage {
   // Phase 9c: @mentions
   mentions Json? @default("[]")
 
+  // Phase 1 simulation-5 field
+  simulationId String? @map("simulation_id")
+
   // Back-relation to thread (optional)
   thread CommunicationThread? @relation("ThreadMessages", fields: [threadId], references: [id], onDelete: SetNull)
 
@@ -3411,6 +3462,7 @@ model HermesMessage {
   @@index([sessionId, createdAt])
   @@index([threadId, createdAt])
   @@index([contextType, contextId])
+  @@index([simulationId])
 }
 
 model HermesMemoryEntry {
@@ -3483,6 +3535,10 @@ model CommunicationThread {
   // Phase 4: A2A hop counter — authoritative, server-side
   hopCount Int @default(0) @map("hopcount")
 
+  // Phase 1 simulation-5 fields
+  simulationId String? @map("simulationid")
+  envelopeKind String? @map("envelopekind")
+
   createdAt DateTime  @default(now()) @map("createdat")
   updatedAt DateTime  @updatedAt @map("updatedat")
   closedAt  DateTime? @map("closedat")
@@ -3493,6 +3549,8 @@ model CommunicationThread {
   messages       HermesMessage[]     @relation("ThreadMessages")
 
   @@index([tenantId])
+  @@index([simulationId])
+  @@index([envelopeKind])
   @@index([contextType, contextId])
   @@index([status, tenantId])
   @@map("communication_threads")
@@ -4773,4 +4831,222 @@ model WorkRunStep {
   completedAt DateTime ?  // nullable=True default=None sql=TIMESTAMP(3)
   @@unique([tenantId, idempotencyKey])
   @@map("work_run_steps")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 1: Simulation-5 Honest Run — 5 new tables (applied to DB 2026-07-16)
+//
+// The migration SQL is in memory-bank-new/simulations/simulation-5-honest/
+// phase-1-migration/20260717_simulation_5_honest_forward.sql.
+//
+// These models are intentionally minimal here. The DB has CHECK constraints,
+// triggers, and indexes that Prisma cannot represent; the migration SQL is
+// the source of truth for those.
+// ═══════════════════════════════════════════════════════════════════════════
+
+model TimelineEvent {
+  id                          String                  @id @default(cuid())
+  tenantId                    String
+  tenant                      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  projectId                   String?
+  project                     Project?                @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  simulationId                String?
+  simulationRunId             String?
+  occurredAt                  DateTime
+  recordedAt                  DateTime                @default(now())
+  category                    TimelineCategory
+  severity                    EventSeverity
+  sourceType                  TimelineSourceType
+  sourceId                    String?
+  title                       String
+  description                 String                  @db.Text
+  relatedEntityType           String?
+  relatedEntityId             String?
+  correlationId               String?
+  traceId                     String?
+  causationId                 String?
+  parentEventId               String?
+  parentEvent                 TimelineEvent?          @relation("TimelineCascade", fields: [parentEventId], references: [id], onDelete: SetNull)
+  childEvents                 TimelineEvent[]         @relation("TimelineCascade")
+  rootEventId                 String?
+  status                      TimelineEventStatus     @default(REPORTED)
+  invalidatedAt               DateTime?
+  invalidatedBy               String?
+  invalidationReason          String?                 @db.Text
+  cancelledAt                 DateTime?
+  cancelledBy                 String?
+  cancellationReason          String?                 @db.Text
+  createdByUserId             String?
+  createdByAgentId            String?
+  createdByServiceIdentityId  String?
+  metadata                    Json?                   @default("{}")
+  createdAt                   DateTime                @default(now())
+  updatedAt                   DateTime                @updatedAt
+
+  @@index([tenantId, occurredAt])
+  @@index([tenantId, projectId])
+  @@index([tenantId, simulationId])
+  @@index([tenantId, status])
+  @@index([tenantId, category, occurredAt])
+  @@index([correlationId])
+  @@index([rootEventId])
+  @@index([parentEventId])
+  @@index([relatedEntityType, relatedEntityId])
+  @@map("timeline_events")
+}
+
+// EventSeverity is a Postgres enum that pre-exists in the schema (used by
+// Task.severity and other tables). The Phase 1 migration declares it with
+// the same values; this Prisma declaration tells the client about it.
+enum EventSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TimelineCategory {
+  OPERATIONAL
+  SUPPLY_CHAIN
+  SECURITY
+  COMPLIANCE
+  FINANCIAL
+  STAKEHOLDER
+  HR
+  WEATHER
+  EXTERNAL
+  AI_ACTION
+  SIMULATION
+  CUSTOM
+}
+
+enum TimelineSourceType {
+  HUMAN
+  AI
+  INTEGRATION
+  SERVICE_IDENTITY
+  SIMULATION_CONTROLLER
+}
+
+enum TimelineEventStatus {
+  DRAFT
+  REPORTED
+  VERIFIED
+  ACTIVE
+  RESOLVED
+  INVALIDATED
+  CANCELLED
+  FAILED
+}
+
+model IdempotencyRecord {
+  id                  String                       @id @default(cuid())
+  tenantId            String
+  tenant              Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  key                 String
+  requestPath         String
+  lastUsedAt          DateTime?
+  requestHash         String
+  status              String                       @default("IN_FLIGHT")
+  startedAt           DateTime                     @default(now())
+  completedAt         DateTime?
+  attemptCount        Int                          @default(1)
+  lastErrorCode       String?
+  lastErrorMessage    String?                      @db.Text
+  responseStatus      Int?
+  responseBody        Json?
+  responseReference   String?
+  responseStorageKind IdempotencyResponseStorageKind @default(NONE)
+  responseChecksum    String?
+  resultEntityType    String?
+  resultEntityId      String?
+  expiresAt           DateTime
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+
+  @@unique([tenantId, key])
+  @@index([tenantId, expiresAt])
+  @@index([status])
+  @@map("idempotency_records")
+}
+
+enum IdempotencyResponseStorageKind {
+  BODY_INLINE
+  BODY_REFERENCE
+  NONE
+}
+
+model DecisionEvaluation {
+  id              String                 @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  decisionId      String
+  decision        ProjectDecision        @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  simulationId    String?
+  evaluationKind  DecisionEvaluationKind
+  scoringVersion  String
+  scores          Json
+  evaluatorKind   EvaluatorKind
+  evaluatorId     String?
+  evaluatedAt     DateTime               @default(now())
+  notes           String?                @db.Text
+  metadata        Json                   @default("{}")
+  createdAt       DateTime               @default(now())
+
+  @@index([decisionId, evaluatedAt])
+  @@index([tenantId, simulationId])
+  @@index([scoringVersion])
+  @@map("decision_evaluations")
+}
+
+enum DecisionEvaluationKind {
+  INITIAL
+  MIDTERM
+  FINAL
+  RETROSPECTIVE
+}
+
+enum EvaluatorKind {
+  SYSTEM
+  HUMAN
+  AGENT
+}
+
+model ServiceIdentity {
+  id              String          @id @default(cuid())
+  tenantId        String
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?         @db.Text
+  scopes          String[]
+  enabled         Boolean         @default(true)
+  revokedAt       DateTime?
+  revokedBy       String?
+  createdByUserId String
+  createdAt       DateTime        @default(now())
+  lastUsedAt      DateTime?
+
+  tokens          ServiceToken[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, enabled])
+  @@map("service_identities")
+}
+
+model ServiceToken {
+  id                String          @id @default(cuid())
+  serviceIdentityId String
+  serviceIdentity   ServiceIdentity @relation(fields: [serviceIdentityId], references: [id], onDelete: Cascade)
+  tenantId          String
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  scopes            String[]
+  tokenHash         String          @unique
+  issuedAt          DateTime        @default(now())
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  lastUsedAt        DateTime?
+
+  @@index([tenantId, expiresAt])
+  @@index([serviceIdentityId])
+  @@map("service_tokens")
 }

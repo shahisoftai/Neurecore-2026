@@ -1,0 +1,34 @@
+{
+  "status": "success",
+  "data": {
+    "id": "cmrnfprke008s1216z1yrexzk",
+    "tenantId": "b6747578-074e-4253-a7a7-a0146c4f92df",
+    "name": "Flood Emergency Nutrition Response - 2 Month Programme",
+    "description": null,
+    "status": "LEAD",
+    "customerId": null,
+    "projectTypeId": null,
+    "projectTypeVersion": null,
+    "budgetType": null,
+    "budgetAmount": null,
+    "budgetCurrency": "USD",
+    "goalIds": [],
+    "departmentId": null,
+    "parentProjectId": null,
+    "clonedFromProjectId": null,
+    "lostReason": null,
+    "customFieldValues": null,
+    "targetDate": null,
+    "startDate": null,
+    "completedAt": null,
+    "priority": "MEDIUM",
+    "tags": [],
+    "metadata": null,
+    "createdAt": "2026-07-16T11:37:31.598Z",
+    "updatedAt": "2026-07-16T11:37:31.598Z"
+  },
+  "meta": {
+    "timestamp": "2026-07-16T11:37:31.291Z",
+    "requestId": "014a0470-35a7-4b22-8a23-c84035fc6f39"
+  }
+}

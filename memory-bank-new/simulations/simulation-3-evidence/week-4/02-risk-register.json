@@ -1,0 +1,58 @@
+[
+  {
+    "id": "R-001",
+    "name": "Flooding escalation",
+    "likelihood": "HIGH",
+    "impact": "HIGH",
+    "mitigation": "Pre-position supplies in elevated districts; daily flood monitoring"
+  },
+  {
+    "id": "R-002",
+    "name": "Supply chain disruption",
+    "likelihood": "MEDIUM",
+    "impact": "HIGH",
+    "mitigation": "Multiple suppliers; 4-week buffer stock; alternative routes"
+  },
+  {
+    "id": "R-003",
+    "name": "Security incidents",
+    "likelihood": "MEDIUM",
+    "impact": "HIGH",
+    "mitigation": "Security risk assessments; coordination with local authorities"
+  },
+  {
+    "id": "R-004",
+    "name": "Donor funding delays",
+    "likelihood": "LOW",
+    "impact": "HIGH",
+    "mitigation": "Bridge funding from internal reserves; weekly cash flow forecast"
+  },
+  {
+    "id": "R-005",
+    "name": "Disease outbreak",
+    "likelihood": "MEDIUM",
+    "impact": "HIGH",
+    "mitigation": "Surveillance system; pre-positioned medical kits"
+  },
+  {
+    "id": "R-006",
+    "name": "Staff turnover",
+    "likelihood": "MEDIUM",
+    "impact": "MEDIUM",
+    "mitigation": "Retention bonuses; cross-training"
+  },
+  {
+    "id": "R-007",
+    "name": "Data quality issues",
+    "likelihood": "MEDIUM",
+    "impact": "MEDIUM",
+    "mitigation": "Daily data quality audits; supervisor spot checks"
+  },
+  {
+    "id": "R-008",
+    "name": "Beneficiary reach shortfall",
+    "likelihood": "MEDIUM",
+    "impact": "HIGH",
+    "mitigation": "Mobile outreach teams; community mobilization"
+  }
+]

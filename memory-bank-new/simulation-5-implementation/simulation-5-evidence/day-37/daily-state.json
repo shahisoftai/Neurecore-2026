@@ -1,0 +1,30 @@
+{
+  "day": 37,
+  "budget": {
+    "total": 850000,
+    "spent": 850000,
+    "committed": 0
+  },
+  "totalDecisions": 44,
+  "totalEvents": 7,
+  "injections": {
+    "events": [
+      {
+        "type": "DONOR_WITHDRAWAL",
+        "severity": "CRITICAL",
+        "financialImpact": -180982,
+        "timelineImpact": 0,
+        "districts": [],
+        "description": "Major donor withdraws funding",
+        "key": "donor_withdrawal",
+        "day": 37,
+        "timestamp": "2026-07-16T18:06:51.462Z",
+        "isCascade": false
+      }
+    ],
+    "hallucinations": [],
+    "hiddenInfos": [],
+    "ethics": [],
+    "cascades": []
+  }
+}

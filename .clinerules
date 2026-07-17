@@ -17,6 +17,17 @@
 - **Check First:** Before starting any task, read `memory-bank/activeContext.md`.
 - **Update Last:** After completing a feature (e.g., a new Auth endpoint), run the "Update Memory Bank" (UMB) command to sync `progress.md` and `activeContext.md`.
 
+## 🔐 Auth & Login
+
+- **Tenant auth path:** Browser → OLS hq → Next.js → Backend (4 hops). Uses same-origin relative `/api/v1`.
+- **Admin auth path:** Browser → OLS brain → Backend (3 hops). Uses absolute `https://brain.neurecore.com/api/v1`.
+- **Auth cookies:** `__Host-nc_at` (HttpOnly 15min), `__Host-nc_rt` (HttpOnly 7d), `__Host-nc_csrf` (JS-readable 7d).
+- **`withCredentials`:** MUST be `false` for both frontends (same-origin cookies work regardless; prevents CORS credential issues).
+- **Port consistency:** `start.sh` port MUST match `ecosystem.config.js` PORT. Run `scripts/deploy.sh` which validates port alignment.
+- **Backend Redis:** Use local Redis at `redis://:password@localhost:6379/0`. Dead Upstash Redis causes `fetch failed` → login 500.
+- **Rebuild cache:** Always `rm -rf .next node_modules/.cache` before `next build` to prevent stale `localhost:3000` hardcodes in JS bundles.
+- **Refresh exempt paths:** Never trigger token refresh on `/auth/login`, `/auth/register`, `/auth/google`, `/auth/refresh`.
+
 ## 🐧 Environment
 
 - **Zorin OS / Linux:** Provide bash commands for terminal tasks.

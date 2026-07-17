@@ -1,0 +1,30 @@
+{
+  "day": 57,
+  "budget": {
+    "total": 850000,
+    "spent": 850000,
+    "committed": 0
+  },
+  "totalDecisions": 75,
+  "totalEvents": 8,
+  "injections": {
+    "events": [
+      {
+        "type": "GOOGLE_OUTAGE",
+        "severity": "MEDIUM",
+        "financialImpact": -4906,
+        "timelineImpact": 1,
+        "districts": [],
+        "description": "Google Workspace unavailable for 24 hours",
+        "key": "google_outage",
+        "day": 57,
+        "timestamp": "2026-07-16T18:06:51.697Z",
+        "isCascade": false
+      }
+    ],
+    "hallucinations": [],
+    "hiddenInfos": [],
+    "ethics": [],
+    "cascades": []
+  }
+}

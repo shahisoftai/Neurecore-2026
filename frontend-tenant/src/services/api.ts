@@ -45,7 +45,7 @@ function readCookie(name: string): string | null {
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
+  withCredentials: false,
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -77,7 +77,7 @@ api.interceptors.response.use(
           `${API_URL}/auth/refresh`,
           {},
           {
-            withCredentials: true,
+  withCredentials: false,
             headers: {
               'Content-Type': 'application/json',
               'X-CSRF-Token': readCookie(CSRF_COOKIE) ?? '',

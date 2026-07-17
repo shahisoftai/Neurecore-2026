@@ -1,0 +1,34 @@
+{
+  "day": 54,
+  "budget": {
+    "total": 850000,
+    "spent": 850000,
+    "committed": 0
+  },
+  "totalDecisions": 70,
+  "totalEvents": 3,
+  "injections": {
+    "events": [
+      {
+        "type": "BUDGET_REDUCTION",
+        "severity": "HIGH",
+        "financialImpact": -119428,
+        "timelineImpact": 0,
+        "districts": [],
+        "description": "Donor reduces funding by 15%",
+        "key": "budget_reduction",
+        "day": 54,
+        "timestamp": "2026-07-16T18:06:51.652Z",
+        "isCascade": false
+      }
+    ],
+    "hallucinations": [],
+    "hiddenInfos": [],
+    "ethics": [],
+    "cascades": [
+      {
+        "events": []
+      }
+    ]
+  }
+}

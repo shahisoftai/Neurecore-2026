@@ -1,10 +1,10 @@
 # Frontend-Admin (NeureCore admin console)
 
-**Last verified:** 2026-07-12 23:00 PKT (Admin auth full-page reload fixed — FIX-045; all admin routes verified accessible)
+**Last verified:** 2026-07-17 (RBAC implemented — SUPER_ADMIN only access; see [user-roles.md](user-roles.md))
 **Live URL:** `https://cc.neurecore.com` (under `/admin/` basePath)
 **Internal port:** 3020
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-admin/`
-**Sibling docs:** [system-state.md](system-state.md) · [operations.md](operations.md) · [backend.md](backend.md) · [contabo-ops.md](contabo-ops.md)
+**Sibling docs:** [system-state.md](system-state.md) · [operations.md](operations.md) · [backend.md](backend.md) · [contabo-ops.md](contabo-ops.md) · [user-roles.md](user-roles.md)
 
 ---
 
@@ -12,7 +12,7 @@
 
 The platform-admin console: login, command palette, brain-map visualization, agents/tenants/audit/billing/connectors CRUD, AI settings, tier management. Built with Next.js 15 App Router + React 19 + Radix UI + Tailwind + Zustand + Recharts + D3/visx. Reverse-proxied by OLS at `cc.neurecore.com` → `127.0.0.1:3020`. Started via PM2 `neurecore-admin`.
 
-Distinct from tenant UI: **no per-tenant org chart, focuses on platform-wide data and configuration.** Admin users are `SUPER_ADMIN` / `PLATFORM_ADMIN` / `SECURITY_OFFICER` / `AUDITOR`.
+Distinct from tenant UI: **no per-tenant org chart, focuses on platform-wide data and configuration.** **Admin access is SUPER_ADMIN only** per [user-roles.md](user-roles.md) RBAC policy.
 
 ---
 

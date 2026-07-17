@@ -55,6 +55,28 @@ sync_app() {
   rsync -avz --delete-after -e ssh "${EXCLUDES[@]}" "$src/" "$dst/"
 }
 
+check_ports() {
+  local app="$1"
+  if [ "$app" = "tenant" ] || [ "$app" = "all" ]; then
+    local tenant_port
+    tenant_port=$(grep -oP '\-\-port \K[0-9]+' "$LOCAL_ROOT/frontend-tenant/start.sh")
+    if [ "$tenant_port" != "3001" ]; then
+      echo "ERROR: tenant start.sh port is $tenant_port, expected 3001"
+      exit 1
+    fi
+    echo "  tenant start.sh port OK: $tenant_port"
+  fi
+  if [ "$app" = "admin" ] || [ "$app" = "all" ]; then
+    local admin_port
+    admin_port=$(grep -oP '\-\-port \K[0-9]+' "$LOCAL_ROOT/frontend-admin/start.sh")
+    if [ "$admin_port" != "3020" ]; then
+      echo "ERROR: admin start.sh port is $admin_port, expected 3020"
+      exit 1
+    fi
+    echo "  admin start.sh port OK: $admin_port"
+  fi
+}
+
 if [ -z "$APP" ]; then
   echo "Usage: $0 {tenant|admin|backend|all}" >&2
   exit 2
@@ -62,6 +84,7 @@ fi
 
 case "$APP" in
   tenant|admin|backend)
+    check_ports "$APP"
     sync_app "$APP"
     ssh contabo "bash /opt/neurecore/rebuild.sh $APP"
     ;;

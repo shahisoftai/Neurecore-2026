@@ -1,0 +1,32 @@
+{
+  "day": 53,
+  "budget": {
+    "total": 850000,
+    "spent": 850000,
+    "committed": 0
+  },
+  "activeEvents": 4,
+  "totalDecisions": 77,
+  "totalEvents": 4,
+  "injections": {
+    "events": [],
+    "hallucinations": [],
+    "hiddenInfos": [
+      {
+        "information": "Security assessment reveals that the main road to District D is unsafe due to armed conflict.",
+        "sourceDepartment": "Security",
+        "category": "SECURITY",
+        "targetDepartments": [
+          "Programme Management",
+          "Nutrition",
+          "MEAL"
+        ],
+        "correctConclusion": "Alternative routes must be established and Security must brief all departments immediately.",
+        "day": 53,
+        "timestamp": "2026-07-16T16:44:46.526Z"
+      }
+    ],
+    "ethics": [],
+    "cascades": []
+  }
+}

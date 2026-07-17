@@ -1,0 +1,33 @@
+{
+  "day": 52,
+  "budget": {
+    "total": 850000,
+    "spent": 850000,
+    "committed": 0
+  },
+  "totalDecisions": 67,
+  "totalEvents": 4,
+  "injections": {
+    "events": [
+      {
+        "type": "DISEASE_OUTBREAK",
+        "severity": "HIGH",
+        "financialImpact": -35278,
+        "timelineImpact": 3,
+        "districts": [
+          "A",
+          "B"
+        ],
+        "description": "Disease outbreak requires emergency response",
+        "key": "disease_outbreak",
+        "day": 52,
+        "timestamp": "2026-07-16T18:06:51.625Z",
+        "isCascade": false
+      }
+    ],
+    "hallucinations": [],
+    "hiddenInfos": [],
+    "ethics": [],
+    "cascades": []
+  }
+}

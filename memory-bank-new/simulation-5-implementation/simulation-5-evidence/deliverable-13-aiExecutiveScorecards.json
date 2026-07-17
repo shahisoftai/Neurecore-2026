@@ -1,0 +1,181 @@
+{
+  "title": "AI Executive Scorecards",
+  "scorecards": [
+    {
+      "role": "Executive Director",
+      "agentId": "95d10035-1baa-44c5-bd26-1d3bf06beccb",
+      "type": "EXECUTIVE",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 20,
+      "avgDecisionQuality": 74,
+      "debateParticipation": 1,
+      "overallScore": 81,
+      "trend": "STABLE"
+    },
+    {
+      "role": "Programme Director",
+      "agentId": "46a34039-96c3-4384-8ddb-ddbad5096be8",
+      "type": "EXECUTIVE",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 60,
+      "avgDecisionQuality": 74,
+      "debateParticipation": 4,
+      "overallScore": 86,
+      "trend": "IMPROVING"
+    },
+    {
+      "role": "Nutrition Coordinator",
+      "agentId": "cc167ff6-b7a4-4a05-88f1-a71dbf7bbe49",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 5,
+      "overallScore": 79,
+      "trend": "IMPROVING"
+    },
+    {
+      "role": "MEAL Manager",
+      "agentId": "d7becb6d-ddba-4292-bca1-a0d7d9082522",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 2,
+      "overallScore": 87,
+      "trend": "IMPROVING"
+    },
+    {
+      "role": "Finance Manager",
+      "agentId": "1a346fb0-1ac2-406e-93ab-48ac7324dd81",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 2,
+      "overallScore": 81,
+      "trend": "STABLE"
+    },
+    {
+      "role": "HR Manager",
+      "agentId": "f5e17d70-e7f5-46aa-acca-2b452ba2938a",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 2,
+      "overallScore": 85,
+      "trend": "IMPROVING"
+    },
+    {
+      "role": "Supply Chain Manager",
+      "agentId": "7b8b7fce-f290-40bb-9b85-03036acb4242",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 2,
+      "overallScore": 77,
+      "trend": "STABLE"
+    },
+    {
+      "role": "Logistics Manager",
+      "agentId": "0939f065-b217-4f8f-8f9e-e81f4b7637bc",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 4,
+      "overallScore": 76,
+      "trend": "IMPROVING"
+    },
+    {
+      "role": "Community Mobilization Lead",
+      "agentId": "0ef3cbf3-fd18-47b3-a4fc-efc3819c2ae4",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 1,
+      "overallScore": 76,
+      "trend": "IMPROVING"
+    },
+    {
+      "role": "Medical Coordinator",
+      "agentId": "29b511f0-0601-44a0-a500-d01f44352be1",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 1,
+      "overallScore": 79,
+      "trend": "IMPROVING"
+    },
+    {
+      "role": "Communications Officer",
+      "agentId": "dce00b45-1922-4824-856d-af42c1d815c4",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 3,
+      "overallScore": 89,
+      "trend": "IMPROVING"
+    },
+    {
+      "role": "Data Analyst",
+      "agentId": "fd541aa9-089a-4f78-85ef-f0bfb62f8190",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 1,
+      "overallScore": 78,
+      "trend": "STABLE"
+    },
+    {
+      "role": "Security Officer",
+      "agentId": "970346d4-0504-4fc1-95c5-c6f2e987f16e",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 1,
+      "overallScore": 85,
+      "trend": "STABLE"
+    },
+    {
+      "role": "Grant Manager",
+      "agentId": "50ef21e6-43a6-42c4-8655-dd85b457c3ac",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 2,
+      "overallScore": 87,
+      "trend": "IMPROVING"
+    },
+    {
+      "role": "Project Manager",
+      "agentId": "a323c10c-4dcb-48ed-ac51-8bbce2f16f44",
+      "type": "FUNCTIONAL",
+      "isDevilsAdvocate": false,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 5,
+      "overallScore": 89,
+      "trend": "STABLE"
+    },
+    {
+      "role": "Devil's Advocate",
+      "agentId": "a323c10c-4dcb-48ed-ac51-8bbce2f16f44",
+      "type": "DEVIL_ADVOCATE",
+      "isDevilsAdvocate": true,
+      "totalDecisions": 0,
+      "avgDecisionQuality": 0,
+      "debateParticipation": 2,
+      "overallScore": 76,
+      "trend": "STABLE"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "status": "error",
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "Invalid transition: WON → PROPOSAL_SENT."
+  },
+  "meta": {
+    "timestamp": "2026-07-16T11:20:02.706Z",
+    "requestId": "da616b31-0227-4129-8860-963c98dd6af5"
+  }
+}

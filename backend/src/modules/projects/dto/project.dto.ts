@@ -11,6 +11,7 @@ import {
   IsNumber,
   IsObject,
   IsNotEmpty,
+  Min,
 } from 'class-validator';
 
 export const PROJECT_STATUSES = [
@@ -59,6 +60,7 @@ export class CreateProjectDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
   budgetAmount?: number;
 
   @IsOptional()
@@ -127,6 +129,7 @@ export class UpdateProjectDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
   budgetAmount?: number;
 
   @IsOptional()

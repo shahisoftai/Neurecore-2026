@@ -1,0 +1,3326 @@
+{
+  "title": "Decision Ledger",
+  "totalDecisions": 80,
+  "decisions": [
+    {
+      "decisionUuid": "a729ec86-4361-44eb-93c1-23380e02fb6a",
+      "timestamp": "2026-07-16T18:06:51.111Z",
+      "simulationDay": 1,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 1 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 53,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 63,
+      "logicScore": 69,
+      "riskAwarenessScore": 89,
+      "costAwarenessScore": 74,
+      "ethicsScore": 83,
+      "stakeholderImpactScore": 77,
+      "speedScore": 79,
+      "communicationScore": 72,
+      "documentationScore": 76
+    },
+    {
+      "decisionUuid": "6fb21545-69de-4ac6-8609-ed18d71dfc8d",
+      "timestamp": "2026-07-16T18:06:51.211Z",
+      "simulationDay": 2,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 2 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 75,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 76,
+      "logicScore": 76,
+      "riskAwarenessScore": 83,
+      "costAwarenessScore": 71,
+      "ethicsScore": 78,
+      "stakeholderImpactScore": 67,
+      "speedScore": 86,
+      "communicationScore": 89,
+      "documentationScore": 78
+    },
+    {
+      "decisionUuid": "136006b9-d153-4e42-8e7f-db31ddd51f69",
+      "timestamp": "2026-07-16T18:06:51.218Z",
+      "simulationDay": 3,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 3 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 59,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 82,
+      "logicScore": 77,
+      "riskAwarenessScore": 74,
+      "costAwarenessScore": 88,
+      "ethicsScore": 87,
+      "stakeholderImpactScore": 83,
+      "speedScore": 85,
+      "communicationScore": 73,
+      "documentationScore": 89
+    },
+    {
+      "decisionUuid": "0a7dff54-bd96-4187-ad42-1473249aaee8",
+      "timestamp": "2026-07-16T18:06:51.223Z",
+      "simulationDay": 4,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 4 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 51,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 62,
+      "logicScore": 77,
+      "riskAwarenessScore": 64,
+      "costAwarenessScore": 72,
+      "ethicsScore": 77,
+      "stakeholderImpactScore": 86,
+      "speedScore": 85,
+      "communicationScore": 76,
+      "documentationScore": 80
+    },
+    {
+      "decisionUuid": "9e3ca58e-6d08-4866-9e6f-fd1bbbd6c471",
+      "timestamp": "2026-07-16T18:06:51.232Z",
+      "simulationDay": 5,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 5 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 64,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 84,
+      "logicScore": 70,
+      "riskAwarenessScore": 82,
+      "costAwarenessScore": 67,
+      "ethicsScore": 75,
+      "stakeholderImpactScore": 68,
+      "speedScore": 89,
+      "communicationScore": 82,
+      "documentationScore": 87
+    },
+    {
+      "decisionUuid": "574a6e99-a562-4279-a7c4-49fd8a97b530",
+      "timestamp": "2026-07-16T18:06:51.244Z",
+      "simulationDay": 6,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 6 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 71,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 78,
+      "logicScore": 86,
+      "riskAwarenessScore": 76,
+      "costAwarenessScore": 66,
+      "ethicsScore": 77,
+      "stakeholderImpactScore": 77,
+      "speedScore": 72,
+      "communicationScore": 86,
+      "documentationScore": 78
+    },
+    {
+      "decisionUuid": "89d336e9-1518-4a31-ba5f-f68c37fbc63d",
+      "timestamp": "2026-07-16T18:06:51.250Z",
+      "simulationDay": 7,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 7 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 53,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 82,
+      "logicScore": 84,
+      "riskAwarenessScore": 69,
+      "costAwarenessScore": 82,
+      "ethicsScore": 89,
+      "stakeholderImpactScore": 83,
+      "speedScore": 82,
+      "communicationScore": 67,
+      "documentationScore": 71
+    },
+    {
+      "decisionUuid": "9ec81926-1d3c-4852-9e22-75b42e8cc05e",
+      "timestamp": "2026-07-16T18:06:51.256Z",
+      "simulationDay": 8,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 8 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 52,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 79,
+      "logicScore": 67,
+      "riskAwarenessScore": 77,
+      "costAwarenessScore": 73,
+      "ethicsScore": 88,
+      "stakeholderImpactScore": 80,
+      "speedScore": 82,
+      "communicationScore": 66,
+      "documentationScore": 89
+    },
+    {
+      "decisionUuid": "a9aa9247-908e-405f-9e70-fd86ee6e7866",
+      "timestamp": "2026-07-16T18:06:51.263Z",
+      "simulationDay": 9,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 9 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 78,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 89,
+      "logicScore": 75,
+      "riskAwarenessScore": 76,
+      "costAwarenessScore": 89,
+      "ethicsScore": 83,
+      "stakeholderImpactScore": 79,
+      "speedScore": 87,
+      "communicationScore": 67,
+      "documentationScore": 74
+    },
+    {
+      "decisionUuid": "ceadcd43-5a77-464b-849c-0fdf104d1250",
+      "timestamp": "2026-07-16T18:06:51.271Z",
+      "simulationDay": 10,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 10 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 78,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 71,
+      "logicScore": 70,
+      "riskAwarenessScore": 65,
+      "costAwarenessScore": 85,
+      "ethicsScore": 89,
+      "stakeholderImpactScore": 75,
+      "speedScore": 75,
+      "communicationScore": 78,
+      "documentationScore": 72
+    },
+    {
+      "decisionUuid": "49748d7d-1e4a-42b3-a224-be19185b3d27",
+      "timestamp": "2026-07-16T18:06:51.282Z",
+      "simulationDay": 11,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 11 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 63,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 70,
+      "logicScore": 71,
+      "riskAwarenessScore": 75,
+      "costAwarenessScore": 70,
+      "ethicsScore": 76,
+      "stakeholderImpactScore": 68,
+      "speedScore": 87,
+      "communicationScore": 78,
+      "documentationScore": 74
+    },
+    {
+      "decisionUuid": "c95f1eab-5c39-4429-b498-1a38c6ea0b4b",
+      "timestamp": "2026-07-16T18:06:51.282Z",
+      "simulationDay": 11,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to LLM_OUTAGE",
+      "situation": "LLM service experiences 48-hour outage",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 73,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 71,
+      "logicScore": 84,
+      "riskAwarenessScore": 83,
+      "costAwarenessScore": 77,
+      "ethicsScore": 81,
+      "stakeholderImpactScore": 86,
+      "speedScore": 83,
+      "communicationScore": 71,
+      "documentationScore": 85
+    },
+    {
+      "decisionUuid": "db8b5c40-4138-44c5-ac87-5b00803e2639",
+      "timestamp": "2026-07-16T18:06:51.287Z",
+      "simulationDay": 12,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 12 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 77,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 66,
+      "logicScore": 82,
+      "riskAwarenessScore": 80,
+      "costAwarenessScore": 87,
+      "ethicsScore": 88,
+      "stakeholderImpactScore": 89,
+      "speedScore": 75,
+      "communicationScore": 81,
+      "documentationScore": 80
+    },
+    {
+      "decisionUuid": "6667dd11-d9b4-4680-ac05-6c01703ccd41",
+      "timestamp": "2026-07-16T18:06:51.292Z",
+      "simulationDay": 13,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 13 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 68,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 67,
+      "logicScore": 82,
+      "riskAwarenessScore": 75,
+      "costAwarenessScore": 83,
+      "ethicsScore": 85,
+      "stakeholderImpactScore": 82,
+      "speedScore": 78,
+      "communicationScore": 89,
+      "documentationScore": 73
+    },
+    {
+      "decisionUuid": "4d024126-de64-4a8e-a4e9-2c9c093a6ef6",
+      "timestamp": "2026-07-16T18:06:51.292Z",
+      "simulationDay": 13,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to CYBER_ATTACK",
+      "situation": "Ransomware attack encrypts program data",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 63,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 69,
+      "logicScore": 69,
+      "riskAwarenessScore": 87,
+      "costAwarenessScore": 69,
+      "ethicsScore": 79,
+      "stakeholderImpactScore": 75,
+      "speedScore": 74,
+      "communicationScore": 84,
+      "documentationScore": 79
+    },
+    {
+      "decisionUuid": "7c06cc6a-b741-4964-9889-456e09d96970",
+      "timestamp": "2026-07-16T18:06:51.299Z",
+      "simulationDay": 14,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 14 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 79,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 82,
+      "logicScore": 69,
+      "riskAwarenessScore": 66,
+      "costAwarenessScore": 71,
+      "ethicsScore": 71,
+      "stakeholderImpactScore": 87,
+      "speedScore": 84,
+      "communicationScore": 83,
+      "documentationScore": 74
+    },
+    {
+      "decisionUuid": "2df6e6bb-bfb4-41ef-9036-b4ce15ab3d72",
+      "timestamp": "2026-07-16T18:06:51.307Z",
+      "simulationDay": 15,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 15 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 75,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 67,
+      "logicScore": 87,
+      "riskAwarenessScore": 88,
+      "costAwarenessScore": 88,
+      "ethicsScore": 78,
+      "stakeholderImpactScore": 78,
+      "speedScore": 83,
+      "communicationScore": 80,
+      "documentationScore": 82
+    },
+    {
+      "decisionUuid": "d9271373-4d0d-47f7-b631-85bb48a27910",
+      "timestamp": "2026-07-16T18:06:51.312Z",
+      "simulationDay": 16,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 16 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 75,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 72,
+      "logicScore": 72,
+      "riskAwarenessScore": 60,
+      "costAwarenessScore": 82,
+      "ethicsScore": 71,
+      "stakeholderImpactScore": 72,
+      "speedScore": 84,
+      "communicationScore": 89,
+      "documentationScore": 77
+    },
+    {
+      "decisionUuid": "3362d135-e13b-4d2f-9159-c3b9872e3f4a",
+      "timestamp": "2026-07-16T18:06:51.316Z",
+      "simulationDay": 17,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 17 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 52,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 70,
+      "logicScore": 89,
+      "riskAwarenessScore": 63,
+      "costAwarenessScore": 67,
+      "ethicsScore": 81,
+      "stakeholderImpactScore": 84,
+      "speedScore": 77,
+      "communicationScore": 88,
+      "documentationScore": 75
+    },
+    {
+      "decisionUuid": "f5b1b6ae-c2b9-4fab-a7f9-1a6ade6c80fe",
+      "timestamp": "2026-07-16T18:06:51.316Z",
+      "simulationDay": 17,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to SECURITY_BREACH",
+      "situation": "Security incident compromises beneficiary data",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 59,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 60,
+      "logicScore": 70,
+      "riskAwarenessScore": 69,
+      "costAwarenessScore": 69,
+      "ethicsScore": 72,
+      "stakeholderImpactScore": 70,
+      "speedScore": 86,
+      "communicationScore": 68,
+      "documentationScore": 86
+    },
+    {
+      "decisionUuid": "107ebf55-8123-4bdc-b3b2-12245095564c",
+      "timestamp": "2026-07-16T18:06:51.321Z",
+      "simulationDay": 18,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 18 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 61,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 84,
+      "logicScore": 89,
+      "riskAwarenessScore": 74,
+      "costAwarenessScore": 77,
+      "ethicsScore": 76,
+      "stakeholderImpactScore": 83,
+      "speedScore": 88,
+      "communicationScore": 74,
+      "documentationScore": 80
+    },
+    {
+      "decisionUuid": "970c993d-6200-4a9a-85bf-506b57316ed6",
+      "timestamp": "2026-07-16T18:06:51.328Z",
+      "simulationDay": 19,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 19 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 59,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 69,
+      "logicScore": 83,
+      "riskAwarenessScore": 79,
+      "costAwarenessScore": 73,
+      "ethicsScore": 76,
+      "stakeholderImpactScore": 87,
+      "speedScore": 78,
+      "communicationScore": 81,
+      "documentationScore": 87
+    },
+    {
+      "decisionUuid": "a82d100e-c660-4e1c-aeac-51cd1573f648",
+      "timestamp": "2026-07-16T18:06:51.333Z",
+      "simulationDay": 20,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 20 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 62,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 78,
+      "logicScore": 70,
+      "riskAwarenessScore": 67,
+      "costAwarenessScore": 79,
+      "ethicsScore": 77,
+      "stakeholderImpactScore": 70,
+      "speedScore": 79,
+      "communicationScore": 69,
+      "documentationScore": 87
+    },
+    {
+      "decisionUuid": "411b3bc7-adc7-48fd-aaf0-b77d4eb742c0",
+      "timestamp": "2026-07-16T18:06:51.341Z",
+      "simulationDay": 21,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 21 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 60,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 65,
+      "logicScore": 74,
+      "riskAwarenessScore": 79,
+      "costAwarenessScore": 73,
+      "ethicsScore": 78,
+      "stakeholderImpactScore": 77,
+      "speedScore": 86,
+      "communicationScore": 72,
+      "documentationScore": 85
+    },
+    {
+      "decisionUuid": "89781efd-b202-44f4-b6a0-c0c866c1b3d6",
+      "timestamp": "2026-07-16T18:06:51.348Z",
+      "simulationDay": 22,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 22 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 58,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 60,
+      "logicScore": 86,
+      "riskAwarenessScore": 83,
+      "costAwarenessScore": 75,
+      "ethicsScore": 74,
+      "stakeholderImpactScore": 72,
+      "speedScore": 78,
+      "communicationScore": 82,
+      "documentationScore": 83
+    },
+    {
+      "decisionUuid": "428b1e91-f42b-47fa-800b-f5478586f67d",
+      "timestamp": "2026-07-16T18:06:51.356Z",
+      "simulationDay": 23,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 23 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 74,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 70,
+      "logicScore": 75,
+      "riskAwarenessScore": 60,
+      "costAwarenessScore": 87,
+      "ethicsScore": 75,
+      "stakeholderImpactScore": 78,
+      "speedScore": 84,
+      "communicationScore": 89,
+      "documentationScore": 84
+    },
+    {
+      "decisionUuid": "c45dc6a3-e53a-4ba5-95a5-d2c5a5e41de9",
+      "timestamp": "2026-07-16T18:06:51.361Z",
+      "simulationDay": 24,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 24 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 57,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 88,
+      "logicScore": 68,
+      "riskAwarenessScore": 68,
+      "costAwarenessScore": 81,
+      "ethicsScore": 82,
+      "stakeholderImpactScore": 76,
+      "speedScore": 80,
+      "communicationScore": 83,
+      "documentationScore": 89
+    },
+    {
+      "decisionUuid": "77584a56-2676-45d2-9400-9376a2ddd6f6",
+      "timestamp": "2026-07-16T18:06:51.365Z",
+      "simulationDay": 25,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 25 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 75,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 73,
+      "logicScore": 80,
+      "riskAwarenessScore": 81,
+      "costAwarenessScore": 72,
+      "ethicsScore": 82,
+      "stakeholderImpactScore": 79,
+      "speedScore": 83,
+      "communicationScore": 80,
+      "documentationScore": 86
+    },
+    {
+      "decisionUuid": "550702e2-14e7-4f39-9c96-863bcf69037c",
+      "timestamp": "2026-07-16T18:06:51.371Z",
+      "simulationDay": 26,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 26 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 69,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 78,
+      "logicScore": 70,
+      "riskAwarenessScore": 63,
+      "costAwarenessScore": 89,
+      "ethicsScore": 88,
+      "stakeholderImpactScore": 71,
+      "speedScore": 81,
+      "communicationScore": 86,
+      "documentationScore": 75
+    },
+    {
+      "decisionUuid": "b8510160-33eb-48df-8b44-0c1d8245acd6",
+      "timestamp": "2026-07-16T18:06:51.378Z",
+      "simulationDay": 27,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 27 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 53,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 60,
+      "logicScore": 79,
+      "riskAwarenessScore": 89,
+      "costAwarenessScore": 65,
+      "ethicsScore": 79,
+      "stakeholderImpactScore": 70,
+      "speedScore": 84,
+      "communicationScore": 86,
+      "documentationScore": 78
+    },
+    {
+      "decisionUuid": "b19b451d-2c6d-4eee-9db5-f87e1b54ef94",
+      "timestamp": "2026-07-16T18:06:51.378Z",
+      "simulationDay": 27,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to FAKE_MEDIA_REPORT",
+      "situation": "False media report damages program reputation",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 59,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 69,
+      "logicScore": 89,
+      "riskAwarenessScore": 67,
+      "costAwarenessScore": 65,
+      "ethicsScore": 72,
+      "stakeholderImpactScore": 88,
+      "speedScore": 87,
+      "communicationScore": 79,
+      "documentationScore": 76
+    },
+    {
+      "decisionUuid": "a4b55b5e-d668-4e8b-a2e4-c8a1da257196",
+      "timestamp": "2026-07-16T18:06:51.385Z",
+      "simulationDay": 28,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 28 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 78,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 64,
+      "logicScore": 83,
+      "riskAwarenessScore": 86,
+      "costAwarenessScore": 72,
+      "ethicsScore": 70,
+      "stakeholderImpactScore": 73,
+      "speedScore": 87,
+      "communicationScore": 74,
+      "documentationScore": 75
+    },
+    {
+      "decisionUuid": "7f692fa9-b033-4e1c-ba07-8eb58290b8c6",
+      "timestamp": "2026-07-16T18:06:51.393Z",
+      "simulationDay": 29,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 29 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 79,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 88,
+      "logicScore": 74,
+      "riskAwarenessScore": 83,
+      "costAwarenessScore": 82,
+      "ethicsScore": 77,
+      "stakeholderImpactScore": 76,
+      "speedScore": 73,
+      "communicationScore": 87,
+      "documentationScore": 71
+    },
+    {
+      "decisionUuid": "4769a9ba-b640-48f3-9fbf-7c9a3cc10461",
+      "timestamp": "2026-07-16T18:06:51.393Z",
+      "simulationDay": 29,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to DONOR_WITHDRAWAL",
+      "situation": "Major donor withdraws funding",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 75,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 63,
+      "logicScore": 78,
+      "riskAwarenessScore": 70,
+      "costAwarenessScore": 80,
+      "ethicsScore": 81,
+      "stakeholderImpactScore": 89,
+      "speedScore": 81,
+      "communicationScore": 70,
+      "documentationScore": 71
+    },
+    {
+      "decisionUuid": "cde589e7-0764-46fb-92f2-1dfbe798fba2",
+      "timestamp": "2026-07-16T18:06:51.403Z",
+      "simulationDay": 30,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 30 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 62,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 80,
+      "logicScore": 69,
+      "riskAwarenessScore": 65,
+      "costAwarenessScore": 69,
+      "ethicsScore": 75,
+      "stakeholderImpactScore": 77,
+      "speedScore": 71,
+      "communicationScore": 69,
+      "documentationScore": 74
+    },
+    {
+      "decisionUuid": "f69919bb-7e19-42c4-b3b1-8a64d1191842",
+      "timestamp": "2026-07-16T18:06:51.412Z",
+      "simulationDay": 31,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 31 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 50,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 82,
+      "logicScore": 66,
+      "riskAwarenessScore": 83,
+      "costAwarenessScore": 83,
+      "ethicsScore": 79,
+      "stakeholderImpactScore": 67,
+      "speedScore": 79,
+      "communicationScore": 72,
+      "documentationScore": 84
+    },
+    {
+      "decisionUuid": "261e3672-fa52-42c8-9975-726c7f1cde62",
+      "timestamp": "2026-07-16T18:06:51.418Z",
+      "simulationDay": 32,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 32 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 67,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 82,
+      "logicScore": 71,
+      "riskAwarenessScore": 68,
+      "costAwarenessScore": 89,
+      "ethicsScore": 84,
+      "stakeholderImpactScore": 88,
+      "speedScore": 85,
+      "communicationScore": 69,
+      "documentationScore": 87
+    },
+    {
+      "decisionUuid": "3241eda7-1d1f-4828-a56d-a532fc918871",
+      "timestamp": "2026-07-16T18:06:51.419Z",
+      "simulationDay": 32,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to CYBER_ATTACK",
+      "situation": "Ransomware attack encrypts program data",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 59,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 75,
+      "logicScore": 76,
+      "riskAwarenessScore": 68,
+      "costAwarenessScore": 87,
+      "ethicsScore": 70,
+      "stakeholderImpactScore": 79,
+      "speedScore": 77,
+      "communicationScore": 68,
+      "documentationScore": 85
+    },
+    {
+      "decisionUuid": "3bdf48d6-ff3a-4f95-a340-9935e78ea2ed",
+      "timestamp": "2026-07-16T18:06:51.428Z",
+      "simulationDay": 33,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 33 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 59,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 82,
+      "logicScore": 84,
+      "riskAwarenessScore": 61,
+      "costAwarenessScore": 85,
+      "ethicsScore": 70,
+      "stakeholderImpactScore": 82,
+      "speedScore": 77,
+      "communicationScore": 79,
+      "documentationScore": 85
+    },
+    {
+      "decisionUuid": "d125bfad-8e7b-4986-a074-715dfb73f5c0",
+      "timestamp": "2026-07-16T18:06:51.436Z",
+      "simulationDay": 34,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 34 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 64,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 65,
+      "logicScore": 69,
+      "riskAwarenessScore": 72,
+      "costAwarenessScore": 73,
+      "ethicsScore": 70,
+      "stakeholderImpactScore": 84,
+      "speedScore": 83,
+      "communicationScore": 78,
+      "documentationScore": 78
+    },
+    {
+      "decisionUuid": "3cd12535-62a4-460b-86a6-ebcd3b78310e",
+      "timestamp": "2026-07-16T18:06:51.445Z",
+      "simulationDay": 35,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 35 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 64,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 62,
+      "logicScore": 89,
+      "riskAwarenessScore": 62,
+      "costAwarenessScore": 69,
+      "ethicsScore": 74,
+      "stakeholderImpactScore": 79,
+      "speedScore": 71,
+      "communicationScore": 85,
+      "documentationScore": 83
+    },
+    {
+      "decisionUuid": "448c16f9-cd83-43e3-8bfa-8796ce5955e8",
+      "timestamp": "2026-07-16T18:06:51.451Z",
+      "simulationDay": 36,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 36 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 75,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 70,
+      "logicScore": 68,
+      "riskAwarenessScore": 61,
+      "costAwarenessScore": 79,
+      "ethicsScore": 78,
+      "stakeholderImpactScore": 89,
+      "speedScore": 83,
+      "communicationScore": 88,
+      "documentationScore": 82
+    },
+    {
+      "decisionUuid": "9f5212e2-6776-41cc-bed7-201f8d048c8a",
+      "timestamp": "2026-07-16T18:06:51.462Z",
+      "simulationDay": 37,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 37 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 77,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 86,
+      "logicScore": 66,
+      "riskAwarenessScore": 71,
+      "costAwarenessScore": 88,
+      "ethicsScore": 86,
+      "stakeholderImpactScore": 84,
+      "speedScore": 75,
+      "communicationScore": 84,
+      "documentationScore": 76
+    },
+    {
+      "decisionUuid": "0d0ae3e3-eca1-4ff0-8973-424f643f4c9c",
+      "timestamp": "2026-07-16T18:06:51.462Z",
+      "simulationDay": 37,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to DONOR_WITHDRAWAL",
+      "situation": "Major donor withdraws funding",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 71,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 70,
+      "logicScore": 75,
+      "riskAwarenessScore": 75,
+      "costAwarenessScore": 86,
+      "ethicsScore": 77,
+      "stakeholderImpactScore": 82,
+      "speedScore": 85,
+      "communicationScore": 79,
+      "documentationScore": 82
+    },
+    {
+      "decisionUuid": "f95c0d52-4238-4bac-90c7-0bdce260e3f1",
+      "timestamp": "2026-07-16T18:06:51.469Z",
+      "simulationDay": 38,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 38 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 79,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 86,
+      "logicScore": 87,
+      "riskAwarenessScore": 83,
+      "costAwarenessScore": 84,
+      "ethicsScore": 86,
+      "stakeholderImpactScore": 88,
+      "speedScore": 78,
+      "communicationScore": 79,
+      "documentationScore": 85
+    },
+    {
+      "decisionUuid": "696514e6-42be-4f40-b373-ae6f2f196221",
+      "timestamp": "2026-07-16T18:06:51.478Z",
+      "simulationDay": 39,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 39 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 77,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 83,
+      "logicScore": 68,
+      "riskAwarenessScore": 62,
+      "costAwarenessScore": 87,
+      "ethicsScore": 84,
+      "stakeholderImpactScore": 66,
+      "speedScore": 89,
+      "communicationScore": 72,
+      "documentationScore": 81
+    },
+    {
+      "decisionUuid": "dcdd35e2-6e78-42e1-900f-52e70fbdf823",
+      "timestamp": "2026-07-16T18:06:51.478Z",
+      "simulationDay": 39,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to FUEL_SHORTAGE",
+      "situation": "Fuel shortage disrupts transportation",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 70,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 84,
+      "logicScore": 65,
+      "riskAwarenessScore": 61,
+      "costAwarenessScore": 67,
+      "ethicsScore": 78,
+      "stakeholderImpactScore": 75,
+      "speedScore": 70,
+      "communicationScore": 77,
+      "documentationScore": 76
+    },
+    {
+      "decisionUuid": "6dca83bd-95b5-4d16-b630-784bbf4880b7",
+      "timestamp": "2026-07-16T18:06:51.486Z",
+      "simulationDay": 40,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 40 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 64,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 63,
+      "logicScore": 71,
+      "riskAwarenessScore": 84,
+      "costAwarenessScore": 87,
+      "ethicsScore": 85,
+      "stakeholderImpactScore": 77,
+      "speedScore": 84,
+      "communicationScore": 79,
+      "documentationScore": 76
+    },
+    {
+      "decisionUuid": "c3899ce2-d387-477e-90f0-4c0e4ff76ed2",
+      "timestamp": "2026-07-16T18:06:51.495Z",
+      "simulationDay": 41,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 41 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 77,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 73,
+      "logicScore": 70,
+      "riskAwarenessScore": 78,
+      "costAwarenessScore": 80,
+      "ethicsScore": 79,
+      "stakeholderImpactScore": 76,
+      "speedScore": 74,
+      "communicationScore": 82,
+      "documentationScore": 83
+    },
+    {
+      "decisionUuid": "52bdf198-617b-485a-b535-2e8f931b9318",
+      "timestamp": "2026-07-16T18:06:51.504Z",
+      "simulationDay": 42,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 42 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 77,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 76,
+      "logicScore": 80,
+      "riskAwarenessScore": 74,
+      "costAwarenessScore": 66,
+      "ethicsScore": 72,
+      "stakeholderImpactScore": 75,
+      "speedScore": 89,
+      "communicationScore": 83,
+      "documentationScore": 71
+    },
+    {
+      "decisionUuid": "e8386ac1-2fee-45ec-accd-092302220005",
+      "timestamp": "2026-07-16T18:06:51.514Z",
+      "simulationDay": 43,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 43 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 74,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 62,
+      "logicScore": 75,
+      "riskAwarenessScore": 64,
+      "costAwarenessScore": 82,
+      "ethicsScore": 76,
+      "stakeholderImpactScore": 77,
+      "speedScore": 78,
+      "communicationScore": 74,
+      "documentationScore": 86
+    },
+    {
+      "decisionUuid": "a1ac46e1-7071-4e43-80f0-8d6e4234bf68",
+      "timestamp": "2026-07-16T18:06:51.514Z",
+      "simulationDay": 43,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to REDIS_OUTAGE",
+      "situation": "Redis cache server fails",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 66,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 82,
+      "logicScore": 80,
+      "riskAwarenessScore": 74,
+      "costAwarenessScore": 82,
+      "ethicsScore": 86,
+      "stakeholderImpactScore": 86,
+      "speedScore": 73,
+      "communicationScore": 71,
+      "documentationScore": 87
+    },
+    {
+      "decisionUuid": "7fa64f43-0208-40be-8308-0d3fa229d63f",
+      "timestamp": "2026-07-16T18:06:51.522Z",
+      "simulationDay": 44,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 44 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 56,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 82,
+      "logicScore": 70,
+      "riskAwarenessScore": 66,
+      "costAwarenessScore": 71,
+      "ethicsScore": 74,
+      "stakeholderImpactScore": 83,
+      "speedScore": 73,
+      "communicationScore": 85,
+      "documentationScore": 70
+    },
+    {
+      "decisionUuid": "44feea1a-9f87-4111-85a6-77b20fd565ae",
+      "timestamp": "2026-07-16T18:06:51.535Z",
+      "simulationDay": 45,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 45 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 61,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 69,
+      "logicScore": 76,
+      "riskAwarenessScore": 77,
+      "costAwarenessScore": 69,
+      "ethicsScore": 79,
+      "stakeholderImpactScore": 74,
+      "speedScore": 89,
+      "communicationScore": 78,
+      "documentationScore": 75
+    },
+    {
+      "decisionUuid": "70ad2946-e4c6-44c9-a3ae-cda72a2d25e7",
+      "timestamp": "2026-07-16T18:06:51.535Z",
+      "simulationDay": 45,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to WAREHOUSE_FIRE",
+      "situation": "Fire at central warehouse destroys supplies",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 72,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 61,
+      "logicScore": 76,
+      "riskAwarenessScore": 84,
+      "costAwarenessScore": 65,
+      "ethicsScore": 76,
+      "stakeholderImpactScore": 79,
+      "speedScore": 86,
+      "communicationScore": 72,
+      "documentationScore": 85
+    },
+    {
+      "decisionUuid": "77577b4e-ae80-4e06-a970-e73e05bd69b4",
+      "timestamp": "2026-07-16T18:06:51.546Z",
+      "simulationDay": 46,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 46 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 62,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 62,
+      "logicScore": 65,
+      "riskAwarenessScore": 78,
+      "costAwarenessScore": 68,
+      "ethicsScore": 88,
+      "stakeholderImpactScore": 83,
+      "speedScore": 83,
+      "communicationScore": 82,
+      "documentationScore": 71
+    },
+    {
+      "decisionUuid": "30044511-b9e5-49c1-99ec-1213ed4bdf64",
+      "timestamp": "2026-07-16T18:06:51.546Z",
+      "simulationDay": 46,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to ROAD_DESTRUCTION",
+      "situation": "Road collapse cuts off hard-to-reach areas",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 79,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 85,
+      "logicScore": 77,
+      "riskAwarenessScore": 78,
+      "costAwarenessScore": 75,
+      "ethicsScore": 84,
+      "stakeholderImpactScore": 83,
+      "speedScore": 79,
+      "communicationScore": 81,
+      "documentationScore": 88
+    },
+    {
+      "decisionUuid": "82b863b3-e325-4873-930b-17500afdf12a",
+      "timestamp": "2026-07-16T18:06:51.556Z",
+      "simulationDay": 47,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 47 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 54,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 76,
+      "logicScore": 73,
+      "riskAwarenessScore": 70,
+      "costAwarenessScore": 78,
+      "ethicsScore": 77,
+      "stakeholderImpactScore": 69,
+      "speedScore": 70,
+      "communicationScore": 70,
+      "documentationScore": 88
+    },
+    {
+      "decisionUuid": "5c373bd4-9a95-4044-92e6-ab5bc729421e",
+      "timestamp": "2026-07-16T18:06:51.556Z",
+      "simulationDay": 47,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to COURT_INJUNCTION",
+      "situation": "Court injunction halts work in District C",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 69,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 65,
+      "logicScore": 74,
+      "riskAwarenessScore": 73,
+      "costAwarenessScore": 89,
+      "ethicsScore": 80,
+      "stakeholderImpactScore": 85,
+      "speedScore": 75,
+      "communicationScore": 68,
+      "documentationScore": 72
+    },
+    {
+      "decisionUuid": "4a8c5f22-5df6-40bb-9cce-f8c14bfbb136",
+      "timestamp": "2026-07-16T18:06:51.568Z",
+      "simulationDay": 48,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 48 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 78,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 65,
+      "logicScore": 83,
+      "riskAwarenessScore": 67,
+      "costAwarenessScore": 80,
+      "ethicsScore": 70,
+      "stakeholderImpactScore": 70,
+      "speedScore": 77,
+      "communicationScore": 88,
+      "documentationScore": 74
+    },
+    {
+      "decisionUuid": "6dcd8a33-152f-4fb1-8741-024cd439a82f",
+      "timestamp": "2026-07-16T18:06:51.579Z",
+      "simulationDay": 49,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 49 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 76,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 75,
+      "logicScore": 78,
+      "riskAwarenessScore": 89,
+      "costAwarenessScore": 74,
+      "ethicsScore": 70,
+      "stakeholderImpactScore": 65,
+      "speedScore": 73,
+      "communicationScore": 81,
+      "documentationScore": 83
+    },
+    {
+      "decisionUuid": "bad3716f-b310-4b7c-a354-9b973cd55dce",
+      "timestamp": "2026-07-16T18:06:51.579Z",
+      "simulationDay": 49,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to POLITICAL_RESTRICTIONS",
+      "situation": "Political instability restricts access",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 71,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 69,
+      "logicScore": 67,
+      "riskAwarenessScore": 64,
+      "costAwarenessScore": 68,
+      "ethicsScore": 73,
+      "stakeholderImpactScore": 83,
+      "speedScore": 70,
+      "communicationScore": 88,
+      "documentationScore": 89
+    },
+    {
+      "decisionUuid": "cad27cf2-823c-4955-92d0-13f2ba15e2cc",
+      "timestamp": "2026-07-16T18:06:51.590Z",
+      "simulationDay": 50,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 50 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 59,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 86,
+      "logicScore": 66,
+      "riskAwarenessScore": 67,
+      "costAwarenessScore": 72,
+      "ethicsScore": 78,
+      "stakeholderImpactScore": 79,
+      "speedScore": 73,
+      "communicationScore": 66,
+      "documentationScore": 85
+    },
+    {
+      "decisionUuid": "0dedb08f-276d-4372-8e6f-5d3e56ddb2ff",
+      "timestamp": "2026-07-16T18:06:51.590Z",
+      "simulationDay": 50,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to WAREHOUSE_FIRE",
+      "situation": "Fire at central warehouse destroys supplies",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 55,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 81,
+      "logicScore": 83,
+      "riskAwarenessScore": 81,
+      "costAwarenessScore": 87,
+      "ethicsScore": 70,
+      "stakeholderImpactScore": 73,
+      "speedScore": 75,
+      "communicationScore": 67,
+      "documentationScore": 71
+    },
+    {
+      "decisionUuid": "05a1bf95-c408-480e-a799-e0704ee35def",
+      "timestamp": "2026-07-16T18:06:51.611Z",
+      "simulationDay": 51,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 51 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 68,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 69,
+      "logicScore": 75,
+      "riskAwarenessScore": 67,
+      "costAwarenessScore": 65,
+      "ethicsScore": 88,
+      "stakeholderImpactScore": 66,
+      "speedScore": 70,
+      "communicationScore": 88,
+      "documentationScore": 86
+    },
+    {
+      "decisionUuid": "b6f6dc67-cd6e-4e4e-8490-4e3afb329e8b",
+      "timestamp": "2026-07-16T18:06:51.625Z",
+      "simulationDay": 52,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 52 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 57,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 69,
+      "logicScore": 78,
+      "riskAwarenessScore": 66,
+      "costAwarenessScore": 70,
+      "ethicsScore": 79,
+      "stakeholderImpactScore": 76,
+      "speedScore": 88,
+      "communicationScore": 82,
+      "documentationScore": 72
+    },
+    {
+      "decisionUuid": "ab9c1e11-6985-47e5-859f-bc87f4c6542e",
+      "timestamp": "2026-07-16T18:06:51.625Z",
+      "simulationDay": 52,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to DISEASE_OUTBREAK",
+      "situation": "Disease outbreak requires emergency response",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 77,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 81,
+      "logicScore": 84,
+      "riskAwarenessScore": 68,
+      "costAwarenessScore": 89,
+      "ethicsScore": 74,
+      "stakeholderImpactScore": 77,
+      "speedScore": 84,
+      "communicationScore": 83,
+      "documentationScore": 79
+    },
+    {
+      "decisionUuid": "e3e8270b-b508-4715-8c40-b27f7b25875a",
+      "timestamp": "2026-07-16T18:06:51.642Z",
+      "simulationDay": 53,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 53 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 54,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 69,
+      "logicScore": 78,
+      "riskAwarenessScore": 74,
+      "costAwarenessScore": 69,
+      "ethicsScore": 71,
+      "stakeholderImpactScore": 89,
+      "speedScore": 71,
+      "communicationScore": 77,
+      "documentationScore": 76
+    },
+    {
+      "decisionUuid": "530e5792-7422-4457-9f14-4c5c5ffe954d",
+      "timestamp": "2026-07-16T18:06:51.652Z",
+      "simulationDay": 54,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 54 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 50,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 76,
+      "logicScore": 86,
+      "riskAwarenessScore": 74,
+      "costAwarenessScore": 85,
+      "ethicsScore": 89,
+      "stakeholderImpactScore": 83,
+      "speedScore": 72,
+      "communicationScore": 66,
+      "documentationScore": 76
+    },
+    {
+      "decisionUuid": "8964db37-60c5-43e7-a8c0-a55a87530cd9",
+      "timestamp": "2026-07-16T18:06:51.652Z",
+      "simulationDay": 54,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to BUDGET_REDUCTION",
+      "situation": "Donor reduces funding by 15%",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 63,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 87,
+      "logicScore": 79,
+      "riskAwarenessScore": 63,
+      "costAwarenessScore": 82,
+      "ethicsScore": 86,
+      "stakeholderImpactScore": 83,
+      "speedScore": 76,
+      "communicationScore": 87,
+      "documentationScore": 86
+    },
+    {
+      "decisionUuid": "9b1cad89-7158-4bc4-9384-9bdf9e301a3f",
+      "timestamp": "2026-07-16T18:06:51.665Z",
+      "simulationDay": 55,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 55 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 64,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 78,
+      "logicScore": 78,
+      "riskAwarenessScore": 61,
+      "costAwarenessScore": 78,
+      "ethicsScore": 74,
+      "stakeholderImpactScore": 79,
+      "speedScore": 75,
+      "communicationScore": 86,
+      "documentationScore": 78
+    },
+    {
+      "decisionUuid": "a2969288-c035-4661-b49b-b82b50297b8f",
+      "timestamp": "2026-07-16T18:06:51.665Z",
+      "simulationDay": 55,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to DONOR_WITHDRAWAL",
+      "situation": "Major donor withdraws funding",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 57,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 86,
+      "logicScore": 76,
+      "riskAwarenessScore": 64,
+      "costAwarenessScore": 88,
+      "ethicsScore": 88,
+      "stakeholderImpactScore": 71,
+      "speedScore": 70,
+      "communicationScore": 77,
+      "documentationScore": 89
+    },
+    {
+      "decisionUuid": "bc73ef10-1ad9-4683-a7bf-81d0c62df136",
+      "timestamp": "2026-07-16T18:06:51.679Z",
+      "simulationDay": 56,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 56 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 77,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 77,
+      "logicScore": 65,
+      "riskAwarenessScore": 86,
+      "costAwarenessScore": 65,
+      "ethicsScore": 75,
+      "stakeholderImpactScore": 68,
+      "speedScore": 74,
+      "communicationScore": 87,
+      "documentationScore": 74
+    },
+    {
+      "decisionUuid": "8da9b298-2990-4dda-9dfd-ed28855ddbb4",
+      "timestamp": "2026-07-16T18:06:51.699Z",
+      "simulationDay": 57,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 57 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 57,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 76,
+      "logicScore": 67,
+      "riskAwarenessScore": 61,
+      "costAwarenessScore": 75,
+      "ethicsScore": 79,
+      "stakeholderImpactScore": 87,
+      "speedScore": 78,
+      "communicationScore": 76,
+      "documentationScore": 77
+    },
+    {
+      "decisionUuid": "258ad455-6db4-4656-90a2-8be6f9dc29ce",
+      "timestamp": "2026-07-16T18:06:51.700Z",
+      "simulationDay": 57,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to GOOGLE_OUTAGE",
+      "situation": "Google Workspace unavailable for 24 hours",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 57,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 81,
+      "logicScore": 72,
+      "riskAwarenessScore": 68,
+      "costAwarenessScore": 87,
+      "ethicsScore": 73,
+      "stakeholderImpactScore": 80,
+      "speedScore": 89,
+      "communicationScore": 76,
+      "documentationScore": 81
+    },
+    {
+      "decisionUuid": "705cca80-0f09-4724-a16c-d78b04b0a10d",
+      "timestamp": "2026-07-16T18:06:51.716Z",
+      "simulationDay": 58,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 58 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 53,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 66,
+      "logicScore": 82,
+      "riskAwarenessScore": 66,
+      "costAwarenessScore": 69,
+      "ethicsScore": 84,
+      "stakeholderImpactScore": 89,
+      "speedScore": 80,
+      "communicationScore": 82,
+      "documentationScore": 75
+    },
+    {
+      "decisionUuid": "0bddeb83-34d2-45b4-8b09-5147b20022a8",
+      "timestamp": "2026-07-16T18:06:51.716Z",
+      "simulationDay": 58,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to BREVO_OUTAGE",
+      "situation": "Email service Brevo goes down",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 76,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 81,
+      "logicScore": 89,
+      "riskAwarenessScore": 80,
+      "costAwarenessScore": 89,
+      "ethicsScore": 89,
+      "stakeholderImpactScore": 70,
+      "speedScore": 81,
+      "communicationScore": 83,
+      "documentationScore": 87
+    },
+    {
+      "decisionUuid": "8f0ff1a3-2bf3-4a1f-b2b7-00f875c4d977",
+      "timestamp": "2026-07-16T18:06:51.732Z",
+      "simulationDay": 59,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 59 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 67,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 67,
+      "logicScore": 65,
+      "riskAwarenessScore": 79,
+      "costAwarenessScore": 83,
+      "ethicsScore": 76,
+      "stakeholderImpactScore": 78,
+      "speedScore": 73,
+      "communicationScore": 78,
+      "documentationScore": 88
+    },
+    {
+      "decisionUuid": "0be59fab-7739-46e6-8e8e-43253c1ececf",
+      "timestamp": "2026-07-16T18:06:51.747Z",
+      "simulationDay": 60,
+      "decisionPhase": "DECIDED",
+      "trigger": "Daily programme status review",
+      "situation": "Day 60 status review across 4 districts",
+      "category": "OPERATIONAL",
+      "primaryDecisionMaker": "Programme Director",
+      "departmentsConsulted": [
+        "Nutrition",
+        "MEAL",
+        "Logistics"
+      ],
+      "evidenceCollected": [
+        "Daily status reports",
+        "Field updates"
+      ],
+      "optionsGenerated": [
+        "Continue current approach",
+        "Adjust resource allocation",
+        "Escalate"
+      ],
+      "finalDecision": "Continue with minor adjustments",
+      "reason": "Programme within acceptable parameters",
+      "expectedOutcome": "Stable operations",
+      "confidenceEstimate": 69,
+      "optionsConsidered": 3,
+      "debateConcluded": false,
+      "decisionQualityScore": 81,
+      "logicScore": 73,
+      "riskAwarenessScore": 79,
+      "costAwarenessScore": 71,
+      "ethicsScore": 75,
+      "stakeholderImpactScore": 65,
+      "speedScore": 85,
+      "communicationScore": 67,
+      "documentationScore": 77
+    },
+    {
+      "decisionUuid": "ec385843-f768-44ab-bf5a-4eab00c250cc",
+      "timestamp": "2026-07-16T18:06:51.747Z",
+      "simulationDay": 60,
+      "decisionPhase": "DECIDED",
+      "trigger": "Response to GOOGLE_OUTAGE",
+      "situation": "Google Workspace unavailable for 24 hours",
+      "category": "EMERGENCY",
+      "primaryDecisionMaker": "Executive Director",
+      "departmentsConsulted": [
+        "Finance",
+        "Operations",
+        "Security"
+      ],
+      "evidenceCollected": [
+        "Event assessment",
+        "Impact analysis"
+      ],
+      "optionsGenerated": [
+        "Immediate response",
+        "Gradual adjustment",
+        "Contingency activation"
+      ],
+      "conflictingOpinions": [
+        {
+          "department": "Finance",
+          "opinion": "Budget impact"
+        },
+        {
+          "department": "Operations",
+          "opinion": "Immediate action"
+        }
+      ],
+      "finalDecision": "Activate emergency response protocol",
+      "reason": "Event severity requires immediate action",
+      "expectedOutcome": "Impact minimized within 48h",
+      "confidenceEstimate": 63,
+      "optionsConsidered": 3,
+      "debateConcluded": true,
+      "decisionQualityScore": 69,
+      "logicScore": 75,
+      "riskAwarenessScore": 88,
+      "costAwarenessScore": 65,
+      "ethicsScore": 75,
+      "stakeholderImpactScore": 87,
+      "speedScore": 80,
+      "communicationScore": 70,
+      "documentationScore": 84
+    }
+  ]
+}

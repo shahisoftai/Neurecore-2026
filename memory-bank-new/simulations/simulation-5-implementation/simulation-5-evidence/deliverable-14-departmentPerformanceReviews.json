@@ -1,0 +1,110 @@
+{
+  "title": "Department Performance Reviews",
+  "reviews": [
+    {
+      "department": "Executive Management",
+      "departmentId": "f05c7079-9a41-4816-b29b-061d94756f1e",
+      "decisionsContributed": 0,
+      "avgParticipation": 0,
+      "performance": "LOW"
+    },
+    {
+      "department": "Programme Management",
+      "departmentId": "2ffdaa0b-24cf-4d1a-a8db-ef66960d9955",
+      "decisionsContributed": 0,
+      "avgParticipation": 0,
+      "performance": "LOW"
+    },
+    {
+      "department": "Nutrition",
+      "departmentId": "b6e67a9d-5227-4c5b-b00c-a50cacf0ad53",
+      "decisionsContributed": 60,
+      "avgParticipation": 75,
+      "performance": "HIGH"
+    },
+    {
+      "department": "MEAL",
+      "departmentId": "aac0b045-cedd-42fa-a611-c4fe64f14702",
+      "decisionsContributed": 60,
+      "avgParticipation": 75,
+      "performance": "HIGH"
+    },
+    {
+      "department": "Finance",
+      "departmentId": "3e4095ce-cdd4-4971-9e7c-e57feb730a0c",
+      "decisionsContributed": 25,
+      "avgParticipation": 74,
+      "performance": "HIGH"
+    },
+    {
+      "department": "HR",
+      "departmentId": "5ba68868-d7bd-464b-ae6b-c422d801a24b",
+      "decisionsContributed": 0,
+      "avgParticipation": 0,
+      "performance": "LOW"
+    },
+    {
+      "department": "Supply Chain",
+      "departmentId": "7c746f89-0c09-423b-a661-6d52a2c1b873",
+      "decisionsContributed": 0,
+      "avgParticipation": 0,
+      "performance": "LOW"
+    },
+    {
+      "department": "Logistics",
+      "departmentId": "633aa623-0a62-459e-b015-ac68f39d964d",
+      "decisionsContributed": 60,
+      "avgParticipation": 75,
+      "performance": "HIGH"
+    },
+    {
+      "department": "Community Mobilization",
+      "departmentId": "3953113d-ec76-4340-944c-b6524e581c90",
+      "decisionsContributed": 0,
+      "avgParticipation": 0,
+      "performance": "LOW"
+    },
+    {
+      "department": "Medical",
+      "departmentId": "b921c73a-04f7-4601-926d-9bacc730c08f",
+      "decisionsContributed": 0,
+      "avgParticipation": 0,
+      "performance": "LOW"
+    },
+    {
+      "department": "Communications",
+      "departmentId": "c708fe39-9c2f-4f0e-802e-407b92fa908b",
+      "decisionsContributed": 0,
+      "avgParticipation": 0,
+      "performance": "LOW"
+    },
+    {
+      "department": "Data Analytics",
+      "departmentId": "a43368bc-39a6-4f91-8da9-c25b905231ff",
+      "decisionsContributed": 0,
+      "avgParticipation": 0,
+      "performance": "LOW"
+    },
+    {
+      "department": "Security",
+      "departmentId": "61a576d7-0b85-4aaf-b20f-d058e85e9c77",
+      "decisionsContributed": 25,
+      "avgParticipation": 74,
+      "performance": "HIGH"
+    },
+    {
+      "department": "Grants",
+      "departmentId": "46188af2-ad7f-4c87-82b5-73c80458b3db",
+      "decisionsContributed": 0,
+      "avgParticipation": 0,
+      "performance": "LOW"
+    },
+    {
+      "department": "Project Management Office",
+      "departmentId": "808ea5c6-c7e6-46bc-88d0-320ddf5352b3",
+      "decisionsContributed": 0,
+      "avgParticipation": 0,
+      "performance": "LOW"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "day": 49,
+  "budget": {
+    "total": 850000,
+    "spent": 850000,
+    "committed": 0
+  },
+  "totalDecisions": 62,
+  "totalEvents": 4,
+  "injections": {
+    "events": [
+      {
+        "type": "POLITICAL_RESTRICTIONS",
+        "severity": "MEDIUM",
+        "financialImpact": -25141,
+        "timelineImpact": 4,
+        "districts": [
+          "D"
+        ],
+        "description": "Political instability restricts access",
+        "key": "political_restrictions",
+        "day": 49,
+        "timestamp": "2026-07-16T18:06:51.579Z",
+        "isCascade": false
+      }
+    ],
+    "hallucinations": [],
+    "hiddenInfos": [],
+    "ethics": [],
+    "cascades": []
+  }
+}

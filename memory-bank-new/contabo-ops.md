@@ -15,7 +15,7 @@
 | Process | ID | Port | What |
 |---|---|---|---|
 | `neurecore-backend` | 10 | 3003 | NestJS API — **Projects Phases 1–7 + EIE deployed 2026-07-09** |
-| `neurecore-tenant` | 12 | 3005 | Next.js, `hq.neurecore.com` — **PRE-PROJECTS code (not yet rebuilt)** |
+| `neurecore-tenant` | 12 | 3001 | Next.js, `hq.neurecore.com` |
 | `neurecore-admin` | 9 | 3020 | Next.js, `cc.neurecore.com` — **PRE-PROJECTS code (not yet rebuilt)** |
 | `neurecore-cors-proxy` | 7 | 3004 | dev CORS sidecar → 3003 |
 
@@ -26,7 +26,7 @@
 | Hostname | Upstream | Status |
 |---|---|---|
 | `brain.neurecore.com` | 127.0.0.1:3003 | 200 on `/api/v1/health` — **Projects backend live** |
-| `hq.neurecore.com` | 127.0.0.1:3005 | 200 on `/` — **PRE-PROJECTS (pending rebuild)** |
+| `hq.neurecore.com` | 127.0.0.1:3001 | 200 on `/` — **rebuilt 2026-07-16** |
 | `cc.neurecore.com` | 127.0.0.1:3020 | 200 on `/` — **PRE-PROJECTS (pending rebuild)** |
 
 **Other tenants** on the box (NOT neurecore): `app-frontend` (GUV, port 3001/3100), `gfcportal`, `shahisoft-nextjs`, `lifeosa-backend`, `ecoearthshop-backend` (cluster), `cookie-refresher`, `gfcportal`. Don't break these.

@@ -1,0 +1,11 @@
+{
+  "status": "success",
+  "data": {
+    "success": false,
+    "error": "Brevo is not configured. Set BREVO_MASTER_API_KEY in the environment or connect Brevo in Settings → Integrations."
+  },
+  "meta": {
+    "timestamp": "2026-07-16T11:37:28.393Z",
+    "requestId": "10af3659-b6f9-4f69-befa-5f58d1103c3c"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "day": 16,
+  "budget": {
+    "total": 850000,
+    "spent": 558671.8,
+    "committed": 0
+  },
+  "activeEvents": 5,
+  "totalDecisions": 21,
+  "totalEvents": 5,
+  "injections": {
+    "events": [],
+    "hallucinations": [],
+    "hiddenInfos": [],
+    "ethics": [],
+    "cascades": []
+  }
+}

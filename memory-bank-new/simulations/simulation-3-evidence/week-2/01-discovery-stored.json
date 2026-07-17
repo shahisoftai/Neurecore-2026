@@ -1,0 +1,16 @@
+{
+  "status": "error",
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "category must be one of the following values: NOTE, INSIGHT, CONSTRAINT, RISK, OPPORTUNITY, LESSON",
+    "details": {
+      "errors": [
+        "category must be one of the following values: NOTE, INSIGHT, CONSTRAINT, RISK, OPPORTUNITY, LESSON"
+      ]
+    }
+  },
+  "meta": {
+    "timestamp": "2026-07-16T11:31:09.239Z",
+    "requestId": "200ae6dd-5bef-4076-970b-c08e45094a21"
+  }
+}

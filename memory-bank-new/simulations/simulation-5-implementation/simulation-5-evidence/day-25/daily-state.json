@@ -1,0 +1,34 @@
+{
+  "day": 25,
+  "budget": {
+    "total": 850000,
+    "spent": 850000,
+    "committed": 0
+  },
+  "activeEvents": 3,
+  "totalDecisions": 34,
+  "totalEvents": 3,
+  "injections": {
+    "events": [
+      {
+        "type": "EARTHQUAKE",
+        "severity": "CRITICAL",
+        "financialImpact": -88521,
+        "timelineImpact": 7,
+        "districts": [
+          "C",
+          "D"
+        ],
+        "description": "Major earthquake affects rural districts",
+        "key": "earthquake",
+        "day": 25,
+        "timestamp": "2026-07-16T16:44:46.244Z",
+        "isCascade": false
+      }
+    ],
+    "hallucinations": [],
+    "hiddenInfos": [],
+    "ethics": [],
+    "cascades": []
+  }
+}

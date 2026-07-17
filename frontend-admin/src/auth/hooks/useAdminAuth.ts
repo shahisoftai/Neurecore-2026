@@ -1,7 +1,7 @@
-// ─── hooks/useAdminAuth.ts (DEPRECATED shim over useAuth) ────────────────────
-// Behavioural contract preserved:
+// ─── hooks/useAdminAuth.ts ────────────────────────────────────────────────────
+// Enforces SUPER_ADMIN-only access for admin portal per user-roles.md:
 //   - Waits for store hydration.
-//   - Returns AuthUser when role is in ADMIN_ROLES.
+//   - Returns AuthUser when role is SUPER_ADMIN.
 //   - Redirects to /login if no user / wrong role after hydration.
 
 'use client';
@@ -11,7 +11,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from './useAuth';
 import type { AuthUser } from '@/types/auth.types';
 
-const ADMIN_ROLES = ['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SECURITY_OFFICER', 'SUPPORT'];
+// Per user-roles.md: Only SUPER_ADMIN may access Frontend Admin (cc.neurecore.com)
+const ADMIN_ROLES = ['SUPER_ADMIN'];
 
 export function useAdminAuth(): AuthUser | null {
   const { state } = useAuth();

@@ -1,8 +1,8 @@
 # Frontend-Tenant (NeureCore tenant app)
 
-**Last verified:** 2026-07-11 22:55 PKT — Comms-gated tenant UI implemented (ThreadInboxPanel + ThreadView), socket infrastructure extended, feature flags added. All builds clean; not yet deployed to Contabo.
+**Last verified:** 2026-07-17 — Simulation-5: AEIC complete. Frontend integration via SimulationVisibilityService (`includeSimulation: true` for simulation overview). Headed-browser witness mode via `headed-browser.js`. Score: 83/100 B+ Production Ready.
 **Live URL:** `https://hq.neurecore.com`
-**Internal port:** 3005
+**Internal port:** 3001
 **Source:** `/home/najeeb/Linux-Dev/neurecore-2026/neurecore/frontend-tenant/`
 **Sibling docs:** [system-state.md](system-state.md) · [operations.md](operations.md) · [backend.md](backend.md) · [contabo-ops.md](contabo-ops.md) · [frontend-admin.md](frontend-admin.md)
 
@@ -54,7 +54,7 @@ Rebuild: `bash /opt/neurecore/rebuild.sh tenant`.
 
 ## 3. Routing (App Router)
 
-OLS `hq.neurecore.com` uses a **catch-all rewrite**: every URL (including `/api/v1/*`) proxies to port 3005. Inside Next.js, `NEXT_PUBLIC_API_URL=/api/v1` is **relative** — so requests hit Next.js itself, which then forwards to backend via the Next.js API routes (or directly via internal fetch).
+OLS `hq.neurecore.com` uses a **catch-all rewrite**: every URL (including `/api/v1/*`) proxies to port 3001. Inside Next.js, `NEXT_PUBLIC_API_URL=/api/v1` is **relative** — so requests hit Next.js itself, which then forwards to backend via the Next.js API routes (or directly via internal fetch).
 
 Top-level app routes:
 
@@ -862,6 +862,68 @@ git status frontend-tenant/
 ```
 
 Sync to Contabo was via `rsync -az --delete` to the `.next/` output. The source files in `frontend-tenant/src/` are **not yet committed** (see [pending-tasks.md D23](pending-tasks.md)).
+
+---
+
+## 23. Simulation-5: AEIC — Frontend Integration (2026-07-17)
+
+**Status:** ✅ COMPLETE — Simulation overview UI integrated; headed browser witness mode operational
+
+### Simulation overview UI
+
+The simulation overview uses `SimulationVisibilityService` with `includeSimulation: true` to display simulation artifacts alongside production data. Production views use default filters automatically (simulation artifacts hidden by default).
+
+### Headed browser witness mode
+
+```bash
+# Open browser, login, run simulation, take witness screenshots
+node headed-browser.js
+
+# Login only
+node headed-browser.js login
+
+# Open browser then run full simulation
+node headed-browser.js all
+```
+
+- Launches Chromium (headless: false) at 1600×1000
+- Opens tenant frontend + admin frontend in two tabs
+- Takes `witness-01-before.png` before running
+- Spawns `simulation-5-runner.cjs` as background process
+- Takes `witness-02-after.png` after completion
+- Credentials displayed in console:
+  - Email: `simulation5-aeic@neurecore.test`
+  - Password: `Sim5AEIC!2026SecurePass`
+
+### Evidence artifacts
+
+```
+simulation-5-evidence/
+├── FINAL-INDEX.json              # 83/100, 15 deliverables index
+├── simulation-state.json         # Full simulation state (33K lines)
+├── day-01/ through day-60/       # Daily snapshots
+├── deliverable-01-* through deliverable-15-*  # JSON + Markdown
+├── witness-01-before.png
+└── witness-02-after.png
+```
+
+### Simulation-5 runner (`headed-browser.js`)
+
+Located at workspace root:
+```
+/home/najeeb/Linux-Dev/neurecore-2026/headed-browser.js
+```
+
+The runner connects to:
+- Frontend: `https://hq.neurecore.com`
+- Admin: `https://cc.neurecore.com`
+- Backend: `https://brain.neurecore.com/api/v1`
+
+### References
+
+- Full implementation: `simulations/simulation-5-honest/COMPLETION.md`
+- Execution report: `simulations/simulation-5-implementation/REPORT.md`
+- Headed browser runner: `../../headed-browser.js` (workspace root)
 
 ---
 

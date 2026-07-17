@@ -1,0 +1,1868 @@
+{
+  "title": "AI Debate Log",
+  "totalDebates": 19,
+  "debates": [
+    {
+      "debateId": "db885b17-85bc-4985-9c03-850470bf1a16",
+      "simulationDay": 2,
+      "topic": "Resource allocation between Districts C and D",
+      "situation": "District C has higher SAM rates but District D is harder to reach",
+      "status": "CONCLUDED_WITHOUT_CONSENSUS",
+      "challengerId": "890a56b2-9fed-4444-a4ff-7615e70525d7",
+      "challengedId": "9830e55f-c8ca-41fb-92ad-b792fbd66d62",
+      "challengerRole": "MEAL Manager",
+      "challengedRole": "Communications Officer",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "4140420f-35c6-4f39-b7e6-9994fc20c7b4",
+          "speakerRole": "MEAL Manager",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because District C has higher SAM rates but District D is ...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.212Z"
+        },
+        {
+          "contributionId": "654c7e90-7645-4585-9352-f876c1c55cd8",
+          "speakerRole": "Communications Officer",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.212Z"
+        },
+        {
+          "contributionId": "74ff783f-990d-4820-b330-e2d3d96cf59b",
+          "speakerRole": "MEAL Manager",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.212Z"
+        },
+        {
+          "contributionId": "59d35973-da8f-4189-95e1-62d2b972fdba",
+          "speakerRole": "MEAL Manager",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because District C has higher SAM rates but District D is ...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.212Z"
+        },
+        {
+          "contributionId": "38231bd0-f9d2-479f-bfc2-f580e5ba1c5f",
+          "speakerRole": "Communications Officer",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.212Z"
+        },
+        {
+          "contributionId": "67fda75b-a59b-4a18-9b2c-a614b5f8bb04",
+          "speakerRole": "MEAL Manager",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.212Z"
+        },
+        {
+          "contributionId": "b44bc976-bd8c-45e0-8550-6345757cc331",
+          "speakerRole": "MEAL Manager",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because District C has higher SAM rates but District D is ...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.212Z"
+        },
+        {
+          "contributionId": "c6fdad64-9050-40ea-ab81-4c5dac94571d",
+          "speakerRole": "Communications Officer",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.212Z"
+        },
+        {
+          "contributionId": "c93b0f0f-f7fc-45e0-aa2a-78eca3cc5f3e",
+          "speakerRole": "MEAL Manager",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.212Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.212Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "a48ea9dc-2f3a-406d-ad47-86b08a33436a",
+      "simulationDay": 3,
+      "topic": "Resource allocation between Districts C and D",
+      "situation": "District C has higher SAM rates but District D is harder to reach",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "78be1b9c-7d95-467e-86a7-1e293824c941",
+      "challengedId": "c16ddc7d-6d63-48b5-913a-8f0812c6ff4c",
+      "challengerRole": "Logistics Manager",
+      "challengedRole": "Finance Manager",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "97dc56ea-1dc0-4740-8597-067c6f2220e1",
+          "speakerRole": "Logistics Manager",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because District C has higher SAM rates but District D is ...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.219Z"
+        },
+        {
+          "contributionId": "210f425a-f5c0-4e7c-becf-a8cc9a73cde8",
+          "speakerRole": "Finance Manager",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.219Z"
+        },
+        {
+          "contributionId": "799a5428-32dd-4346-a8c1-cb8e1a3871b6",
+          "speakerRole": "Logistics Manager",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.219Z"
+        },
+        {
+          "contributionId": "6b4bcb12-797c-4423-96cf-325cb0eb7e61",
+          "speakerRole": "Logistics Manager",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because District C has higher SAM rates but District D is ...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.219Z"
+        },
+        {
+          "contributionId": "5146fdf2-47f5-4da9-a2f4-b00aa4c2a7a6",
+          "speakerRole": "Finance Manager",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.220Z"
+        },
+        {
+          "contributionId": "6bb30932-42f7-4745-b766-a66e695fcc2f",
+          "speakerRole": "Logistics Manager",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.220Z"
+        },
+        {
+          "contributionId": "59eeeec1-aea6-48b4-a67e-f849a56ff595",
+          "speakerRole": "Logistics Manager",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because District C has higher SAM rates but District D is ...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.220Z"
+        },
+        {
+          "contributionId": "6cc1bb67-7783-4c1a-9157-97e6e48a8615",
+          "speakerRole": "Finance Manager",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.220Z"
+        },
+        {
+          "contributionId": "f129aca4-982e-4412-9c03-ab5f2c3280e7",
+          "speakerRole": "Logistics Manager",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.220Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.219Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "cffc014f-f110-4418-8ab8-9249c0465330",
+      "simulationDay": 5,
+      "topic": "Resource allocation between Districts C and D",
+      "situation": "District C has higher SAM rates but District D is harder to reach",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "dc9cb118-b4a9-4a44-98c3-8279899d1d18",
+      "challengedId": "9da8b980-a424-42b2-a716-217d15adacef",
+      "challengerRole": "Devil's Advocate",
+      "challengedRole": "Communications Officer",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "26a3f267-0b42-47a7-99a8-1508887fce88",
+          "speakerRole": "Devil's Advocate",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because District C has higher SAM rates but District D is ...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.232Z"
+        },
+        {
+          "contributionId": "cb90d737-249f-4c6e-97a9-fac26f865bf7",
+          "speakerRole": "Communications Officer",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.232Z"
+        },
+        {
+          "contributionId": "b796aa60-0f87-4a79-9516-a9fabab4ed40",
+          "speakerRole": "Devil's Advocate",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.232Z"
+        },
+        {
+          "contributionId": "25c8bf6d-66ed-4555-8f86-7f91343093f6",
+          "speakerRole": "Devil's Advocate",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because District C has higher SAM rates but District D is ...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.232Z"
+        },
+        {
+          "contributionId": "a0ea20a1-90af-49fa-b49c-41ada4b24412",
+          "speakerRole": "Communications Officer",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.232Z"
+        },
+        {
+          "contributionId": "efe0cd95-c537-498b-b437-96f2bfb09bd1",
+          "speakerRole": "Devil's Advocate",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.232Z"
+        },
+        {
+          "contributionId": "a1f538d6-5989-4a5c-be78-ccffcf32ec09",
+          "speakerRole": "Devil's Advocate",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because District C has higher SAM rates but District D is ...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.234Z"
+        },
+        {
+          "contributionId": "13205486-7108-4a41-933b-55211d314f79",
+          "speakerRole": "Communications Officer",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.235Z"
+        },
+        {
+          "contributionId": "93b2602d-3126-45c5-abae-ba964a5af4d9",
+          "speakerRole": "Devil's Advocate",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.235Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.232Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "eef6f9e8-da27-45d7-bc9a-d4aa1ca6934f",
+      "simulationDay": 6,
+      "topic": "Resource allocation between Districts C and D",
+      "situation": "District C has higher SAM rates but District D is harder to reach",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "01f4aae0-5735-41a3-b29f-274e077fa652",
+      "challengedId": "4fa020b2-14e2-4167-81af-aef879253552",
+      "challengerRole": "Project Manager",
+      "challengedRole": "Communications Officer",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "eed661c5-bd44-420d-88ff-52fcaa5cddfe",
+          "speakerRole": "Project Manager",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because District C has higher SAM rates but District D is ...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.244Z"
+        },
+        {
+          "contributionId": "515978d6-ed21-40e8-a67a-c9df005cc36a",
+          "speakerRole": "Communications Officer",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.244Z"
+        },
+        {
+          "contributionId": "e17079bb-e6fa-44b5-9947-23cefce14098",
+          "speakerRole": "Project Manager",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.244Z"
+        },
+        {
+          "contributionId": "c9bb89a7-890b-4845-8a61-abee10ab721e",
+          "speakerRole": "Project Manager",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because District C has higher SAM rates but District D is ...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.244Z"
+        },
+        {
+          "contributionId": "ba4e1884-7e54-4762-a83a-673659da880b",
+          "speakerRole": "Communications Officer",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.244Z"
+        },
+        {
+          "contributionId": "88c9d8ba-7a6a-4e7a-a462-5e831eba12c3",
+          "speakerRole": "Project Manager",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.244Z"
+        },
+        {
+          "contributionId": "dc109beb-bf4a-45fc-a74d-e35b0a870135",
+          "speakerRole": "Project Manager",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because District C has higher SAM rates but District D is ...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.244Z"
+        },
+        {
+          "contributionId": "44c8edda-42f9-49d0-85e9-8a1bc9eccabb",
+          "speakerRole": "Communications Officer",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.244Z"
+        },
+        {
+          "contributionId": "fc3e0192-9ec2-4907-9350-e34e0f568c49",
+          "speakerRole": "Project Manager",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.244Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.244Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "4fed7084-7d92-4a47-970e-d6b39c8b2403",
+      "simulationDay": 11,
+      "topic": "How to respond to LLM_OUTAGE",
+      "situation": "LLM service experiences 48-hour outage",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "c7fd9e7b-cd26-42ab-9ee1-21f24bf1795a",
+      "challengedId": "af2ae7e6-dbb1-421d-9a90-80e9c56ad22b",
+      "challengerRole": "Programme Director",
+      "challengedRole": "Project Manager",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "9f9749cb-a44f-498d-a0cc-837eb6405ff4",
+          "speakerRole": "Programme Director",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because LLM service experiences 48-hour outage...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.282Z"
+        },
+        {
+          "contributionId": "6cd982e0-f70a-4da1-a358-b5108a1b1cc9",
+          "speakerRole": "Project Manager",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.282Z"
+        },
+        {
+          "contributionId": "f3410ae1-4c1f-4b81-861b-136fb984baef",
+          "speakerRole": "Programme Director",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.282Z"
+        },
+        {
+          "contributionId": "2bdea261-ff4e-4796-bd67-c55a42b05a96",
+          "speakerRole": "Programme Director",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because LLM service experiences 48-hour outage...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.282Z"
+        },
+        {
+          "contributionId": "e600798a-fcbe-4d5f-a9e6-dcfd6a40ef13",
+          "speakerRole": "Project Manager",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.282Z"
+        },
+        {
+          "contributionId": "89fb10ce-b77b-41f9-b060-6d6da4e74126",
+          "speakerRole": "Programme Director",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.282Z"
+        },
+        {
+          "contributionId": "622a3f33-c99a-47e9-a304-d9c2834beec2",
+          "speakerRole": "Programme Director",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because LLM service experiences 48-hour outage...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.282Z"
+        },
+        {
+          "contributionId": "a24a0c52-4ec3-4954-9a66-6bb8ab363a3e",
+          "speakerRole": "Project Manager",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.282Z"
+        },
+        {
+          "contributionId": "32111b7e-b378-4141-82c3-d8718000dd0b",
+          "speakerRole": "Programme Director",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.282Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.282Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "faed7c36-5e12-4788-a1d0-1473b4c5ae3d",
+      "simulationDay": 14,
+      "topic": "How to respond to CYBER_ATTACK",
+      "situation": "Ransomware attack encrypts program data",
+      "status": "CONCLUDED_WITHOUT_CONSENSUS",
+      "challengerId": "84861151-815a-4708-a8f9-1c2e2da4d83a",
+      "challengedId": "2f6170b1-c9de-4949-a962-1da3f4cf33d6",
+      "challengerRole": "HR Manager",
+      "challengedRole": "Programme Director",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "b8b55d6d-22fb-458a-944b-29e3d03a436e",
+          "speakerRole": "HR Manager",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Ransomware attack encrypts program data...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.299Z"
+        },
+        {
+          "contributionId": "9f5b710f-b66e-43b8-a644-1c215e5ac64b",
+          "speakerRole": "Programme Director",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.299Z"
+        },
+        {
+          "contributionId": "f08f0ec0-1e3b-4ee5-b7e1-13f78d93f1eb",
+          "speakerRole": "HR Manager",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.299Z"
+        },
+        {
+          "contributionId": "da8ae13f-e546-4c0a-9e5b-7f4cfd908f9e",
+          "speakerRole": "HR Manager",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Ransomware attack encrypts program data...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.299Z"
+        },
+        {
+          "contributionId": "98071586-bda3-4e63-b3dd-c47139918bf4",
+          "speakerRole": "Programme Director",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.299Z"
+        },
+        {
+          "contributionId": "a06ffa58-53e6-4907-a92f-fb94a0361415",
+          "speakerRole": "HR Manager",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.299Z"
+        },
+        {
+          "contributionId": "10887e81-d14f-4b77-b841-8b5b2e1a180b",
+          "speakerRole": "HR Manager",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Ransomware attack encrypts program data...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.299Z"
+        },
+        {
+          "contributionId": "51ee28ea-3047-48fc-b549-a1dadd730b2e",
+          "speakerRole": "Programme Director",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.299Z"
+        },
+        {
+          "contributionId": "ca55fa59-cbb1-473f-89b6-cce7ee813278",
+          "speakerRole": "HR Manager",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.299Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.299Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "aa3e9fec-6fae-4ea0-bc9e-8ad2b3988f0b",
+      "simulationDay": 19,
+      "topic": "How to respond to SECURITY_BREACH",
+      "situation": "Security incident compromises beneficiary data",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "657d731f-b519-4b09-a395-856543f298ad",
+      "challengedId": "3e8a542f-32ed-4941-a44c-20178cb0da13",
+      "challengerRole": "Logistics Manager",
+      "challengedRole": "Project Manager",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "0058c66a-5ba1-4abe-ade8-54517d02169e",
+          "speakerRole": "Logistics Manager",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Security incident compromises beneficiary data...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.328Z"
+        },
+        {
+          "contributionId": "3bd4c9d8-b545-4f98-be74-df18074d4811",
+          "speakerRole": "Project Manager",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.328Z"
+        },
+        {
+          "contributionId": "858b6f98-3ef0-43d4-8555-4a9a5070b917",
+          "speakerRole": "Logistics Manager",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.328Z"
+        },
+        {
+          "contributionId": "47d9a310-5c50-479d-8c9b-43df4284cf92",
+          "speakerRole": "Logistics Manager",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Security incident compromises beneficiary data...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.328Z"
+        },
+        {
+          "contributionId": "4b12b23c-6e4f-43b0-8a19-569718572d5e",
+          "speakerRole": "Project Manager",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.328Z"
+        },
+        {
+          "contributionId": "24abed43-470c-4622-9483-901d78661538",
+          "speakerRole": "Logistics Manager",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.328Z"
+        },
+        {
+          "contributionId": "94957316-3934-425d-a8dc-33ebf334ca88",
+          "speakerRole": "Logistics Manager",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Security incident compromises beneficiary data...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.328Z"
+        },
+        {
+          "contributionId": "c387eed1-93ba-48c2-aaad-4be1aa6c152c",
+          "speakerRole": "Project Manager",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.328Z"
+        },
+        {
+          "contributionId": "a07ec754-e439-4bb9-bd85-3301e4dad052",
+          "speakerRole": "Logistics Manager",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.328Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.328Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "adba0d5d-ee86-4749-89e7-4d1dad3c213e",
+      "simulationDay": 20,
+      "topic": "How to respond to SECURITY_BREACH",
+      "situation": "Security incident compromises beneficiary data",
+      "status": "CONCLUDED_WITHOUT_CONSENSUS",
+      "challengerId": "e3a7ce7a-a3fb-41ea-9093-f83c9561c09d",
+      "challengedId": "ff523566-f27b-4ecb-b42b-d06fdcb193cb",
+      "challengerRole": "Executive Director",
+      "challengedRole": "Project Manager",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "5e816c3e-d88e-4aae-aaae-d20e0578f8a1",
+          "speakerRole": "Executive Director",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Security incident compromises beneficiary data...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.334Z"
+        },
+        {
+          "contributionId": "ecad7e98-45d1-4fa1-be96-227072eaee23",
+          "speakerRole": "Project Manager",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.334Z"
+        },
+        {
+          "contributionId": "36bd8efe-87be-41cd-af0e-12cc4723c8e0",
+          "speakerRole": "Executive Director",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.334Z"
+        },
+        {
+          "contributionId": "6a312807-09d5-4ea7-8a09-808336685bf4",
+          "speakerRole": "Executive Director",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Security incident compromises beneficiary data...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.334Z"
+        },
+        {
+          "contributionId": "af9e3bca-7b1f-48da-b5b1-32bfa57fe84d",
+          "speakerRole": "Project Manager",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.334Z"
+        },
+        {
+          "contributionId": "b782874c-726b-4625-8947-3d742255c989",
+          "speakerRole": "Executive Director",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.334Z"
+        },
+        {
+          "contributionId": "5841e055-428b-4da8-abb0-4476da3ff897",
+          "speakerRole": "Executive Director",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Security incident compromises beneficiary data...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.334Z"
+        },
+        {
+          "contributionId": "550a8589-4ebb-4a44-84c8-333425f26199",
+          "speakerRole": "Project Manager",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.334Z"
+        },
+        {
+          "contributionId": "2afcc93a-b448-416d-ab98-07c738ee917e",
+          "speakerRole": "Executive Director",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.334Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.334Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "4f035c30-2396-4b1f-939b-db68a4d648b6",
+      "simulationDay": 33,
+      "topic": "How to respond to CYBER_ATTACK",
+      "situation": "Ransomware attack encrypts program data",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "5a57fdf4-76b8-4616-81e2-577c30daa65d",
+      "challengedId": "6eaef211-1652-4893-9598-85acffcc9490",
+      "challengerRole": "Finance Manager",
+      "challengedRole": "Supply Chain Manager",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "2261b7bd-8524-4b53-8d09-5b3318a48548",
+          "speakerRole": "Finance Manager",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Ransomware attack encrypts program data...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.428Z"
+        },
+        {
+          "contributionId": "2553ea1f-1756-40ad-b9d0-947fe1ad17db",
+          "speakerRole": "Supply Chain Manager",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.428Z"
+        },
+        {
+          "contributionId": "753d949e-28b5-4279-a961-e022fc8f7dab",
+          "speakerRole": "Finance Manager",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.428Z"
+        },
+        {
+          "contributionId": "fe55d755-b911-477c-8d90-dc8cd5ba9c63",
+          "speakerRole": "Finance Manager",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Ransomware attack encrypts program data...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.428Z"
+        },
+        {
+          "contributionId": "c2b2ac15-75b0-43f4-aa20-ed80c41e0ced",
+          "speakerRole": "Supply Chain Manager",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.428Z"
+        },
+        {
+          "contributionId": "6521c050-cf2e-40f7-a66b-f7f77310a118",
+          "speakerRole": "Finance Manager",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.428Z"
+        },
+        {
+          "contributionId": "f3dfa45b-27ad-420f-aad8-44d7afada4ec",
+          "speakerRole": "Finance Manager",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Ransomware attack encrypts program data...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.428Z"
+        },
+        {
+          "contributionId": "27c67a8c-5ddb-4944-91e3-444c1b62764b",
+          "speakerRole": "Supply Chain Manager",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.428Z"
+        },
+        {
+          "contributionId": "1623d050-6fb8-4afa-901d-546011e3e9bd",
+          "speakerRole": "Finance Manager",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.428Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.428Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "3e039bb9-e5a9-4af1-926f-e9ee6e1e6ea8",
+      "simulationDay": 37,
+      "topic": "How to respond to DONOR_WITHDRAWAL",
+      "situation": "Major donor withdraws funding",
+      "status": "CONCLUDED_WITHOUT_CONSENSUS",
+      "challengerId": "91745762-fcb9-44e6-b071-2c1dc7c2e333",
+      "challengedId": "b908a62c-0546-4804-960c-2e2aa5c2d637",
+      "challengerRole": "Nutrition Coordinator",
+      "challengedRole": "Logistics Manager",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "e5aa26db-7a41-4626-9590-5c4197574fef",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Major donor withdraws funding...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.462Z"
+        },
+        {
+          "contributionId": "9a732d65-97f6-4871-a725-e8daba87e102",
+          "speakerRole": "Logistics Manager",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.462Z"
+        },
+        {
+          "contributionId": "e86f7434-8f6c-4559-a905-e0bf490b91a6",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.462Z"
+        },
+        {
+          "contributionId": "1f7178f4-f497-4e01-8fa3-3d6f92bdfe06",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Major donor withdraws funding...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.462Z"
+        },
+        {
+          "contributionId": "3d2c5c71-31dc-4217-b33c-9e3260e056f3",
+          "speakerRole": "Logistics Manager",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.462Z"
+        },
+        {
+          "contributionId": "e91ed3e8-fd3d-4930-8f22-5e9a9a815293",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.462Z"
+        },
+        {
+          "contributionId": "d980b900-5498-48be-a685-ff6d7f9be218",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Major donor withdraws funding...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.462Z"
+        },
+        {
+          "contributionId": "406a4084-6010-4023-8cef-394b97517fd0",
+          "speakerRole": "Logistics Manager",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.462Z"
+        },
+        {
+          "contributionId": "c00986cd-60ec-42f0-8962-d6fc4088dc51",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.462Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.462Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "f0750e69-ab4c-43f1-88e6-bd136325de25",
+      "simulationDay": 38,
+      "topic": "How to respond to DONOR_WITHDRAWAL",
+      "situation": "Major donor withdraws funding",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "a85e7d09-5dd8-4cf7-91a4-f9a40f2caf40",
+      "challengedId": "93663bd0-e02d-4b98-9d65-98c4c3d30bb2",
+      "challengerRole": "Medical Coordinator",
+      "challengedRole": "Programme Director",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "133e660f-4bdf-4520-8cae-b7917b8eb6d0",
+          "speakerRole": "Medical Coordinator",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Major donor withdraws funding...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.469Z"
+        },
+        {
+          "contributionId": "f8cf6e5c-5257-4a63-b0ee-ac30ffeadda6",
+          "speakerRole": "Programme Director",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.469Z"
+        },
+        {
+          "contributionId": "3ebb1fa6-ad7d-4abb-a07d-3ea846fa8348",
+          "speakerRole": "Medical Coordinator",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.469Z"
+        },
+        {
+          "contributionId": "bb3f1d35-4107-475e-b548-56b1492ee0df",
+          "speakerRole": "Medical Coordinator",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Major donor withdraws funding...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.469Z"
+        },
+        {
+          "contributionId": "872dbb97-4f77-4830-8ccd-c9923d75ec0c",
+          "speakerRole": "Programme Director",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.469Z"
+        },
+        {
+          "contributionId": "6fac59aa-aecd-48e4-9a60-2add9f499566",
+          "speakerRole": "Medical Coordinator",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.469Z"
+        },
+        {
+          "contributionId": "6a4832db-203f-4212-8620-f6d63e483733",
+          "speakerRole": "Medical Coordinator",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Major donor withdraws funding...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.469Z"
+        },
+        {
+          "contributionId": "9b2b6f11-533a-463d-b8ce-5f97ba96aeb0",
+          "speakerRole": "Programme Director",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.469Z"
+        },
+        {
+          "contributionId": "4e92980e-993e-4648-af9d-d3e05dd31268",
+          "speakerRole": "Medical Coordinator",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.469Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.469Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "52c7b713-1937-441e-9d84-9037064c7bbc",
+      "simulationDay": 39,
+      "topic": "How to respond to FUEL_SHORTAGE",
+      "situation": "Fuel shortage disrupts transportation",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "ac736849-e12f-4a88-b9e4-1bafccc9b328",
+      "challengedId": "ead52cc9-4f27-421e-9c24-4b1fee628b01",
+      "challengerRole": "Nutrition Coordinator",
+      "challengedRole": "Project Manager",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "49b41b23-e7ab-4f1d-ba41-1e3cb920270b",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Fuel shortage disrupts transportation...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.478Z"
+        },
+        {
+          "contributionId": "6bdcb072-96ce-4e58-9ef6-d75e7b383c3d",
+          "speakerRole": "Project Manager",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.478Z"
+        },
+        {
+          "contributionId": "6cce96cf-3246-4216-a860-16fd7c25c1f3",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.478Z"
+        },
+        {
+          "contributionId": "f0e17667-54e1-4d96-acbc-67e67c7c002a",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Fuel shortage disrupts transportation...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.478Z"
+        },
+        {
+          "contributionId": "818e04a3-7a63-43a8-a50c-7ecf1f51e240",
+          "speakerRole": "Project Manager",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.478Z"
+        },
+        {
+          "contributionId": "a7f7ca53-7d7f-494c-ba1f-fd94921787c6",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.478Z"
+        },
+        {
+          "contributionId": "6e2a9955-d2be-4aab-8296-44e0c35b7e28",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Fuel shortage disrupts transportation...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.478Z"
+        },
+        {
+          "contributionId": "5eaaf723-ebc7-4c18-b605-b36a01918bd6",
+          "speakerRole": "Project Manager",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.478Z"
+        },
+        {
+          "contributionId": "70540e36-562e-4705-b50e-86f6eea30559",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.478Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.478Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "9119450c-c46a-42ba-b2c3-9358a2b17d36",
+      "simulationDay": 42,
+      "topic": "How to respond to FUEL_SHORTAGE",
+      "situation": "Fuel shortage disrupts transportation",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "27f907ca-04b8-4ee1-a2c5-32cf8935fe77",
+      "challengedId": "f76f42ef-609e-47a7-b137-a9d2718faea6",
+      "challengerRole": "MEAL Manager",
+      "challengedRole": "Grant Manager",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "c7d056bd-b2a2-4676-a0f5-35261a7a70ea",
+          "speakerRole": "MEAL Manager",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Fuel shortage disrupts transportation...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.504Z"
+        },
+        {
+          "contributionId": "f50059a7-6250-462f-b2bb-171e9bcfb299",
+          "speakerRole": "Grant Manager",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.504Z"
+        },
+        {
+          "contributionId": "38646ea4-7dd3-4b54-bbf5-382534a72770",
+          "speakerRole": "MEAL Manager",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.504Z"
+        },
+        {
+          "contributionId": "548a2e0e-86ed-46d8-81e3-5b0e7c94344f",
+          "speakerRole": "MEAL Manager",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Fuel shortage disrupts transportation...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.504Z"
+        },
+        {
+          "contributionId": "7c6bd218-6e8b-4062-aa35-10076d686ec3",
+          "speakerRole": "Grant Manager",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.504Z"
+        },
+        {
+          "contributionId": "d3e04edc-3d9e-4fe8-95df-5420f5662164",
+          "speakerRole": "MEAL Manager",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.504Z"
+        },
+        {
+          "contributionId": "c87e0293-d60e-4bfd-8dfd-c9bbec6c3000",
+          "speakerRole": "MEAL Manager",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Fuel shortage disrupts transportation...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.504Z"
+        },
+        {
+          "contributionId": "af29b542-247f-4631-989f-60c1aeae7385",
+          "speakerRole": "Grant Manager",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.504Z"
+        },
+        {
+          "contributionId": "139f425c-3872-4458-9d6f-f2789b7846f9",
+          "speakerRole": "MEAL Manager",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.504Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.504Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "67a87c21-3480-4976-a2c7-929b32efdf6e",
+      "simulationDay": 46,
+      "topic": "How to respond to ROAD_DESTRUCTION",
+      "situation": "Road collapse cuts off hard-to-reach areas",
+      "status": "CONCLUDED_WITHOUT_CONSENSUS",
+      "challengerId": "398b5280-d8c7-48fe-9cb9-610206a8c5f3",
+      "challengedId": "8953e071-6a86-4853-a5de-25a2bc8f90da",
+      "challengerRole": "Logistics Manager",
+      "challengedRole": "Programme Director",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "813b58c2-f282-4e81-a75c-d0f7326235c5",
+          "speakerRole": "Logistics Manager",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Road collapse cuts off hard-to-reach areas...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.546Z"
+        },
+        {
+          "contributionId": "3eb35cb7-e750-4f96-b852-5cedfec2fd92",
+          "speakerRole": "Programme Director",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.546Z"
+        },
+        {
+          "contributionId": "adfce926-2f6c-4edf-af75-1c17a805845d",
+          "speakerRole": "Logistics Manager",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.546Z"
+        },
+        {
+          "contributionId": "fec4c68e-1405-497e-ae7d-4582fdf552cc",
+          "speakerRole": "Logistics Manager",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Road collapse cuts off hard-to-reach areas...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.546Z"
+        },
+        {
+          "contributionId": "627cf7db-ade3-409c-b238-87988c72c853",
+          "speakerRole": "Programme Director",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.546Z"
+        },
+        {
+          "contributionId": "1e3d979b-bdf1-4474-bda2-bacb64b98a00",
+          "speakerRole": "Logistics Manager",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.546Z"
+        },
+        {
+          "contributionId": "955986aa-5235-4bb6-a991-d17158f320dc",
+          "speakerRole": "Logistics Manager",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Road collapse cuts off hard-to-reach areas...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.546Z"
+        },
+        {
+          "contributionId": "9258e19e-347f-48fb-9237-d54ff27f7a88",
+          "speakerRole": "Programme Director",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.546Z"
+        },
+        {
+          "contributionId": "2088509b-b988-4c3e-ac21-5393c2bd95a5",
+          "speakerRole": "Logistics Manager",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.546Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.546Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "0d871420-1204-4ed7-87b4-8af54e5053b8",
+      "simulationDay": 47,
+      "topic": "How to respond to COURT_INJUNCTION",
+      "situation": "Court injunction halts work in District C",
+      "status": "CONCLUDED_WITHOUT_CONSENSUS",
+      "challengerId": "9e9e6b14-7037-4ea4-886d-ea0300e76e6c",
+      "challengedId": "ba12328c-8d7d-4dda-aebd-03092ccc59be",
+      "challengerRole": "Security Officer",
+      "challengedRole": "HR Manager",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "386da30d-42bb-41c0-a5c2-fbe40d2b394d",
+          "speakerRole": "Security Officer",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Court injunction halts work in District C...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.556Z"
+        },
+        {
+          "contributionId": "4e08bfcc-f8c5-4b1f-99d3-7dca6c60b351",
+          "speakerRole": "HR Manager",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.556Z"
+        },
+        {
+          "contributionId": "5425a0c7-5aec-44ad-97dc-a2e9578f4e0a",
+          "speakerRole": "Security Officer",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.556Z"
+        },
+        {
+          "contributionId": "3ef5aa65-d4c8-4fc0-836b-9ba68faec966",
+          "speakerRole": "Security Officer",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Court injunction halts work in District C...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.556Z"
+        },
+        {
+          "contributionId": "451f805f-5552-4883-a2e2-413266225691",
+          "speakerRole": "HR Manager",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.556Z"
+        },
+        {
+          "contributionId": "b79026e4-fb7e-4899-aa75-d025a1521f97",
+          "speakerRole": "Security Officer",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.556Z"
+        },
+        {
+          "contributionId": "e896d26b-7264-412b-b5d2-1316cbdae472",
+          "speakerRole": "Security Officer",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Court injunction halts work in District C...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.556Z"
+        },
+        {
+          "contributionId": "f9525290-a46b-44d1-af73-71d880171189",
+          "speakerRole": "HR Manager",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.556Z"
+        },
+        {
+          "contributionId": "19400561-788c-47fe-88ba-b70e522be326",
+          "speakerRole": "Security Officer",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.556Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.556Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "8834f941-5628-40da-bcee-ee4587e74155",
+      "simulationDay": 49,
+      "topic": "How to respond to POLITICAL_RESTRICTIONS",
+      "situation": "Political instability restricts access",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "7e38100e-9e10-49c3-8765-e566463c4d2d",
+      "challengedId": "59cd231e-22a5-4f7a-9f03-7c4b40acc3fd",
+      "challengerRole": "Community Mobilization Lead",
+      "challengedRole": "Nutrition Coordinator",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "ebc67d9c-21f1-4098-a711-dec6c71db74c",
+          "speakerRole": "Community Mobilization Lead",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Political instability restricts access...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.579Z"
+        },
+        {
+          "contributionId": "8f3534cc-d2de-4896-bc6a-295e7fb625f1",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.579Z"
+        },
+        {
+          "contributionId": "96d85f77-cd6d-4d34-9ce7-a74b5eff78c7",
+          "speakerRole": "Community Mobilization Lead",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.579Z"
+        },
+        {
+          "contributionId": "46f5ecd6-7b8e-4628-86b9-1929583da90c",
+          "speakerRole": "Community Mobilization Lead",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Political instability restricts access...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.579Z"
+        },
+        {
+          "contributionId": "93272ee7-4dff-41d0-9062-2db38acaf7c6",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.579Z"
+        },
+        {
+          "contributionId": "60eafa7d-e0cf-4c1f-a21f-504b0658e881",
+          "speakerRole": "Community Mobilization Lead",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.579Z"
+        },
+        {
+          "contributionId": "028445a5-769d-4c9f-b779-7744d2298e9d",
+          "speakerRole": "Community Mobilization Lead",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Political instability restricts access...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.579Z"
+        },
+        {
+          "contributionId": "da091ba2-8f1c-4fa6-b870-5c3a3855e0d0",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.579Z"
+        },
+        {
+          "contributionId": "ac7b1e26-b4a5-4e8b-91d8-f3b43c4a67a8",
+          "speakerRole": "Community Mobilization Lead",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.579Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.579Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "52c8132c-f550-4351-8494-2e064d03679f",
+      "simulationDay": 57,
+      "topic": "How to respond to GOOGLE_OUTAGE",
+      "situation": "Google Workspace unavailable for 24 hours",
+      "status": "CONCLUDED_WITH_CONSENSUS",
+      "challengerId": "71e835c8-2de2-49f5-b201-4f7c73461c64",
+      "challengedId": "e5f95896-e56a-46e2-a752-c2f480159d59",
+      "challengerRole": "Nutrition Coordinator",
+      "challengedRole": "Data Analyst",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "4cf3c0d0-de7c-4103-876d-501eb591137c",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Google Workspace unavailable for 24 hours...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.700Z"
+        },
+        {
+          "contributionId": "34dbfba8-387f-4adc-be0a-86e05b52d299",
+          "speakerRole": "Data Analyst",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.700Z"
+        },
+        {
+          "contributionId": "6585cd94-860e-49f3-b233-0b278e9159fb",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.700Z"
+        },
+        {
+          "contributionId": "6572b825-c6f8-40ae-adcc-61f56b824780",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Google Workspace unavailable for 24 hours...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.700Z"
+        },
+        {
+          "contributionId": "18014d37-5ea8-4c01-a640-106d892de8b7",
+          "speakerRole": "Data Analyst",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.700Z"
+        },
+        {
+          "contributionId": "93377702-8de8-4021-ba62-88b06874d5e2",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.700Z"
+        },
+        {
+          "contributionId": "248c214f-c652-4262-a2f9-74df895bfb35",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Google Workspace unavailable for 24 hours...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.700Z"
+        },
+        {
+          "contributionId": "a51ff40e-e131-40a3-8615-3cf7fe7b647b",
+          "speakerRole": "Data Analyst",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.700Z"
+        },
+        {
+          "contributionId": "149451e6-fb81-495e-9e08-380281b20510",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.700Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.700Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "048f7b60-6b51-47b1-93d1-d6cf1608fe7e",
+      "simulationDay": 58,
+      "topic": "How to respond to BREVO_OUTAGE",
+      "situation": "Email service Brevo goes down",
+      "status": "CONCLUDED_WITHOUT_CONSENSUS",
+      "challengerId": "9b8392cc-b8b3-422c-9652-4422a6ea51f2",
+      "challengedId": "dd07294f-4ef3-42ee-86c6-bb338753b7a7",
+      "challengerRole": "Supply Chain Manager",
+      "challengedRole": "Nutrition Coordinator",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "adcf26dd-f3ce-4686-abc7-490d5c00ee0a",
+          "speakerRole": "Supply Chain Manager",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Email service Brevo goes down...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.716Z"
+        },
+        {
+          "contributionId": "2e0ee7cd-7b97-4c5b-873a-86be6fbf3d36",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.716Z"
+        },
+        {
+          "contributionId": "bd6c6af9-c68a-4601-9fd5-22aa89b5ca81",
+          "speakerRole": "Supply Chain Manager",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.716Z"
+        },
+        {
+          "contributionId": "2f7cceaa-5b30-4a2e-bef5-1bb4495bc455",
+          "speakerRole": "Supply Chain Manager",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Email service Brevo goes down...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.716Z"
+        },
+        {
+          "contributionId": "08650016-eba2-41e9-81f1-c2efd70e9961",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.716Z"
+        },
+        {
+          "contributionId": "af477f9e-b396-4b3a-8e0f-cb0bc6340e2f",
+          "speakerRole": "Supply Chain Manager",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.716Z"
+        },
+        {
+          "contributionId": "d68a129d-cb0b-4a95-acce-bddc195cf01e",
+          "speakerRole": "Supply Chain Manager",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Email service Brevo goes down...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.716Z"
+        },
+        {
+          "contributionId": "9aa93044-12e5-42a8-8e7c-16ca7182819b",
+          "speakerRole": "Nutrition Coordinator",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.716Z"
+        },
+        {
+          "contributionId": "6d4cf76b-973f-4df9-be38-1f0b120a5e2b",
+          "speakerRole": "Supply Chain Manager",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.716Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.716Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    },
+    {
+      "debateId": "8a73a40a-e4c9-4918-a153-7376576a5f70",
+      "simulationDay": 60,
+      "topic": "How to respond to GOOGLE_OUTAGE",
+      "situation": "Google Workspace unavailable for 24 hours",
+      "status": "CONCLUDED_WITHOUT_CONSENSUS",
+      "challengerId": "0ea18799-ac17-45d9-8848-8acc8b4b71b4",
+      "challengedId": "1271c149-67aa-4b3b-ad3e-086d73f2a929",
+      "challengerRole": "Devil's Advocate",
+      "challengedRole": "Grant Manager",
+      "round": 1,
+      "maxRounds": 3,
+      "contributions": [
+        {
+          "contributionId": "6145a01c-24ff-48fb-8311-dad6af670aeb",
+          "speakerRole": "Devil's Advocate",
+          "round": 1,
+          "type": "OPENING",
+          "content": "Round 1: I believe we should consider the approach because Google Workspace unavailable for 24 hours...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.747Z"
+        },
+        {
+          "contributionId": "55e46620-686e-4ada-9f16-f79135cb4f5e",
+          "speakerRole": "Grant Manager",
+          "round": 1,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 1: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.747Z"
+        },
+        {
+          "contributionId": "50486959-02b6-4dbf-8210-13cccb08168f",
+          "speakerRole": "Devil's Advocate",
+          "round": 1,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.747Z"
+        },
+        {
+          "contributionId": "7bac20a3-cabc-4d0d-a871-184e176b6c4f",
+          "speakerRole": "Devil's Advocate",
+          "round": 2,
+          "type": "ARGUMENT",
+          "content": "Round 2: I believe we should maintain the approach because Google Workspace unavailable for 24 hours...",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.747Z"
+        },
+        {
+          "contributionId": "5325a5af-427c-44e4-981e-026e378306d2",
+          "speakerRole": "Grant Manager",
+          "round": 2,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 2: I challenge this. We need stronger evidence.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.747Z"
+        },
+        {
+          "contributionId": "d70093a8-0d1c-4def-a888-5910f4ef33de",
+          "speakerRole": "Devil's Advocate",
+          "round": 2,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.747Z"
+        },
+        {
+          "contributionId": "20343c6c-e9dd-4f26-b8a3-78ab69a4a8fa",
+          "speakerRole": "Devil's Advocate",
+          "round": 3,
+          "type": "ARGUMENT",
+          "content": "Round 3: I believe we should maintain the approach because Google Workspace unavailable for 24 hours...",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.747Z"
+        },
+        {
+          "contributionId": "c3cef403-2a78-47da-a67c-06c1b1e85051",
+          "speakerRole": "Grant Manager",
+          "round": 3,
+          "type": "COUNTER_ARGUMENT",
+          "content": "Round 3: I challenge this. We need stronger evidence.",
+          "position": "OPPOSE",
+          "timestamp": "2026-07-16T18:06:51.747Z"
+        },
+        {
+          "contributionId": "adbf461c-602c-4003-9e08-e1ece847c575",
+          "speakerRole": "Devil's Advocate",
+          "round": 3,
+          "type": "EVIDENCE",
+          "content": "Data from MEAL: 97% recovery rate with current approach.",
+          "position": "SUPPORT",
+          "timestamp": "2026-07-16T18:06:51.747Z"
+        }
+      ],
+      "timestamp": "2026-07-16T18:06:51.747Z",
+      "finalPosition": "Agreed to maintain with enhanced monitoring"
+    }
+  ]
+}

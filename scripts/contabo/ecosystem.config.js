@@ -31,7 +31,7 @@ module.exports = {
       instances: 1,
       autorestart: true,
       max_memory_restart: "512M",
-      env: { NODE_ENV: "production", PORT: "3005" },
+      env: { NODE_ENV: "production", PORT: "3001" },
       out_file: "/root/.pm2/logs/neurecore-tenant-out.log",
       error_file: "/root/.pm2/logs/neurecore-tenant-error.log",
       merge_logs: true,

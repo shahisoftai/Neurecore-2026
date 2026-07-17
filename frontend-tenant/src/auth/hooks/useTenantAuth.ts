@@ -1,9 +1,9 @@
-// ─── hooks/useTenantAuth.ts (DEPRECATED shim over useAuth) ───────────────────
-// Behavioural contract preserved:
+// ─── hooks/useTenantAuth.ts ────────────────────────────────────────────────────
+// Per user-roles.md: Frontend Tenant (hq.neurecore.com) allows ALL authenticated
+// roles: SUPER_ADMIN, PLATFORM_ADMIN, SECURITY_OFFICER, SUPPORT, OWNER, ADMIN, USER, AUDITOR
 //   - Waits for store hydration.
-//   - Returns AuthUser when role is in TENANT_ROLES.
-//   - Redirects to /login if no user / wrong role after hydration.
-// But the redirect is now driven by useAuth().state, not by a separate effect.
+//   - Returns AuthUser for any authenticated user.
+//   - Redirects to /login if no user after hydration.
 
 'use client';
 
@@ -12,7 +12,11 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from './useAuth';
 import type { AuthUser } from '@/types/auth.types';
 
-const TENANT_ROLES = ['OWNER', 'ADMIN', 'USER', 'AUDITOR'];
+// Per user-roles.md: All roles may access Frontend Tenant
+const TENANT_ROLES = [
+  'SUPER_ADMIN', 'PLATFORM_ADMIN', 'SECURITY_OFFICER', 'SUPPORT',
+  'OWNER', 'ADMIN', 'USER', 'AUDITOR'
+];
 
 export function useTenantAuth(): AuthUser | null {
   const { state } = useAuth();

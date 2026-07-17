@@ -3244,3 +3244,34 @@ Changed `@CurrentUser('tenantId') tenantId: string` to `@CurrentUser() user: Jwt
 
 All finance and routines endpoints return 200 for both SUPER_ADMIN and OWNER users.
 
+---
+
+## RBAC-001 — Frontend Admin SUPER_ADMIN-only access (2026-07-17)
+
+**Severity:** low (policy change)
+**Component:** frontend-admin, frontend-tenant
+**Status:** implemented
+
+### Change
+
+Implemented RBAC matrix per [user-roles.md](user-roles.md):
+- Frontend Admin (cc.neurecore.com): SUPER_ADMIN only
+- Frontend Tenant (hq.neurecore.com): All 8 roles
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `frontend-admin/src/auth/impl/AuthService.ts` | `ADMIN_ROLES` changed to `['SUPER_ADMIN']` |
+| `frontend-admin/src/auth/hooks/useAdminAuth.ts` | Enforces `ADMIN_ROLES = ['SUPER_ADMIN']` |
+| `frontend-admin/src/auth/hooks/useRequirePlatformAdmin.ts` | Enforces `PLATFORM_ADMIN_ROLES = ['SUPER_ADMIN']` |
+| `frontend-admin/src/middleware.ts` | **Created** — server-side JWT role check |
+| `frontend-admin/src/app/login/page.tsx` | Shows "Admin portal access restricted to SUPER_ADMIN only" for unauthorized |
+| `frontend-tenant/src/auth/hooks/useTenantAuth.ts` | Updated to allow all 8 roles |
+
+### Notes
+
+- Backend `RolesGuard` and `@Roles()` decorators were already correctly implemented
+- API 403 errors on POST/PATCH/DELETE are due to CSRF protection (`CSRF_ENABLED=true`), not role bugs
+- Browser SPAs automatically handle CSRF; direct API calls need manual `X-CSRF-Token` header
+

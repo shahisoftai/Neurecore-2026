@@ -1,0 +1,56 @@
+{
+  "day": 10,
+  "budget": {
+    "total": 850000,
+    "spent": 360729.10000000003,
+    "committed": 0
+  },
+  "activeEvents": 5,
+  "totalDecisions": 12,
+  "totalEvents": 5,
+  "injections": {
+    "events": [
+      {
+        "type": "COURT_INJUNCTION",
+        "severity": "HIGH",
+        "financialImpact": -36789,
+        "timelineImpact": 6,
+        "districts": [
+          "C"
+        ],
+        "description": "Court injunction halts work in District C",
+        "key": "court_injunction",
+        "day": 10,
+        "timestamp": "2026-07-16T16:44:46.147Z",
+        "isCascade": false
+      }
+    ],
+    "hallucinations": [
+      {
+        "injectedInfo": "WFP has completed a logistics corridor assessment and declared District D accessible year-round.",
+        "sourceClaimed": "WFP Logistics Report",
+        "isTrue": false,
+        "severity": "HIGH",
+        "day": 10,
+        "timestamp": "2026-07-16T16:44:46.147Z"
+      }
+    ],
+    "hiddenInfos": [
+      {
+        "information": "MEAL data shows District C SAM rates are 40% higher than initial assessment.",
+        "sourceDepartment": "MEAL",
+        "category": "OPERATIONAL",
+        "targetDepartments": [
+          "Nutrition",
+          "Programme Management",
+          "Finance"
+        ],
+        "correctConclusion": "Emergency supply request and resource reallocation needed for District C.",
+        "day": 10,
+        "timestamp": "2026-07-16T16:44:46.147Z"
+      }
+    ],
+    "ethics": [],
+    "cascades": []
+  }
+}

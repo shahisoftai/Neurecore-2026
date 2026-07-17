@@ -1,0 +1,189 @@
+{
+  "status": "success",
+  "data": [
+    {
+      "id": "55hfriv00lvhbiec5k90f9uf3k",
+      "summary": "Initial Discovery Call - Ministry of Health",
+      "description": "Simulation-3: Initial Discovery Call - Ministry of Health",
+      "start": "2026-07-23T11:15:32Z",
+      "end": "2026-07-23T12:15:32Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=NTVoZnJpdjAwbHZoYmllYzVrOTBmOXVmM2sgc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "9nlc2svgb1pl4alo5be1gpm664",
+      "summary": "Proposal Review Meeting",
+      "description": "Simulation-3: Proposal Review Meeting",
+      "start": "2026-07-23T11:15:35Z",
+      "end": "2026-07-23T12:15:35Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=OW5sYzJzdmdiMXBsNGFsbzViZTFncG02NjQgc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "toi8l100hem34f71b6s6nfif84",
+      "summary": "Contract Negotiation Session",
+      "description": "Simulation-3: Contract Negotiation Session",
+      "start": "2026-07-23T11:15:38Z",
+      "end": "2026-07-23T12:15:38Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=dG9pOGwxMDBoZW0zNGY3MWI2czZuZmlmODQgc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "bbseg1r24du1csta6jd6rb9j40",
+      "summary": "Initial Discovery Call - Ministry of Health",
+      "description": "Simulation-3: Initial Discovery Call - Ministry of Health",
+      "start": "2026-07-23T11:17:34Z",
+      "end": "2026-07-23T12:17:34Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=YmJzZWcxcjI0ZHUxY3N0YTZqZDZyYjlqNDAgc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "ddm2rsq6ls5ot6601qlaakcmm0",
+      "summary": "Proposal Review Meeting",
+      "description": "Simulation-3: Proposal Review Meeting",
+      "start": "2026-07-23T11:17:36Z",
+      "end": "2026-07-23T12:17:36Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=ZGRtMnJzcTZsczVvdDY2MDFxbGFha2NtbTAgc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "0odgbtrj9967pn6asl7df5u754",
+      "summary": "Contract Negotiation Session",
+      "description": "Simulation-3: Contract Negotiation Session",
+      "start": "2026-07-23T11:17:38Z",
+      "end": "2026-07-23T12:17:38Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=MG9kZ2J0cmo5OTY3cG42YXNsN2RmNXU3NTQgc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "uu0oks978vpgc6624tq8nolqdk",
+      "summary": "Initial Discovery Call - Ministry of Health",
+      "description": "Simulation-3: Initial Discovery Call - Ministry of Health",
+      "start": "2026-07-23T11:20:02Z",
+      "end": "2026-07-23T12:20:02Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=dXUwb2tzOTc4dnBnYzY2MjR0cThub2xxZGsgc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "oij0njsuov6a105grg5m2ga9tc",
+      "summary": "Proposal Review Meeting",
+      "description": "Simulation-3: Proposal Review Meeting",
+      "start": "2026-07-23T11:20:04Z",
+      "end": "2026-07-23T12:20:04Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=b2lqMG5qc3VvdjZhMTA1Z3JnNW0yZ2E5dGMgc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "j91496f2906oeajotje78l4g74",
+      "summary": "Contract Negotiation Session",
+      "description": "Simulation-3: Contract Negotiation Session",
+      "start": "2026-07-23T11:20:06Z",
+      "end": "2026-07-23T12:20:06Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=ajkxNDk2ZjI5MDZvZWFqb3RqZTc4bDRnNzQgc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "rtps6kl2g381lam052dep8je80",
+      "summary": "Initial Discovery Call - Ministry of Health",
+      "description": "Simulation-3: Initial Discovery Call - Ministry of Health",
+      "start": "2026-07-23T11:22:40Z",
+      "end": "2026-07-23T12:22:40Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=cnRwczZrbDJnMzgxbGFtMDUyZGVwOGplODAgc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "bc0rm3vi062nq3uud72jjs76ao",
+      "summary": "Proposal Review Meeting",
+      "description": "Simulation-3: Proposal Review Meeting",
+      "start": "2026-07-23T11:22:42Z",
+      "end": "2026-07-23T12:22:42Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=YmMwcm0zdmkwNjJucTN1dWQ3Mmpqczc2YW8gc2hhaGlzb2Z0LmFpQG0"
+    },
+    {
+      "id": "juptgkcjk6ug2rknmfcfpihjj4",
+      "summary": "Contract Negotiation Session",
+      "description": "Simulation-3: Contract Negotiation Session",
+      "start": "2026-07-23T11:22:45Z",
+      "end": "2026-07-23T12:22:45Z",
+      "attendees": [
+        {
+          "email": "ministry.health@gov.example",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=anVwdGdrY2prNnVnMnJrbm1mY2ZwaWhqajQgc2hhaGlzb2Z0LmFpQG0"
+    }
+  ],
+  "meta": {
+    "timestamp": "2026-07-16T11:22:52.075Z",
+    "requestId": "52a55094-7e56-4b3a-8421-f3c8bcea3151"
+  }
+}

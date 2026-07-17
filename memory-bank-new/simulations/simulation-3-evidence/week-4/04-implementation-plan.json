@@ -1,0 +1,58 @@
+[
+  {
+    "week": "W1",
+    "activity": "Lead creation & qualification",
+    "start": 1,
+    "end": 1,
+    "owner": "Sales"
+  },
+  {
+    "week": "W2",
+    "activity": "Discovery interview",
+    "start": 2,
+    "end": 2,
+    "owner": "Programme Director"
+  },
+  {
+    "week": "W3",
+    "activity": "Department setup",
+    "start": 3,
+    "end": 3,
+    "owner": "Project Manager"
+  },
+  {
+    "week": "W4",
+    "activity": "Planning & budget",
+    "start": 4,
+    "end": 4,
+    "owner": "Project Manager"
+  },
+  {
+    "week": "W5",
+    "activity": "Task generation & assignment",
+    "start": 5,
+    "end": 5,
+    "owner": "Project Manager"
+  },
+  {
+    "week": "W6",
+    "activity": "Implementation",
+    "start": 6,
+    "end": 6,
+    "owner": "Programme Director"
+  },
+  {
+    "week": "W7",
+    "activity": "Monitoring & QA",
+    "start": 7,
+    "end": 7,
+    "owner": "MEAL"
+  },
+  {
+    "week": "W8",
+    "activity": "Closeout & reporting",
+    "start": 8,
+    "end": 8,
+    "owner": "Executive Director"
+  }
+]

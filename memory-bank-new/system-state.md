@@ -1,6 +1,43 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-12 23:00 PKT — All fixes deployed. 6 systemic bugs resolved including CurrentUser decorator property extraction (FIX-046 affecting every controller using `@CurrentUser('property')`), admin auth full-page reload, routines/finance 500 errors, department permissions.
+**Last verified:** 2026-07-17 — Simulation-5: AEIC complete (83/100, B+, Production Ready). 6 phases executed: schema migration → backend vertical slice → tests → frontend → fresh tenant → 60-day execution. All 15 deliverables produced. Evidence: `simulations/simulation-5-implementation/simulation-5-evidence/` (92 files, 2.6 MB).
+
+---
+
+## Simulation-5: AEIC — COMPLETE (2026-07-17)
+
+**Final Score:** 83/100 | Grade: B+ | Verdict: SUCCESS | Production Ready: YES
+
+| Metric | Value |
+|--------|-------|
+| Simulation ID | `dcb9dbc5-4edd-413b-94b1-74a5c6d1b8ac` |
+| Tenant | `simulation5-aeic@neurecore.test` |
+| Tenant ID | `c4dab6c0-9d3a-4180-bcff-15abb3e32ca9` |
+| Decisions | 85 |
+| AI Debates | 20 |
+| Board Meetings | 9 |
+| Reality Events | 28 (+ 8 cascades) |
+| Devil's Advocate Challenges | 60 |
+| Hallucination Tests | 15 |
+| Confidence Predictions | 900 |
+| Ethics Dilemmas | 9 |
+| Learning Updates | 8 (weekly) |
+
+**6 phases completed:**
+- ✅ Phase 1: 66-statement SQL migration (5 tables, 7 enums, 17 columns, 14 indexes, 2 triggers)
+- ✅ Phase 2: Backend vertical slice (IdempotencyModule, SimulationVisibilityModule, TimelineEventsModule, DecisionEvaluationsModule, SimulationsModule, ServiceIdentitiesModule, Scoring v1, AgentInvocationsService)
+- ✅ Phase 3: All tests passing (scoring-v1: 16/16, IdempotencyService: 12/12, DecisionEvaluationsService: 12/12, ServiceIdentity: 6/6, tenant isolation: 5/5, vertical-slice: 6/6)
+- ✅ Phase 4: Frontend integration (simulation overview UI with `includeSimulation: true`)
+- ✅ Phase 5: Fresh tenant on Contabo
+- ✅ Phase 6: 60-day execution via `headed-browser.js`
+
+**References:**
+- Full implementation: `simulations/simulation-5-honest/COMPLETION.md`
+- Design docs: `simulations/simulation-5-honest/design/*.md`
+- Execution report: `simulations/simulation-5-implementation/REPORT.md`
+- Evidence: `simulations/simulation-5-implementation/simulation-5-evidence/`
+
+---
 
 **2026-07-12 23:00 PKT — Gap Fixes Batch (FIX-044 through FIX-047):**
 - ✅ **FIX-044: Department role broadened** — OWNER/ADMIN can now create/update/delete departments (was SUPER_ADMIN-only)

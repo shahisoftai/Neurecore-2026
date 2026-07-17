@@ -1,6 +1,6 @@
 # NeureCore — Memory Bank (Single-Page Index)
 
-**Last updated:** 2026-07-08 13:35 PKT (Enterprise Communication Platform Phases 1-9 IMPLEMENTED + AUDIT-PASSED — additive-only, feature-flagged, NOT YET DEPLOYED. 10 spec gaps closed in rev 2 audit, 17 runtime/DI/WS gaps closed in rev 3 deep-audit. All 10 `COMM_*` flags + `AGENT_MESSAGING_ENABLED` default `false`. `tsc` + `nest build` + `next build` + ESLint clean across backend, frontend-tenant, frontend-admin; backend boots cleanly; all 5 new endpoints wired and serve 401 under JWT guard. Reference: [`enterprise-comms-chat.md`](enterprise-comms-chat.md) rev 3 (with §17 + §18 audit passes).)
+**Last updated:** 2026-07-17 (RBAC implemented — Frontend Admin SUPER_ADMIN-only access; user-roles.md created)
 **Audience:** Anyone (human or AI) needing the current state of the NeureCore platform.
 **TL;DR:** Three services on a single Contabo VPS, no Vercel, no other cloud. PM2 + OpenLiteSpeed + Neon Postgres. See `system-state.md` for the full inventory. **Master Package Pool:** 68 `Package` rows seeded 2026-07-05; **15 with full composition** (Accounting & Audit Services, 2026-07-05) — see [`pools-taxonomy.md`](pools-taxonomy.md). **Auth:** cookie-only via `__Host-nc_at/_rt/csrf`; refresh-families with reuse detection; per-account lockout (5/10min); same-origin via Next.js rewrites — see [`auth.md`](auth.md). **UI (Phase 6 + 6.5):** New home page (`/home`) with 3-column layout, glossy left sidebar (dynamic icons), glassmorphic glasspanels, 5 real-time widgets (live feed, stats, tasks, approvals, quick actions), background/widget preferences modal — see [`frontend-tenant.md §13A`](frontend-tenant.md#13a-phase-6--3-column-home-page-architecture). **`lucide-react` pinned to `0.460.0`** — lockfile previously drifted to a broken `1.22.0`; do not bump without re-validating `next dev` end-to-end (see [`fixes.md FIX-020`](fixes.md)).
 
@@ -28,12 +28,13 @@ This is the **master index**. Every doc below has a one-paragraph summary so you
 | Doc | One-line summary | When to read |
 |---|---|---|
 | [README.md](README.md) | This file — single-page index | Always start here |
-| **[system-state.md](system-state.md)** | Live inventory: 4 PM2 processes, 3 hostnames, ports 3003/3005/3020/3004, Neon DB, Redis, observability stack, 57 backend modules (local), env keys, git state, disk usage | When you need a number (port, id, path, env key) |
-| **[backend.md](backend.md)** | NestJS API deep dive: 57 modules, 61 controllers, 139 services, 83 Prisma models (local; prod lags — see §13), **18 migrations applied**, all REST routes, RBAC roles, JWT, env var groups | Working on the backend; need to know an endpoint, env var, or module structure |
+| **[system-state.md](system-state.md)** | Live inventory: 4 PM2 processes, 3 hostnames, ports 3003/3005/3020/3004, Neon DB, Redis, observability stack, 61 backend modules (local), env keys, git state, disk usage | When you need a number (port, id, path, env key) |
+| **[backend.md](backend.md)** | NestJS API deep dive: 61 modules, 63 controllers, 141 services, 84 Prisma models (local), **19 migrations applied** (incl. Simulation-5), all REST routes, RBAC roles, JWT, env var groups | Working on the backend; need to know an endpoint, env var, or module structure |
 | **[frontend-admin.md](frontend-admin.md)** | Admin console: 18 routes, 5 stores, 11 hooks, 10 component groups, `.env.production` keys, OLS rewrite rules | Working on admin UI (`/admin/*`); need route/store/env info |
 | **[frontend-tenant.md](frontend-tenant.md)** | Tenant app: 18+ routes, 10 stores, 13 hooks, components, Phase 1-5 history, env keys | Working on tenant UI (`/command-center`, `/service-desk`, etc.) |
 | **[pools-taxonomy.md](pools-taxonomy.md)** | Source of truth for the **six business-composition pools** (AI Employees, Departments, Industries, Tiers, Features, Packages). Pool counts, seeders, migrations. *Includes the Master Package Pool* (68 packages: 15 with composition for Accounting, 53 empty). | Working on Industry/Tier/Package/Department/Agent/Feature data |
-| **[auth.md](auth.md)** | **Authoritative reference for the cookie-only auth system**: token model, refresh-token families with reuse detection, same-origin rewrites, account lockout, CSRF double-submit, password-change invalidation, env vars, schema, ops runbook, troubleshooting | Touching /auth/login, /api/v1/auth/*, cookies, JWT, OAuth, MFA, audit |
+| [auth.md](auth.md) | **Authoritative reference for the cookie-only auth system**: token model, refresh-token families with reuse detection, same-origin rewrites, account lockout, CSRF double-submit, password-change invalidation, env vars, schema, ops runbook, troubleshooting | Touching /auth/login, /api/v1/auth/*, cookies, JWT, OAuth, MFA, audit |
+| **[user-roles.md](user-roles.md)** | RBAC matrix: SUPER_ADMIN exclusive to Frontend Admin, all roles access Frontend Tenant, OWNER+ADMIN merged privileges | Modifying role-based access policies |
 | **[enterprise-communication.md](enterprise-communication.md)** | **Design spec** for the Enterprise Communication Platform (Phases 1-9) — Threads, Activity, A2A messaging, Presence, Conversation Intelligence, Compliance | Working on thread/activity/presence/chat infrastructure |
 | **[enterprise-comms-chat.md](enterprise-comms-chat.md)** | **Implementation reference** for the Enterprise Communication Platform — what shipped, file manifest, schema diffs, feature flags, security model, deploy + rollout plan | Implementing, deploying, or operating the comm platform |
 
@@ -46,6 +47,17 @@ This is the **master index**. Every doc below has a one-paragraph summary so you
 | [deployment.md](deployment.md) | Deploy procedure: local → Contabo rsync + rebuild, single-app vs all-app, adding new services/vhosts/env | When pushing code to production |
 | [runbook.md](runbook.md) | Copy-paste health checks per service, common-symptom table, panic button (restart everything), one-liners | First response when something is broken |
 | [disaster-recovery.md](disaster-recovery.md) | Snapshot locations, how to take/restore, code rollback, disk full, DB restore, full server rebuild | After a bad deploy, disk event, or for periodic DR drills |
+
+### Simulations (AEIC — Autonomous Executive Intelligence Challenge)
+
+| Doc | One-line summary | When to read |
+|---|---|---|
+| **[simulations/simulation-5](simulations/simulation-5)** | Original design spec (574 lines) — adversarial philosophy, three independent systems, 15 deliverable definitions | Understanding Simulation-5 goals and design |
+| **[simulations/simulation-5-honest/COMPLETION.md](simulations/simulation-5-honest/COMPLETION.md)** | **COMPLETE** — 6-phase implementation report: schema migration → backend vertical slice → tests → frontend → fresh tenant → 60-day execution. Final score: 83/100 (B+, Production Ready) | Full implementation details |
+| **[simulations/simulation-5-honest/phase-1-migration/REPORT.md](simulations/simulation-5-honest/phase-1-migration/REPORT.md)** | Phase 1: 66-statement SQL migration — 5 new tables, 7 enums, 17 nullable columns, 14 indexes, 2 DB triggers, 10 DB-level safeguards | Database schema changes |
+| **[simulations/simulation-5-honest/phase-2-backend/REPORT.md](simulations/simulation-5-honest/phase-2-backend/REPORT.md)** | Phase 2: Backend vertical slice — IdempotencyModule, ServiceIdentity, TimelineEvent, DecisionEvaluation, Scoring v1, Simulations, AgentInvocations, SimulationVisibility | Backend implementation |
+| **[simulations/simulation-5-implementation/REPORT.md](simulations/simulation-5-implementation/REPORT.md)** | 60-day execution report — 85 decisions, 20 AI debates, 9 board meetings, 28 reality events, 60 Devil's Advocate challenges, all 15 deliverables | Execution outcomes |
+| **[simulations/simulation-5-implementation/simulation-5-evidence/FINAL-INDEX.json](simulations/simulation-5-implementation/simulation-5-evidence/FINAL-INDEX.json)** | Evidence index — 92 files, 2.6 MB, simulation state, all deliverables in JSON + Markdown | Evidence archive |
 
 ### Planning & history
 
@@ -132,7 +144,7 @@ This is the **master index**. Every doc below has a one-paragraph summary so you
 ## 🗂️ File layout
 
 ```
-neurecore/
+ neurecore/
 ├── backend/                          # NestJS API (see backend.md)
 ├── frontend-tenant/                  # Next.js tenant app (see frontend-tenant.md)
 ├── frontend-admin/                   # Next.js admin console (see frontend-admin.md)
@@ -141,7 +153,7 @@ neurecore/
 │   └── contabo/
 │       └── ecosystem.config.js       # mirror of /opt/neurecore/ecosystem.config.js
 ├── rebuild.sh                        # mirror of /opt/neurecore/rebuild.sh
-├── memory-bank-new/                  # ★ these 13 docs
+├── memory-bank-new/                  # ★ these 13 docs + simulations/
 │   ├── README.md                     # (this file)
 │   ├── system-state.md
 │   ├── backend.md
@@ -155,7 +167,17 @@ neurecore/
 │   ├── disaster-recovery.md
 │   ├── future-plans.md
 │   ├── fixes.md
-│   └── pending-tasks.md              # open questions / decisions / pending migrations
+│   ├── pending-tasks.md              # open questions / decisions / pending migrations
+│   └── simulations/                  # Simulation-5: AEIC complete
+│       ├── simulation-5              # Design spec (574 lines)
+│       ├── simulation-5-honest/     # Implementation + design docs
+│       │   ├── COMPLETION.md         # Full 6-phase implementation report
+│       │   ├── design/              # 8 design documents
+│       │   ├── phase-1-migration/   # 66-statement SQL migration
+│       │   └── phase-2-backend/     # Backend vertical slice
+│       └── simulation-5-implementation/
+│           ├── REPORT.md            # 60-day execution outcomes
+│           └── simulation-5-evidence/ # 92 files, 2.6 MB
 ├── memory-bank-ARCHIVED/             # older docs, retained for diff
 │   └── legacy-2026-07-04/            # 12 pre-cleanup docs
 └── Temp/                             # scratch (FTS plans marked CANCELLED)
@@ -191,5 +213,5 @@ After editing, run the quick health check above to confirm docs match reality.
 
 ---
 
-**Last verified live by:** Kilo on 2026-07-07 16:10 PKT (post-FIX-019: defensive patterns + `/help` + socket fix; PM2 `neurecore-tenant` reloaded; `https://hq.neurecore.com/home` and `https://hq.neurecore.com/help` return 200).
+**Last verified live by:** Kilo on 2026-07-17 (RBAC implemented — Frontend Admin SUPER_ADMIN-only access enforced via middleware + frontend hooks; user-roles.md created).
 **Next review:** quarterly, or after any production incident.

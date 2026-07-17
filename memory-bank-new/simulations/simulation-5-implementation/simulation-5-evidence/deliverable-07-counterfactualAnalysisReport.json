@@ -1,0 +1,1451 @@
+{
+  "title": "Counterfactual Analysis Report",
+  "totalAnalyses": 85,
+  "analyses": [
+    {
+      "analysisId": "396acba0-da24-4132-9d44-60ddbe510b6f",
+      "simulationDay": 1,
+      "decisionId": "23412c07-9575-4b98-b699-639119a08465",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 45,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 64,
+      "timestamp": "2026-07-16T16:44:46.050Z"
+    },
+    {
+      "analysisId": "c92ba0da-7291-4441-bede-4687c79a5b4e",
+      "simulationDay": 2,
+      "decisionId": "59733fd7-58b5-476b-89ad-030e711b2f22",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 57,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 57,
+      "timestamp": "2026-07-16T16:44:46.100Z"
+    },
+    {
+      "analysisId": "83bae770-f24d-4e3b-bad3-84829d180053",
+      "simulationDay": 3,
+      "decisionId": "d53d914f-92fe-4143-bc01-02ecec7de6e0",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 33,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 73,
+      "timestamp": "2026-07-16T16:44:46.106Z"
+    },
+    {
+      "analysisId": "4d2a7b2b-dc0e-4284-a71b-bd6d486b137d",
+      "simulationDay": 4,
+      "decisionId": "153965c0-21d7-404e-a06a-61b6f12d5b6d",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 32,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 65,
+      "timestamp": "2026-07-16T16:44:46.109Z"
+    },
+    {
+      "analysisId": "410a284a-283b-4d34-ba88-3434421a490a",
+      "simulationDay": 5,
+      "decisionId": "8d41cb89-7598-4669-9ed5-8dd7c785e408",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 38,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 61,
+      "timestamp": "2026-07-16T16:44:46.120Z"
+    },
+    {
+      "analysisId": "cc3fc0d8-7684-4749-8050-e7903169278e",
+      "simulationDay": 5,
+      "decisionId": "faf5cc31-c231-4eac-81b6-b2f5e8e02cf9",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 58,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 50,
+      "timestamp": "2026-07-16T16:44:46.120Z"
+    },
+    {
+      "analysisId": "d5cfff16-8a44-48eb-8f9f-dd76abd32146",
+      "simulationDay": 6,
+      "decisionId": "9ea0e28a-dbb2-494f-b3e9-0662c5fd388e",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 53,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 61,
+      "timestamp": "2026-07-16T16:44:46.123Z"
+    },
+    {
+      "analysisId": "ea4a37ad-844e-4bac-91e7-24efef03c866",
+      "simulationDay": 7,
+      "decisionId": "00fefd92-8332-4096-b480-790843d9fab0",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 42,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 75,
+      "timestamp": "2026-07-16T16:44:46.128Z"
+    },
+    {
+      "analysisId": "f7d29e01-2b33-447c-b53e-0db63b76b148",
+      "simulationDay": 8,
+      "decisionId": "d66c6cef-19fb-4ff0-8e0d-d2dcda79233a",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 54,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 55,
+      "timestamp": "2026-07-16T16:44:46.136Z"
+    },
+    {
+      "analysisId": "6d5c98fe-e041-4501-be25-421de18edcd9",
+      "simulationDay": 9,
+      "decisionId": "39460412-b7a8-44de-8249-cf2cf231351e",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 58,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 68,
+      "timestamp": "2026-07-16T16:44:46.142Z"
+    },
+    {
+      "analysisId": "99e178b3-e032-4a51-be0f-72e1b637605d",
+      "simulationDay": 10,
+      "decisionId": "fa80df81-3673-44d9-8948-3af2964cbb15",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 57,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 63,
+      "timestamp": "2026-07-16T16:44:46.148Z"
+    },
+    {
+      "analysisId": "2e3a9c4d-4d4f-4f1f-8c0b-343a9cf7edc2",
+      "simulationDay": 10,
+      "decisionId": "addb458d-4771-4b4a-a1b1-ae8470f3ff5d",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 53,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 68,
+      "timestamp": "2026-07-16T16:44:46.148Z"
+    },
+    {
+      "analysisId": "362d8c32-96a8-4cec-8eb4-e8f4aa9c4368",
+      "simulationDay": 11,
+      "decisionId": "ca69ce3d-3ef9-4abe-9c27-eb4be8e3655f",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 34,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 52,
+      "timestamp": "2026-07-16T16:44:46.154Z"
+    },
+    {
+      "analysisId": "15d8ee46-bae2-408d-a4ea-4bfa5847b405",
+      "simulationDay": 11,
+      "decisionId": "cee80132-169c-48b0-804a-bd3429de21a0",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 35,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 75,
+      "timestamp": "2026-07-16T16:44:46.154Z"
+    },
+    {
+      "analysisId": "95e588d4-c60e-470f-a28d-06650e3f6c3a",
+      "simulationDay": 12,
+      "decisionId": "9e293992-fde8-48f1-8d32-7b34a92b8980",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 34,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 60,
+      "timestamp": "2026-07-16T16:44:46.160Z"
+    },
+    {
+      "analysisId": "94960c4f-66b7-4e6f-9a40-9e6d600a01a4",
+      "simulationDay": 13,
+      "decisionId": "1d488e13-5ff5-4611-8397-045ffb43a620",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 49,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 78,
+      "timestamp": "2026-07-16T16:44:46.165Z"
+    },
+    {
+      "analysisId": "f427097c-e575-4100-9a38-7afd123d4580",
+      "simulationDay": 13,
+      "decisionId": "61a24b7c-606c-452d-8b46-af7c88be4b87",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 53,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 73,
+      "timestamp": "2026-07-16T16:44:46.165Z"
+    },
+    {
+      "analysisId": "15803b34-57cf-49ae-8931-d870e2a5d0ef",
+      "simulationDay": 14,
+      "decisionId": "8f370dcd-4352-4628-9216-2d9dd0ca5074",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 34,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 56,
+      "timestamp": "2026-07-16T16:44:46.172Z"
+    },
+    {
+      "analysisId": "71b59573-3a9c-4a54-a1b7-a825579e0c74",
+      "simulationDay": 14,
+      "decisionId": "1fa2a078-4a23-45dc-8996-d1f9a15ebcb3",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 54,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 50,
+      "timestamp": "2026-07-16T16:44:46.172Z"
+    },
+    {
+      "analysisId": "d62cd0f1-67bc-46d2-a901-442c629ed426",
+      "simulationDay": 15,
+      "decisionId": "cd19ed4f-0172-42d3-bc3c-c9c349d95d30",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 32,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 60,
+      "timestamp": "2026-07-16T16:44:46.176Z"
+    },
+    {
+      "analysisId": "7fa994ff-d647-4b4e-9025-95a52d967a91",
+      "simulationDay": 16,
+      "decisionId": "7ca5b4ba-e714-4dc5-94b1-5d647efb921f",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 51,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 52,
+      "timestamp": "2026-07-16T16:44:46.184Z"
+    },
+    {
+      "analysisId": "a97a80a7-5ac4-43cd-8ec3-229363e0e3ed",
+      "simulationDay": 17,
+      "decisionId": "7cc53cd3-8005-4f9b-a651-16ec6bb029bd",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 33,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 56,
+      "timestamp": "2026-07-16T16:44:46.191Z"
+    },
+    {
+      "analysisId": "f452a94f-337b-4796-985f-20a0d0236076",
+      "simulationDay": 17,
+      "decisionId": "0e476960-42cc-490e-9996-09f6afbaed97",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 54,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 73,
+      "timestamp": "2026-07-16T16:44:46.191Z"
+    },
+    {
+      "analysisId": "ade9a021-ca9d-422a-b6c2-45a10fa75ea2",
+      "simulationDay": 18,
+      "decisionId": "18afb95c-d72c-4ca8-ae05-a6e89fe45cc4",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 34,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 60,
+      "timestamp": "2026-07-16T16:44:46.195Z"
+    },
+    {
+      "analysisId": "bf6dd4cf-c7c6-4e57-9bf2-265fe2c311af",
+      "simulationDay": 19,
+      "decisionId": "1954b6cd-a793-4c9c-99a8-f4bd9c1a6bc1",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 33,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 67,
+      "timestamp": "2026-07-16T16:44:46.205Z"
+    },
+    {
+      "analysisId": "29da6d5f-6c89-4078-8038-ea416ba4a9f9",
+      "simulationDay": 20,
+      "decisionId": "5c86cdfa-bed2-4d3f-b5fd-fd0a7c68ca09",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 45,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 52,
+      "timestamp": "2026-07-16T16:44:46.210Z"
+    },
+    {
+      "analysisId": "b8308d03-b43b-43e2-a0cd-36a06f0a2552",
+      "simulationDay": 21,
+      "decisionId": "58ae1905-3e49-4ab3-8a4e-e45327b9c941",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 31,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 63,
+      "timestamp": "2026-07-16T16:44:46.216Z"
+    },
+    {
+      "analysisId": "87ca1d33-da92-4810-894f-4db868831a79",
+      "simulationDay": 22,
+      "decisionId": "b757fdb2-8ee3-413c-b39e-b2a785a93846",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 33,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 74,
+      "timestamp": "2026-07-16T16:44:46.225Z"
+    },
+    {
+      "analysisId": "51f3697d-020d-486b-8147-35e6e83eb6ba",
+      "simulationDay": 22,
+      "decisionId": "e5f57ea5-3e8d-48d5-ada8-fbef5843ed82",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 43,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 51,
+      "timestamp": "2026-07-16T16:44:46.225Z"
+    },
+    {
+      "analysisId": "494e64ad-5127-4010-95ae-2cd1c61fa24c",
+      "simulationDay": 23,
+      "decisionId": "08861275-0b8c-4f22-81b7-15e70a60c18f",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 59,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 65,
+      "timestamp": "2026-07-16T16:44:46.231Z"
+    },
+    {
+      "analysisId": "48dd10ab-d760-41eb-a420-627d61af96de",
+      "simulationDay": 24,
+      "decisionId": "70492382-5637-4f40-8ee7-b55221d44144",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 53,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 61,
+      "timestamp": "2026-07-16T16:44:46.239Z"
+    },
+    {
+      "analysisId": "5f13169a-3633-4fb2-a010-90bc7514a735",
+      "simulationDay": 24,
+      "decisionId": "f08837c0-32c2-49e9-ae7d-b5ada4cb6960",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 51,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 77,
+      "timestamp": "2026-07-16T16:44:46.239Z"
+    },
+    {
+      "analysisId": "73d4b695-3322-49b2-9a89-772053257a0e",
+      "simulationDay": 25,
+      "decisionId": "aef10de3-030e-4d63-b384-22e59f2df683",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 44,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 79,
+      "timestamp": "2026-07-16T16:44:46.244Z"
+    },
+    {
+      "analysisId": "85a67a4e-c319-4652-ab2d-554605d8e18d",
+      "simulationDay": 25,
+      "decisionId": "aec2c5de-c05e-457b-a826-d4f6225b37f4",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 54,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 79,
+      "timestamp": "2026-07-16T16:44:46.244Z"
+    },
+    {
+      "analysisId": "24f0849b-701f-4d1a-b65a-02db7c9cdbeb",
+      "simulationDay": 26,
+      "decisionId": "5fa95530-75c4-4027-8959-59781b973b16",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 52,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 71,
+      "timestamp": "2026-07-16T16:44:46.253Z"
+    },
+    {
+      "analysisId": "e921bfb6-21a5-4d4c-aaa2-b0e7c4c227f9",
+      "simulationDay": 26,
+      "decisionId": "b625cb6f-2737-457e-84c4-ac52d84f85c5",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 56,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 77,
+      "timestamp": "2026-07-16T16:44:46.253Z"
+    },
+    {
+      "analysisId": "0ffd3fb4-788d-4b28-ac4d-e3e07557f257",
+      "simulationDay": 27,
+      "decisionId": "580828f1-9777-466a-b752-d92b6c331568",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 40,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 52,
+      "timestamp": "2026-07-16T16:44:46.260Z"
+    },
+    {
+      "analysisId": "0894dbe2-772f-4eeb-8618-5a8ef957d997",
+      "simulationDay": 28,
+      "decisionId": "e0ceba8f-e9a8-4c67-a2e4-43957816e0e9",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 31,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 72,
+      "timestamp": "2026-07-16T16:44:46.269Z"
+    },
+    {
+      "analysisId": "0ef60b85-97db-45af-b649-cad452c84f86",
+      "simulationDay": 29,
+      "decisionId": "c5e8f884-520a-4b47-9a7e-6b2bdcfecaa1",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 32,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 75,
+      "timestamp": "2026-07-16T16:44:46.276Z"
+    },
+    {
+      "analysisId": "b27a5f61-7634-4b87-8e2c-9f6d2ea746c8",
+      "simulationDay": 30,
+      "decisionId": "aab2c394-39da-45b3-a628-c7ee0ab3c957",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 39,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 62,
+      "timestamp": "2026-07-16T16:44:46.286Z"
+    },
+    {
+      "analysisId": "aa6bf312-3bb7-4503-a79b-e6a18172bfc7",
+      "simulationDay": 30,
+      "decisionId": "408557dd-ff19-4509-8083-66a0f9f6f198",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 55,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 71,
+      "timestamp": "2026-07-16T16:44:46.286Z"
+    },
+    {
+      "analysisId": "8c158b84-8a5f-4962-a4ab-ad1174fc2c53",
+      "simulationDay": 31,
+      "decisionId": "65cece06-7456-498a-bcce-812a014a283f",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 44,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 73,
+      "timestamp": "2026-07-16T16:44:46.293Z"
+    },
+    {
+      "analysisId": "4a3c7a00-c532-4ed5-b733-09eed720e6f8",
+      "simulationDay": 32,
+      "decisionId": "6a65920b-b3cf-440c-8295-ff22eeaacba0",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 47,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 60,
+      "timestamp": "2026-07-16T16:44:46.303Z"
+    },
+    {
+      "analysisId": "f20b3920-cb57-4093-adf3-968e8b961005",
+      "simulationDay": 32,
+      "decisionId": "1d5a9a04-ac9a-4018-b977-d99ac28bcd3c",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 58,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 78,
+      "timestamp": "2026-07-16T16:44:46.303Z"
+    },
+    {
+      "analysisId": "1b39cdc5-d937-4e2e-9337-9bcb4590051b",
+      "simulationDay": 33,
+      "decisionId": "e8f714c1-fdc4-4d10-98e7-13d287ae3aa8",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 51,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 61,
+      "timestamp": "2026-07-16T16:44:46.310Z"
+    },
+    {
+      "analysisId": "8871631a-2e3f-47ff-b8c1-3a725bb03e5e",
+      "simulationDay": 34,
+      "decisionId": "cc63c853-5da4-4531-807a-59ec03e62c50",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 54,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 74,
+      "timestamp": "2026-07-16T16:44:46.318Z"
+    },
+    {
+      "analysisId": "23f338fc-c096-4cd1-8293-736c65c6c9da",
+      "simulationDay": 35,
+      "decisionId": "88cc03e3-a132-4327-a31c-a0c733c69087",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 53,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 75,
+      "timestamp": "2026-07-16T16:44:46.327Z"
+    },
+    {
+      "analysisId": "c7ff2842-0d10-4f17-8de0-fcacff891910",
+      "simulationDay": 36,
+      "decisionId": "e6c57640-40b2-4423-b12c-42058711283f",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 45,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 65,
+      "timestamp": "2026-07-16T16:44:46.337Z"
+    },
+    {
+      "analysisId": "41af99a5-c09b-4b0d-85e7-151ad02f5ff8",
+      "simulationDay": 36,
+      "decisionId": "00f154e6-5bf0-4d9d-958c-5c4a12041761",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 58,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 51,
+      "timestamp": "2026-07-16T16:44:46.337Z"
+    },
+    {
+      "analysisId": "865bde76-6b1e-40f9-a430-3d4eefab284d",
+      "simulationDay": 37,
+      "decisionId": "e321986a-c88e-4404-bc57-c61436f39648",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 58,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 71,
+      "timestamp": "2026-07-16T16:44:46.344Z"
+    },
+    {
+      "analysisId": "a6560604-972a-4676-8b49-6e27072d0a11",
+      "simulationDay": 38,
+      "decisionId": "87e24043-8993-4793-961e-05bbb1d61e1a",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 32,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 56,
+      "timestamp": "2026-07-16T16:44:46.354Z"
+    },
+    {
+      "analysisId": "7f45195a-d09f-4c24-9c54-46f7cd54adc9",
+      "simulationDay": 38,
+      "decisionId": "8c5caac6-2809-4bda-833a-3e7ba14962ce",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 37,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 75,
+      "timestamp": "2026-07-16T16:44:46.354Z"
+    },
+    {
+      "analysisId": "9c24c42f-b16c-40dd-a7d0-2caa620037b7",
+      "simulationDay": 39,
+      "decisionId": "a30e92f9-e1ae-4b45-882c-db589dc99ab7",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 49,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 76,
+      "timestamp": "2026-07-16T16:44:46.363Z"
+    },
+    {
+      "analysisId": "734c8e25-bc59-4aa9-a97e-740c9e4c5da4",
+      "simulationDay": 40,
+      "decisionId": "2506096c-4b5f-4419-bd42-9ddd8470a16c",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 32,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 58,
+      "timestamp": "2026-07-16T16:44:46.374Z"
+    },
+    {
+      "analysisId": "4566560d-3bca-4d99-ad18-09685df1865e",
+      "simulationDay": 40,
+      "decisionId": "a17b291c-7b12-4512-b703-0263da7a3e1e",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 56,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 78,
+      "timestamp": "2026-07-16T16:44:46.374Z"
+    },
+    {
+      "analysisId": "bbbc2424-a0a1-4159-9155-48eb59011edc",
+      "simulationDay": 41,
+      "decisionId": "d55f7ce5-fa45-4029-908a-be52f41e456a",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 53,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 67,
+      "timestamp": "2026-07-16T16:44:46.385Z"
+    },
+    {
+      "analysisId": "1582c62f-8637-4b76-b55e-063da7259953",
+      "simulationDay": 41,
+      "decisionId": "1965afd0-347c-472e-92ea-9288051584e5",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 50,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 56,
+      "timestamp": "2026-07-16T16:44:46.385Z"
+    },
+    {
+      "analysisId": "a6af5986-2123-4551-bc1a-5c45b31cd8c5",
+      "simulationDay": 42,
+      "decisionId": "5230a654-f426-4d4f-b827-b171dc4c7f28",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 46,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 75,
+      "timestamp": "2026-07-16T16:44:46.399Z"
+    },
+    {
+      "analysisId": "9424341e-c2f9-4d36-832c-e3d10d79438f",
+      "simulationDay": 42,
+      "decisionId": "63f4a4ac-a1d5-48a5-b0e9-921f0d3972f6",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 58,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 58,
+      "timestamp": "2026-07-16T16:44:46.399Z"
+    },
+    {
+      "analysisId": "b7c7eb4f-c8eb-4d55-a120-52a458af83d1",
+      "simulationDay": 43,
+      "decisionId": "476fe512-bfd4-4bff-858a-d96ff6d48e0d",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 38,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 77,
+      "timestamp": "2026-07-16T16:44:46.410Z"
+    },
+    {
+      "analysisId": "e26416d2-67b6-47b7-ac19-af196c897d56",
+      "simulationDay": 44,
+      "decisionId": "9bf37fb5-22ba-49ec-8509-6cde7c879c0d",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 58,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 58,
+      "timestamp": "2026-07-16T16:44:46.424Z"
+    },
+    {
+      "analysisId": "aaa3ec3e-40e6-4f33-86b5-f73eb0464fc7",
+      "simulationDay": 44,
+      "decisionId": "a2ea4c27-f962-49e9-9305-c0aff6615215",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 50,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 75,
+      "timestamp": "2026-07-16T16:44:46.424Z"
+    },
+    {
+      "analysisId": "ffbed3e5-7dfd-49b3-98f4-00cd64ef4afc",
+      "simulationDay": 45,
+      "decisionId": "09c04c5a-c16c-4ef0-9fca-6135bd94db6f",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 52,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 59,
+      "timestamp": "2026-07-16T16:44:46.434Z"
+    },
+    {
+      "analysisId": "648c454a-c051-4731-bab8-49e9b3d15630",
+      "simulationDay": 45,
+      "decisionId": "e185badb-1e15-4184-9134-fe3aaffdcd71",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 39,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 74,
+      "timestamp": "2026-07-16T16:44:46.434Z"
+    },
+    {
+      "analysisId": "a2a5fcd3-4b6b-472e-a3cb-3ba21ae277f3",
+      "simulationDay": 46,
+      "decisionId": "a8370681-e2a9-46a8-bcb9-c175b86d7e75",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 53,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 65,
+      "timestamp": "2026-07-16T16:44:46.444Z"
+    },
+    {
+      "analysisId": "163135fb-a0c0-4a5f-9e8a-c9ceed836cd5",
+      "simulationDay": 46,
+      "decisionId": "b4b38b09-aaf4-4e25-9277-40a76506aab9",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 41,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 67,
+      "timestamp": "2026-07-16T16:44:46.444Z"
+    },
+    {
+      "analysisId": "24f77816-0f79-4a1d-81ef-c2d9417560ad",
+      "simulationDay": 47,
+      "decisionId": "ed5c7feb-c903-4268-b86c-333170afbd7e",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 44,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 64,
+      "timestamp": "2026-07-16T16:44:46.457Z"
+    },
+    {
+      "analysisId": "5d587465-68c2-4156-8994-001d68f89789",
+      "simulationDay": 48,
+      "decisionId": "e18379c4-55d7-4efd-9465-0704d39ca229",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 36,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 63,
+      "timestamp": "2026-07-16T16:44:46.467Z"
+    },
+    {
+      "analysisId": "0d8a0db8-ae10-436c-acda-0c0f5d18c6f8",
+      "simulationDay": 48,
+      "decisionId": "9cff70fe-e53d-42ba-83b3-f41a36894555",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 42,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 67,
+      "timestamp": "2026-07-16T16:44:46.467Z"
+    },
+    {
+      "analysisId": "46c5900a-5c25-45f2-8e99-d70f24bd71c7",
+      "simulationDay": 49,
+      "decisionId": "fbd1d6d4-58f3-4c8e-84c4-c95459169b5b",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 38,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 75,
+      "timestamp": "2026-07-16T16:44:46.477Z"
+    },
+    {
+      "analysisId": "887fa29c-0181-402f-9113-5cf0e8c84028",
+      "simulationDay": 50,
+      "decisionId": "199e80f6-6bb7-4cb4-b7ed-95aeecb43083",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 36,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 51,
+      "timestamp": "2026-07-16T16:44:46.491Z"
+    },
+    {
+      "analysisId": "337d9f3e-522b-4947-b74b-b5c153c42e35",
+      "simulationDay": 50,
+      "decisionId": "0908ab27-d810-4727-9f4d-1ea28dcc66c0",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 57,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 59,
+      "timestamp": "2026-07-16T16:44:46.491Z"
+    },
+    {
+      "analysisId": "4fa58c08-8ff5-4f9f-9326-816f8808502c",
+      "simulationDay": 51,
+      "decisionId": "4e79ba30-eb29-4586-9e19-220f6420b3d4",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 35,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 78,
+      "timestamp": "2026-07-16T16:44:46.502Z"
+    },
+    {
+      "analysisId": "dbe13c19-64fc-44f4-a297-216b31865943",
+      "simulationDay": 51,
+      "decisionId": "ce2c4260-7c15-4b0b-b2b8-9a0ec6f3253a",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 45,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 76,
+      "timestamp": "2026-07-16T16:44:46.502Z"
+    },
+    {
+      "analysisId": "166572a2-bd90-4f9b-b1ce-116f1f2429e2",
+      "simulationDay": 52,
+      "decisionId": "cd24f249-2a60-45e9-930a-d8567925e7a3",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 34,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 62,
+      "timestamp": "2026-07-16T16:44:46.514Z"
+    },
+    {
+      "analysisId": "96ac57ca-ba2d-40e9-9d8f-e8f8a96ea4c7",
+      "simulationDay": 52,
+      "decisionId": "431e7649-653e-4d95-977a-b42340716bf6",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 59,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 51,
+      "timestamp": "2026-07-16T16:44:46.514Z"
+    },
+    {
+      "analysisId": "fcaf8fc0-569f-4ecd-aca7-7cf52661d9e1",
+      "simulationDay": 53,
+      "decisionId": "2e23e4b4-5373-4b8a-af7a-bea8d52d032f",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 30,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 79,
+      "timestamp": "2026-07-16T16:44:46.527Z"
+    },
+    {
+      "analysisId": "2db303c7-55aa-4abc-b4eb-e05d04641e4c",
+      "simulationDay": 54,
+      "decisionId": "1a7d4cc1-342d-403b-b2f0-e8c463263c3e",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 55,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 63,
+      "timestamp": "2026-07-16T16:44:46.541Z"
+    },
+    {
+      "analysisId": "d059267f-2f27-4725-8916-75b60f69e859",
+      "simulationDay": 55,
+      "decisionId": "eac1ec92-1bf9-42fc-9c92-76da3eec4b34",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 41,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 77,
+      "timestamp": "2026-07-16T16:44:46.558Z"
+    },
+    {
+      "analysisId": "a9bcf6f5-6fee-4221-a39d-a95a2d854d6f",
+      "simulationDay": 56,
+      "decisionId": "b99a4eb8-1f1f-4a76-8e9b-9f5d15789733",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 42,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 76,
+      "timestamp": "2026-07-16T16:44:46.576Z"
+    },
+    {
+      "analysisId": "a1a3fda5-fd1d-40e3-b486-57bdb109e2ea",
+      "simulationDay": 57,
+      "decisionId": "c4dd6c74-e983-4463-8802-82b650333b4a",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 55,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": true,
+      "confidence": 52,
+      "timestamp": "2026-07-16T16:44:46.600Z"
+    },
+    {
+      "analysisId": "44f3f664-f37a-4321-ac27-237cc86f38e1",
+      "simulationDay": 58,
+      "decisionId": "35e065b8-611d-4f2f-9bcd-6cac36ff9b7d",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 30,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 78,
+      "timestamp": "2026-07-16T16:44:46.618Z"
+    },
+    {
+      "analysisId": "44c73953-babf-4c1f-bb8d-c32d055dc94e",
+      "simulationDay": 59,
+      "decisionId": "769bb6d3-1f39-4ecf-805c-c8ceeff45297",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 48,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 75,
+      "timestamp": "2026-07-16T16:44:46.638Z"
+    },
+    {
+      "analysisId": "56cfc1aa-5f34-49d0-b960-40bf4e3148e9",
+      "simulationDay": 60,
+      "decisionId": "19ea9896-f984-4376-95c5-a48202c615fc",
+      "originalDecision": "Continue current approach with minor adjustments",
+      "alternativeOption": "Continue current approach",
+      "hypotheticalOutcome": "If we had chosen \"Continue current approach\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 53,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Continue current approach\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 65,
+      "timestamp": "2026-07-16T16:44:46.658Z"
+    },
+    {
+      "analysisId": "604bc952-e196-4ec6-8612-b55c42bc3131",
+      "simulationDay": 60,
+      "decisionId": "975059be-05cd-4570-840a-a05436390158",
+      "originalDecision": "Activate emergency response protocol",
+      "alternativeOption": "Immediate response",
+      "hypotheticalOutcome": "If we had chosen \"Immediate response\", the outcome might have been different in terms of cost, risk, and stakeholder impact.",
+      "probabilityEstimate": 56,
+      "reasoning": "Counterfactual analysis evaluates whether the chosen option or \"Immediate response\" would have produced better outcomes.",
+      "evidenceForAlternative": [
+        "Alternative risk profile analysis",
+        "Stakeholder consultation notes"
+      ],
+      "wouldImprove": false,
+      "confidence": 78,
+      "timestamp": "2026-07-16T16:44:46.658Z"
+    }
+  ]
+}

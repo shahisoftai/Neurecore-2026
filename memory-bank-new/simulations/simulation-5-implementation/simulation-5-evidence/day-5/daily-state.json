@@ -1,0 +1,42 @@
+{
+  "day": 5,
+  "budget": {
+    "total": 850000,
+    "spent": 121617.6,
+    "committed": 0
+  },
+  "activeEvents": 1,
+  "totalDecisions": 6,
+  "totalEvents": 1,
+  "injections": {
+    "events": [
+      {
+        "type": "COURT_INJUNCTION",
+        "severity": "HIGH",
+        "financialImpact": -46166,
+        "timelineImpact": 6,
+        "districts": [
+          "C"
+        ],
+        "description": "Court injunction halts work in District C",
+        "key": "court_injunction",
+        "day": 5,
+        "timestamp": "2026-07-16T16:44:46.120Z",
+        "isCascade": false
+      }
+    ],
+    "hallucinations": [
+      {
+        "injectedInfo": "A new cold chain storage facility has been established in District C by an anonymous donor.",
+        "sourceClaimed": "Infrastructure Project Report",
+        "isTrue": false,
+        "severity": "MEDIUM",
+        "day": 5,
+        "timestamp": "2026-07-16T16:44:46.120Z"
+      }
+    ],
+    "hiddenInfos": [],
+    "ethics": [],
+    "cascades": []
+  }
+}

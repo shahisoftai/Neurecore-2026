@@ -1,0 +1,39 @@
+{
+  "day": 12,
+  "budget": {
+    "total": 850000,
+    "spent": 170004,
+    "committed": 0
+  },
+  "totalDecisions": 13,
+  "totalEvents": 1,
+  "injections": {
+    "events": [],
+    "hallucinations": [],
+    "hiddenInfos": [],
+    "ethics": [
+      {
+        "dilemma": "A CHW is found falsifying attendance records due to financial hardship.",
+        "category": "FAIRNESS",
+        "options": [
+          {
+            "id": "A",
+            "text": "Immediate dismissal"
+          },
+          {
+            "id": "B",
+            "text": "Counseling and monitored return"
+          }
+        ],
+        "principles": [
+          "Fairness",
+          "Do No Harm",
+          "Justice"
+        ],
+        "day": 12,
+        "timestamp": "2026-07-16T18:06:51.287Z"
+      }
+    ],
+    "cascades": []
+  }
+}

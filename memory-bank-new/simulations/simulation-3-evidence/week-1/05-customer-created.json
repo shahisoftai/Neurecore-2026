@@ -1,0 +1,28 @@
+{
+  "status": "success",
+  "data": {
+    "id": "cmrneuzts000t1216n4iyij2a",
+    "tenantId": "b6747578-074e-4253-a7a7-a0146c4f92df",
+    "name": "Ministry of Health",
+    "industry": "Government - Health",
+    "primaryEmail": "ministry.health@gov.example",
+    "primaryPhone": "+1-555-0100",
+    "billingInfo": {
+      "taxId": "GOV-HEALTH-001",
+      "address": "Capital City, Government District",
+      "country": "Country-X"
+    },
+    "status": "ACTIVE",
+    "tags": [
+      "government",
+      "nutrition",
+      "emergency-response"
+    ],
+    "createdAt": "2026-07-16T11:13:35.968Z",
+    "updatedAt": "2026-07-16T11:13:35.968Z"
+  },
+  "meta": {
+    "timestamp": "2026-07-16T11:13:35.960Z",
+    "requestId": "5b7156e8-d70e-44bd-b9da-f167acbb3614"
+  }
+}

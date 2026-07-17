@@ -6,12 +6,13 @@ import { useAuth } from "@/auth";
 import type { AuthUser } from "@/types/auth.types";
 
 /**
- * Roles allowed to access platform-level Brevo administration pages
- * (`/admin/brevo/*`).  Backend `@Roles(SUPER_ADMIN, PLATFORM_ADMIN)` is the
- * authoritative check; this hook provides defense-in-depth on the client and
- * redirects non-admin users to /login before they see any data.
+ * Enforces SUPER_ADMIN-only access for platform-level admin pages.
+ * Per user-roles.md: Only SUPER_ADMIN may access Frontend Admin.
+ * Backend @Roles(SUPER_ADMIN) is the authoritative check; this hook
+ * provides defense-in-depth on the client and redirects non-admin users
+ * to /login before they see any data.
  */
-const PLATFORM_ADMIN_ROLES = ["SUPER_ADMIN", "PLATFORM_ADMIN"] as const;
+const PLATFORM_ADMIN_ROLES = ["SUPER_ADMIN"] as const;
 type PlatformAdminRole = (typeof PLATFORM_ADMIN_ROLES)[number];
 
 function isPlatformAdminRole(
@@ -21,14 +22,10 @@ function isPlatformAdminRole(
 }
 
 /**
- * Tighter variant of `useAdminAuth` that only allows
- * `SUPER_ADMIN` / `PLATFORM_ADMIN`. Useful for routes whose backend
- * endpoints are gated to those two roles.
- *
- * Returns `null` while the auth state is resolving OR when the user lacks
- * the role. The effect fires `router.replace("/login")` for the
- * unauthenticated case and `router.replace("/login?reason=insufficient")`
- * for an authenticated-but-not-platform-admin user.
+ * Strict variant that only allows SUPER_ADMIN.
+ * Returns null while auth state is resolving OR when the user lacks
+ * the role. Redirects to /login for unauthenticated and
+ * /login?reason=insufficient for authenticated-but-not-admin users.
  */
 export function useRequirePlatformAdmin(): AuthUser | null {
   const { state } = useAuth();

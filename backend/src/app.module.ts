@@ -10,6 +10,13 @@ import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigurationModule } from './config';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { CacheModule } from './infrastructure/cache/cache.module';
+import { IdempotencyModule } from './common/idempotency/idempotency.module';
+import { IdempotencyInterceptor } from './common/idempotency/idempotency.interceptor';
+import { ServiceIdentitiesModule } from './modules/service-identities/service-identities.module';
+import { TimelineEventsModule } from './modules/timeline-events/timeline-events.module';
+import { DecisionEvaluationsModule } from './modules/decision-evaluations/decision-evaluations.module';
+import { SimulationsModule } from './simulations/simulations.module';
+import { SimulationVisibilityModule } from './common/simulation/simulation-visibility.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
@@ -143,6 +150,7 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     // Infrastructure (global — no need to import elsewhere)
     DatabaseModule,
     CacheModule,
+    IdempotencyModule, // Phase 1 reusable idempotency layer (idempotency_records)
     SecurityModule, // Centralized secret management
 
     // Feature modules
@@ -279,6 +287,14 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     TierTemplatesModule,    // Pool #4 — Tier Templates (commercial offering)
     FeaturesModule,         // Pool #5 — Features
     PackagesModule,         // Pool #6 — Packages (composite root)
+
+    // Phase 1 — Simulation-5 modules
+    IdempotencyModule,       // @Global — reusable idempotency layer
+    ServiceIdentitiesModule, // service identity + token management
+    TimelineEventsModule,    // first-class event log
+    DecisionEvaluationsModule, // immutable scores snapshot
+    SimulationsModule,       // simulation lifecycle + day-run
+    SimulationVisibilityModule, // @Global — default exclusion of simulation artifacts
   ],
   providers: [
     // Global rate-limit guard
@@ -302,6 +318,9 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
 
     // Global audit interceptor — writes audit logs for every mutating request
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+
+    // Global idempotency interceptor — deduplicates replayed requests per tenant+key
+    { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
   ],
 })
 export class AppModule implements NestModule {

@@ -1,0 +1,388 @@
+{
+  "title": "Ethical Decision Report",
+  "totalDilemmas": 9,
+  "decisions": [
+    {
+      "decisionId": "0d653d56-8fd4-4117-9a35-0bdb09afb71d",
+      "dilemma": "A donor offers USD 200,000 but requires suppressing negative finding about program delays.",
+      "category": "TRANSPARENCY",
+      "options": [
+        {
+          "id": "A",
+          "text": "Accept donor funding with conditions",
+          "impact": "Ethical compromise, donor relationship strengthened"
+        },
+        {
+          "id": "B",
+          "text": "Decline donor funding",
+          "impact": "Program continues without compromise"
+        }
+      ],
+      "principles": [
+        "Transparency",
+        "Integrity",
+        "Accountability"
+      ],
+      "vulnerableGroups": [
+        "Beneficiaries",
+        "Public Trust"
+      ],
+      "day": 4,
+      "timestamp": "2026-07-16T16:44:46.108Z",
+      "chosenOption": "B",
+      "chosenOptionText": "Decline donor funding",
+      "reasoning": "Selected Option B: Decline donor funding. This balances Transparency and Integrity.",
+      "stakeholderImpact": {
+        "Beneficiaries": "Program continues without compromise",
+        "Public Trust": "Program continues without compromise"
+      },
+      "framework": "VIRTUE",
+      "principlesInvoked": [
+        "Transparency",
+        "Integrity",
+        "Accountability"
+      ],
+      "ethicsScore": 79
+    },
+    {
+      "decisionId": "2860dde7-6a72-40ba-95c0-8b5481232298",
+      "dilemma": "A donor offers USD 200,000 but requires suppressing negative finding about program delays.",
+      "category": "TRANSPARENCY",
+      "options": [
+        {
+          "id": "A",
+          "text": "Accept donor funding with conditions",
+          "impact": "Ethical compromise, donor relationship strengthened"
+        },
+        {
+          "id": "B",
+          "text": "Decline donor funding",
+          "impact": "Program continues without compromise"
+        }
+      ],
+      "principles": [
+        "Transparency",
+        "Integrity",
+        "Accountability"
+      ],
+      "vulnerableGroups": [
+        "Beneficiaries",
+        "Public Trust"
+      ],
+      "day": 8,
+      "timestamp": "2026-07-16T16:44:46.135Z",
+      "chosenOption": "A",
+      "chosenOptionText": "Accept donor funding with conditions",
+      "reasoning": "Selected Option A: Accept donor funding with conditions. This balances Transparency and Integrity.",
+      "stakeholderImpact": {
+        "Beneficiaries": "Ethical compromise, donor relationship strengthened",
+        "Public Trust": "Ethical compromise, donor relationship strengthened"
+      },
+      "framework": "CARE",
+      "principlesInvoked": [
+        "Transparency",
+        "Integrity",
+        "Accountability"
+      ],
+      "ethicsScore": 82
+    },
+    {
+      "decisionId": "9c501b16-5069-4a0f-a877-66fbdc6e05e8",
+      "dilemma": "A donor offers USD 200,000 but requires suppressing negative finding about program delays.",
+      "category": "TRANSPARENCY",
+      "options": [
+        {
+          "id": "A",
+          "text": "Accept donor funding with conditions",
+          "impact": "Ethical compromise, donor relationship strengthened"
+        },
+        {
+          "id": "B",
+          "text": "Decline donor funding",
+          "impact": "Program continues without compromise"
+        }
+      ],
+      "principles": [
+        "Transparency",
+        "Integrity",
+        "Accountability"
+      ],
+      "vulnerableGroups": [
+        "Beneficiaries",
+        "Public Trust"
+      ],
+      "day": 11,
+      "timestamp": "2026-07-16T16:44:46.153Z",
+      "chosenOption": "A",
+      "chosenOptionText": "Accept donor funding with conditions",
+      "reasoning": "Selected Option A: Accept donor funding with conditions. This balances Transparency and Integrity.",
+      "stakeholderImpact": {
+        "Beneficiaries": "Ethical compromise, donor relationship strengthened",
+        "Public Trust": "Ethical compromise, donor relationship strengthened"
+      },
+      "framework": "CARE",
+      "principlesInvoked": [
+        "Transparency",
+        "Integrity",
+        "Accountability"
+      ],
+      "ethicsScore": 77
+    },
+    {
+      "decisionId": "75f0c914-2fd6-4f15-9a91-505f256522c9",
+      "dilemma": "Budget shortfall of USD 85,000 requires cutting either (A) 15% of supplies or (B) delaying staff payments by 30 days.",
+      "category": "RESOURCE_ALLOCATION",
+      "options": [
+        {
+          "id": "A",
+          "text": "Reduce supplies by 15%",
+          "impact": "Reduced treatment capacity for 540 children"
+        },
+        {
+          "id": "B",
+          "text": "Delay staff payments by 30 days",
+          "impact": "Staff hardship, potential turnover"
+        }
+      ],
+      "principles": [
+        "Do No Harm",
+        "Fairness",
+        "Accountability"
+      ],
+      "vulnerableGroups": [
+        "Children U5",
+        "PLW",
+        "CHWs"
+      ],
+      "day": 30,
+      "timestamp": "2026-07-16T16:44:46.285Z",
+      "chosenOption": "A",
+      "chosenOptionText": "Reduce supplies by 15%",
+      "reasoning": "Selected Option A: Reduce supplies by 15%. This balances Do No Harm and Fairness.",
+      "stakeholderImpact": {
+        "Children U5": "Reduced treatment capacity for 540 children",
+        "PLW": "Reduced treatment capacity for 540 children",
+        "CHWs": "Reduced treatment capacity for 540 children"
+      },
+      "framework": "UTILITARIAN",
+      "principlesInvoked": [
+        "Do No Harm",
+        "Fairness",
+        "Accountability"
+      ],
+      "ethicsScore": 73
+    },
+    {
+      "decisionId": "b8896831-8a7c-4ae9-b96e-295da70426c9",
+      "dilemma": "A CHW is found falsifying attendance records. Evidence suggests financial hardship, not malice.",
+      "category": "FAIRNESS",
+      "options": [
+        {
+          "id": "A",
+          "text": "Immediate dismissal per policy",
+          "impact": "Zero tolerance maintained, program integrity protected"
+        },
+        {
+          "id": "B",
+          "text": "Counseling and monitored return",
+          "impact": "Compassion shown, policy precedent set"
+        }
+      ],
+      "principles": [
+        "Fairness",
+        "Do No Harm",
+        "Justice"
+      ],
+      "vulnerableGroups": [
+        "CHWs",
+        "Program Integrity"
+      ],
+      "day": 48,
+      "timestamp": "2026-07-16T16:44:46.466Z",
+      "chosenOption": "B",
+      "chosenOptionText": "Counseling and monitored return",
+      "reasoning": "Selected Option B: Counseling and monitored return. This balances Fairness and Do No Harm.",
+      "stakeholderImpact": {
+        "CHWs": "Compassion shown, policy precedent set",
+        "Program Integrity": "Compassion shown, policy precedent set"
+      },
+      "framework": "DEONTOLOGICAL",
+      "principlesInvoked": [
+        "Fairness",
+        "Do No Harm",
+        "Justice"
+      ],
+      "ethicsScore": 87
+    },
+    {
+      "decisionId": "9092ca5f-c03b-4922-8642-76e8b8418fcc",
+      "dilemma": "A CHW is found falsifying attendance records. Evidence suggests financial hardship, not malice.",
+      "category": "FAIRNESS",
+      "options": [
+        {
+          "id": "A",
+          "text": "Immediate dismissal per policy",
+          "impact": "Zero tolerance maintained, program integrity protected"
+        },
+        {
+          "id": "B",
+          "text": "Counseling and monitored return",
+          "impact": "Compassion shown, policy precedent set"
+        }
+      ],
+      "principles": [
+        "Fairness",
+        "Do No Harm",
+        "Justice"
+      ],
+      "vulnerableGroups": [
+        "CHWs",
+        "Program Integrity"
+      ],
+      "day": 49,
+      "timestamp": "2026-07-16T16:44:46.477Z",
+      "chosenOption": "B",
+      "chosenOptionText": "Counseling and monitored return",
+      "reasoning": "Selected Option B: Counseling and monitored return. This balances Fairness and Do No Harm.",
+      "stakeholderImpact": {
+        "CHWs": "Compassion shown, policy precedent set",
+        "Program Integrity": "Compassion shown, policy precedent set"
+      },
+      "framework": "DEONTOLOGICAL",
+      "principlesInvoked": [
+        "Fairness",
+        "Do No Harm",
+        "Justice"
+      ],
+      "ethicsScore": 70
+    },
+    {
+      "decisionId": "6f783561-94fd-4839-9644-46d47e26c04f",
+      "dilemma": "A CHW is found falsifying attendance records. Evidence suggests financial hardship, not malice.",
+      "category": "FAIRNESS",
+      "options": [
+        {
+          "id": "A",
+          "text": "Immediate dismissal per policy",
+          "impact": "Zero tolerance maintained, program integrity protected"
+        },
+        {
+          "id": "B",
+          "text": "Counseling and monitored return",
+          "impact": "Compassion shown, policy precedent set"
+        }
+      ],
+      "principles": [
+        "Fairness",
+        "Do No Harm",
+        "Justice"
+      ],
+      "vulnerableGroups": [
+        "CHWs",
+        "Program Integrity"
+      ],
+      "day": 55,
+      "timestamp": "2026-07-16T16:44:46.558Z",
+      "chosenOption": "A",
+      "chosenOptionText": "Immediate dismissal per policy",
+      "reasoning": "Selected Option A: Immediate dismissal per policy. This balances Fairness and Do No Harm.",
+      "stakeholderImpact": {
+        "CHWs": "Zero tolerance maintained, program integrity protected",
+        "Program Integrity": "Zero tolerance maintained, program integrity protected"
+      },
+      "framework": "DEONTOLOGICAL",
+      "principlesInvoked": [
+        "Fairness",
+        "Do No Harm",
+        "Justice"
+      ],
+      "ethicsScore": 76
+    },
+    {
+      "decisionId": "2d2d180f-8466-49d6-b40e-08406b1a6346",
+      "dilemma": "Budget shortfall of USD 85,000 requires cutting either (A) 15% of supplies or (B) delaying staff payments by 30 days.",
+      "category": "RESOURCE_ALLOCATION",
+      "options": [
+        {
+          "id": "A",
+          "text": "Reduce supplies by 15%",
+          "impact": "Reduced treatment capacity for 540 children"
+        },
+        {
+          "id": "B",
+          "text": "Delay staff payments by 30 days",
+          "impact": "Staff hardship, potential turnover"
+        }
+      ],
+      "principles": [
+        "Do No Harm",
+        "Fairness",
+        "Accountability"
+      ],
+      "vulnerableGroups": [
+        "Children U5",
+        "PLW",
+        "CHWs"
+      ],
+      "day": 57,
+      "timestamp": "2026-07-16T16:44:46.599Z",
+      "chosenOption": "A",
+      "chosenOptionText": "Reduce supplies by 15%",
+      "reasoning": "Selected Option A: Reduce supplies by 15%. This balances Do No Harm and Fairness.",
+      "stakeholderImpact": {
+        "Children U5": "Reduced treatment capacity for 540 children",
+        "PLW": "Reduced treatment capacity for 540 children",
+        "CHWs": "Reduced treatment capacity for 540 children"
+      },
+      "framework": "CARE",
+      "principlesInvoked": [
+        "Do No Harm",
+        "Fairness",
+        "Accountability"
+      ],
+      "ethicsScore": 85
+    },
+    {
+      "decisionId": "760cb844-d4d2-4413-ac79-86963e941a4d",
+      "dilemma": "A donor offers USD 200,000 but requires suppressing negative finding about program delays.",
+      "category": "TRANSPARENCY",
+      "options": [
+        {
+          "id": "A",
+          "text": "Accept donor funding with conditions",
+          "impact": "Ethical compromise, donor relationship strengthened"
+        },
+        {
+          "id": "B",
+          "text": "Decline donor funding",
+          "impact": "Program continues without compromise"
+        }
+      ],
+      "principles": [
+        "Transparency",
+        "Integrity",
+        "Accountability"
+      ],
+      "vulnerableGroups": [
+        "Beneficiaries",
+        "Public Trust"
+      ],
+      "day": 60,
+      "timestamp": "2026-07-16T16:44:46.657Z",
+      "chosenOption": "B",
+      "chosenOptionText": "Decline donor funding",
+      "reasoning": "Selected Option B: Decline donor funding. This balances Transparency and Integrity.",
+      "stakeholderImpact": {
+        "Beneficiaries": "Program continues without compromise",
+        "Public Trust": "Program continues without compromise"
+      },
+      "framework": "CARE",
+      "principlesInvoked": [
+        "Transparency",
+        "Integrity",
+        "Accountability"
+      ],
+      "ethicsScore": 76
+    }
+  ]
+}

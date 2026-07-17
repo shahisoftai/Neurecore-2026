@@ -72,22 +72,31 @@ export class AccountLockoutService {
     }
 
     // 2. Hot path: sliding-window counter in Redis.
-    const windowKey = `login:fail:${normalisedEmail}`;
-    const ipKey = `login:fail:ip:${ipAddress ?? 'unknown'}`;
-    const [, , ipCount] = await Promise.all([
-      this.redis.incr(windowKey),
-      this.redis.expire(windowKey, policy.windowSeconds),
-      this.redis.incr(ipKey).then(async (n) => {
-        await this.redis.expire(ipKey, policy.windowSeconds);
-        return n;
-      }),
-    ]);
+    // Graceful degradation: if Redis is unavailable, allow login
+    // (DB-level lockout is still checked in step 1 above).
+    let failures = 0;
+    try {
+      const windowKey = `login:fail:${normalisedEmail}`;
+      const ipKey = `login:fail:ip:${ipAddress ?? 'unknown'}`;
+      const [, , ipCount] = await Promise.all([
+        this.redis.incr(windowKey),
+        this.redis.expire(windowKey, policy.windowSeconds),
+        this.redis.incr(ipKey).then(async (n) => {
+          await this.redis.expire(ipKey, policy.windowSeconds);
+          return n;
+        }),
+      ]);
 
-    const userFailures = (await this.redis.get(windowKey)) ?? '0';
-    const failures = Math.max(
-      parseInt(userFailures, 10) || 0,
-      parseInt(String(ipCount), 10) || 0,
-    );
+      const userFailures = (await this.redis.get(windowKey)) ?? '0';
+      failures = Math.max(
+        parseInt(userFailures, 10) || 0,
+        parseInt(String(ipCount), 10) || 0,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Redis unavailable for login lockout check, allowing: ${String(err)}`,
+      );
+    }
 
     if (failures >= policy.failureThreshold) {
       await this.applyLockout(normalisedEmail, policy.lockoutSeconds);
@@ -124,10 +133,13 @@ export class AccountLockoutService {
     });
 
     if (success) {
-      // Reset sliding window on successful login.
-      await this.redis.del(`login:fail:${normalisedEmail}`);
-      if (meta.ipAddress) {
-        await this.redis.del(`login:fail:ip:${meta.ipAddress}`);
+      try {
+        await this.redis.del(`login:fail:${normalisedEmail}`);
+        if (meta.ipAddress) {
+          await this.redis.del(`login:fail:ip:${meta.ipAddress}`);
+        }
+      } catch {
+        // Non-critical — Redis down doesn't prevent successful login.
       }
     }
   }
