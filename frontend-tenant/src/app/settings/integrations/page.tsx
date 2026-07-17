@@ -268,32 +268,56 @@ function BrevoIntegrationCard({
           </motion.div>
         )}
 
-        <div className="mt-4 flex gap-2 flex-wrap">
-          {integration.connected ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              {usage && (
-                <Badge
-                  variant={usage.isAtLimit ? 'destructive' : usage.isAtWarning ? 'secondary' : 'outline'}
-                  className="text-xs"
-                >
-                  {usage.sentToday}/{usage.dailyLimit} emails today
-                </Badge>
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            {integration.connected && usage && (
+              <Badge
+                variant={usage.isAtLimit ? 'destructive' : usage.isAtWarning ? 'secondary' : 'outline'}
+                className="text-xs"
+              >
+                {usage.sentToday}/{usage.dailyLimit} emails today
+              </Badge>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button 
+              size="sm" 
+              onClick={() => setShowSetupDialog(true)} 
+              disabled={loading || isValidating}
+              className="gap-1.5"
+            >
+              {loading || isValidating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Link2 className="w-4 h-4" />
               )}
-              <Button variant="outline" size="sm" onClick={() => setShowGuide(true)}>
-                <ExternalLink className="w-3.5 h-3.5" />
-                Setup Guide
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleDisconnect} disabled={loading}>
+              {integration.connected ? 'Edit Connection' : 'Setup Brevo'}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowGuide(true)}
+              className="gap-1.5"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Setup Guide
+            </Button>
+            
+            {integration.connected && (
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleDisconnect} 
+                disabled={loading}
+                className="gap-1.5"
+              >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unlink className="w-4 h-4" />}
                 Disconnect
               </Button>
-            </div>
-          ) : (
-            <Button size="sm" onClick={() => setShowSetupDialog(true)} disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
-              Setup Brevo
-            </Button>
-          )}
+            )}
+          </div>
         </div>
       </Card>
 
@@ -787,14 +811,12 @@ function IntegrationsContent() {
                   loading={actionLoading === 'google'}
                 />
               )}
-              {integrations?.brevo && (
-                <BrevoIntegrationCard
-                  integration={integrations.brevo}
-                  onConnect={handleBrevoConnect}
-                  onDisconnect={handleBrevoDisconnect}
-                  loading={actionLoading === 'brevo'}
-                />
-              )}
+              <BrevoIntegrationCard
+                integration={integrations?.brevo ?? { provider: 'brevo', label: 'Brevo', description: 'Email relay for AI agents', connected: false }}
+                onConnect={handleBrevoConnect}
+                onDisconnect={handleBrevoDisconnect}
+                loading={actionLoading === 'brevo'}
+              />
             </>
           )}
         </div>
