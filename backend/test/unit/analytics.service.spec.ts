@@ -1,16 +1,6 @@
 import { AnalyticsService } from '../../src/modules/analytics/services/analytics.service';
 import { PrismaFeatureStore } from '../../src/modules/analytics/services/featureStore.prisma';
 import { HttpModelRunner } from '../../src/modules/analytics/services/modelRunner.http';
-import { TenantContextService } from '../../src/common/context/tenant-context.service';
-
-/**
- * Unit tests for AnalyticsService.
- *
- * Phase 1E migration: services now read `tenantContext.tenantId` instead
- * of receiving it as a method parameter. The signature change means the
- * tests now pass `tenantId` via `TenantContextService.run(...)` scope
- * instead of as a method argument.
- */
 
 function buildMocks() {
   const prisma: any = {
@@ -45,35 +35,20 @@ function buildMocks() {
     embed: jest.fn().mockResolvedValue({ vectors: [[0.1, 0.2]] }),
   };
 
-  const tenantContext = new TenantContextService();
   const svc = new AnalyticsService(
-    prisma,
-    featureStore as PrismaFeatureStore,
-    modelRunner as HttpModelRunner,
-    tenantContext,
+    prisma as any,
+    featureStore as any,
+    modelRunner as any,
   );
 
-  return { svc, prisma, featureStore, modelRunner, tenantContext };
-}
-
-/**
- * Wrap an async call in a tenant scope so `tenantContext.tenantId` works.
- */
-async function asTenant<T>(
-  tenantContext: TenantContextService,
-  tenantId: string,
-  fn: () => Promise<T>,
-): Promise<T> {
-  return tenantContext.run({ tenantId }, fn);
+  return { svc, prisma, featureStore, modelRunner };
 }
 
 describe('AnalyticsService', () => {
-  it('score() saves features and calls model runner', async () => {
-    const { svc, featureStore, modelRunner, tenantContext } = buildMocks();
-    const result = await asTenant(tenantContext, 'tenant-1', () =>
-      svc.score({ revenue: 200, users: 50 }),
-    );
-    expect(featureStore.save).toHaveBeenCalledWith({ revenue: 200, users: 50 });
+  it('score() saves features with tenantId and calls model runner', async () => {
+    const { svc, featureStore, modelRunner } = buildMocks();
+    const result = await svc.score('tenant-1', { revenue: 200, users: 50 });
+    expect(featureStore.save).toHaveBeenCalledWith('tenant-1', { revenue: 200, users: 50 });
     expect(modelRunner.runModel).toHaveBeenCalledWith('model-1', {
       revenue: 200,
       users: 50,
@@ -81,23 +56,19 @@ describe('AnalyticsService', () => {
     expect(result).toMatchObject({ score: 0.75 });
   });
 
-  it('forecast() delegates to model runner', async () => {
-    const { svc, modelRunner, tenantContext } = buildMocks();
-    const result = await asTenant(tenantContext, 'tenant-1', () =>
-      svc.forecast(14),
-    );
+  it('forecast() delegates to model runner with periods', async () => {
+    const { svc, modelRunner } = buildMocks();
+    const result = await svc.forecast('tenant-1', 14);
     expect(modelRunner.forecast).toHaveBeenCalledWith(14);
     expect(result).toMatchObject({ tenantId: 'tenant-1', periods: 14 });
   });
 
   it('detectAnomalies() returns labels and scores', async () => {
-    const { svc, modelRunner, tenantContext } = buildMocks();
-    const result = await asTenant(tenantContext, 'tenant-1', () =>
-      svc.detectAnomalies([
-        [1, 2, 3, 4],
-        [5, 6, 7, 8],
-      ]),
-    );
+    const { svc, modelRunner } = buildMocks();
+    const result = await svc.detectAnomalies('tenant-1', [
+      [1, 2, 3, 4],
+      [5, 6, 7, 8],
+    ]);
     expect(modelRunner.detectAnomalies).toHaveBeenCalledWith([
       [1, 2, 3, 4],
       [5, 6, 7, 8],
@@ -106,19 +77,15 @@ describe('AnalyticsService', () => {
   });
 
   it('embed() returns vectors and count', async () => {
-    const { svc, modelRunner, tenantContext } = buildMocks();
-    const result = await asTenant(tenantContext, 'tenant-1', () =>
-      svc.embed(['hello world']),
-    );
+    const { svc, modelRunner } = buildMocks();
+    const result = await svc.embed('tenant-1', ['hello world']);
     expect(modelRunner.embed).toHaveBeenCalledWith(['hello world']);
     expect(result).toMatchObject({ count: 1 });
   });
 
   it('getReport() returns model list and latest features', async () => {
-    const { svc, tenantContext } = buildMocks();
-    const report = await asTenant(tenantContext, 'tenant-1', () =>
-      svc.getReport(),
-    );
+    const { svc } = buildMocks();
+    const report = await svc.getReport('tenant-1');
     expect(report).toMatchObject({ tenantId: 'tenant-1' });
     expect(Array.isArray(report.models)).toBe(true);
   });

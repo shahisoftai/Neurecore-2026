@@ -3275,3 +3275,67 @@ Implemented RBAC matrix per [user-roles.md](user-roles.md):
 - API 403 errors on POST/PATCH/DELETE are due to CSRF protection (`CSRF_ENABLED=true`), not role bugs
 - Browser SPAs automatically handle CSRF; direct API calls need manual `X-CSRF-Token` header
 
+---
+
+## PHASE-HONEST — Honest Audit Fixes: Enterprise Integration Phases 9-14 (2026-07-17)
+
+**Severity:** high (missing functionality)
+**Component:** backend
+**Status:** fixed + committed (commits: 0590c5f, da525b4, 87f274e, 9f79934, f404573, a1bcfd8)
+**Resolver:** Kilo
+
+During the honest audit of phases 9-14, the following genuine gaps between phase reports and actual codebase were found and fixed:
+
+### Phase 9 — RelationshipEngine.infer() never called
+**Symptom:** `RelationshipEngine.infer()` was implemented but `KnowledgeGraphSyncConsumer` never called it.
+
+**Fix:** Created `KnowledgeGraphSyncConsumer` that subscribes to Context Plane events and calls `relationshipEngine.infer()` after entity/relationship changes. Commit `0590c5f`.
+
+### Phase 10 — WorkRuntimeEventsConsumer typed helpers never activated
+**Symptom:** Typed Socket.IO helpers in `WorkRuntimeEventsConsumer` were registered but never called.
+
+**Fix:** `WorkRuntimeEventsConsumer` now calls all 12 typed helper methods on relevant events. Commit `87f274e`.
+
+### Phase 11 — No gaps found
+**Audit result:** Cloud platform fully verified — no code changes needed. Commit `f33dd91` (docs only).
+
+### Phase 12 — Missing deprecate()/retire() and all event emissions
+**Symptom:** `ApplicationFrameworkService` had no `deprecate()` or `retire()` methods. All write operations missing event emissions.
+
+**Fix:**
+- Added `deprecate(id, tenantId)` and `retire(id, tenantId)` with compound-where-clause guards
+- Injected `IEnterpriseEventTransport` via DIP
+- Added private `emit()` helper
+- Added event emissions for all write operations: `application.registered`, `application.activated`, `application.updated`, `application.deprecated`, `application.retired`
+- Added `PATCH /apps/:id/deprecate` and `PATCH /apps/:id/retire` endpoints
+
+Commit `f404573`.
+
+### Phase 13 — Missing all 6 event emissions
+**Symptom:** `AIGovernanceService` registered enterprise events in the fabric but never emitted them.
+
+**Fix:**
+- Injected `IEnterpriseEventTransport` via DIP
+- Added private `emit()` helper
+- Added all 6 event emissions: `governance.evaluation.completed`, `governance.hallucination.flagged`, `governance.bias.recorded`, `governance.policy.created`, `governance.review.decided`
+
+Commit `9f79934`. Docs `b8a8ea6`.
+
+### Phase 14 — Missing all 5 event emissions
+**Symptom:** `PlatformEvolutionService` registered enterprise events in the fabric but never emitted them.
+
+**Fix:**
+- Injected `IEnterpriseEventTransport` via DIP
+- Added private `emit()` helper
+- Added all 5 event emissions: `evolution.model.registered`, `evolution.benchmark.completed`, `evolution.experiment.completed`, `evolution.feature.lifecycle.updated`, `evolution.migration.generated`
+- `addRadarEntry` emits only on first creation (not upsert) via `findUnique` check
+
+Commit `a1bcfd8`. Docs `f33dd91`.
+
+### Prevention
+ Honest audits of future phases should:
+1. Verify every registered event is actually emitted somewhere in the code
+2. Check every public service method has a corresponding test or integration verification
+3. Confirm compound-where-clause guards exist for all cross-tenant operations
+4. Run full test suite before declaring a phase complete
+

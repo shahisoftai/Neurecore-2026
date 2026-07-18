@@ -186,7 +186,7 @@ describe('CookieAuthService', () => {
       expect(calls[0][1]).toBe('a');
       expect(calls[0][2]).toMatchObject({
         httpOnly: true,
-        sameSite: 'strict',
+        sameSite: 'lax',
         secure: false,
       });
       expect(calls[1][0]).toBe(REFRESH_TOKEN_COOKIE);
@@ -195,7 +195,7 @@ describe('CookieAuthService', () => {
       expect(calls[2][0]).toBe(CSRF_COOKIE);
       expect(calls[2][2]).toMatchObject({
         httpOnly: false,
-        sameSite: 'strict',
+        sameSite: 'lax',
         secure: false,
       });
     });

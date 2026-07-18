@@ -2,6 +2,47 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { HermesAgentType } from '@prisma/client';
 import { HermesRegistryService } from '../services/hermes-registry.service';
 
+export interface HermesRouterState {
+  task: string | null;
+  routedAgentId: string | null;
+  routedAgentType: string | null;
+  result: unknown;
+  error: string | null;
+  success: boolean;
+  shouldContinue: boolean;
+}
+
+export interface HermesRouterNodeResult extends HermesRouterState {
+  routedAgentId: string | null;
+  routedAgentType: string | null;
+  error: string | null;
+  success: boolean;
+  shouldContinue: boolean;
+}
+
+export class HermesRouterNode {
+  constructor(private readonly router: { route(state: HermesRouterState): Promise<{ agentId: string; agentType: string; confidence: number; reasoning: string }> }) {}
+
+  async route(state: HermesRouterState): Promise<HermesRouterNodeResult> {
+    if (!state.task) {
+      return { ...state, error: 'No task provided', success: false, shouldContinue: false };
+    }
+    try {
+      const routed = await this.router.route(state);
+      return {
+        ...state,
+        routedAgentId: routed.agentId,
+        routedAgentType: routed.agentType,
+        error: null,
+        success: true,
+        shouldContinue: true,
+      };
+    } catch (err) {
+      return { ...state, error: (err as Error).message, success: false, shouldContinue: false };
+    }
+  }
+}
+
 @Injectable()
 export class HermesRouter {
   private readonly logger = new Logger(HermesRouter.name);

@@ -32,8 +32,9 @@ const mockRedis = {
 
 const mockPrisma = {
   refreshToken: {
-    create: jest.fn().mockResolvedValue({}),
+    create: jest.fn().mockResolvedValue({ id: 'new-rt', familyId: 'family-1' }),
     findFirst: jest.fn(),
+    findUnique: jest.fn(),
     update: jest.fn().mockResolvedValue({}),
     updateMany: jest.fn().mockResolvedValue({ count: 0 }),
   },
@@ -66,7 +67,7 @@ describe('TokenService.rotateRefreshToken (FIX-007)', () => {
   });
 
   it('throws UnauthorizedException (401) — not generic Error (500) — when no stored token matches', async () => {
-    mockPrisma.refreshToken.findFirst.mockResolvedValue(null);
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(null);
     const svc = makeService();
 
     await expect(svc.rotateRefreshToken('rt-unknown', VALIDATED_USER)).rejects.toBeInstanceOf(
@@ -76,7 +77,7 @@ describe('TokenService.rotateRefreshToken (FIX-007)', () => {
   });
 
   it('throws UnauthorizedException when stored token is expired', async () => {
-    mockPrisma.refreshToken.findFirst.mockResolvedValue({
+    mockPrisma.refreshToken.findUnique.mockResolvedValue({
       id: 'rt1',
       tokenHash: 'h',
       userId: 'u1',
@@ -92,7 +93,7 @@ describe('TokenService.rotateRefreshToken (FIX-007)', () => {
   });
 
   it('does NOT call revokeAllRefreshTokens on a single invalid attempt (cascade-revoke regression)', async () => {
-    mockPrisma.refreshToken.findFirst.mockResolvedValue(null);
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(null);
     const svc = makeService();
 
     await expect(svc.rotateRefreshToken('rt-bad', VALIDATED_USER)).rejects.toBeInstanceOf(
@@ -102,17 +103,16 @@ describe('TokenService.rotateRefreshToken (FIX-007)', () => {
   });
 
   it('rotates token and issues new pair when stored token is valid', async () => {
-    mockPrisma.refreshToken.findFirst.mockResolvedValue({
+    mockPrisma.refreshToken.findUnique.mockResolvedValue({
       id: 'rt1',
       tokenHash: 'h',
       userId: 'u1',
       isRevoked: false,
       expiresAt: new Date(Date.now() + 60_000),
     });
-    mockPrisma.refreshToken.create.mockResolvedValue({});
     const svc = makeService();
 
-    const pair = await svc.rotateRefreshToken('rt-valid', VALIDATED_USER);
+    const pair = await svc.rotateRefreshToken('rt-valid', VALIDATED_USER as any);
     expect(pair.accessToken).toMatch(/^jwt:/);
     expect(pair.refreshToken).toMatch(/^jwt:/);
     expect(mockPrisma.refreshToken.update).toHaveBeenCalledWith({
