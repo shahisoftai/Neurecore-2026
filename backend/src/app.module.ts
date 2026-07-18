@@ -40,6 +40,7 @@ import { ToolsModule } from './modules/tools/tools.module';
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
 // Phase 3
 import { GovernanceModule } from './modules/governance/governance.module';
+import { ApprovalPortModule } from './modules/approval-port/approval-port.module';
 import { HermesModule } from './modules/hermes/hermes.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -168,6 +169,7 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
 
     // Phase 3 — Governance, Observability, Notifications, Departments, Models
     GovernanceModule,
+    ApprovalPortModule, // Phase 7 — Unified Capability Approval Port (ADR-006)
     HermesModule,
     ContextPlaneModule, // Organizational Context Plane (ADR-002, Phase 3) — @Global
     WorkRuntimeModule, // Governed Work Runtime (ADR-003/004, Phase 4)

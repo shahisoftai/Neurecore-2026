@@ -1663,6 +1663,7 @@ enum BudgetScope {
   DEPARTMENT
   AGENT
   MODEL
+  PROJECT
 }
 
 enum BudgetAction {
@@ -1747,6 +1748,10 @@ model BudgetPolicy {
 
   agentId String?
   agent   Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  // Phase 8: Project-scoped budget envelope
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   // Optional: scope by model (stored as string for flexibility)
   modelPattern String?
@@ -2178,6 +2183,9 @@ model Project {
 
   // Phase 1 simulation-5 back-relations
   timelineEvents TimelineEvent[]
+
+  // Phase 8 — Project-scoped budget envelopes
+  budgetPolicies BudgetPolicy[]
 
   @@unique([tenantId, name])
   @@index([tenantId])

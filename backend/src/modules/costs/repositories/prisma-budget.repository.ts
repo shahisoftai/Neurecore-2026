@@ -30,7 +30,7 @@ export class PrismaBudgetPolicyRepository implements IBudgetPolicyRepository {
 
   async findByScope(
     tenantId: string,
-    scope: 'TENANT' | 'DEPARTMENT' | 'AGENT' | 'MODEL',
+    scope: 'TENANT' | 'DEPARTMENT' | 'AGENT' | 'MODEL' | 'PROJECT',
     scopeId?: string,
   ): Promise<BudgetPolicy[]> {
     const where: Prisma.BudgetPolicyWhereInput = {
@@ -44,10 +44,18 @@ export class PrismaBudgetPolicyRepository implements IBudgetPolicyRepository {
       where.agentId = scopeId;
     } else if (scope === 'MODEL' && scopeId) {
       where.modelPattern = scopeId;
+    } else if (scope === 'PROJECT' && scopeId) {
+      where.projectId = scopeId;
     }
 
     return this.prisma.budgetPolicy.findMany({
       where,
+    });
+  }
+
+  async findByProject(projectId: string): Promise<BudgetPolicy | null> {
+    return this.prisma.budgetPolicy.findFirst({
+      where: { projectId },
     });
   }
 
@@ -75,6 +83,7 @@ export class PrismaBudgetPolicyRepository implements IBudgetPolicyRepository {
         departmentId: input.scope === 'DEPARTMENT' ? input.scopeId : null,
         agentId: input.scope === 'AGENT' ? input.scopeId : null,
         modelPattern: input.scope === 'MODEL' ? input.scopeId : null,
+        projectId: input.scope === 'PROJECT' ? input.projectId : null,
         alertThresholds: input.alertThresholds ?? [50, 75, 90],
         action: input.action ?? 'ALERT',
         enabled: input.enabled ?? true,

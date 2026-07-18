@@ -32,6 +32,7 @@ export enum BudgetScope {
   DEPARTMENT = 'DEPARTMENT',
   AGENT = 'AGENT',
   MODEL = 'MODEL',
+  PROJECT = 'PROJECT',
 }
 
 export enum BudgetAction {
@@ -140,6 +141,10 @@ export class CreateBudgetPolicyDto {
   @IsOptional()
   @IsString()
   scopeId?: string;
+
+  @IsOptional()
+  @IsString()
+  projectId?: string;
 
   @IsOptional()
   @IsArray()

@@ -225,9 +225,14 @@ export interface IBudgetPolicyRepository {
    */
   findByScope(
     tenantId: string,
-    scope: 'TENANT' | 'DEPARTMENT' | 'AGENT' | 'MODEL',
+    scope: 'TENANT' | 'DEPARTMENT' | 'AGENT' | 'MODEL' | 'PROJECT',
     scopeId?: string,
   ): Promise<unknown[]>;
+
+  /**
+   * Find a budget policy by projectId (Phase 8)
+   */
+  findByProject(projectId: string): Promise<unknown | null>;
 
   /**
    * Find active budget policies that need checking
@@ -263,8 +268,9 @@ export interface CreateBudgetPolicyInput {
   name: string;
   limitCents: number;
   period: 'DAILY' | 'WEEKLY' | 'MONTHLY';
-  scope: 'TENANT' | 'DEPARTMENT' | 'AGENT' | 'MODEL';
+  scope: 'TENANT' | 'DEPARTMENT' | 'AGENT' | 'MODEL' | 'PROJECT';
   scopeId?: string;
+  projectId?: string; // Required when scope is PROJECT
   alertThresholds?: number[];
   action?: 'ALERT' | 'BLOCK' | 'DEGRADE';
   enabled?: boolean;

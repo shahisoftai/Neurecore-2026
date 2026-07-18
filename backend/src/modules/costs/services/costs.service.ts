@@ -5,7 +5,7 @@
  * Following SOLID: Single Responsibility, Dependency Inversion
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { LangSmithCostProvider } from '../providers/langsmith-cost-provider';
 import { PrismaCostRecordRepository } from '../repositories/prisma-cost.repository';
 import {
@@ -14,6 +14,8 @@ import {
 } from '../repositories/prisma-budget.repository';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import type { CostSummary } from '../interfaces/cost.interface';
+import { EVENT_TRANSPORT } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
+import type { IEnterpriseEventTransport } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
 
 @Injectable()
 export class CostsService {
@@ -25,6 +27,8 @@ export class CostsService {
     private readonly budgetRepository: PrismaBudgetPolicyRepository,
     private readonly incidentRepository: PrismaBudgetIncidentRepository,
     private readonly prisma: PrismaService,
+    @Inject(EVENT_TRANSPORT)
+    private readonly eventTransport: IEnterpriseEventTransport,
   ) {}
 
   /**
@@ -139,8 +143,9 @@ export class CostsService {
     name: string;
     limitCents: number;
     period: 'DAILY' | 'WEEKLY' | 'MONTHLY';
-    scope: 'TENANT' | 'DEPARTMENT' | 'AGENT' | 'MODEL';
+    scope: 'TENANT' | 'DEPARTMENT' | 'AGENT' | 'MODEL' | 'PROJECT';
     scopeId?: string;
+    projectId?: string;
     alertThresholds?: number[];
     action?: 'ALERT' | 'BLOCK' | 'DEGRADE';
   }) {
@@ -191,8 +196,10 @@ export class CostsService {
   }
 
   /**
-   * Check if any budget thresholds have been breached
-   * Called after cost records are created
+   * Check if any budget thresholds have been breached.
+   * Called after cost records are created.
+   * Emits enterprise.finance.threshold.exceeded for each new breach (idempotent
+   * per BudgetIncident — the incident is only created once per threshold).
    */
   async checkBudgetThresholds(
     tenantId: string,
@@ -212,10 +219,8 @@ export class CostsService {
       if (limitCents > 0) {
         const utilizationPercent = (newSpend / limitCents) * 100;
 
-        // Check each threshold
         for (const threshold of alertThresholds) {
           if (utilizationPercent >= threshold) {
-            // Check if incident already exists for this threshold
             const existingIncidents =
               await this.incidentRepository.findByPolicy(
                 policyAny.id as string,
@@ -225,12 +230,42 @@ export class CostsService {
             ).some((i) => i.threshold === threshold && i.status === 'ACTIVE');
 
             if (!hasActiveIncident) {
-              // Create new incident
-              await this.incidentRepository.create({
-                budgetPolicyId: policyAny.id as string,
-                threshold,
-                totalCents: newSpend,
-              });
+              try {
+                await this.incidentRepository.create({
+                  budgetPolicyId: policyAny.id as string,
+                  threshold,
+                  totalCents: newSpend,
+                });
+              } catch (err) {
+                this.logger.error(
+                  `Failed to create BudgetIncident for policy ${policyAny.id as string} threshold ${threshold}: ${err instanceof Error ? err.message : String(err)}`,
+                );
+                continue;
+              }
+
+              const thresholdExceeededEvent = {
+                eventType: 'enterprise.finance.threshold.exceeded',
+                tenantId,
+                actorType: 'SYSTEM' as const,
+                idempotencyKey: `threshold.${policyAny.id as string}.${threshold}.${Date.now()}`,
+                sourceModule: 'costs',
+                payload: {
+                  policyId: policyAny.id as string,
+                  projectId: policyAny.projectId as string | null,
+                  threshold,
+                  currentSpendCents: newSpend,
+                  limitCents,
+                  utilizationPercent: Math.round(utilizationPercent * 100) / 100,
+                },
+              };
+
+              try {
+                await this.eventTransport.publish(thresholdExceeededEvent, this.prisma);
+              } catch (err) {
+                this.logger.error(
+                  `Failed to publish enterprise.finance.threshold.exceeded for policy ${policyAny.id as string}: ${err instanceof Error ? err.message : String(err)}`,
+                );
+              }
 
               this.logger.warn(
                 `Budget threshold ${threshold}% breached for policy ${policyAny.name} (${policyAny.id})`,
@@ -239,7 +274,6 @@ export class CostsService {
           }
         }
 
-        // Update current spend
         await this.budgetRepository.updateSpend(
           policyAny.id as string,
           newSpend,

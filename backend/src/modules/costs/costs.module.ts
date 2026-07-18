@@ -15,9 +15,11 @@ import {
   PrismaBudgetIncidentRepository,
 } from './repositories/prisma-budget.repository';
 import { AgentsModule } from '../agents/agents.module';
+import { EnterpriseEventsModule } from '../enterprise-events/enterprise-events.module';
+import { FinanceProjectConsumer } from './consumers/finance-project.consumer';
 
 @Module({
-  imports: [AgentsModule],
+  imports: [AgentsModule, EnterpriseEventsModule],
   controllers: [CostsController],
   providers: [
     // Main service
@@ -30,6 +32,9 @@ import { AgentsModule } from '../agents/agents.module';
     PrismaCostRecordRepository,
     PrismaBudgetPolicyRepository,
     PrismaBudgetIncidentRepository,
+
+    // Phase 8 — Project-Finance bridge consumer
+    FinanceProjectConsumer,
   ],
   exports: [CostsService],
 })

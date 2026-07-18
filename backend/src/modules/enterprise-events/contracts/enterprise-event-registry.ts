@@ -39,8 +39,8 @@ export const ENTERPRISE_EVENT_REGISTRY: Record<string, EventContract> = {
   },
   'enterprise.project.budget.changed': {
     version: 1,
-    requiredPayloadKeys: ['projectId', 'newAmount'],
-    description: 'A project budget changed.',
+    requiredPayloadKeys: ['projectId', 'previousAmount', 'newAmount', 'currency'],
+    description: 'A project budget amount changed (triggered by ProjectsService.update).',
   },
   'enterprise.project.timeline.changed': {
     version: 1,
@@ -84,11 +84,21 @@ export const ENTERPRISE_EVENT_REGISTRY: Record<string, EventContract> = {
     description: 'An approval was rejected or returned for revision.',
   },
 
-  // ── Finance (contract; deep integration OUT OF PHASE) ────────────────────
+  // ── Finance (Phase 8 — Project-Finance Integration, ADR-007) ───────────────
   'enterprise.finance.threshold.exceeded': {
     version: 1,
-    requiredPayloadKeys: ['thresholdId', 'currentSpend', 'thresholdValue'],
-    description: 'A finance spend threshold was exceeded.',
+    requiredPayloadKeys: [
+      'policyId',
+      'projectId',
+      'threshold',
+      'currentSpendCents',
+      'limitCents',
+    ],
+    description:
+      'A project-scoped or tenant-scoped budget threshold was breached. ' +
+      'Emitted by CostsService.checkBudgetThresholds when utilization crosses ' +
+      'an alert threshold defined on a BudgetPolicy. ProjectId may be null for ' +
+      'tenant-level policies.',
   },
 
   // ── Workspace / Calendar (contracts; producers OUT OF PHASE) ─────────────
