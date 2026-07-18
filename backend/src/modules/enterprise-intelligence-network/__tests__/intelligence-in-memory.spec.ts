@@ -256,28 +256,32 @@ describe('EntityResolver', () => {
 });
 
 describe('RelationshipEngine (audit-remediation: actorId propagation)', () => {
-  function makePlane(healthy: boolean) {
+  function makePlane(healthy: boolean, capsOverride: any = null) {
     return {
       assemble: async (input: any) => {
         if (!healthy) throw new Error('plane down');
-        // capture input.tenantId/actorId for the test
         return {
-          capabilities: {
+          capabilities: capsOverride ?? {
             projects: { data: { projects: [{ id: 'p1', name: 'P1', customerId: 'c1', status: 'ACTIVE', budgetAmount: 1000 }] } },
           },
         };
       },
     };
   }
+  function makeTransport() {
+    const published: any[] = [];
+    const transport = { publish: async (input: any) => { published.push(input); return { eventId: 'e1', deduplicated: false }; } };
+    return { transport, published };
+  }
   it('passes the caller-supplied actorId to the context plane', async () => {
     const p = makePrisma();
+    const { transport } = makeTransport();
     const plane = makePlane(true) as any;
     const kg = new KnowledgeGraph(p);
-    const re = new RelationshipEngine(plane, kg);
-    // Spy on plane.assemble by replacing it with a tracker.
+    const re = new RelationshipEngine(plane, kg, transport as any);
     const seen: any[] = [];
     plane.assemble = async (i: any) => { seen.push(i); return { capabilities: { projects: { data: { projects: [] } } } }; };
-    await re.infer('t1', 'alice'); // actorId='alice'
+    await re.infer('t1', 'alice');
     expect(seen.length).toBe(1);
     expect(seen[0].actorId).toBe('alice');
     expect(seen[0].tenantId).toBe('t1');
@@ -287,9 +291,69 @@ describe('RelationshipEngine (audit-remediation: actorId propagation)', () => {
     const p = makePrisma();
     const plane = { assemble: async () => { throw new Error('plane down'); } } as any;
     const kg = new KnowledgeGraph(p);
-    const re = new RelationshipEngine(plane, kg);
+    const { transport } = makeTransport();
+    const re = new RelationshipEngine(plane, kg, transport as any);
     const out = await re.infer('t1', 'system');
     expect(out).toEqual([]);
+  });
+
+  it('infers RELATED_TO edges from projects capability and emits enterprise.relationship.created', async () => {
+    const p = makePrisma();
+    const { transport, published } = makeTransport();
+    const plane = makePlane(true, {
+      projects: { data: { projects: [{ id: 'p1', name: 'P1', customerId: 'c1', status: 'ACTIVE', budgetAmount: 1000 }] } },
+    }) as any;
+    const kg = new KnowledgeGraph(p);
+    const re = new RelationshipEngine(plane, kg, transport as any);
+    const edges = await re.infer('t1', 'alice');
+    expect(edges.length).toBeGreaterThan(0);
+    const relEvent = published.find((e: any) => e.eventType === 'enterprise.relationship.created');
+    expect(relEvent).toBeDefined();
+    expect(relEvent.tenantId).toBe('t1');
+    expect(relEvent.idempotencyKey).toContain('rel:');
+    expect(relEvent.sourceModule).toBe('EnterpriseIntelligenceNetwork');
+  });
+
+  it('processes tasks capability and creates WORK_RUN nodes with PART_OF edges', async () => {
+    const p = makePrisma();
+    const { transport, published } = makeTransport();
+    // Pre-seed the project node so the PART_OF edge can be created
+    await p.knowledgeNode.upsert({
+      where: { tenantId_entityKind_entityId: { tenantId: 't1', entityKind: 'PROJECT', entityId: 'p1' } },
+      create: { tenantId: 't1', entityKind: 'PROJECT', entityId: 'p1', label: 'Project One' },
+      update: { label: 'Project One' },
+    });
+    const plane = makePlane(true, {
+      tasks: { data: { tasks: [{ id: 't1', title: 'Task One', status: 'COMPLETED', projectId: 'p1', agentId: 'a1' }] } },
+    }) as any;
+    const kg = new KnowledgeGraph(p);
+    const re = new RelationshipEngine(plane, kg, transport as any);
+    await re.infer('t1', 'alice');
+    const workRunNode = p.rows.find(n => n.entityKind === 'WORK_RUN' && n.entityId === 't1');
+    expect(workRunNode).toBeDefined();
+    const partOfEdge = p.edges.find(e => e.relationshipKind === 'PART_OF');
+    expect(partOfEdge).toBeDefined();
+  });
+
+  it('processes approvals capability and creates APPROVAL nodes with IMPACTS edges', async () => {
+    const p = makePrisma();
+    const { transport, published } = makeTransport();
+    // Pre-seed a project node so the approval can find it
+    await p.knowledgeNode.upsert({
+      where: { tenantId_entityKind_entityId: { tenantId: 't1', entityKind: 'PROJECT', entityId: 'p1' } },
+      create: { tenantId: 't1', entityKind: 'PROJECT', entityId: 'p1', label: 'Project One' },
+      update: { label: 'Project One' },
+    });
+    const plane = makePlane(true, {
+      approvals: { data: { pending: [{ id: 'a1', title: 'Approve Budget', resourceType: 'PROJECT', resourceId: 'p1', status: 'PENDING' }] } },
+    }) as any;
+    const kg = new KnowledgeGraph(p);
+    const re = new RelationshipEngine(plane, kg, transport as any);
+    await re.infer('t1', 'alice');
+    const approvalNode = p.rows.find(n => n.entityKind === 'APPROVAL' && n.entityId === 'a1');
+    expect(approvalNode).toBeDefined();
+    const impactsEdge = p.edges.find(e => e.relationshipKind === 'IMPACTS');
+    expect(impactsEdge).toBeDefined();
   });
 });
 

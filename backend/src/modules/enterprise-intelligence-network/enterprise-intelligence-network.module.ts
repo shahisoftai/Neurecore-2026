@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EnterpriseCognitionModule } from '../enterprise-cognition/enterprise-cognition.module';
+import { EnterpriseEventsModule } from '../enterprise-events/enterprise-events.module';
 import {
   KNOWLEDGE_GRAPH, ONTOLOGY_MANAGER, ENTITY_RESOLVER, RELATIONSHIP_ENGINE,
   SEMANTIC_SEARCH, KNOWLEDGE_REASONER, ENTERPRISE_INTELLIGENCE,
@@ -9,9 +10,10 @@ import {
   SemanticSearch, KnowledgeReasoner, EnterpriseIntelligenceNetwork,
 } from './engines/intelligence-engines.service';
 import { EnterpriseIntelligenceController } from './enterprise-intelligence.controller';
+import { KnowledgeGraphSyncConsumer } from './consumers/knowledge-graph-sync.consumer';
 
 @Module({
-  imports: [EnterpriseCognitionModule],
+  imports: [EnterpriseCognitionModule, EnterpriseEventsModule],
   controllers: [EnterpriseIntelligenceController],
   providers: [
     OntologyManager, { provide: ONTOLOGY_MANAGER, useExisting: OntologyManager },
@@ -21,6 +23,7 @@ import { EnterpriseIntelligenceController } from './enterprise-intelligence.cont
     SemanticSearch, { provide: SEMANTIC_SEARCH, useExisting: SemanticSearch },
     KnowledgeReasoner, { provide: KNOWLEDGE_REASONER, useExisting: KnowledgeReasoner },
     EnterpriseIntelligenceNetwork, { provide: ENTERPRISE_INTELLIGENCE, useExisting: EnterpriseIntelligenceNetwork },
+    KnowledgeGraphSyncConsumer,
   ],
 })
 export class EnterpriseIntelligenceNetworkModule {}

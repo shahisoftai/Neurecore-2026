@@ -13,6 +13,8 @@ import { CONTEXT_PLANE } from '../../context-plane/contracts/context-plane.inter
 import type { IOrganizationalContextPlane } from '../../context-plane/contracts/context-plane.interface';
 import { ENTERPRISE_COGNITION } from '../../enterprise-cognition/contracts/enterprise-cognition.interface';
 import type { IEnterpriseCognition } from '../../enterprise-cognition/contracts/enterprise-cognition.interface';
+import { EVENT_TRANSPORT } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
+import type { IEnterpriseEventTransport } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
 import type {
   EnterpriseDiscoveryFinding, GraphQueryResult, IOntologyManager, IEntityResolver, IRelationshipEngine, ISemanticSearch, IKnowledgeReasoner, IKnowledgeGraph, IEnterpriseIntelligenceNetwork, KnowledgeEdgeView, KnowledgeNodeView, KnowledgeHealth, OntologySchema, ReasoningAnswer, ResolvedEntity, SearchResult,
 } from '../contracts/enterprise-intelligence.interface';
@@ -159,22 +161,101 @@ export class RelationshipEngine implements IRelationshipEngine {
   constructor(
     @Inject(CONTEXT_PLANE) private readonly plane: IOrganizationalContextPlane,
     private readonly graph: KnowledgeGraph,
+    @Inject(EVENT_TRANSPORT) private readonly events: IEnterpriseEventTransport,
   ) {}
+
   async infer(tenantId: string, actorId: string): Promise<KnowledgeEdgeView[]> {
-    // Audit-remediation: actorId is propagated from the caller rather
-    // than hard-coded 'system' so the audit trail is distinguishable.
     const ctx = await this.plane.assemble({ tenantId, actorId, actorType: 'AI_AGENT', scope: {} }).catch(() => null);
     if (!ctx) return [];
-    const edges: KnowledgeEdgeView[] = [];
+    const allEdges: KnowledgeEdgeView[] = [];
     const caps = ctx.capabilities ?? {};
-    // Projects → Customer (PART_OF customer ecosystem)
+
     const projects = (caps.projects as any)?.data;
     if (projects && Array.isArray(projects.projects)) {
-      for (const p of projects.projects as any[]) {
-        const pNode = await this.graph.upsertNode(tenantId, 'PROJECT', p.id, p.name ?? p.id, { status: p.status, budget: p.budgetAmount });
-        if (p.customerId) {
-          const cNode = await this.graph.upsertNode(tenantId, 'CUSTOMER', p.customerId, `Customer ${p.customerId}`);
-          edges.push(await this.graph.upsertEdge(tenantId, pNode.id, cNode.id, 'RELATED_TO', [{ source: 'CONTEXT_PLANE', reference: 'projects', detail: `Project ${p.name} linked to customer ${p.customerId}` }]));
+      const projectEdges = await this.processProjects(tenantId, projects.projects);
+      allEdges.push(...projectEdges);
+    }
+
+    const customers = (caps.customers as any)?.data;
+    if (customers && Array.isArray(customers.customers)) {
+      const customerNodes = await this.processCustomers(tenantId, customers.customers);
+      allEdges.push(...customerNodes);
+    }
+
+    const tasks = (caps.tasks as any)?.data;
+    if (tasks && Array.isArray(tasks.tasks)) {
+      const taskEdges = await this.processTasks(tenantId, tasks.tasks);
+      allEdges.push(...taskEdges);
+    }
+
+    const approvals = (caps.approvals as any)?.data;
+    if (approvals && Array.isArray(approvals.pending)) {
+      const approvalEdges = await this.processApprovals(tenantId, approvals.pending);
+      allEdges.push(...approvalEdges);
+    }
+
+    for (const edge of allEdges) {
+      await this.events.publish({
+        eventType: 'enterprise.relationship.created',
+        version: 1,
+        tenantId,
+        actorId,
+        idempotencyKey: `rel:${tenantId}:${edge.sourceNodeId}:${edge.targetNodeId}:${edge.relationshipKind}`,
+        sourceModule: 'EnterpriseIntelligenceNetwork',
+        payload: { relationshipKind: edge.relationshipKind, sourceNodeId: edge.sourceNodeId, targetNodeId: edge.targetNodeId },
+      }).catch((err) => this.logger.warn(`Failed to emit enterprise.relationship.created: ${err}`));
+    }
+
+    return allEdges;
+  }
+
+  private async processProjects(tenantId: string, projects: any[]): Promise<KnowledgeEdgeView[]> {
+    const edges: KnowledgeEdgeView[] = [];
+    for (const p of projects) {
+      const pNode = await this.graph.upsertNode(tenantId, 'PROJECT', p.id, p.name ?? p.id, { status: p.status, budget: p.budgetAmount });
+      if (p.customerId) {
+        const cNode = await this.graph.upsertNode(tenantId, 'CUSTOMER', p.customerId, `Customer ${p.customerId}`);
+        const edge = await this.graph.upsertEdge(tenantId, pNode.id, cNode.id, 'RELATED_TO', [{ source: 'CONTEXT_PLANE', reference: 'projects', detail: `Project ${p.name} linked to customer ${p.customerId}` }]);
+        edges.push(edge);
+      }
+    }
+    return edges;
+  }
+
+  private async processCustomers(tenantId: string, customers: any[]): Promise<KnowledgeEdgeView[]> {
+    const edges: KnowledgeEdgeView[] = [];
+    for (const c of customers) {
+      await this.graph.upsertNode(tenantId, 'CUSTOMER', c.id, c.name ?? c.id, { industry: c.industry, status: c.status });
+    }
+    return edges;
+  }
+
+  private async processTasks(tenantId: string, tasks: any[]): Promise<KnowledgeEdgeView[]> {
+    const edges: KnowledgeEdgeView[] = [];
+    for (const t of tasks) {
+      const taskNode = await this.graph.upsertNode(tenantId, 'WORK_RUN', t.id, t.title ?? t.id, { status: t.status, agentId: t.agentId });
+      if (t.projectId) {
+        const projectNode = await this.graph.findNode(tenantId, 'PROJECT', t.projectId);
+        if (projectNode) {
+          const edge = await this.graph.upsertEdge(tenantId, taskNode.id, projectNode.id, 'PART_OF', [{ source: 'CONTEXT_PLANE', reference: 'tasks', detail: `Task ${t.title} belongs to project ${t.projectId}` }]);
+          edges.push(edge);
+        }
+      }
+    }
+    return edges;
+  }
+
+  private async processApprovals(tenantId: string, pending: any[]): Promise<KnowledgeEdgeView[]> {
+    const edges: KnowledgeEdgeView[] = [];
+    for (const a of pending) {
+      await this.graph.upsertNode(tenantId, 'APPROVAL', a.id, a.title ?? a.id, { resourceType: a.resourceType, resourceId: a.resourceId, status: a.status });
+      if (a.resourceId) {
+        const resourceNode = await this.graph.findNode(tenantId, 'PROJECT', a.resourceId)
+          ?? await this.graph.findNode(tenantId, 'WORK_RUN', a.resourceId);
+        if (resourceNode) {
+          const approvalNode = await this.graph.upsertNode(tenantId, 'APPROVAL', a.id, a.title ?? a.id, { resourceType: a.resourceType, resourceId: a.resourceId, status: a.status });
+          const edge = await this.graph.upsertEdge(tenantId, approvalNode.id, resourceNode.id, 'IMPACTS', [{ source: 'CONTEXT_PLANE', reference: 'approvals', detail: `Approval ${a.title} impacts ${a.resourceType} ${a.resourceId}` }]);
+          edges.push(edge);
         }
       }
     }
