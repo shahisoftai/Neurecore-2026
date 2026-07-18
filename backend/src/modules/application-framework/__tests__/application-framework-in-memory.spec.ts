@@ -116,11 +116,15 @@ class FakePrisma {
 
 function makePrisma() { return new FakePrisma() as any; }
 
+function makeEvents() {
+  return { publish: async () => {} } as any;
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('ApplicationFramework — Applications', () => {
   it('registerApp creates a row scoped to the caller tenant', async () => {
-    const fw = new ApplicationFramework(makePrisma() as any);
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
     const a = await fw.registerApp('tenant-a', 'NeuroCore CRM', 'CRM');
     expect(a.name).toBe('NeuroCore CRM');
     expect(a.domain).toBe('CRM');
@@ -130,7 +134,7 @@ describe('ApplicationFramework — Applications', () => {
   });
 
   it('registerApp accepts an explicit Edition (audit-remediation)', async () => {
-    const fw = new ApplicationFramework(makePrisma() as any);
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
     const community = await fw.registerApp('tenant-a', 'AppCommunity', 'CRM', '1.0.0', 'COMMUNITY');
     const government = await fw.registerApp('tenant-a', 'AppGov', 'Health', '1.0.0', 'GOVERNMENT');
     expect(community.edition).toBe('COMMUNITY');
@@ -139,7 +143,7 @@ describe('ApplicationFramework — Applications', () => {
 
   it('listApps returns only the calling tenant\'s apps', async () => {
     const p = makePrisma();
-    const fw = new ApplicationFramework(p as any);
+    const fw = new ApplicationFramework(p as any, makeEvents());
     await fw.registerApp('tenant-a', 'A1', 'CRM');
     await fw.registerApp('tenant-a', 'A2', 'Finance');
     await fw.registerApp('tenant-b', 'B1', 'CRM');
@@ -148,7 +152,7 @@ describe('ApplicationFramework — Applications', () => {
   });
 
   it('listApps filters by domain when provided', async () => {
-    const fw = new ApplicationFramework(makePrisma() as any);
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
     await fw.registerApp('tenant-a', 'A1', 'CRM');
     await fw.registerApp('tenant-a', 'A2', 'Finance');
     expect((await fw.listApps('tenant-a', 'CRM')).length).toBe(1);
@@ -157,7 +161,7 @@ describe('ApplicationFramework — Applications', () => {
 
 describe('ApplicationFramework — activate (audit-remediation)', () => {
   it('activate works for the owning tenant', async () => {
-    const fw = new ApplicationFramework(makePrisma() as any);
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
     const a = await fw.registerApp('tenant-a', 'A', 'CRM');
     const v = await fw.activate('tenant-a', a.id);
     expect(v.status).toBe('ACTIVE');
@@ -165,7 +169,7 @@ describe('ApplicationFramework — activate (audit-remediation)', () => {
 
   it('CRITICAL REGRESSION: activate refuses cross-tenant (pre-fix bug)', async () => {
     const p = makePrisma();
-    const fw = new ApplicationFramework(p as any);
+    const fw = new ApplicationFramework(p as any, makeEvents());
     const a = await fw.registerApp('tenant-a', 'A', 'CRM');
     // Tenant B JWT tries to activate Tenant A's app.
     await expect(fw.activate('tenant-b', a.id)).rejects.toThrow(/not found for tenant/);
@@ -174,22 +178,116 @@ describe('ApplicationFramework — activate (audit-remediation)', () => {
   });
 
   it('activate throws when the app doesn\'t exist at all', async () => {
-    const fw = new ApplicationFramework(makePrisma() as any);
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
     await expect(fw.activate('tenant-a', 'missing-app-id')).rejects.toThrow(/not found for tenant/);
+  });
+});
+
+describe('ApplicationFramework — deprecate (audit-remediation)', () => {
+  it('deprecate works for the owning tenant', async () => {
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
+    const a = await fw.registerApp('tenant-a', 'A', 'CRM');
+    await fw.activate('tenant-a', a.id);
+    const v = await fw.deprecate('tenant-a', a.id);
+    expect(v.status).toBe('DEPRECATED');
+  });
+
+  it('deprecate refuses cross-tenant', async () => {
+    const p = makePrisma();
+    const fw = new ApplicationFramework(p as any, makeEvents());
+    const a = await fw.registerApp('tenant-a', 'A', 'CRM');
+    await expect(fw.deprecate('tenant-b', a.id)).rejects.toThrow(/not found for tenant/);
+    expect(p.apps[0].status).toBe('DRAFT');
+  });
+});
+
+describe('ApplicationFramework — retire (audit-remediation)', () => {
+  it('retire works for the owning tenant', async () => {
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
+    const a = await fw.registerApp('tenant-a', 'A', 'CRM');
+    const v = await fw.retire('tenant-a', a.id);
+    expect(v.status).toBe('RETIRED');
+  });
+
+  it('retire refuses cross-tenant', async () => {
+    const p = makePrisma();
+    const fw = new ApplicationFramework(p as any, makeEvents());
+    const a = await fw.registerApp('tenant-a', 'A', 'CRM');
+    await expect(fw.retire('tenant-b', a.id)).rejects.toThrow(/not found for tenant/);
+    expect(p.apps[0].status).toBe('DRAFT');
+  });
+});
+
+describe('ApplicationFramework — event emissions', () => {
+  it('registerApp emits application.installed and application.catalog.updated', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const fw = new ApplicationFramework(makePrisma() as any, events);
+    const a = await fw.registerApp('tenant-a', 'A', 'CRM');
+    expect(events.publish).toHaveBeenCalledTimes(2);
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'application.installed', payload: expect.objectContaining({ appId: a.id }) }));
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'application.catalog.updated', payload: expect.objectContaining({ appId: a.id }) }));
+  });
+
+  it('activate emits application.activated', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const fw = new ApplicationFramework(makePrisma() as any, events);
+    const a = await fw.registerApp('tenant-a', 'A', 'CRM');
+    events.publish.mockClear();
+    await fw.activate('tenant-a', a.id);
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'application.activated', payload: { appId: a.id } }));
+  });
+
+  it('deprecate emits application.catalog.updated', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const fw = new ApplicationFramework(makePrisma() as any, events);
+    const a = await fw.registerApp('tenant-a', 'A', 'CRM');
+    events.publish.mockClear();
+    await fw.deprecate('tenant-a', a.id);
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'application.catalog.updated', payload: { appId: a.id } }));
+  });
+
+  it('retire emits application.catalog.updated', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const fw = new ApplicationFramework(makePrisma() as any, events);
+    const a = await fw.registerApp('tenant-a', 'A', 'CRM');
+    events.publish.mockClear();
+    await fw.retire('tenant-a', a.id);
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'application.catalog.updated', payload: { appId: a.id } }));
+  });
+
+  it('registerDomain emits application.catalog.updated', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const fw = new ApplicationFramework(makePrisma() as any, events);
+    await fw.registerDomain('tenant-a', 'D1', 'Health', ['patient-mgmt']);
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'application.catalog.updated' }));
+  });
+
+  it('registerSolution emits application.catalog.updated', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const fw = new ApplicationFramework(makePrisma() as any, events);
+    await fw.registerSolution('tenant-a', 'S1', 'Healthcare', ['D1']);
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'application.catalog.updated' }));
+  });
+
+  it('createWorkspace emits application.catalog.updated', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const fw = new ApplicationFramework(makePrisma() as any, events);
+    await fw.createWorkspace('tenant-a', 'W1', 'EXECUTIVE', ['health']);
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'application.catalog.updated' }));
   });
 });
 
 describe('ApplicationFramework — Domain Packages', () => {
   it('registerDomain creates a tenant-scoped row', async () => {
     const p = makePrisma();
-    const fw = new ApplicationFramework(p as any);
+    const fw = new ApplicationFramework(p as any, makeEvents());
     const d = await fw.registerDomain('tenant-a', 'PublicHealth', 'Health', ['patient-mgmt', 'immunization']);
     expect(d.modules).toEqual(['patient-mgmt', 'immunization']);
     expect(p.domains[0].tenantId).toBe('tenant-a');
   });
 
   it('listDomains is tenant-scoped', async () => {
-    const fw = new ApplicationFramework(makePrisma() as any);
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
     await fw.registerDomain('tenant-a', 'D1', 'Health');
     await fw.registerDomain('tenant-a', 'D2', 'Logistics');
     await fw.registerDomain('tenant-b', 'D3', 'Health');
@@ -199,7 +297,7 @@ describe('ApplicationFramework — Domain Packages', () => {
 
 describe('ApplicationFramework — Industry Solutions', () => {
   it('registerSolution creates a tenant-scoped row, listSolutions is tenant-scoped', async () => {
-    const fw = new ApplicationFramework(makePrisma() as any);
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
     await fw.registerSolution('tenant-a', 'Healthcare Suite', 'Healthcare', ['PublicHealth']);
     await fw.registerSolution('tenant-b', 'Healthcare Suite', 'Healthcare', ['Other']);
     expect((await fw.listSolutions('tenant-a'))[0].packages).toEqual(['PublicHealth']);
@@ -209,7 +307,7 @@ describe('ApplicationFramework — Industry Solutions', () => {
 
 describe('ApplicationFramework — Workspaces', () => {
   it('createWorkspace creates a tenant-scoped row, listWorkspaces is tenant-scoped', async () => {
-    const fw = new ApplicationFramework(makePrisma() as any);
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
     await fw.createWorkspace('tenant-a', 'Executive Cockpit', 'EXECUTIVE', ['health', 'missions']);
     await fw.createWorkspace('tenant-b', 'Other', 'ANALYST');
     expect((await fw.listWorkspaces('tenant-a')).length).toBe(1);
@@ -219,7 +317,7 @@ describe('ApplicationFramework — Workspaces', () => {
 
 describe('ApplicationFramework — catalog', () => {
   it('aggregates per-tenant across apps, domains, solutions, workspaces', async () => {
-    const fw = new ApplicationFramework(makePrisma() as any);
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
     await fw.registerApp('tenant-a', 'A1', 'CRM');
     await fw.registerDomain('tenant-a', 'D1', 'Health');
     await fw.registerSolution('tenant-a', 'S1', 'Healthcare');
@@ -232,7 +330,7 @@ describe('ApplicationFramework — catalog', () => {
   });
 
   it('catalog does not leak other tenants\',\' apps', async () => {
-    const fw = new ApplicationFramework(makePrisma() as any);
+    const fw = new ApplicationFramework(makePrisma() as any, makeEvents());
     await fw.registerApp('tenant-a', 'A1', 'CRM');
     await fw.registerApp('tenant-b', 'B1', 'CRM');
     expect((await fw.catalog('tenant-a')).apps.length).toBe(1);

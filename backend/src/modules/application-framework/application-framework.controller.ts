@@ -3,7 +3,7 @@
  * industry solutions, workspaces, catalog. Tenant-scoped.
  */
 
-import { Body, Controller, Get, Param, Post, Req, UseGuards, ForbiddenException, Inject, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards, ForbiddenException, Inject, Query } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { APP_FRAMEWORK } from './application-framework.service';
 import type { IApplicationFramework } from './application-framework.service';
@@ -20,6 +20,8 @@ export class ApplicationFrameworkController {
   @Post('apps') addApp(@Req() req: ReqWithUser, @Body() b: { name: string; domain: string }) { return this.fw.registerApp(this.t(req), b.name, b.domain); }
   @Get('apps') listApps(@Req() req: ReqWithUser, @Query('domain') domain?: string) { return this.fw.listApps(this.t(req), domain); }
   @Post('apps/:id/activate') activate(@Req() req: ReqWithUser, @Param('id') id: string) { return this.fw.activate(this.t(req), id); }
+  @Patch('apps/:id/deprecate') deprecate(@Req() req: ReqWithUser, @Param('id') id: string) { return this.fw.deprecate(this.t(req), id); }
+  @Patch('apps/:id/retire') retire(@Req() req: ReqWithUser, @Param('id') id: string) { return this.fw.retire(this.t(req), id); }
   @Post('domains') addDomain(@Req() req: ReqWithUser, @Body() b: { name: string; domain: string; modules?: string[] }) { return this.fw.registerDomain(this.t(req), b.name, b.domain, b.modules); }
   @Get('domains') listDomains(@Req() req: ReqWithUser) { return this.fw.listDomains(this.t(req)); }
   @Post('solutions') addSolution(@Req() req: ReqWithUser, @Body() b: { name: string; industry: string; packages?: string[] }) { return this.fw.registerSolution(this.t(req), b.name, b.industry, b.packages); }

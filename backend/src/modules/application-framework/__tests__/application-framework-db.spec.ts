@@ -31,7 +31,7 @@ describeDb('ApplicationFramework — REAL PostgreSQL (DATABASE_TEST_URL)', () =>
         workspaces, industry_solutions, domain_packages, applications
       RESTART IDENTITY CASCADE
     `);
-    fw = new ApplicationFramework(prisma as any);
+    fw = new ApplicationFramework(prisma as any, { publish: async () => {} } as any);
   });
 
   afterAll(async () => { await prisma.$disconnect(); });
