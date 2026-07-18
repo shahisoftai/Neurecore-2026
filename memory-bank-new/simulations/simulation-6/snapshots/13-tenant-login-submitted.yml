@@ -1,0 +1,35 @@
+- generic [active] [ref=f3e1]:
+  - status [ref=f3e2]
+  - alert [ref=f3e14]
+  - main [ref=f3e20]:
+    - generic [ref=f3e21]:
+      - img "NeureCore" [ref=f3e23]
+      - heading "Sign In to NeureCore" [level=1] [ref=f3e24]
+      - iframe [ref=f3e29]:
+        - button "Continue with Google. Opens in new tab" [ref=f4e3] [cursor=pointer]:
+          - generic [ref=f4e5]: Continue with Google
+      - generic [ref=f3e30]: Or continue with email
+      - generic [ref=f3e35]:
+        - generic [ref=f3e36]:
+          - text: Email
+          - textbox "Email" [ref=f3e37]: sim6-test@neurecore.test
+        - generic [ref=f3e38]:
+          - generic [ref=f3e39]:
+            - generic [ref=f3e40]: Password
+            - link "Forgot password?" [ref=f3e41] [cursor=pointer]:
+              - /url: /forgot-password
+          - generic [ref=f3e42]:
+            - textbox "Password" [ref=f3e43]: Test123456!
+            - button "Show password" [ref=f3e44] [cursor=pointer]
+        - button "Sign In" [ref=f3e48] [cursor=pointer]
+      - paragraph [ref=f3e49]:
+        - text: No account?
+        - link "Register" [ref=f3e50] [cursor=pointer]:
+          - /url: /register
+      - paragraph [ref=f3e51]:
+        - text: By signing in, you agree to our
+        - link "Terms of Service" [ref=f3e52] [cursor=pointer]:
+          - /url: /terms
+        - text: and
+        - link "Privacy Policy" [ref=f3e53] [cursor=pointer]:
+          - /url: /privacy

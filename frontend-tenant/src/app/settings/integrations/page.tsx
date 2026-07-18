@@ -712,9 +712,14 @@ function IntegrationsContent() {
       setActionLoading('brevo');
       await integrationsService.connectBrevo(apiKey);
       await fetchIntegrations();
+      setIntegrations((prev) => prev ? {
+        ...prev,
+        brevo: { ...prev.brevo, connected: true },
+      } : prev);
     } catch (err) {
       setError('Failed to connect Brevo. Check your API key.');
       console.error(err);
+    } finally {
       setActionLoading(null);
     }
   };
@@ -726,6 +731,10 @@ function IntegrationsContent() {
     try {
       setActionLoading('brevo');
       await integrationsService.disconnectBrevo();
+      setIntegrations((prev) => prev ? {
+        ...prev,
+        brevo: { ...prev.brevo, connected: false },
+      } : prev);
       await fetchIntegrations();
     } catch (err) {
       setError('Failed to disconnect Brevo');

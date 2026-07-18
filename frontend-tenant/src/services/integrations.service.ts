@@ -134,7 +134,7 @@ export interface SetupAgentFoldersResponse {
 
 class IntegrationsService {
   async listIntegrations(): Promise<IntegrationsList> {
-    const res = await api.get('/integrations');
+    const res = await api.get(`/integrations?_t=${Date.now()}`);
     return unwrapItem(res) as IntegrationsList;
   }
 
@@ -144,7 +144,7 @@ class IntegrationsService {
   }
 
   async getBrevoStatus(): Promise<{ connected: boolean }> {
-    const res = await api.get('/integrations/brevo/status');
+    const res = await api.get(`/integrations/brevo/status?_t=${Date.now()}`);
     return unwrapItem(res) as { connected: boolean };
   }
 
@@ -180,7 +180,7 @@ class IntegrationsService {
     isAtLimit: boolean;
     remaining: number;
   }> {
-    const res = await api.get('/integrations/usage/brevo');
+    const res = await api.get(`/integrations/usage/brevo?_t=${Date.now()}`);
     return unwrapItem(res) as never;
   }
 

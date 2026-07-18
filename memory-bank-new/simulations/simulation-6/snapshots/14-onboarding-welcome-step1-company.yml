@@ -1,0 +1,40 @@
+- generic [active] [ref=f3e1]:
+  - status [ref=f3e2]
+  - alert [ref=f3e14]
+  - generic [ref=f3e54]:
+    - generic [ref=f3e55]:
+      - heading "Welcome to NeureCore" [level=1] [ref=f3e56]
+      - paragraph [ref=f3e59]: Let us set up your organization in a few quick steps. The rest can wait — find optional items under Things to do on your home page.
+    - list [ref=f3e60]:
+      - listitem [ref=f3e61]:
+        - generic [ref=f3e62]: "1"
+        - generic [ref=f3e63]: Company
+      - listitem [ref=f3e66]:
+        - generic [ref=f3e67]: "2"
+        - generic [ref=f3e68]: Logo
+      - listitem [ref=f3e71]:
+        - generic [ref=f3e72]: "3"
+        - generic [ref=f3e73]: Locale
+      - listitem [ref=f3e76]:
+        - generic [ref=f3e77]: "4"
+        - generic [ref=f3e78]: Plan
+      - listitem [ref=f3e81]:
+        - generic [ref=f3e82]: "5"
+        - generic [ref=f3e83]: Template
+      - listitem [ref=f3e86]:
+        - generic [ref=f3e87]: "6"
+        - generic [ref=f3e88]: Done
+    - generic [ref=f3e90]:
+      - generic [ref=f3e91]:
+        - heading "Tell us about your company" [level=2] [ref=f3e92]
+        - paragraph [ref=f3e93]: We will personalize your portal with these details.
+      - generic [ref=f3e94]:
+        - generic [ref=f3e95]: Company name
+        - textbox "Company name" [ref=f3e96]:
+          - /placeholder: Acme Inc.
+          - text: Neurecore Workspace
+      - generic [ref=f3e97]:
+        - generic [ref=f3e98]: Industry (optional)
+        - textbox "Industry (optional)" [ref=f3e99]:
+          - /placeholder: SaaS, e-commerce, consulting...
+      - button "Continue" [ref=f3e101] [cursor=pointer]

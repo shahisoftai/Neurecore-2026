@@ -1,0 +1,233 @@
+- generic [active] [ref=f3e1]:
+  - status [ref=f3e2]
+  - alert [ref=f3e14]
+  - generic [ref=f3e695]:
+    - complementary "Primary navigation" [ref=f3e697]:
+      - link [ref=f3e699] [cursor=pointer]:
+        - /url: /home
+        - img "NeureCore" [ref=f3e700]
+      - navigation [ref=f3e701]:
+        - link "Home" [ref=f3e704] [cursor=pointer]:
+          - /url: /home
+        - generic [ref=f3e710]:
+          - link "Departments" [ref=f3e711] [cursor=pointer]:
+            - /url: /departments
+          - link "Org Chart" [ref=f3e716] [cursor=pointer]:
+            - /url: /departments?tab=org-chart
+          - link "Tasks" [ref=f3e722] [cursor=pointer]:
+            - /url: /departments?tab=tasks
+          - link "Workflows" [ref=f3e726] [cursor=pointer]:
+            - /url: /departments?tab=workflows
+          - link "Routines" [ref=f3e731] [cursor=pointer]:
+            - /url: /departments?tab=routines
+          - link "Goals" [ref=f3e737] [cursor=pointer]:
+            - /url: /departments?tab=goals
+          - link "Projects" [ref=f3e742] [cursor=pointer]:
+            - /url: /departments?tab=projects
+          - link "Customers" [ref=f3e746] [cursor=pointer]:
+            - /url: /customers
+        - generic [ref=f3e753]:
+          - link "Marketplace" [ref=f3e754] [cursor=pointer]:
+            - /url: /marketplace
+          - link "Agents" [ref=f3e760] [cursor=pointer]:
+            - /url: /marketplace?tab=agents
+          - link "Connectors" [ref=f3e766] [cursor=pointer]:
+            - /url: /marketplace?tab=connectors
+          - link "AI Skills" [ref=f3e769] [cursor=pointer]:
+            - /url: /marketplace?tab=templates
+        - generic [ref=f3e774]:
+          - link "Service Desk" [ref=f3e775] [cursor=pointer]:
+            - /url: /service-desk?tab=inbox
+          - link "Inbox" [ref=f3e778] [cursor=pointer]:
+            - /url: /service-desk?tab=inbox
+          - link "Approvals" [ref=f3e782] [cursor=pointer]:
+            - /url: /service-desk?tab=approvals
+          - link "Activity" [ref=f3e786] [cursor=pointer]:
+            - /url: /service-desk?tab=activity
+        - link "Finance" [ref=f3e792] [cursor=pointer]:
+          - /url: /finance
+        - generic [ref=f3e797]:
+          - link "Intelligence" [ref=f3e798] [cursor=pointer]:
+            - /url: /intelligence
+          - link "Settings" [ref=f3e801] [cursor=pointer]:
+            - /url: /intelligence?tab=settings
+      - button "Open workspace tree" [ref=f3e815] [cursor=pointer]
+      - generic [ref=f3e821]:
+        - button "Customize rail" [ref=f3e822] [cursor=pointer]
+        - button "Expand sidebar" [ref=f3e824] [cursor=pointer]
+    - generic [ref=f3e828]:
+      - banner [ref=f3e829]:
+        - link [ref=f3e830] [cursor=pointer]:
+          - /url: /home
+          - img "NeureCore" [ref=f3e831]
+        - generic [ref=f3e832]: /
+        - generic [ref=f3e833]: Departments
+        - button "Search or command… ⌘K" [ref=f3e835] [cursor=pointer]:
+          - generic [ref=f3e839]: Search or command…
+          - generic [ref=f3e840]: ⌘K
+        - navigation
+        - button "Toggle theme" [ref=f3e841] [cursor=pointer]
+        - button "Notifications" [ref=f3e844] [cursor=pointer]
+        - link "Help" [ref=f3e848] [cursor=pointer]:
+          - /url: /help
+        - button "User menu" [ref=f3e853] [cursor=pointer]:
+          - generic [ref=f3e854]: S
+      - main [ref=f3e857]:
+        - generic [ref=f3e858]:
+          - generic [ref=f3e859]:
+            - heading [level=1] [ref=f3e860]
+            - paragraph [ref=f3e866]: Manage your organization structure, view the hierarchy, and deploy templates.
+          - navigation [ref=f3e868]:
+            - button "Departments" [ref=f3e869] [cursor=pointer]
+            - button "Org Chart" [ref=f3e874] [cursor=pointer]
+            - button "Tasks" [ref=f3e879] [cursor=pointer]
+            - button "Workflows" [ref=f3e883] [cursor=pointer]
+            - button "Routines" [ref=f3e888] [cursor=pointer]
+            - button "Goals" [ref=f3e894] [cursor=pointer]
+            - button "Projects" [ref=f3e899] [cursor=pointer]
+            - button "Templates" [ref=f3e903] [cursor=pointer]
+          - generic [ref=f3e909]:
+            - generic [ref=f3e910]:
+              - generic [ref=f3e913]:
+                - paragraph [ref=f3e920]: Departments
+                - paragraph [ref=f3e921]: "15"
+              - generic [ref=f3e924]:
+                - paragraph [ref=f3e932]: Total Agents
+                - paragraph [ref=f3e933]: "16"
+              - generic [ref=f3e936]:
+                - paragraph [ref=f3e941]: Running
+                - paragraph [ref=f3e942]: "0"
+              - generic [ref=f3e945]:
+                - paragraph [ref=f3e952]: Root / Sub
+                - paragraph [ref=f3e953]: 15 / 0
+            - generic [ref=f3e954]:
+              - textbox "Search departments…" [ref=f3e956]
+              - button "Refresh" [ref=f3e957] [cursor=pointer]
+              - link "Browse Templates" [ref=f3e963] [cursor=pointer]:
+                - /url: "?tab=templates"
+            - generic [ref=f3e968]:
+              - generic [ref=f3e969]:
+                - link [ref=f3e970] [cursor=pointer]:
+                  - /url: /departments/bcf6c734-31f5-4f04-bb85-4b20ae0110a8/workspace
+                  - generic [ref=f3e977]:
+                    - heading "Executive Management" [level=3] [ref=f3e979]
+                    - paragraph [ref=f3e980]: Executive Management department
+                    - generic [ref=f3e981]: 2 agents
+                - button "View 2 agents" [ref=f3e990] [cursor=pointer]
+              - generic [ref=f3e993]:
+                - link [ref=f3e994] [cursor=pointer]:
+                  - /url: /departments/9ef7bab6-865e-4851-aac5-06c4f51f672a/workspace
+                  - generic [ref=f3e1001]:
+                    - heading "Programme Management" [level=3] [ref=f3e1003]
+                    - paragraph [ref=f3e1004]: Programme Management department
+                    - generic [ref=f3e1005]: 1 agent
+                - button "View 1 agent" [ref=f3e1014] [cursor=pointer]
+              - generic [ref=f3e1017]:
+                - link [ref=f3e1018] [cursor=pointer]:
+                  - /url: /departments/e292856b-9e9f-4743-b0c0-be8f5112ffe2/workspace
+                  - generic [ref=f3e1025]:
+                    - heading "Nutrition" [level=3] [ref=f3e1027]
+                    - paragraph [ref=f3e1028]: Nutrition department
+                    - generic [ref=f3e1029]: 1 agent
+                - button "View 1 agent" [ref=f3e1038] [cursor=pointer]
+              - generic [ref=f3e1041]:
+                - link [ref=f3e1042] [cursor=pointer]:
+                  - /url: /departments/b6605c48-17e0-499d-bce3-3cb159b0efc6/workspace
+                  - generic [ref=f3e1049]:
+                    - heading "MEAL" [level=3] [ref=f3e1051]
+                    - paragraph [ref=f3e1052]: MEAL department
+                    - generic [ref=f3e1053]: 1 agent
+                - button "View 1 agent" [ref=f3e1062] [cursor=pointer]
+              - generic [ref=f3e1065]:
+                - link [ref=f3e1066] [cursor=pointer]:
+                  - /url: /departments/3e5087f4-394e-4d9f-8cc3-48f7f4c992e8/workspace
+                  - generic [ref=f3e1073]:
+                    - heading "Finance" [level=3] [ref=f3e1075]
+                    - paragraph [ref=f3e1076]: Finance department
+                    - generic [ref=f3e1077]: 1 agent
+                - button "View 1 agent" [ref=f3e1086] [cursor=pointer]
+              - generic [ref=f3e1089]:
+                - link [ref=f3e1090] [cursor=pointer]:
+                  - /url: /departments/03712a69-0909-49af-9bc1-0a15dce7deb0/workspace
+                  - generic [ref=f3e1097]:
+                    - heading "HR" [level=3] [ref=f3e1099]
+                    - paragraph [ref=f3e1100]: HR department
+                    - generic [ref=f3e1101]: 1 agent
+                - button "View 1 agent" [ref=f3e1110] [cursor=pointer]
+              - generic [ref=f3e1113]:
+                - link [ref=f3e1114] [cursor=pointer]:
+                  - /url: /departments/e0edd888-ecd7-4153-949a-c653c26ca32e/workspace
+                  - generic [ref=f3e1121]:
+                    - heading "Supply Chain" [level=3] [ref=f3e1123]
+                    - paragraph [ref=f3e1124]: Supply Chain department
+                    - generic [ref=f3e1125]: 1 agent
+                - button "View 1 agent" [ref=f3e1134] [cursor=pointer]
+              - generic [ref=f3e1137]:
+                - link [ref=f3e1138] [cursor=pointer]:
+                  - /url: /departments/c01909da-1f94-4ee5-bac0-852d1c260bac/workspace
+                  - generic [ref=f3e1145]:
+                    - heading "Logistics" [level=3] [ref=f3e1147]
+                    - paragraph [ref=f3e1148]: Logistics department
+                    - generic [ref=f3e1149]: 1 agent
+                - button "View 1 agent" [ref=f3e1158] [cursor=pointer]
+              - generic [ref=f3e1161]:
+                - link [ref=f3e1162] [cursor=pointer]:
+                  - /url: /departments/1fddbc0f-94ba-4c22-aab8-9ed7c89f8ac1/workspace
+                  - generic [ref=f3e1169]:
+                    - heading "Community Mobilization" [level=3] [ref=f3e1171]
+                    - paragraph [ref=f3e1172]: Community Mobilization department
+                    - generic [ref=f3e1173]: 1 agent
+                - button "View 1 agent" [ref=f3e1182] [cursor=pointer]
+              - generic [ref=f3e1185]:
+                - link [ref=f3e1186] [cursor=pointer]:
+                  - /url: /departments/6bc1ba56-fa10-4515-8462-5cff05ddf84e/workspace
+                  - generic [ref=f3e1193]:
+                    - heading "Medical" [level=3] [ref=f3e1195]
+                    - paragraph [ref=f3e1196]: Medical department
+                    - generic [ref=f3e1197]: 1 agent
+                - button "View 1 agent" [ref=f3e1206] [cursor=pointer]
+              - generic [ref=f3e1209]:
+                - link [ref=f3e1210] [cursor=pointer]:
+                  - /url: /departments/b0ca73fa-f10a-4da3-88a5-216bafc4003b/workspace
+                  - generic [ref=f3e1217]:
+                    - heading "Communications" [level=3] [ref=f3e1219]
+                    - paragraph [ref=f3e1220]: Communications department
+                    - generic [ref=f3e1221]: 1 agent
+                - button "View 1 agent" [ref=f3e1230] [cursor=pointer]
+              - generic [ref=f3e1233]:
+                - link [ref=f3e1234] [cursor=pointer]:
+                  - /url: /departments/a24df31b-8217-4de9-91f6-b0375c79ecc8/workspace
+                  - generic [ref=f3e1241]:
+                    - heading "Data Analytics" [level=3] [ref=f3e1243]
+                    - paragraph [ref=f3e1244]: Data Analytics department
+                    - generic [ref=f3e1245]: 1 agent
+                - button "View 1 agent" [ref=f3e1254] [cursor=pointer]
+              - generic [ref=f3e1257]:
+                - link [ref=f3e1258] [cursor=pointer]:
+                  - /url: /departments/4f38aac1-6411-4e10-943f-d30daeca11a3/workspace
+                  - generic [ref=f3e1265]:
+                    - heading "Security" [level=3] [ref=f3e1267]
+                    - paragraph [ref=f3e1268]: Security department
+                    - generic [ref=f3e1269]: 1 agent
+                - button "View 1 agent" [ref=f3e1278] [cursor=pointer]
+              - generic [ref=f3e1281]:
+                - link [ref=f3e1282] [cursor=pointer]:
+                  - /url: /departments/573aa144-3319-474f-90d5-4f26f91623de/workspace
+                  - generic [ref=f3e1289]:
+                    - heading "Grants" [level=3] [ref=f3e1291]
+                    - paragraph [ref=f3e1292]: Grants department
+                    - generic [ref=f3e1293]: 1 agent
+                - button "View 1 agent" [ref=f3e1302] [cursor=pointer]
+              - generic [ref=f3e1305]:
+                - link [ref=f3e1306] [cursor=pointer]:
+                  - /url: /departments/becc64f5-a49f-4b3c-81fc-f99a3daa75a6/workspace
+                  - generic [ref=f3e1313]:
+                    - heading "Project Management Office" [level=3] [ref=f3e1315]
+                    - paragraph [ref=f3e1316]: Project Management Office department
+                    - generic [ref=f3e1317]: 1 agent
+                - button "View 1 agent" [ref=f3e1326] [cursor=pointer]
+      - button "▲ Activity Stream" [ref=f3e1331] [cursor=pointer]:
+        - generic [ref=f3e1332]: ▲
+        - generic [ref=f3e1333]: Activity Stream
+    - button "Toggle conversation panel" [ref=f3e1334] [cursor=pointer]: 💬
+    - button "Toggle conversation panel" [ref=f3e1335] [cursor=pointer]: ✦

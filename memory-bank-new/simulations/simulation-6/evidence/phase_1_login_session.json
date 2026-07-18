@@ -1,0 +1,43 @@
+{
+  "phase": "phase_1_login_session",
+  "completed_at": "2026-07-18T04:37:14Z",
+  "status": "PASS_WITH_DEFECT",
+  "tests": [
+    {
+      "test_id": "p1-01-logout-confirmed",
+      "timestamp": "2026-07-18T04:26:54Z",
+      "page_url": "https://hq.neurecore.com/login",
+      "action": "Clicked Sign out from User menu",
+      "expected_result": "Redirected to /login with session cleared",
+      "actual_result": "Redirected to /login",
+      "screenshots": ["phase1-06-user-menu-open.png", "phase1-07-user-menu-open.png", "phase1-08-after-signout.png"],
+      "http_status": 200,
+      "post_logout_verification": "Navigated to /home while logged out -> returned to /login with 401 UNAUTHORIZED error from /api/v1/auth/me",
+      "status": "PASS"
+    },
+    {
+      "test_id": "p1-02-session-protected",
+      "timestamp": "2026-07-18T04:27:37Z",
+      "page_url": "https://hq.neurecore.com/login",
+      "action": "After logout, attempted to navigate to /home",
+      "expected_result": "Redirect to /login (401 unauthorized)",
+      "actual_result": "Redirected to /login. Console: useApprovals error UNAUTHORIZED Invalid credentials",
+      "network_request_id": "useApprovals call",
+      "http_status": 401,
+      "screenshots": ["phase1-10-protected-home-redirect.png"],
+      "status": "PASS"
+    },
+    {
+      "test_id": "p1-03-relogin",
+      "timestamp": "2026-07-18T04:37:14Z",
+      "page_url": "https://hq.neurecore.com/home",
+      "action": "Re-authenticated after logout",
+      "expected_result": "Reach /home with OWNER session",
+      "actual_result": "Reached /home with 'Good morning, Sim6' greeting - OWNER session restored",
+      "screenshots": ["phase1-19-realtype.png", "phase1-22-home-after-fetch-login.png", "phase1-23-home-loaded.png"],
+      "status": "PASS_WITH_DEFECT",
+      "defect_reference": "DEF-001"
+    }
+  ],
+  "defects_logged_this_phase": ["DEF-001"]
+}

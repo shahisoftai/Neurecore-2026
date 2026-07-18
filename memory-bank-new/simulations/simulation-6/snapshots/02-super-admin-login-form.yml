@@ -1,0 +1,15 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e6]
+  - main [ref=e7]:
+    - generic [ref=e8]:
+      - img "NeureCore" [ref=e10]
+      - heading "Admin Portal" [level=1] [ref=e11]
+      - paragraph [ref=e12]: Super Admin access only
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - text: Email
+          - textbox "Email" [ref=e15]
+        - generic [ref=e16]:
+          - text: Password
+          - textbox "Password" [ref=e17]
+        - button "Sign In" [ref=e18] [cursor=pointer]

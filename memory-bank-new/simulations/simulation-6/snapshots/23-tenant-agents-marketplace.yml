@@ -1,0 +1,375 @@
+- generic [active] [ref=f3e1]:
+  - status [ref=f3e2]
+  - alert [ref=f3e14]: NeureCore — Tenant Portal
+  - generic [ref=f3e1336]:
+    - complementary "Primary navigation" [ref=f3e1338]:
+      - link [ref=f3e1340] [cursor=pointer]:
+        - /url: /home
+        - img "NeureCore" [ref=f3e1341]
+      - navigation [ref=f3e1342]:
+        - link "Home" [ref=f3e1345] [cursor=pointer]:
+          - /url: /home
+        - generic [ref=f3e1351]:
+          - link "Departments" [ref=f3e1352] [cursor=pointer]:
+            - /url: /departments
+          - link "Org Chart" [ref=f3e1357] [cursor=pointer]:
+            - /url: /departments?tab=org-chart
+          - link "Tasks" [ref=f3e1363] [cursor=pointer]:
+            - /url: /departments?tab=tasks
+          - link "Workflows" [ref=f3e1367] [cursor=pointer]:
+            - /url: /departments?tab=workflows
+          - link "Routines" [ref=f3e1372] [cursor=pointer]:
+            - /url: /departments?tab=routines
+          - link "Goals" [ref=f3e1378] [cursor=pointer]:
+            - /url: /departments?tab=goals
+          - link "Projects" [ref=f3e1383] [cursor=pointer]:
+            - /url: /departments?tab=projects
+          - link "Customers" [ref=f3e1387] [cursor=pointer]:
+            - /url: /customers
+        - generic [ref=f3e1394]:
+          - link "Marketplace" [ref=f3e1395] [cursor=pointer]:
+            - /url: /marketplace
+          - link "Agents" [ref=f3e1401] [cursor=pointer]:
+            - /url: /marketplace?tab=agents
+          - link "Connectors" [ref=f3e1407] [cursor=pointer]:
+            - /url: /marketplace?tab=connectors
+          - link "AI Skills" [ref=f3e1410] [cursor=pointer]:
+            - /url: /marketplace?tab=templates
+        - generic [ref=f3e1415]:
+          - link "Service Desk" [ref=f3e1416] [cursor=pointer]:
+            - /url: /service-desk?tab=inbox
+          - link "Inbox" [ref=f3e1419] [cursor=pointer]:
+            - /url: /service-desk?tab=inbox
+          - link "Approvals" [ref=f3e1423] [cursor=pointer]:
+            - /url: /service-desk?tab=approvals
+          - link "Activity" [ref=f3e1427] [cursor=pointer]:
+            - /url: /service-desk?tab=activity
+        - link "Finance" [ref=f3e1433] [cursor=pointer]:
+          - /url: /finance
+        - generic [ref=f3e1438]:
+          - link "Intelligence" [ref=f3e1439] [cursor=pointer]:
+            - /url: /intelligence
+          - link "Settings" [ref=f3e1442] [cursor=pointer]:
+            - /url: /intelligence?tab=settings
+      - button "Open workspace tree" [ref=f3e1456] [cursor=pointer]
+      - generic [ref=f3e1462]:
+        - button "Customize rail" [ref=f3e1463] [cursor=pointer]
+        - button "Expand sidebar" [ref=f3e1465] [cursor=pointer]
+    - generic [ref=f3e1469]:
+      - banner [ref=f3e1470]:
+        - link [ref=f3e1471] [cursor=pointer]:
+          - /url: /home
+          - img "NeureCore" [ref=f3e1472]
+        - generic [ref=f3e1473]: /
+        - generic [ref=f3e1474]: Marketplace
+        - button "Search or command… ⌘K" [ref=f3e1476] [cursor=pointer]:
+          - generic [ref=f3e1480]: Search or command…
+          - generic [ref=f3e1481]: ⌘K
+        - navigation
+        - button "Toggle theme" [ref=f3e1482] [cursor=pointer]
+        - button "Notifications" [ref=f3e1485] [cursor=pointer]
+        - link "Help" [ref=f3e1489] [cursor=pointer]:
+          - /url: /help
+        - button "User menu" [ref=f3e1494] [cursor=pointer]:
+          - generic [ref=f3e1495]: S
+      - main [ref=f3e1498]:
+        - generic [ref=f3e1499]:
+          - generic [ref=f3e1501]:
+            - heading [level=1] [ref=f3e1502]
+            - paragraph [ref=f3e1509]: Browse the AI agent library, manage your fleet, and connect external systems.
+          - navigation [ref=f3e1511]:
+            - button "My Agents" [ref=f3e1512] [cursor=pointer]
+            - button "Agent Templates" [ref=f3e1518] [cursor=pointer]
+            - button "Packages" [ref=f3e1521] [cursor=pointer]
+            - button "Connectors" [ref=f3e1525] [cursor=pointer]
+          - generic [ref=f3e1529]:
+            - generic [ref=f3e1530]:
+              - generic [ref=f3e1533]:
+                - paragraph [ref=f3e1541]: Total
+                - paragraph [ref=f3e1542]: "16"
+              - generic [ref=f3e1545]:
+                - paragraph [ref=f3e1551]: Running
+                - paragraph [ref=f3e1552]: "0"
+              - generic [ref=f3e1555]:
+                - paragraph [ref=f3e1560]: Paused
+                - paragraph [ref=f3e1561]: "0"
+              - generic [ref=f3e1564]:
+                - paragraph [ref=f3e1570]: Archived
+                - paragraph [ref=f3e1571]: "0"
+            - generic [ref=f3e1572]:
+              - textbox "Search agents by name or description…" [ref=f3e1577]
+              - generic [ref=f3e1578]:
+                - button "ALL" [ref=f3e1579] [cursor=pointer]
+                - button "ACTIVE" [ref=f3e1580] [cursor=pointer]
+                - button "RUNNING" [ref=f3e1581] [cursor=pointer]
+                - button "PAUSED" [ref=f3e1582] [cursor=pointer]
+                - button "IDLE16" [ref=f3e1583] [cursor=pointer]
+                - button "ERROR" [ref=f3e1584] [cursor=pointer]
+                - button "ARCHIVED" [ref=f3e1585] [cursor=pointer]
+                - button "DEPRECATED" [ref=f3e1586] [cursor=pointer]
+              - button "Refresh" [ref=f3e1587] [cursor=pointer]
+              - generic [ref=f3e1593]:
+                - button "grid" [ref=f3e1594] [cursor=pointer]
+                - button "list" [ref=f3e1600] [cursor=pointer]
+            - generic [ref=f3e1602]:
+              - generic [ref=f3e1603]:
+                - generic [ref=f3e1604]:
+                  - generic [ref=f3e1605]:
+                    - generic "Critic Voltaire" [ref=f3e1606]: C
+                    - generic [ref=f3e1608]:
+                      - paragraph [ref=f3e1609]: Critic Voltaire
+                      - paragraph [ref=f3e1610]: META
+                  - generic [ref=f3e1611]: IDLE
+                - generic [ref=f3e1612]: META
+                - generic [ref=f3e1615]:
+                  - paragraph [ref=f3e1616]: Success
+                  - paragraph [ref=f3e1617]: 0%
+                - generic [ref=f3e1618]:
+                  - button "Inspect" [ref=f3e1619] [cursor=pointer]
+                  - button "Resume" [ref=f3e1620] [cursor=pointer]
+                  - button "Audit" [ref=f3e1621] [cursor=pointer]
+              - generic [ref=f3e1622]:
+                - generic [ref=f3e1623]:
+                  - generic [ref=f3e1624]:
+                    - generic "Theo Mbeki" [ref=f3e1625]: T
+                    - generic [ref=f3e1627]:
+                      - paragraph [ref=f3e1628]: Theo Mbeki
+                      - paragraph [ref=f3e1629]: FUNCTIONAL
+                  - generic [ref=f3e1630]: IDLE
+                - generic [ref=f3e1631]: FUNCTIONAL
+                - generic [ref=f3e1634]:
+                  - paragraph [ref=f3e1635]: Success
+                  - paragraph [ref=f3e1636]: 0%
+                - generic [ref=f3e1637]:
+                  - button "Inspect" [ref=f3e1638] [cursor=pointer]
+                  - button "Resume" [ref=f3e1639] [cursor=pointer]
+                  - button "Audit" [ref=f3e1640] [cursor=pointer]
+              - generic [ref=f3e1641]:
+                - generic [ref=f3e1642]:
+                  - generic [ref=f3e1643]:
+                    - generic "Maya Tanaka" [ref=f3e1644]: M
+                    - generic [ref=f3e1646]:
+                      - paragraph [ref=f3e1647]: Maya Tanaka
+                      - paragraph [ref=f3e1648]: FUNCTIONAL
+                  - generic [ref=f3e1649]: IDLE
+                - generic [ref=f3e1650]: FUNCTIONAL
+                - generic [ref=f3e1653]:
+                  - paragraph [ref=f3e1654]: Success
+                  - paragraph [ref=f3e1655]: 0%
+                - generic [ref=f3e1656]:
+                  - button "Inspect" [ref=f3e1657] [cursor=pointer]
+                  - button "Resume" [ref=f3e1658] [cursor=pointer]
+                  - button "Audit" [ref=f3e1659] [cursor=pointer]
+              - generic [ref=f3e1660]:
+                - generic [ref=f3e1661]:
+                  - generic [ref=f3e1662]:
+                    - generic "Idris Bashir" [ref=f3e1663]: I
+                    - generic [ref=f3e1665]:
+                      - paragraph [ref=f3e1666]: Idris Bashir
+                      - paragraph [ref=f3e1667]: FUNCTIONAL
+                  - generic [ref=f3e1668]: IDLE
+                - generic [ref=f3e1669]: FUNCTIONAL
+                - generic [ref=f3e1672]:
+                  - paragraph [ref=f3e1673]: Success
+                  - paragraph [ref=f3e1674]: 0%
+                - generic [ref=f3e1675]:
+                  - button "Inspect" [ref=f3e1676] [cursor=pointer]
+                  - button "Resume" [ref=f3e1677] [cursor=pointer]
+                  - button "Audit" [ref=f3e1678] [cursor=pointer]
+              - generic [ref=f3e1679]:
+                - generic [ref=f3e1680]:
+                  - generic [ref=f3e1681]:
+                    - generic "Ravi Sharma" [ref=f3e1682]: R
+                    - generic [ref=f3e1684]:
+                      - paragraph [ref=f3e1685]: Ravi Sharma
+                      - paragraph [ref=f3e1686]: FUNCTIONAL
+                  - generic [ref=f3e1687]: IDLE
+                - generic [ref=f3e1688]: FUNCTIONAL
+                - generic [ref=f3e1691]:
+                  - paragraph [ref=f3e1692]: Success
+                  - paragraph [ref=f3e1693]: 0%
+                - generic [ref=f3e1694]:
+                  - button "Inspect" [ref=f3e1695] [cursor=pointer]
+                  - button "Resume" [ref=f3e1696] [cursor=pointer]
+                  - button "Audit" [ref=f3e1697] [cursor=pointer]
+              - generic [ref=f3e1698]:
+                - generic [ref=f3e1699]:
+                  - generic [ref=f3e1700]:
+                    - generic "Zara Mwangi" [ref=f3e1701]: Z
+                    - generic [ref=f3e1703]:
+                      - paragraph [ref=f3e1704]: Zara Mwangi
+                      - paragraph [ref=f3e1705]: FUNCTIONAL
+                  - generic [ref=f3e1706]: IDLE
+                - generic [ref=f3e1707]: FUNCTIONAL
+                - generic [ref=f3e1710]:
+                  - paragraph [ref=f3e1711]: Success
+                  - paragraph [ref=f3e1712]: 0%
+                - generic [ref=f3e1713]:
+                  - button "Inspect" [ref=f3e1714] [cursor=pointer]
+                  - button "Resume" [ref=f3e1715] [cursor=pointer]
+                  - button "Audit" [ref=f3e1716] [cursor=pointer]
+              - generic [ref=f3e1717]:
+                - generic [ref=f3e1718]:
+                  - generic [ref=f3e1719]:
+                    - generic "Dr. Hassan Yilmaz" [ref=f3e1720]: D
+                    - generic [ref=f3e1722]:
+                      - paragraph [ref=f3e1723]: Dr. Hassan Yilmaz
+                      - paragraph [ref=f3e1724]: FUNCTIONAL
+                  - generic [ref=f3e1725]: IDLE
+                - generic [ref=f3e1726]: FUNCTIONAL
+                - generic [ref=f3e1729]:
+                  - paragraph [ref=f3e1730]: Success
+                  - paragraph [ref=f3e1731]: 0%
+                - generic [ref=f3e1732]:
+                  - button "Inspect" [ref=f3e1733] [cursor=pointer]
+                  - button "Resume" [ref=f3e1734] [cursor=pointer]
+                  - button "Audit" [ref=f3e1735] [cursor=pointer]
+              - generic [ref=f3e1736]:
+                - generic [ref=f3e1737]:
+                  - generic [ref=f3e1738]:
+                    - generic "Amara Okafor" [ref=f3e1739]: A
+                    - generic [ref=f3e1741]:
+                      - paragraph [ref=f3e1742]: Amara Okafor
+                      - paragraph [ref=f3e1743]: FUNCTIONAL
+                  - generic [ref=f3e1744]: IDLE
+                - generic [ref=f3e1745]: FUNCTIONAL
+                - generic [ref=f3e1748]:
+                  - paragraph [ref=f3e1749]: Success
+                  - paragraph [ref=f3e1750]: 0%
+                - generic [ref=f3e1751]:
+                  - button "Inspect" [ref=f3e1752] [cursor=pointer]
+                  - button "Resume" [ref=f3e1753] [cursor=pointer]
+                  - button "Audit" [ref=f3e1754] [cursor=pointer]
+              - generic [ref=f3e1755]:
+                - generic [ref=f3e1756]:
+                  - generic [ref=f3e1757]:
+                    - generic "Omar Ali" [ref=f3e1758]: O
+                    - generic [ref=f3e1760]:
+                      - paragraph [ref=f3e1761]: Omar Ali
+                      - paragraph [ref=f3e1762]: FUNCTIONAL
+                  - generic [ref=f3e1763]: IDLE
+                - generic [ref=f3e1764]: FUNCTIONAL
+                - generic [ref=f3e1767]:
+                  - paragraph [ref=f3e1768]: Success
+                  - paragraph [ref=f3e1769]: 0%
+                - generic [ref=f3e1770]:
+                  - button "Inspect" [ref=f3e1771] [cursor=pointer]
+                  - button "Resume" [ref=f3e1772] [cursor=pointer]
+                  - button "Audit" [ref=f3e1773] [cursor=pointer]
+              - generic [ref=f3e1774]:
+                - generic [ref=f3e1775]:
+                  - generic [ref=f3e1776]:
+                    - generic "Kai Johnson" [ref=f3e1777]: K
+                    - generic [ref=f3e1779]:
+                      - paragraph [ref=f3e1780]: Kai Johnson
+                      - paragraph [ref=f3e1781]: FUNCTIONAL
+                  - generic [ref=f3e1782]: IDLE
+                - generic [ref=f3e1783]: FUNCTIONAL
+                - generic [ref=f3e1786]:
+                  - paragraph [ref=f3e1787]: Success
+                  - paragraph [ref=f3e1788]: 0%
+                - generic [ref=f3e1789]:
+                  - button "Inspect" [ref=f3e1790] [cursor=pointer]
+                  - button "Resume" [ref=f3e1791] [cursor=pointer]
+                  - button "Audit" [ref=f3e1792] [cursor=pointer]
+              - generic [ref=f3e1793]:
+                - generic [ref=f3e1794]:
+                  - generic [ref=f3e1795]:
+                    - generic "Yara Hassan" [ref=f3e1796]: "Y"
+                    - generic [ref=f3e1798]:
+                      - paragraph [ref=f3e1799]: Yara Hassan
+                      - paragraph [ref=f3e1800]: FUNCTIONAL
+                  - generic [ref=f3e1801]: IDLE
+                - generic [ref=f3e1802]: FUNCTIONAL
+                - generic [ref=f3e1805]:
+                  - paragraph [ref=f3e1806]: Success
+                  - paragraph [ref=f3e1807]: 0%
+                - generic [ref=f3e1808]:
+                  - button "Inspect" [ref=f3e1809] [cursor=pointer]
+                  - button "Resume" [ref=f3e1810] [cursor=pointer]
+                  - button "Audit" [ref=f3e1811] [cursor=pointer]
+              - generic [ref=f3e1812]:
+                - generic [ref=f3e1813]:
+                  - generic [ref=f3e1814]:
+                    - generic "Daniel Kim" [ref=f3e1815]: D
+                    - generic [ref=f3e1817]:
+                      - paragraph [ref=f3e1818]: Daniel Kim
+                      - paragraph [ref=f3e1819]: FUNCTIONAL
+                  - generic [ref=f3e1820]: IDLE
+                - generic [ref=f3e1821]: FUNCTIONAL
+                - generic [ref=f3e1824]:
+                  - paragraph [ref=f3e1825]: Success
+                  - paragraph [ref=f3e1826]: 0%
+                - generic [ref=f3e1827]:
+                  - button "Inspect" [ref=f3e1828] [cursor=pointer]
+                  - button "Resume" [ref=f3e1829] [cursor=pointer]
+                  - button "Audit" [ref=f3e1830] [cursor=pointer]
+              - generic [ref=f3e1831]:
+                - generic [ref=f3e1832]:
+                  - generic [ref=f3e1833]:
+                    - generic "Sofia Patel" [ref=f3e1834]: S
+                    - generic [ref=f3e1836]:
+                      - paragraph [ref=f3e1837]: Sofia Patel
+                      - paragraph [ref=f3e1838]: FUNCTIONAL
+                  - generic [ref=f3e1839]: IDLE
+                - generic [ref=f3e1840]: FUNCTIONAL
+                - generic [ref=f3e1843]:
+                  - paragraph [ref=f3e1844]: Success
+                  - paragraph [ref=f3e1845]: 0%
+                - generic [ref=f3e1846]:
+                  - button "Inspect" [ref=f3e1847] [cursor=pointer]
+                  - button "Resume" [ref=f3e1848] [cursor=pointer]
+                  - button "Audit" [ref=f3e1849] [cursor=pointer]
+              - generic [ref=f3e1850]:
+                - generic [ref=f3e1851]:
+                  - generic [ref=f3e1852]:
+                    - generic "Dr. Lina Rodriguez" [ref=f3e1853]: D
+                    - generic [ref=f3e1855]:
+                      - paragraph [ref=f3e1856]: Dr. Lina Rodriguez
+                      - paragraph [ref=f3e1857]: FUNCTIONAL
+                  - generic [ref=f3e1858]: IDLE
+                - generic [ref=f3e1859]: FUNCTIONAL
+                - generic [ref=f3e1862]:
+                  - paragraph [ref=f3e1863]: Success
+                  - paragraph [ref=f3e1864]: 0%
+                - generic [ref=f3e1865]:
+                  - button "Inspect" [ref=f3e1866] [cursor=pointer]
+                  - button "Resume" [ref=f3e1867] [cursor=pointer]
+                  - button "Audit" [ref=f3e1868] [cursor=pointer]
+              - generic [ref=f3e1869]:
+                - generic [ref=f3e1870]:
+                  - generic [ref=f3e1871]:
+                    - generic "Marcus Williams" [ref=f3e1872]: M
+                    - generic [ref=f3e1874]:
+                      - paragraph [ref=f3e1875]: Marcus Williams
+                      - paragraph [ref=f3e1876]: EXECUTIVE
+                  - generic [ref=f3e1877]: IDLE
+                - generic [ref=f3e1878]: EXECUTIVE
+                - generic [ref=f3e1881]:
+                  - paragraph [ref=f3e1882]: Success
+                  - paragraph [ref=f3e1883]: 0%
+                - generic [ref=f3e1884]:
+                  - button "Inspect" [ref=f3e1885] [cursor=pointer]
+                  - button "Resume" [ref=f3e1886] [cursor=pointer]
+                  - button "Audit" [ref=f3e1887] [cursor=pointer]
+              - generic [ref=f3e1888]:
+                - generic [ref=f3e1889]:
+                  - generic [ref=f3e1890]:
+                    - generic "Aria Chen" [ref=f3e1891]: A
+                    - generic [ref=f3e1893]:
+                      - paragraph [ref=f3e1894]: Aria Chen
+                      - paragraph [ref=f3e1895]: EXECUTIVE
+                  - generic [ref=f3e1896]: IDLE
+                - generic [ref=f3e1897]: EXECUTIVE
+                - generic [ref=f3e1900]:
+                  - paragraph [ref=f3e1901]: Success
+                  - paragraph [ref=f3e1902]: 0%
+                - generic [ref=f3e1903]:
+                  - button "Inspect" [ref=f3e1904] [cursor=pointer]
+                  - button "Resume" [ref=f3e1905] [cursor=pointer]
+                  - button "Audit" [ref=f3e1906] [cursor=pointer]
+      - button "▲ Activity Stream" [ref=f3e1909] [cursor=pointer]:
+        - generic [ref=f3e1910]: ▲
+        - generic [ref=f3e1911]: Activity Stream
+    - button "Toggle conversation panel" [ref=f3e1912] [cursor=pointer]: 💬
+    - button "Toggle conversation panel" [ref=f3e1913] [cursor=pointer]: ✦
