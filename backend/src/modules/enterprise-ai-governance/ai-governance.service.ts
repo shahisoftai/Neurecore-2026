@@ -5,9 +5,11 @@
  * review. All trust scores are CATEGORICAL (Excellent/Good/Fair/Poor/Critical)
  * — never percentages. No automatic policy rewriting or governance bypass.
  */
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { EVENT_TRANSPORT } from '../enterprise-events/contracts/enterprise-event-transport.interface';
+import type { IEnterpriseEventTransport } from '../enterprise-events/contracts/enterprise-event-transport.interface';
 
 export type TrustGrade = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'CRITICAL';
 
@@ -45,7 +47,23 @@ export interface IAIGovernancePlatform {
 
 @Injectable()
 export class AIGovernancePlatform implements IAIGovernancePlatform {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(EVENT_TRANSPORT) private readonly events: IEnterpriseEventTransport,
+  ) {}
+
+  private async emit(tenantId: string, eventType: string, payload: Record<string, unknown>): Promise<void> {
+    try {
+      await this.events.publish({
+        eventType,
+        tenantId,
+        actorType: 'SYSTEM',
+        sourceModule: 'EnterpriseAIGovernance',
+        idempotencyKey: `${eventType}.${tenantId}.${Date.now()}`,
+        payload,
+      });
+    } catch { /* non-fatal */ }
+  }
 
   async evaluate(sourceType: string, sourceId: string, tenantId: string, evidence: Record<string, unknown>, reasoning: string): Promise<TrustEvalView> {
     const issues: string[] = [];
@@ -59,6 +77,7 @@ export class AIGovernancePlatform implements IAIGovernancePlatform {
     const row = await this.prisma.trustEvaluation.create({
       data: { tenantId, sourceType, sourceId, trustScore: trust, evidenceQuality: evidenceGrade, reasoningQuality: reasoningGrade, riskLevel: risk, policyCompliant: issues.length === 0, issues, evidenceJson: evidence as Prisma.InputJsonValue },
     });
+    await this.emit(tenantId, 'ai.trust.evaluated', { sourceType, sourceId, trustScore: trust, riskLevel: risk });
     return { id: row.id, sourceType: row.sourceType, trustScore: row.trustScore as TrustGrade, evidenceQuality: row.evidenceQuality as TrustGrade, reasoningQuality: row.reasoningQuality as TrustGrade, riskLevel: row.riskLevel as TrustGrade, policyCompliant: row.policyCompliant, issues: row.issues, createdAt: row.createdAt.toISOString() };
   }
   async listTrustEvaluations(tenantId: string, sourceType?: string): Promise<TrustEvalView[]> {
@@ -67,6 +86,7 @@ export class AIGovernancePlatform implements IAIGovernancePlatform {
   }
   async flagHallucination(tenantId: string, sourceType: string, sourceId: string, claim: string, evidenceGap: string, severity: TrustGrade = 'FAIR'): Promise<HallucinationFlagView> {
     const row = await this.prisma.aIHallucinationFlag.create({ data: { tenantId, sourceType, sourceId, claim, evidenceGap, severity } });
+    await this.emit(tenantId, 'ai.hallucination.detected', { sourceType, sourceId, claim, severity });
     return { id: row.id, sourceType: row.sourceType, claim: row.claim, evidenceGap: row.evidenceGap, severity: row.severity as TrustGrade, recommendedAction: row.recommendedAction };
   }
   async listHallucinations(tenantId: string): Promise<HallucinationFlagView[]> {
@@ -74,6 +94,7 @@ export class AIGovernancePlatform implements IAIGovernancePlatform {
   }
   async recordBias(tenantId: string, category: string, detail: string, severity: TrustGrade = 'FAIR'): Promise<BiasFindingView> {
     const row = await this.prisma.aIBiasFinding.create({ data: { tenantId, category, detail, severity } });
+    await this.emit(tenantId, 'ai.bias.detected', { category, detail, severity });
     return { id: row.id, category: row.category, detail: row.detail, severity: row.severity as TrustGrade, recommendation: row.recommendation };
   }
   async listBias(tenantId: string): Promise<BiasFindingView[]> {
@@ -81,6 +102,7 @@ export class AIGovernancePlatform implements IAIGovernancePlatform {
   }
   async createPolicy(tenantId: string, name: string, category: string, rules: Record<string, unknown> = {}): Promise<AIPolicyView> {
     const row = await this.prisma.aIPolicy.create({ data: { tenantId, name, category: category as any, rulesJson: rules as Prisma.InputJsonValue } });
+    await this.emit(tenantId, 'ai.policy.updated', { policyId: row.id, name: row.name });
     return { id: row.id, name: row.name, category: row.category, version: row.version, active: row.active };
   }
   async listPolicies(tenantId: string): Promise<AIPolicyView[]> {
@@ -95,13 +117,10 @@ export class AIGovernancePlatform implements IAIGovernancePlatform {
   }
   async createReview(tenantId: string, sourceType: string, sourceId: string): Promise<ReviewView> {
     const row = await this.prisma.humanReviewRecord.create({ data: { tenantId, sourceType, sourceId } });
+    await this.emit(tenantId, 'ai.review.requested', { reviewId: row.id, sourceType, sourceId });
     return { id: row.id, sourceType: row.sourceType, sourceId: row.sourceId, decision: row.decision, reason: row.reason, reviewedAt: row.reviewedAt?.toISOString?.() ?? null };
   }
   async decideReview(tenantId: string, reviewId: string, decision: string, reviewerId: string, reason?: string): Promise<ReviewView> {
-    // Audit-remediation: prisma.humanReviewRecord.update({ where: { id } })
-    // was used previously — missing tenantId in WHERE means a Tenant B
-    // JWT could decide Tenant A's review. Fix: read+updateMany under
-    // (id, tenantId); refuse on count=0 or missing findFirst.
     const owned = await this.prisma.humanReviewRecord.findFirst({ where: { id: reviewId, tenantId } });
     if (!owned) throw new Error('review not found for tenant');
     const u = await this.prisma.humanReviewRecord.updateMany({
@@ -110,6 +129,7 @@ export class AIGovernancePlatform implements IAIGovernancePlatform {
     });
     if (u.count === 0) throw new Error('review not found for tenant');
     const after = await this.prisma.humanReviewRecord.findFirst({ where: { id: reviewId, tenantId } });
+    await this.emit(tenantId, 'ai.review.completed', { reviewId, decision, reviewerId });
     return { id: after!.id, sourceType: after!.sourceType, sourceId: after!.sourceId, decision: after!.decision, reason: after!.reason, reviewedAt: after!.reviewedAt?.toISOString?.() ?? null };
   }
   async listReviews(tenantId: string): Promise<ReviewView[]> {

@@ -212,11 +212,15 @@ class FakePrisma {
 
 function makePrisma() { return new FakePrisma() as any; }
 
+function makeEvents() {
+  return { publish: jest.fn().mockResolvedValue(undefined) } as any;
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('AIGovernancePlatform — evaluate (categorical heuristics)', () => {
   it('no evidence → POOR evidenceQuality + "no evidence provided" issue', async () => {
-    const gov = new AIGovernancePlatform(makePrisma() as any);
+    const gov = new AIGovernancePlatform(makePrisma() as any, makeEvents());
     const r = await gov.evaluate('cognize', 'task-1', 't1', {}, 'ten chars +');
     expect(r.evidenceQuality).toBe('POOR');
     expect(r.issues).toContain('no evidence provided');
@@ -224,13 +228,13 @@ describe('AIGovernancePlatform — evaluate (categorical heuristics)', () => {
   });
 
   it('insufficient reasoning (<10 chars) → "insufficient reasoning" issue', async () => {
-    const gov = new AIGovernancePlatform(makePrisma() as any);
+    const gov = new AIGovernancePlatform(makePrisma() as any, makeEvents());
     const r = await gov.evaluate('cognize', 'task-1', 't1', { a: 1, b: 2, c: 3 }, '');
     expect(r.issues.some((i) => /insufficient/.test(i))).toBe(true);
   });
 
   it('3-4 evidence keys + reasonable reasoning → GOOD evidenceQuality, FAIR risk', async () => {
-    const gov = new AIGovernancePlatform(makePrisma() as any);
+    const gov = new AIGovernancePlatform(makePrisma() as any, makeEvents());
     const r = await gov.evaluate('cognize', 'task-1', 't1',
       { a: 1, b: 2, c: 3, d: 4 }, /* 25+ chars reasoning */ 'this is more than ten characters');
     expect(r.evidenceQuality).toBe('GOOD');
@@ -238,7 +242,7 @@ describe('AIGovernancePlatform — evaluate (categorical heuristics)', () => {
   });
 
   it('5+ evidence keys + long reasoning → EXCELLENT evidenceQuality', async () => {
-    const gov = new AIGovernancePlatform(makePrisma() as any);
+    const gov = new AIGovernancePlatform(makePrisma() as any, makeEvents());
     const longReasoning = 'r'.repeat(120);
     const r = await gov.evaluate('cognize', 'task-1', 't1',
       { a: 1, b: 2, c: 3, d: 4, e: 5 }, longReasoning);
@@ -252,7 +256,7 @@ describe('AIGovernancePlatform — evaluate (categorical heuristics)', () => {
   });
 
   it('all grades are categorical (never percentages)', async () => {
-    const gov = new AIGovernancePlatform(makePrisma() as any);
+    const gov = new AIGovernancePlatform(makePrisma() as any, makeEvents());
     const r = await gov.evaluate('cognize', 'task-1', 't1', { a: 1 }, 'ten chars +');
     expect(['EXCELLENT', 'GOOD', 'FAIR', 'POOR', 'CRITICAL']).toContain(r.trustScore);
     // No percent symbols leaked anywhere in the JSON-shape output.
@@ -263,7 +267,7 @@ describe('AIGovernancePlatform — evaluate (categorical heuristics)', () => {
 describe('AIGovernancePlatform — flagHallucination / recordBias', () => {
   it('flagHallucination persists with the caller tenantId and defaults severity to FAIR', async () => {
     const p = makePrisma();
-    const gov = new AIGovernancePlatform(p as any);
+    const gov = new AIGovernancePlatform(p as any, makeEvents());
     const f = await gov.flagHallucination('t1', 'cognize', 'task-1', 'Claim X', 'no source');
     expect(p.hallucinations[0].tenantId).toBe('t1');
     expect(p.hallucinations[0].severity).toBe('FAIR');
@@ -272,14 +276,14 @@ describe('AIGovernancePlatform — flagHallucination / recordBias', () => {
 
   it('flagHallucination respects explicit severity', async () => {
     const p = makePrisma();
-    const gov = new AIGovernancePlatform(p as any);
+    const gov = new AIGovernancePlatform(p as any, makeEvents());
     await gov.flagHallucination('t1', 'cognize', 'task-1', 'Claim', 'gap', 'POOR');
     expect(p.hallucinations[0].severity).toBe('POOR');
   });
 
   it('recordBias persists with the caller tenantId and defaults severity to FAIR', async () => {
     const p = makePrisma();
-    const gov = new AIGovernancePlatform(p as any);
+    const gov = new AIGovernancePlatform(p as any, makeEvents());
     const b = await gov.recordBias('t1', 'REPRESENTATION', 'detail');
     expect(p.biases[0].tenantId).toBe('t1');
     expect(p.biases[0].severity).toBe('FAIR');
@@ -290,7 +294,7 @@ describe('AIGovernancePlatform — flagHallucination / recordBias', () => {
 describe('AIGovernancePlatform — policy + model registry', () => {
   it('createPolicy persists with the caller tenantId', async () => {
     const p = makePrisma();
-    const gov = new AIGovernancePlatform(p as any);
+    const gov = new AIGovernancePlatform(p as any, makeEvents());
     await gov.createPolicy('t1', 'Evidence Threshold', 'EVIDENCE', { min: 3 });
     expect(p.policies[0].tenantId).toBe('t1');
     expect(p.policies[0].category).toBe('EVIDENCE');
@@ -298,7 +302,7 @@ describe('AIGovernancePlatform — policy + model registry', () => {
 
   it('registerModel upsert updates the same (tenantId, modelName) row', async () => {
     const p = makePrisma();
-    const gov = new AIGovernancePlatform(p as any);
+    const gov = new AIGovernancePlatform(p as any, makeEvents());
     await gov.registerModel('t1', 'GPT-4o', 'OpenAI', ['reasoning']);
     await gov.registerModel('t1', 'GPT-4o', 'OpenAI', ['reasoning', 'translation']);
     expect(p.models.length).toBe(1);
@@ -309,7 +313,7 @@ describe('AIGovernancePlatform — policy + model registry', () => {
 describe('AIGovernancePlatform — review queue', () => {
   it('createReview persists with the caller tenantId', async () => {
     const p = makePrisma();
-    const gov = new AIGovernancePlatform(p as any);
+    const gov = new AIGovernancePlatform(p as any, makeEvents());
     const r = await gov.createReview('t1', 'cognize', 'task-9');
     expect(p.reviews[0].tenantId).toBe('t1');
     expect(p.reviews[0].decision).toBe('NEEDS_REVISION');
@@ -317,7 +321,7 @@ describe('AIGovernancePlatform — review queue', () => {
   });
 
   it('decideReview works for the owning tenant', async () => {
-    const gov = new AIGovernancePlatform(makePrisma() as any);
+    const gov = new AIGovernancePlatform(makePrisma() as any, makeEvents());
     const r = await gov.createReview('t1', 'cognize', 'task-9');
     const out = await gov.decideReview('t1', r.id, 'APPROVED', 'reviewer-1', 'looks good');
     expect(out.decision).toBe('APPROVED');
@@ -326,7 +330,7 @@ describe('AIGovernancePlatform — review queue', () => {
 
   it('CRITICAL REGRESSION: decideReview refuses a cross-tenant reviewId', async () => {
     const p = makePrisma();
-    const gov = new AIGovernancePlatform(p as any);
+    const gov = new AIGovernancePlatform(p as any, makeEvents());
     const r = await gov.createReview('tenant-a', 'cognize', 'task-1');
     // Tenant B JWT tries to decide Tenant A's review.
     await expect(gov.decideReview('tenant-b', r.id, 'APPROVED', 'reviewer-x')).rejects.toThrow(/not found for tenant/);
@@ -337,14 +341,14 @@ describe('AIGovernancePlatform — review queue', () => {
   });
 
   it('decideReview throws when the reviewId doesn\'t exist', async () => {
-    const gov = new AIGovernancePlatform(makePrisma() as any);
+    const gov = new AIGovernancePlatform(makePrisma() as any, makeEvents());
     await expect(gov.decideReview('t1', 'missing-review', 'APPROVED', 'reviewer-1')).rejects.toThrow(/not found for tenant/);
   });
 });
 
 describe('AIGovernancePlatform — dashboard', () => {
   it('returns tenant-scoped counts + pendingReviews for decision=NEEDS_REVISION', async () => {
-    const gov = new AIGovernancePlatform(makePrisma() as any);
+    const gov = new AIGovernancePlatform(makePrisma() as any, makeEvents());
     await gov.evaluate('cognize', 't-1', 't1', { a: 1 }, 'ten chars +');
     await gov.evaluate('cognize', 't-2', 't1', { a: 1 }, 'ten chars +');
     await gov.flagHallucination('t1', 'cognize', 't-1', 'c', 'g');
@@ -363,12 +367,58 @@ describe('AIGovernancePlatform — dashboard', () => {
   });
 
   it('dashboard does not leak another tenant\'s counts', async () => {
-    const gov = new AIGovernancePlatform(makePrisma() as any);
+    const gov = new AIGovernancePlatform(makePrisma() as any, makeEvents());
     await gov.evaluate('cognize', 't-1', 'tenant-a', { a: 1 }, 'ten chars +');
     await gov.evaluate('cognize', 't-2', 'tenant-b', { a: 1 }, 'ten chars +');
     const dA = await gov.dashboard('tenant-a');
     const dB = await gov.dashboard('tenant-b');
     expect(dA.trustEvals).toBe(1);
     expect(dB.trustEvals).toBe(1);
+  });
+});
+
+describe('AIGovernancePlatform — event emissions', () => {
+  it('evaluate emits ai.trust.evaluated', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const gov = new AIGovernancePlatform(makePrisma() as any, events);
+    await gov.evaluate('cognize', 'task-1', 't1', { a: 1 }, 'this is valid reasoning here');
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'ai.trust.evaluated', payload: expect.objectContaining({ sourceType: 'cognize' }) }));
+  });
+
+  it('flagHallucination emits ai.hallucination.detected', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const gov = new AIGovernancePlatform(makePrisma() as any, events);
+    await gov.flagHallucination('t1', 'cognize', 'task-1', 'Claim X', 'no source');
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'ai.hallucination.detected' }));
+  });
+
+  it('recordBias emits ai.bias.detected', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const gov = new AIGovernancePlatform(makePrisma() as any, events);
+    await gov.recordBias('t1', 'REPRESENTATION', 'detail text');
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'ai.bias.detected' }));
+  });
+
+  it('createPolicy emits ai.policy.updated', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const gov = new AIGovernancePlatform(makePrisma() as any, events);
+    await gov.createPolicy('t1', 'Evidence Threshold', 'EVIDENCE', { min: 3 });
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'ai.policy.updated' }));
+  });
+
+  it('createReview emits ai.review.requested', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const gov = new AIGovernancePlatform(makePrisma() as any, events);
+    const r = await gov.createReview('t1', 'cognize', 'task-1');
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'ai.review.requested', payload: expect.objectContaining({ reviewId: r.id }) }));
+  });
+
+  it('decideReview emits ai.review.completed', async () => {
+    const events = { publish: jest.fn().mockResolvedValue(undefined) } as any;
+    const gov = new AIGovernancePlatform(makePrisma() as any, events);
+    const r = await gov.createReview('t1', 'cognize', 'task-1');
+    events.publish.mockClear();
+    await gov.decideReview('t1', r.id, 'APPROVED', 'reviewer-1', 'looks good');
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'ai.review.completed', payload: expect.objectContaining({ reviewId: r.id, decision: 'APPROVED' }) }));
   });
 });

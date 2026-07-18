@@ -32,7 +32,7 @@ describeDb('AIGovernancePlatform — REAL PostgreSQL (DATABASE_TEST_URL)', () =>
         ai_hallucination_flags, trust_evaluations
       RESTART IDENTITY CASCADE
     `);
-    gov = new AIGovernancePlatform(prisma as any);
+    gov = new AIGovernancePlatform(prisma as any, { publish: async () => {} } as any);
   });
 
   afterAll(async () => { await prisma.$disconnect(); });
