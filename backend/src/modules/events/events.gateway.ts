@@ -322,15 +322,25 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  /** Emitted when a workflow transitions to a new status */
+  /**
+   * Emitted when a workflow (WorkRun) transitions to a new status.
+   * @param tenantId - Tenant scope
+   * @param workflowId - Human-readable workflow identifier
+   * @param status - New status string (CREATED, STARTED, COMPLETED, FAILED, etc.)
+   * @param metadata - Optional runId/stepId for work-run level events
+   */
   emitWorkflowStatusChanged(
     tenantId: string,
     workflowId: string,
     status: string,
+    metadata?: { runId?: string; stepId?: string; agentId?: string },
   ): void {
     this.emitToTenant(tenantId, 'workflow:status_changed', {
       workflowId,
       status,
+      ...(metadata?.runId ? { runId: metadata.runId } : {}),
+      ...(metadata?.stepId ? { stepId: metadata.stepId } : {}),
+      ...(metadata?.agentId ? { agentId: metadata.agentId } : {}),
       timestamp: Date.now(),
     });
   }

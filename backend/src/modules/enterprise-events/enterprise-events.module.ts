@@ -22,6 +22,7 @@ import { IdempotencyService } from './idempotency/idempotency.service';
 import { AuditConsumer } from './consumers/audit.consumer';
 import { UiProjectionConsumer } from './consumers/ui-projection.consumer';
 import { TestConsumer } from './consumers/test.consumer';
+import { WorkRuntimeEventsConsumer } from './consumers/work-runtime-events.consumer';
 import { EnterpriseEventsAdminController } from './enterprise-events-admin.controller';
 
 @Global()
@@ -35,6 +36,7 @@ import { EnterpriseEventsAdminController } from './enterprise-events-admin.contr
     AuditConsumer,
     UiProjectionConsumer,
     TestConsumer,
+    WorkRuntimeEventsConsumer,
   ],
   exports: [EVENT_TRANSPORT, EnterpriseEventTransport, IdempotencyService],
 })
