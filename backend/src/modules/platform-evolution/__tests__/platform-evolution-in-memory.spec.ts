@@ -40,6 +40,10 @@ class FakePrisma {
   migrations: any[] = [];
 
   technologyRadarEntry = {
+    findUnique: async ({ where }: any) => {
+      const k = where.tenantId_name;
+      return this.radars.find((r) => r.tenantId === k.tenantId && r.name === k.name) ?? null;
+    },
     upsert: async ({ where, create, update }: any) => {
       const k = where.tenantId_name;
       const existing = this.radars.find((r) => r.tenantId === k.tenantId && r.name === k.name);
@@ -221,11 +225,20 @@ class FakePrisma {
 
 function makePrisma() { return new FakePrisma() as any; }
 
+class FakeEventTransport {
+  published: Array<{ eventType: string; tenantId: string; payload: Record<string, unknown> }> = [];
+  async publish(event: { eventType: string; tenantId: string; payload: Record<string, unknown> }) {
+    this.published.push({ eventType: event.eventType, tenantId: event.tenantId, payload: event.payload });
+  }
+}
+
+function makeTransport() { return new FakeEventTransport() as any; }
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('PlatformEvolution — radar', () => {
   it('addRadarEntry upserts on (tenantId, name) and is tenant-scoped', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     await pe.addRadarEntry('tenant-a', 'GPT-5', 'AI_MODEL', 'EMERGING');
     await pe.addRadarEntry('tenant-a', 'GPT-5', 'AI_MODEL', 'TRIAL'); // upsert: updates maturity
     expect((await pe.listRadar('tenant-a')).length).toBe(1);
@@ -239,7 +252,7 @@ describe('PlatformEvolution — radar', () => {
 
 describe('PlatformEvolution — benchmarks', () => {
   it('recordBenchmark persists with the caller tenantId', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     await pe.recordBenchmark('tenant-a', 'GPT-4o', 'OpenAI', 'reasoning_quality', 8.7);
     const rows = await pe.listBenchmarks('tenant-a');
     expect(rows).toHaveLength(1);
@@ -247,7 +260,7 @@ describe('PlatformEvolution — benchmarks', () => {
   });
 
   it('listBenchmarks filters by modelName when provided', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     await pe.recordBenchmark('tenant-a', 'GPT-4o', 'OpenAI', 'reasoning', 8.5);
     await pe.recordBenchmark('tenant-a', 'Claude-3.5', 'Anthropic', 'reasoning', 9.0);
     expect((await pe.listBenchmarks('tenant-a', 'GPT-4o')).length).toBe(1);
@@ -257,13 +270,13 @@ describe('PlatformEvolution — benchmarks', () => {
 
 describe('PlatformEvolution — experiments', () => {
   it('createExperiment persists with the caller tenantId and DRAFT status', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     const r = await pe.createExperiment('tenant-a', 'Test 1', 'description');
     expect(r.status).toBe('DRAFT');
   });
 
   it('completeExperiment works for the owning tenant', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     const e = await pe.createExperiment('tenant-a', 'Test 1');
     const out = await pe.completeExperiment('tenant-a', e.id, { score: 8.5 });
     expect(out.status).toBe('COMPLETED');
@@ -272,7 +285,7 @@ describe('PlatformEvolution — experiments', () => {
 
   it('CRITICAL REGRESSION: completeExperiment refuses cross-tenant', async () => {
     const p = makePrisma();
-    const pe = new PlatformEvolution(p as any);
+    const pe = new PlatformEvolution(p as any, makeTransport() as any);
     const e = await pe.createExperiment('tenant-a', 'Test');
     await expect(pe.completeExperiment('tenant-b', e.id, { score: 8.5 })).rejects.toThrow(/not found for tenant/);
     // Tenant A's row is unchanged.
@@ -280,14 +293,14 @@ describe('PlatformEvolution — experiments', () => {
   });
 
   it('completeExperiment throws on missing id', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     await expect(pe.completeExperiment('tenant-a', 'missing', {})).rejects.toThrow(/not found for tenant/);
   });
 });
 
 describe('PlatformEvolution — features', () => {
   it('registerFeature persists with the caller tenantId and PROPOSAL state', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     const f = await pe.registerFeature('tenant-a', 'Advanced Reasoning Engine');
     expect(f.state).toBe('PROPOSAL');
     expect(f.version).toBe(1);
@@ -295,14 +308,14 @@ describe('PlatformEvolution — features', () => {
 
   it('CRITICAL REGRESSION: advanceFeature refuses cross-tenant', async () => {
     const p = makePrisma();
-    const pe = new PlatformEvolution(p as any);
+    const pe = new PlatformEvolution(p as any, makeTransport() as any);
     const f = await pe.registerFeature('tenant-a', 'Feature');
     await expect(pe.advanceFeature('tenant-b', f.id, 'PILOT')).rejects.toThrow(/not found for tenant/);
     expect(p.features[0].state).toBe('PROPOSAL');
   });
 
   it('advanceFeature walks lifecycle states for the owning tenant', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     const f = await pe.registerFeature('tenant-a', 'Feature');
     const prototype = await pe.advanceFeature('tenant-a', f.id, 'PROTOTYPE');
     expect(prototype.state).toBe('PROTOTYPE');
@@ -313,7 +326,7 @@ describe('PlatformEvolution — features', () => {
 
 describe('PlatformEvolution — capability versioning', () => {
   it('versionCapability increments version monotonically per (tenantId, domain)', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     const v1 = await pe.versionCapability('tenant-a', 'REASONING', ['add CoT'], true);
     const v2 = await pe.versionCapability('tenant-a', 'REASONING', ['prompt caching'], true);
     const v3 = await pe.versionCapability('tenant-a', 'REASONING', ['breaking'], false);
@@ -329,7 +342,7 @@ describe('PlatformEvolution — capability versioning', () => {
 
 describe('PlatformEvolution — migration plans', () => {
   it('createMigrationPlan persists with the caller tenantId', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     const m = await pe.createMigrationPlan('tenant-a', 'GPT-4o → GPT-5', 'MODEL', ['step 1', 'step 2'], 'MEDIUM');
     expect(m.targetType).toBe('MODEL');
     expect(m.riskLevel).toBe('MEDIUM');
@@ -340,7 +353,7 @@ describe('PlatformEvolution — migration plans', () => {
 
 describe('PlatformEvolution — dashboard tenant-scoped counts', () => {
   it('returns per-tenant counts across all six tables', async () => {
-    const pe = new PlatformEvolution(makePrisma() as any);
+    const pe = new PlatformEvolution(makePrisma() as any, makeTransport() as any);
     await pe.addRadarEntry('tenant-a', 'GPT-5', 'AI_MODEL', 'EMERGING');
     await pe.recordBenchmark('tenant-a', 'GPT-4o', 'OpenAI', 'reasoning', 8.7);
     const e = await pe.createExperiment('tenant-a', 'Test');
@@ -356,5 +369,53 @@ describe('PlatformEvolution — dashboard tenant-scoped counts', () => {
     expect(d.features).toBe(1);
     expect(d.capabilityVersions).toBe(1);
     expect(d.migrationPlans).toBe(1);
+  });
+});
+
+describe('PlatformEvolution — event emissions', () => {
+  it('addRadarEntry emits evolution.model.registered on first creation', async () => {
+    const t = makeTransport();
+    const pe = new PlatformEvolution(makePrisma() as any, t);
+    await pe.addRadarEntry('t1', 'GPT-5', 'AI_MODEL', 'EMERGING');
+    expect(t.published).toContainEqual(expect.objectContaining({ eventType: 'evolution.model.registered', payload: expect.objectContaining({ modelName: 'GPT-5' }) }));
+  });
+
+  it('addRadarEntry does NOT emit evolution.model.registered on upsert (update)', async () => {
+    const t = makeTransport();
+    const pe = new PlatformEvolution(makePrisma() as any, t);
+    await pe.addRadarEntry('t1', 'GPT-5', 'AI_MODEL', 'EMERGING');
+    await pe.addRadarEntry('t1', 'GPT-5', 'AI_MODEL', 'TRIAL');
+    const regEvents = t.published.filter((e: any) => e.eventType === 'evolution.model.registered');
+    expect(regEvents).toHaveLength(1);
+  });
+
+  it('recordBenchmark emits evolution.benchmark.completed', async () => {
+    const t = makeTransport();
+    const pe = new PlatformEvolution(makePrisma() as any, t);
+    await pe.recordBenchmark('t1', 'GPT-4o', 'OpenAI', 'reasoning', 8.7);
+    expect(t.published).toContainEqual(expect.objectContaining({ eventType: 'evolution.benchmark.completed', payload: expect.objectContaining({ modelName: 'GPT-4o', task: 'reasoning', score: 8.7 }) }));
+  });
+
+  it('completeExperiment emits evolution.experiment.completed', async () => {
+    const t = makeTransport();
+    const pe = new PlatformEvolution(makePrisma() as any, t);
+    const e = await pe.createExperiment('t1', 'Test');
+    await pe.completeExperiment('t1', e.id, { score: 8.5 });
+    expect(t.published).toContainEqual(expect.objectContaining({ eventType: 'evolution.experiment.completed', payload: expect.objectContaining({ experimentId: e.id }) }));
+  });
+
+  it('advanceFeature emits evolution.feature.lifecycle.updated', async () => {
+    const t = makeTransport();
+    const pe = new PlatformEvolution(makePrisma() as any, t);
+    const f = await pe.registerFeature('t1', 'Feature');
+    await pe.advanceFeature('t1', f.id, 'PROTOTYPE');
+    expect(t.published).toContainEqual(expect.objectContaining({ eventType: 'evolution.feature.lifecycle.updated', payload: expect.objectContaining({ featureId: f.id, state: 'PROTOTYPE' }) }));
+  });
+
+  it('createMigrationPlan emits evolution.migration.generated', async () => {
+    const t = makeTransport();
+    const pe = new PlatformEvolution(makePrisma() as any, t);
+    await pe.createMigrationPlan('t1', 'GPT-4o→GPT-5', 'MODEL', ['step1'], 'MEDIUM');
+    expect(t.published).toContainEqual(expect.objectContaining({ eventType: 'evolution.migration.generated', payload: expect.objectContaining({ planId: expect.any(String), name: 'GPT-4o→GPT-5', riskLevel: 'MEDIUM' }) }));
   });
 });

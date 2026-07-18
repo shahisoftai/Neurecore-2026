@@ -5,9 +5,11 @@
  * Migration Planning, Future Readiness. All governed — produce recommendations
  * and plans, NEVER auto-execute, NEVER self-modify.
  */
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { EVENT_TRANSPORT } from '../enterprise-events/contracts/enterprise-event-transport.interface';
+import type { IEnterpriseEventTransport } from '../enterprise-events/contracts/enterprise-event-transport.interface';
 
 export interface TechRadarView { id: string; name: string; category: string; maturity: string; description: string | null; recommendation: string | null }
 export interface BenchmarkView { id: string; modelName: string; provider: string; task: string; score: number; createdAt: string }
@@ -44,10 +46,30 @@ export interface IPlatformEvolution {
 
 @Injectable()
 export class PlatformEvolution implements IPlatformEvolution {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(EVENT_TRANSPORT) private readonly events: IEnterpriseEventTransport,
+  ) {}
+
+  private async emit(tenantId: string, eventType: string, payload: Record<string, unknown>): Promise<void> {
+    try {
+      await this.events.publish({
+        eventType,
+        tenantId,
+        actorType: 'SYSTEM',
+        sourceModule: 'PlatformEvolution',
+        idempotencyKey: `${eventType}.${tenantId}.${(payload['id'] as string) ?? Date.now()}`,
+        payload,
+      });
+    } catch { /* non-fatal */ }
+  }
 
   async addRadarEntry(tenantId: string, name: string, category: string, maturity = 'TRIAL') {
+    const existing = await this.prisma.technologyRadarEntry.findUnique({ where: { tenantId_name: { tenantId, name } } });
     const r = await this.prisma.technologyRadarEntry.upsert({ where: { tenantId_name: { tenantId, name } }, create: { tenantId, name, category, maturity: maturity as any }, update: { category, maturity: maturity as any } });
+    if (!existing) {
+      await this.emit(tenantId, 'evolution.model.registered', { id: r.id, modelName: r.name, category: r.category });
+    }
     return { id: r.id, name: r.name, category: r.category, maturity: r.maturity, description: r.description, recommendation: r.recommendation };
   }
   async listRadar(tenantId: string) {
@@ -56,6 +78,7 @@ export class PlatformEvolution implements IPlatformEvolution {
 
   async recordBenchmark(tenantId: string, modelName: string, provider: string, task: string, score: number) {
     const r = await this.prisma.benchmarkRecord.create({ data: { tenantId, modelName, provider, task, score } });
+    await this.emit(tenantId, 'evolution.benchmark.completed', { id: r.id, task: r.task, modelName: r.modelName, score: r.score });
     return { id: r.id, modelName: r.modelName, provider: r.provider, task: r.task, score: r.score, createdAt: r.createdAt.toISOString() };
   }
   async listBenchmarks(tenantId: string, modelName?: string) {
@@ -79,6 +102,7 @@ export class PlatformEvolution implements IPlatformEvolution {
     });
     if (u.count === 0) throw new Error('experiment not found for tenant');
     const after = await this.prisma.experiment.findFirst({ where: { id, tenantId } });
+    await this.emit(tenantId, 'evolution.experiment.completed', { experimentId: after!.id, name: after!.name, results });
     return { id: after!.id, name: after!.name, status: after!.status, affectProduction: after!.affectProduction };
   }
   async listExperiments(tenantId: string) {
@@ -103,6 +127,7 @@ export class PlatformEvolution implements IPlatformEvolution {
     });
     if (u.count === 0) throw new Error('feature not found for tenant');
     const after = await this.prisma.featureLifecycle.findFirst({ where: { id, tenantId } });
+    await this.emit(tenantId, 'evolution.feature.lifecycle.updated', { featureId: after!.id, name: after!.name, state: after!.state });
     return { id: after!.id, name: after!.name, state: after!.state, version: after!.version };
   }
   async listFeatures(tenantId: string) {
@@ -120,6 +145,7 @@ export class PlatformEvolution implements IPlatformEvolution {
 
   async createMigrationPlan(tenantId: string, name: string, targetType: string, steps: string[] = [], riskLevel = 'LOW') {
     const r = await this.prisma.migrationPlan.create({ data: { tenantId, name, targetType, stepsJson: steps, riskLevel } });
+    await this.emit(tenantId, 'evolution.migration.generated', { planId: r.id, name: r.name, targetType: r.targetType, riskLevel: r.riskLevel });
     return { id: r.id, name: r.name, targetType: r.targetType, steps: (r.stepsJson ?? []) as string[], riskLevel: r.riskLevel, autoApply: r.autoApply };
   }
   async listMigrationPlans(tenantId: string) {

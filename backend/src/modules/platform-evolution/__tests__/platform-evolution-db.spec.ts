@@ -17,6 +17,15 @@ import { PlatformEvolution } from '../platform-evolution.service';
 const HAS_DB = Boolean(process.env.DATABASE_TEST_URL);
 const describeDb = HAS_DB ? describe : describe.skip;
 
+class FakeEventTransport {
+  published: Array<{ eventType: string; tenantId: string; payload: Record<string, unknown> }> = [];
+  async publish(event: { eventType: string; tenantId: string; payload: Record<string, unknown> }) {
+    this.published.push({ eventType: event.eventType, tenantId: event.tenantId, payload: event.payload });
+  }
+}
+
+function makeTransport() { return new FakeEventTransport() as any; }
+
 describeDb('PlatformEvolution — REAL PostgreSQL (DATABASE_TEST_URL)', () => {
   let prisma: PrismaClient;
   let pe: PlatformEvolution;
@@ -32,7 +41,7 @@ describeDb('PlatformEvolution — REAL PostgreSQL (DATABASE_TEST_URL)', () => {
         experiments, benchmark_records, tech_radar
       RESTART IDENTITY CASCADE
     `);
-    pe = new PlatformEvolution(prisma as any);
+    pe = new PlatformEvolution(prisma as any, makeTransport() as any);
   });
 
   afterAll(async () => { await prisma.$disconnect(); });
