@@ -15,6 +15,7 @@ import { GovernanceModule } from '../governance/governance.module';
 import { ModelsModule } from '../models/models.module';
 import { AgentStreamingService } from './streaming/agent-streaming.service';
 import { AgentStreamingController } from './streaming/agent-streaming.controller';
+import { OfficialAgentGraph } from './langgraph/langgraph-official';
 import { AgentCheckpointService } from './langgraph/checkpoint.service';
 import { SecurityModule } from './security/security.module';
 import { AIGatewayModule } from '../ai-gateway/ai-gateway.module';
@@ -51,6 +52,7 @@ import { MetricsModule } from '../metrics/metrics.module';
     AgentInvocationsService,
     DeploymentService,
     AgentStreamingService,
+    OfficialAgentGraph,
     AgentCheckpointService,
   ],
   exports: [
@@ -61,6 +63,7 @@ import { MetricsModule } from '../metrics/metrics.module';
     AgentInvocationsService,
     DeploymentService,
     AgentStreamingService,
+    OfficialAgentGraph,
     AgentCheckpointService,
   ],
 })
