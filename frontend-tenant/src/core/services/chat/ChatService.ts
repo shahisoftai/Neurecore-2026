@@ -116,4 +116,114 @@ export class ChatService implements IChatService {
       return [];
     }
   }
+
+  /**
+   * Stream chat response tokens via SSE.
+   * Returns a cleanup function that aborts the request.
+   *
+   * Events from /chat/stream:
+   *   event: delta  data: {"text":"..."}
+   *   event: done   data: {"conversationId":"...","tokens":{...}}
+   *   event: error  data: {"message":"..."}
+   */
+  sendMessageStream(
+    request: ChatRequest,
+    onDelta: (text: string) => void,
+    onDone: (conversationId: string) => void,
+    onError: (error: string) => void,
+    onFinish: () => void,
+  ): () => void {
+    const baseUrl = (typeof window !== 'undefined' && (window as unknown as { env?: { NEXT_PUBLIC_API_URL?: string } }).env?.NEXT_PUBLIC_API_URL)
+      ?? process.env.NEXT_PUBLIC_API_URL
+      ?? '/api/v1';
+    const endpoint = `${baseUrl}/chat/stream`;
+
+    const controller = new AbortController();
+
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: request.message,
+        conversationId: request.conversationId ?? undefined,
+        context: request.context ?? {},
+        systemPrompt: request.systemPrompt ?? this.systemPromptBuilder.build(request.context),
+        history: request.history ?? [],
+      }),
+      credentials: 'include',
+      signal: controller.signal,
+    }).then(async (res) => {
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        onFinish();
+      };
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        onError(`HTTP ${res.status}: ${text}`);
+        finish();
+        return;
+      }
+      if (!res.body) {
+        onError('Empty response body');
+        finish();
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let currentEventType = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              currentEventType = line.slice(7).trim();
+              continue;
+            }
+            if (line.startsWith('data: ')) {
+              const rawData = line.slice(6).trim();
+              const eventType = currentEventType;
+              currentEventType = '';
+              if (!rawData) continue;
+              try {
+                const data = JSON.parse(rawData) as Record<string, unknown>;
+                if (eventType === 'delta' && 'text' in data && typeof data.text === 'string') {
+                  onDelta(data.text);
+                } else if (eventType === 'done' && 'conversationId' in data) {
+                  onDone(String(data.conversationId));
+                  finish();
+                } else if (eventType === 'error' && 'message' in data && typeof data.message === 'string') {
+                  onError(data.message);
+                  finish();
+                }
+              } catch {
+                /* ignore malformed JSON */
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          onError((err as Error).message);
+        }
+        finish();
+      }
+      finish();
+    }).catch((err) => {
+      if ((err as Error).name !== 'AbortError') {
+        onError((err as Error).message);
+      }
+      onFinish();
+    });
+
+    return () => controller.abort();
+  }
 }

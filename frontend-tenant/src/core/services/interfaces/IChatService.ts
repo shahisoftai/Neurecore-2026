@@ -6,6 +6,13 @@ import type { ChatMessage, ChatRequest, ChatResponse, SlashCommand } from '@/sha
 
 export interface IChatService {
   sendMessage(request: ChatRequest): Promise<ChatResponse>;
+  sendMessageStream(
+    request: ChatRequest,
+    onDelta: (text: string) => void,
+    onDone: (conversationId: string) => void,
+    onError: (error: string) => void,
+    onFinish: () => void,
+  ): () => void;
   getHistory(limit?: number): Promise<ChatMessage[]>;
   clearHistory(): Promise<void>;
   getSuggestions(query: string, context?: string): Promise<string[]>;

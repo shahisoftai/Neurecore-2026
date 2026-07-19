@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { IChatService, ISlashCommandProvider } from '@/core/services/interfaces/IChatService';
 import type { ChatMessage, ChatConfig } from '@/shared/types/chat.types';
 import { useChatStore } from '@/core/services/chat/chat.factory';
@@ -36,6 +36,7 @@ export function useChat(
   const setSending = useChatStore((s) => s.setSending);
 
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<(() => void) | null>(null);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -43,6 +44,10 @@ export function useChat(
 
       setError(null);
       setSending(true);
+
+      if (abortRef.current) {
+        abortRef.current();
+      }
 
       const userMsg: ChatMessage = {
         id: generateId(),
@@ -61,35 +66,44 @@ export function useChat(
       };
       addMessage(assistantMsg);
 
-      try {
-        const context = slashCommands.getContextForTrigger(content.toLowerCase());
-        const response = await chatService.sendMessage({
+      const context = slashCommands.getContextForTrigger(content.toLowerCase());
+      const accumulatedContent: string[] = [];
+
+      const cleanup = chatService.sendMessageStream(
+        {
           message: content.trim(),
           conversationId: conversationId ?? undefined,
           context: { pageContext, slashContext: context },
-        });
+        },
+        (text) => {
+          accumulatedContent.push(text);
+          updateMessage(assistantMsg.id, { content: accumulatedContent.join('') });
+        },
+        (newConversationId) => {
+          const finalContent = accumulatedContent.join('');
+          const parsed = extractInlineJson(finalContent);
+          updateMessage(assistantMsg.id, {
+            content: parsed.cleaned,
+            timestamp: new Date().toISOString(),
+            metadata: {
+              isStreaming: false,
+              chart: parsed.chartData
+                ? { chartType: 'bar' as const, chartData: parsed.chartData }
+                : undefined,
+            },
+          });
+          setConversationId(newConversationId);
+        },
+        (errorMessage) => {
+          removeMessage(assistantMsg.id);
+          setError(errorMessage ?? 'Sorry, something went wrong. Please try again.');
+        },
+        () => {
+          setSending(false);
+        },
+      );
 
-        updateMessage(assistantMsg.id, {
-          content: response.reply,
-          timestamp: new Date().toISOString(),
-          tokens: response.tokens
-            ? { input: response.tokens.input, output: response.tokens.output }
-            : undefined,
-          metadata: {
-            isStreaming: false,
-            chart: response.chartData
-              ? { chartType: 'bar' as const, chartData: response.chartData }
-              : undefined,
-            suggestions: response.suggestions?.map((s) => ({ label: s })),
-          },
-        });
-        setConversationId(response.conversationId);
-      } catch {
-        removeMessage(assistantMsg.id);
-        setError('Sorry, something went wrong. Please try again.');
-      } finally {
-        setSending(false);
-      }
+      abortRef.current = cleanup ?? null;
     },
     [
       chatService,
@@ -117,3 +131,65 @@ export function useChat(
     setError,
   };
 }
+
+/**
+ * Extract inline chart JSON from text and return cleaned text + chart data.
+ * Mirrors the logic previously in ConversationalAIService._parseMetadata().
+ */
+function extractInlineJson(
+  text: string,
+): { cleaned: string; chartData?: Array<{ label: string; value: number }> } {
+  const firstBrace = text.indexOf('{');
+  if (firstBrace < 0) return { cleaned: text };
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let start = firstBrace;
+  let end = -1;
+
+  for (let i = firstBrace; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (ch === '\\') {
+        escape = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+
+  if (end < 0) return { cleaned: text };
+
+  const jsonStr = text.slice(start, end + 1);
+  try {
+    const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
+    if (parsed && typeof parsed === 'object' && 'chartType' in parsed) {
+      const cleaned = (text.slice(0, start) + text.slice(end + 1)).trim();
+      return {
+        cleaned,
+        chartData: (parsed.chartData as Array<{ label: string; value: number }>) ?? [],
+      };
+    }
+  } catch {
+    /* not valid JSON, return original */
+  }
+
+  return { cleaned: text };
+}
+

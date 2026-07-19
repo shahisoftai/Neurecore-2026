@@ -175,12 +175,13 @@ export class ChatService {
     // QUERY: Use MiniMax for natural language response
     const systemPrompt =
       dto.systemPrompt ??
-      'You are HeadQuarter, the AI assistant inside the NeureCore platform. ' +
-        'Answer the user using ONLY the LIVE TENANT DATA provided below. ' +
-        'If the data answers the question, give the exact numbers. ' +
-        'If the data does not contain the answer, say so directly rather than guessing. ' +
-        'Keep answers concise (2-4 sentences). When relevant, include a JSON block ' +
-        '(no markdown) with keys: chartType, chartData [{label, value}].';
+      `You are a friendly, helpful AI assistant. You chat naturally with the user — no headers, no bullet points, no "here's what I found". Just speak plainly and directly.
+
+Answer questions using ONLY the LIVE TENANT DATA provided below. If the data answers the question, share it naturally in conversation. If the data does not contain the answer, say so directly rather than guessing.
+
+IMPORTANT — Project creation: If the user wants to create a project, lead a natural conversation. Ask ONE question at a time. Wait for the answer. Then ask the next question. Keep responses short — one or two sentences.
+
+When relevant, include a JSON block (no markdown) with keys: chartType, chartData [{label, value}].`;
 
     const historyText = (dto.history ?? [])
       .slice(-10)
@@ -297,6 +298,10 @@ export class ChatService {
    * V2 streaming entry point. Returns an async iterable of text
    * deltas. Activated by `AI_GATEWAY_V2`. The legacy REST endpoint
    * is unchanged.
+   *
+   * NOTE: This method streams the QUERY path only (natural language response).
+   * Action requests (create project, etc.) are routed through the non-streaming
+   * `send()` method which uses OfficialAgentGraph for tool execution.
    */
   async *stream(
     dto: SendChatMessageDto,
@@ -308,19 +313,29 @@ export class ChatService {
       null;
     const systemPrompt =
       dto.systemPrompt ??
-      'You are HeadQuarter, the AI assistant inside the NeureCore platform. ' +
-        'Answer the user using ONLY the LIVE TENANT DATA provided below. ' +
-        'If the data does not contain the answer, say so directly rather than guessing. ' +
-        'Keep answers concise (2-4 sentences).';
+      `You are a friendly, helpful AI assistant. You chat naturally with the user — no headers, no bullet points, no "here's what I found". Just speak plainly and directly.
+
+Answer questions using ONLY the LIVE TENANT DATA provided below. If the data answers the question, share it naturally in conversation. If the data does not contain the answer, say so directly rather than guessing.
+
+IMPORTANT — Project creation: If the user wants to create a project, lead a natural conversation. Ask ONE question at a time. Wait for the answer. Then ask the next question. Keep responses short — one or two sentences.
+
+When relevant, include a JSON block (no markdown) with keys: chartType, chartData [{label, value}].`;
     const liveData = tenantId
       ? await this.fetchTenantSnapshot(tenantId)
       : { note: 'no tenant context available' };
+    const historyText = (dto.history ?? [])
+      .slice(-10)
+      .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+      .join('\n');
     const prompt = [
       `SYSTEM: ${systemPrompt}`,
       `\nLIVE TENANT DATA (JSON):\n${JSON.stringify(liveData, null, 2)}`,
+      historyText ? `\nCONVERSATION:\n${historyText}` : '',
       `\nUSER: ${dto.message}`,
       '\nASSISTANT:',
-    ].join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
     for await (const chunk of this.aiGateway.stream({
       tenantId,
       capability: 'conversation',
