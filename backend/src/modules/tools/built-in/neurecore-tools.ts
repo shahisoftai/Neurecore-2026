@@ -7,7 +7,8 @@
  * Pattern: @Injectable() extending BaseStructuredTool with Zod input schema.
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional, OnModuleInit } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { z } from 'zod';
 import { BaseStructuredTool } from '../structured-tool.base';
 import {
@@ -17,6 +18,10 @@ import {
 } from '../interfaces/structured-tool.interface';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { ProjectMemoryService } from '../../project-memory/project-memory.service';
+import { ProjectsService } from '../../projects/projects.service';
+import { TasksService } from '../../orchestration/services/tasks.service';
+import { AgentsService } from '../../agents/services/agents.service';
+import { ProjectShapeSynthesisService } from '../../project-shape/project-shape-synthesis.service';
 
 // ─── Enums (matching Prisma schema) ────────────────────────────────────────
 
@@ -46,9 +51,43 @@ export type CreateTaskInput = z.infer<typeof CreateTaskInputSchema>;
 export const CreateProjectInputSchema = z.object({
   name: z.string().min(1).describe('Project name (required)'),
   description: z.string().optional().describe('Project description'),
-  departmentId: z.string().optional().describe('Department ID'),
-  goalIds: z.array(z.string()).optional().describe('Related goal IDs'),
+  departmentId: z.string().optional().describe('Department ID to assign the project to'),
+  customerId: z.string().optional().describe('Customer ID for the project'),
+  projectTypeId: z.string().optional().describe('ProjectType ID — when set, the template-driven pipeline runs (goalTemplate, roleTemplate). When absent, the Hermes-driven synthesis path runs instead.'),
+  projectTypeVersion: z.number().int().positive().optional().describe('Specific ProjectTypeVersion (defaults to current)'),
+  // LLMs sometimes send "fixed" or "fixed_fee" instead of "FIXED_FEE" — accept either.
+  budgetType: z
+    .union([
+      z.enum(['FIXED_FEE', 'HOURLY', 'RETAINER']),
+      z
+        .enum(['fixed', 'hourly', 'retainer', 'fixed_fee', 'fixed-fee'])
+        .transform((v): 'FIXED_FEE' | 'HOURLY' | 'RETAINER' => {
+          if (v === 'fixed' || v === 'fixed_fee' || v === 'fixed-fee') return 'FIXED_FEE';
+          if (v === 'hourly') return 'HOURLY';
+          return 'RETAINER';
+        }),
+    ])
+    .optional()
+    .describe('Budget type. Accepts FIXED_FEE/HOURLY/RETAINER or lowercase variants (fixed, fixed_fee, fixed-fee).'),
+  // Accept numeric strings (LLM often sends "40000" as a string).
+  budgetAmount: z.coerce.number().positive().optional().describe('Budget amount'),
+  budgetCurrency: z.string().length(3).optional().describe('Budget currency (ISO 4217, defaults to USD)'),
+  // Same trick as budgetType for LLMs that send lowercase priorities.
+  priority: z
+    .union([
+      z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
+      z.enum(['low', 'medium', 'high', 'urgent']).transform((v) => v.toUpperCase() as never),
+    ])
+    .optional()
+    .describe('Project priority. Accepts LOW/MEDIUM/HIGH/URGENT or lowercase variants.'),
   targetDate: z.string().optional().describe('Target date (ISO 8601)'),
+  // Hermes-driven synthesis (NEW 2026-07-19)
+  // LLMs sometimes send "true"/"false" as strings — accept either.
+  useAiSynthesis: z
+    .union([z.boolean(), z.enum(['true', 'false']).transform((v) => v === 'true')])
+    .default(true)
+    .describe('When true (default) and projectTypeId is absent, Hermes synthesizes the project shape (stages, goals, members, CoS) from the user goal via the LLM.'),
+  industryHint: z.string().max(80).optional().describe('Optional industry hint to guide Hermes — e.g. "audit", "construction", "marketing campaign".'),
 });
 export type CreateProjectInput = z.infer<typeof CreateProjectInputSchema>;
 
@@ -457,16 +496,52 @@ export type RespondToInboxItemInput = z.infer<typeof RespondToInboxItemInputSche
 @Injectable()
 export class CreateTaskTool extends BaseStructuredTool {
   readonly name = 'createTask';
-  readonly description = 'Create a new task. Use when user asks to create, add, or register a task.';
+  readonly description =
+    'Create a new task. Routes through TasksService so default workflows, audit events, and member links fire. Pass projectId when the task belongs to a project (the task will be linked).';
   readonly category = ToolCategory.API;
   readonly inputSchema = CreateTaskInputSchema;
   readonly requiredPermissions = ['task:create'];
 
-  constructor(private readonly prisma: PrismaService) { super(); }
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly tasksService?: TasksService,
+  ) {
+    super();
+  }
 
   protected async executeImpl(input: CreateTaskInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
     if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    // Use actorId (real user) for createdById; SYSTEM is a placeholder that
+    // won't satisfy the FK constraint. In chat-driven create, the JWT user
+    // is the actor. Fall back to null only if there's no user.
+    const actorUserId =
+      context?.userId && context.userId !== 'SYSTEM' ? context.userId : null;
     try {
+      if (this.tasksService) {
+        const task = await this.tasksService.create(
+          {
+            title: input.title,
+            ...(input.description !== undefined ? { description: input.description } : {}),
+            ...(input.priority ? { priority: input.priority as never } : {}),
+            ...(actorUserId ? { createdById: actorUserId } : { createdById: null }),
+            ...(input.agentId ? { agentId: input.agentId } : {}),
+          },
+          context.tenantId as string,
+        );
+        return {
+          success: true,
+          data: {
+            taskId: task.id,
+            title: task.title,
+            status: task.status,
+            priority: task.priority,
+            createdAt: task.createdAt.toISOString(),
+          },
+          metadata: { model: 'neurecore-task-v1' },
+        };
+      }
+      // Fallback: TasksService not wired — direct prisma write. Does NOT
+      // trigger workflow side effects.
       const task = await this.prisma.task.create({
         data: {
           title: input.title,
@@ -476,9 +551,21 @@ export class CreateTaskTool extends BaseStructuredTool {
           agentId: input.agentId ?? null,
           status: 'PENDING',
           input: {},
+          createdById: actorUserId ?? null,
         },
       });
-      return { success: true, data: { taskId: task.id, title: task.title, status: task.status, priority: task.priority, createdAt: task.createdAt.toISOString() }, metadata: { model: 'neurecore-task-v1' } };
+      return {
+        success: true,
+        data: {
+          taskId: task.id,
+          title: task.title,
+          status: task.status,
+          priority: task.priority,
+          createdAt: task.createdAt.toISOString(),
+          automation: { stage: 'skipped', note: 'TasksService not available' },
+        },
+        metadata: { model: 'neurecore-task-v1' },
+      };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to create task' };
     }
@@ -486,17 +573,150 @@ export class CreateTaskTool extends BaseStructuredTool {
 }
 
 @Injectable()
-export class CreateProjectTool extends BaseStructuredTool {
+export class CreateProjectTool extends BaseStructuredTool implements OnModuleInit {
   readonly name = 'createProject';
-  readonly description = 'Create a new project. Use when user asks to create, add, or register a project.';
+  readonly description =
+    "Create a new project. Two paths: (1) Template-driven — pass projectTypeId for compliance-heavy industries (e.g. 'Tax Audit'). (2) Hermes-driven (default) — when projectTypeId is absent, Hermes synthesizes the project shape (stages, goals, members, CoS) from the user's goal via LLM reasoning. Routes through ProjectsService.create() so goals, AI employees, Chief of Staff, project memory, and stages are auto-seeded.";
   readonly category = ToolCategory.API;
   readonly inputSchema = CreateProjectInputSchema;
   readonly requiredPermissions = ['project:create'];
 
-  constructor(private readonly prisma: PrismaService) { super(); }
+  // Lazy-resolved via ModuleRef (avoids the same circular-dep class we hit
+  // with ProjectAutomationModule). See ProjectsService.onModuleInit for the
+  // proven pattern. logger comes from BaseStructuredTool (protected readonly).
+  private synthesisService: ProjectShapeSynthesisService | undefined;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly projectsService?: ProjectsService,
+    private readonly moduleRef?: ModuleRef,
+  ) {
+    super();
+  }
+
+  onModuleInit(): void {
+    try {
+      this.synthesisService = this.moduleRef?.get(ProjectShapeSynthesisService, {
+        strict: false,
+      });
+      this.logger.log(
+        `CreateProjectTool resolved: synthesisService=${this.synthesisService ? 'yes' : 'no'}, projectsService=${this.projectsService ? 'yes' : 'no'}`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `CreateProjectTool.onModuleInit: lazy resolution failed (${err instanceof Error ? err.message : String(err)})`,
+      );
+    }
+  }
 
   protected async executeImpl(input: CreateProjectInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
     if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+
+    this.logger.debug(
+      `[DEBUG-TOOL-CREATE] executeImpl ENTER: name=${input.name}, projectTypeId=${input.projectTypeId ?? 'none'}, useAiSynthesis=${input.useAiSynthesis}, synthesisService=${this.synthesisService ? 'available' : 'NOT_AVAILABLE'}, projectsService=${this.projectsService ? 'available' : 'NOT_AVAILABLE'}`,
+    );
+
+    const targetDate = input.targetDate ? new Date(input.targetDate) : null;
+
+    // ─── Hermes-driven synthesis path (default when projectTypeId absent) ───
+    //
+    // The user's raw goal is passed via context.metadata.goal (set by the
+    // LangGraph toolNode at langgraph-official.ts). When the LLM didn't
+    // supply projectTypeId — meaning the user didn't say "use the X template"
+    // — we ask ProjectShapeSynthesisService to derive a ProjectShape from
+    // the goal. The derived shape then flows into ProjectsService.create().
+    //
+    // If useAiSynthesis is explicitly false and no projectTypeId is given,
+    // ProjectsService.create() will throw "Either projectTypeId or derivedShape
+    // is required" — handled downstream.
+    let derivedShape: unknown | undefined;
+    let synthesisNote: string | undefined;
+    if (!input.projectTypeId && input.useAiSynthesis !== false) {
+      const userGoal = (context.metadata?.goal as string | undefined) ?? input.name;
+      if (this.synthesisService) {
+        try {
+          const synthResult = await this.synthesisService.synthesizeShape({
+            goal: userGoal,
+            tenantId: context.tenantId as string,
+            ...(input.industryHint ? { industryHint: input.industryHint } : {}),
+            ...(context.userId ? { userId: context.userId } : {}),
+          });
+          derivedShape = synthResult.shape;
+          synthesisNote = `Hermes synthesized shape from user goal (industry=${synthResult.shape.industry}, stages=${synthResult.shape.stages.length}, goals=${synthResult.shape.goals.length}, members=${synthResult.shape.members.length}${synthResult.usedRepairRetry ? ', usedRepairRetry=true' : ''}). Rationale: ${synthResult.shape.rationale}`;
+        } catch (err) {
+          this.logger.warn(
+            `CreateProjectTool: Hermes synthesis failed (${err instanceof Error ? err.message : String(err)}); falling back to bare project`,
+          );
+          // Fall through — projectsService.create() will throw if neither
+          // projectTypeId nor derivedShape is provided.
+        }
+      }
+    }
+
+    // ─── Template-driven OR Hermes-driven path through ProjectsService ───
+    //
+    // Prefer ProjectsService.create() — it fires the full automation pipeline
+    // (goalTemplate seeding, roleTemplate agent spawning, Chief of Staff
+    // assignment, project memory seeding, EIE adapter, stage creation) OR
+    // applies the derived shape inline (Phase 2-HERMES).
+    //
+    // Falling back to a direct prisma write would skip ALL of that, which is
+    // the root cause of "AI Employees don't spawn when I create a project
+    // through chat" — see the audit in pending-tasks.md D29.
+    if (this.projectsService) {
+      this.logger.debug(`[DEBUG-TOOL-CREATE] calling projectsService.create(), derivedShape=${derivedShape ? 'present' : 'absent'}`);
+      try {
+        const project = await this.projectsService.create(
+          {
+            name: input.name,
+            ...(input.description !== undefined ? { description: input.description } : {}),
+            ...(input.departmentId ? { departmentId: input.departmentId } : {}),
+            ...(input.customerId ? { customerId: input.customerId } : {}),
+            ...(input.projectTypeId ? { projectTypeId: input.projectTypeId } : {}),
+            ...(input.projectTypeVersion !== undefined ? { projectTypeVersion: input.projectTypeVersion } : {}),
+            ...(input.budgetType ? { budgetType: input.budgetType } : {}),
+            ...(input.budgetAmount !== undefined ? { budgetAmount: input.budgetAmount } : {}),
+            ...(input.budgetCurrency ? { budgetCurrency: input.budgetCurrency } : {}),
+            ...(input.priority ? { priority: input.priority } : {}),
+            ...(targetDate ? { targetDate } : {}),
+            ...(derivedShape ? { derivedShape } : {}),
+            ...(derivedShape ? { derivedShapeVersion: 1 } : {}),
+          },
+          context.tenantId as string,
+        );
+        this.logger.debug(`[DEBUG-TOOL-CREATE] projectsService.create succeeded: projectId=${project.id}`);
+
+        return {
+          success: true,
+          data: {
+            projectId: project.id,
+            name: project.name,
+            status: project.status,
+            projectTypeId: project.projectTypeId,
+            departmentId: project.departmentId,
+            createdAt: project.createdAt.toISOString(),
+            // Tell the caller what was auto-spawned so the chat reply can
+            // surface this in the user-facing summary.
+            automation: {
+              stage: 'triggered',
+              note: derivedShape
+                ? (synthesisNote ?? 'Hermes-driven synthesis applied inline.')
+                : input.projectTypeId
+                  ? 'ProjectAutomationService has been invoked fire-and-forget. Goals from goalTemplate, AI employees from roleTemplate, Chief of Staff, and project memory will be seeded asynchronously. Check /projects/:id for the result.'
+                  : 'No projectTypeId and Hermes synthesis unavailable — bare project only. Enable AI_PROJECT_SHAPE_ENABLED or pass projectTypeId.',
+            },
+          },
+          metadata: { model: 'neurecore-project-v1' },
+        };
+      } catch (error) {
+        this.logger.error(`[DEBUG-TOOL-CREATE] projectsService.create FAILED: ${error instanceof Error ? error.message : String(error)}, stack=${error instanceof Error ? error.stack : ''}`);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to create project' };
+      }
+    }
+
+    // Fallback: ProjectsService was not wired in. Direct prisma write — does
+    // NOT trigger automation. This branch exists only so the tool still
+    // functions in unit-test contexts that don't supply ProjectsService.
     try {
       const project = await this.prisma.project.create({
         data: {
@@ -504,12 +724,24 @@ export class CreateProjectTool extends BaseStructuredTool {
           description: input.description,
           tenantId: context.tenantId as string,
           departmentId: input.departmentId ?? null,
-          goalIds: input.goalIds ?? [],
-          targetDate: input.targetDate ? new Date(input.targetDate) : null,
+          targetDate,
           status: 'ACTIVE',
         },
       });
-      return { success: true, data: { projectId: project.id, name: project.name, status: project.status, createdAt: project.createdAt.toISOString() }, metadata: { model: 'neurecore-project-v1' } };
+      return {
+        success: true,
+        data: {
+          projectId: project.id,
+          name: project.name,
+          status: project.status,
+          createdAt: project.createdAt.toISOString(),
+          automation: {
+            stage: 'skipped',
+            note: 'ProjectsService not available; automation pipeline was not triggered.',
+          },
+        },
+        metadata: { model: 'neurecore-project-v1' },
+      };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to create project' };
     }
@@ -566,19 +798,29 @@ export class ListAgentsTool extends BaseStructuredTool {
 @Injectable()
 export class PauseAgentTool extends BaseStructuredTool {
   readonly name = 'pauseAgent';
-  readonly description = 'Pause an AI agent. Use when user asks to pause, stop, or deactivate an agent.';
+  readonly description =
+    'Pause an AI agent. Routes through AgentsService.setStatus so domain events fire and audit logs are written.';
   readonly category = ToolCategory.API;
   readonly inputSchema = PauseAgentInputSchema;
   readonly requiredPermissions = ['agent:pause'];
 
-  constructor(private readonly prisma: PrismaService) { super(); }
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly agentsService?: AgentsService,
+  ) {
+    super();
+  }
 
   protected async executeImpl(input: PauseAgentInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
     if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
     try {
       const agent = await this.prisma.agent.findFirst({ where: { id: input.agentId, tenantId: context.tenantId } });
       if (!agent) return { success: false, error: 'Agent not found' };
-      await this.prisma.agent.update({ where: { id: input.agentId }, data: { status: 'PAUSED' } });
+      if (this.agentsService) {
+        await this.agentsService.setStatus(agent.id, 'PAUSED' as never, context.tenantId as string);
+      } else {
+        await this.prisma.agent.update({ where: { id: input.agentId }, data: { status: 'PAUSED' } });
+      }
       return { success: true, data: { agentId: agent.id, name: agent.name, previousStatus: agent.status, newStatus: 'PAUSED' }, metadata: { model: 'neurecore-agent-v1' } };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to pause agent' };
@@ -589,19 +831,29 @@ export class PauseAgentTool extends BaseStructuredTool {
 @Injectable()
 export class ResumeAgentTool extends BaseStructuredTool {
   readonly name = 'resumeAgent';
-  readonly description = 'Resume a paused AI agent. Use when user asks to resume, start, or reactivate an agent.';
+  readonly description =
+    'Resume a paused AI agent. Routes through AgentsService.setStatus so domain events fire and audit logs are written.';
   readonly category = ToolCategory.API;
   readonly inputSchema = ResumeAgentInputSchema;
   readonly requiredPermissions = ['agent:resume'];
 
-  constructor(private readonly prisma: PrismaService) { super(); }
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly agentsService?: AgentsService,
+  ) {
+    super();
+  }
 
   protected async executeImpl(input: ResumeAgentInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
     if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
     try {
       const agent = await this.prisma.agent.findFirst({ where: { id: input.agentId, tenantId: context.tenantId } });
       if (!agent) return { success: false, error: 'Agent not found' };
-      await this.prisma.agent.update({ where: { id: input.agentId }, data: { status: 'RUNNING' } });
+      if (this.agentsService) {
+        await this.agentsService.setStatus(agent.id, 'RUNNING' as never, context.tenantId as string);
+      } else {
+        await this.prisma.agent.update({ where: { id: input.agentId }, data: { status: 'RUNNING' } });
+      }
       return { success: true, data: { agentId: agent.id, name: agent.name, previousStatus: agent.status, newStatus: 'RUNNING' }, metadata: { model: 'neurecore-agent-v1' } };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to resume agent' };

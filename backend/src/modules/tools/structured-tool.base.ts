@@ -45,21 +45,34 @@ export abstract class BaseStructuredTool implements IStructuredTool {
   ): Promise<StructuredToolResult<unknown>> {
     const startTime = Date.now();
 
-    // Validate input
-    const validation = this.validate(input);
-    if (!validation.valid) {
+    this.logger.debug(`[Tool ${this.name}] execute() called with input=${JSON.stringify(input)?.slice(0, 500)}`);
+
+    // Validate input and capture the parsed (transformed) result so that
+    // .transform() calls in the Zod schema (e.g. lowercase enum → uppercase)
+    // are applied before executeImpl sees the value. Previously we passed
+    // the raw `input` to executeImpl, which meant `budgetType: "fixed"` never
+    // got converted to `FIXED_FEE` and Prisma rejected it with
+    // "Invalid value for argument `budgetType`. Expected BudgetType."
+    let parsedInput: z.infer<this['inputSchema']>;
+    try {
+      parsedInput = this.inputSchema.parse(input);
+    } catch (parseErr) {
+      const errors =
+        parseErr instanceof z.ZodError
+          ? parseErr.errors.map((e) => `${e.path.join('.')}: ${e.message}`)
+          : [String(parseErr)];
+      this.logger.warn(
+        `[Tool ${this.name}] input validation failed: ${errors.join(', ')}`,
+      );
       return {
         success: false,
-        error: `Invalid input: ${validation.errors?.join(', ')}`,
+        error: `Invalid input: ${errors.join(', ')}`,
         metadata: { durationMs: Date.now() - startTime },
       };
     }
 
     try {
-      const result = await this.executeImpl(
-        input as z.infer<this['inputSchema']>,
-        context,
-      );
+      const result = await this.executeImpl(parsedInput, context);
       return {
         ...result,
         metadata: {
