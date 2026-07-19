@@ -1,8 +1,8 @@
 # Hermes Layer Unification Plan — All AI Employees Under Single Orchestration System
 
-**Version:** 1.0
-**Date:** 2026-07-04
-**Status:** Implemented — Phases 1–3 complete (HermesModule, HermesRuntimeService, LangGraph integration, feature flags, auto-link). Feature-flagged behind `HERMES_ENABLED=false` (default). See [backend.md](../backend.md#3-module-map-38-modules) for module reference.
+**Version:** 1.1
+**Date:** 2026-07-04 (created) / 2026-07-19 (last updated)
+**Status:** All 5 phases COMPLETE — Hermes module shipped, AgentStateMachine retired (Phase D, 2026-07-19), Hermes default-on (Phase E, 2026-07-19). Reference doc only — see [chat-unification-refactor-plan.md](./chat-unification-refactor-plan.md) for the active cross-cutting refactor.
 **Based on Decisions:** Q1–Q9 answered
 
 ---
@@ -27,18 +27,18 @@ Migrate **all** AI agents in NeureCore to execute through the Hermes runtime sys
 | Q8 — Build order | **Service-first:** Build `HermesRuntimeService` using existing schema, extend schema only when proven necessary. |
 | Q9 — Backward compat | Feature flags toggle Hermes vs legacy execution until migration is complete. |
 
-### 1.3 Current State Summary
+### 1.3 Current State Summary (as of 2026-07-19)
 
 | Component | Status |
 |-----------|--------|
-| `HermesAgent` + related Prisma models | ✅ Exist (schema only, no service) |
-| `hermes-tools.ts` | ✅ Exists (metadata/config only, not wired) |
-| Hermes module (`/modules/hermes/`) | ❌ 0% implemented — directory doesn't exist |
-| `OfficialAgentGraph` | ✅ Production-ready LangGraph |
-| `AgentStateMachine` | ⚠️ Legacy, to be retired |
-| `ToolGatewayService` | ❌ Doesn't exist |
-| Approval workflow engine | ⚠️ Schema exists, stub implementation |
-| Feature flags | ❌ Doesn't exist |
+| `HermesAgent` + related Prisma models | ✅ Schema + service, fully wired |
+| `hermes-tools.ts` | ✅ Wired + used by `ToolGatewayService` |
+| Hermes module (`/modules/hermes/`) | ✅ **Fully implemented** — 24 services, 6 interfaces, 3 langgraph nodes, 10 controllers |
+| `OfficialAgentGraph` | ✅ Production-ready LangGraph (sole execution engine post-Phase D) |
+| `AgentStateMachine` | ✅ **Retired (Phase D, 2026-07-19)** — file deleted, providers removed |
+| `ToolGatewayService` | ✅ Implemented — enforces `requiredPermissions` + `HERMES_TOOL_SETS` rules |
+| `ApprovalWorkflowEngine` | ✅ Schema + stub engine (full impl deferred per Q5) |
+| Feature flags (`HERMES_ENABLED`) | ✅ **Default-on (Phase E, 2026-07-19)** — per-tenant override via `Tenant.settings.featureFlags.HERMES_ENABLED` |
 
 ---
 

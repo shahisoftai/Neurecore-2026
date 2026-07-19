@@ -19,10 +19,6 @@ export class UpdateMyFeatureFlagsDto {
 export class UpdateTenantFeatureFlagsDto {
   @IsBoolean()
   @IsOptional()
-  HERMES_ENABLED?: boolean;
-
-  @IsBoolean()
-  @IsOptional()
   HERMES_AUTO_LINK?: boolean;
 
   @IsBoolean()

@@ -8,8 +8,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import { strategyService } from '@/services/chat.service';
-import { useStrategyStore } from '@/stores/chatStore';
+import { strategyService } from '@/services/strategy.service';
+import { useStrategyStore } from '@/stores/strategyStore';
 import type { ScenarioParameters, Scenario, ForecastResult } from '@/types/strategy.types';
 
 const SCENARIO_COLORS = [

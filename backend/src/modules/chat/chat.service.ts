@@ -6,6 +6,7 @@ import { SendChatMessageDto } from './dto/chat.dto';
 import { ActivityService } from '../hermes/services/activity.service';
 import { FeatureFlagService } from '../../common/feature-flag/feature-flag.service';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
+import { ChatHistoryService } from './chat-history.service';
 
 /**
  * Chat Service
@@ -37,7 +38,31 @@ export class ChatService {
     private readonly activityService: ActivityService,
     private readonly featureFlags: FeatureFlagService,
     private readonly aiGateway: AiGatewayService,
+    private readonly chatHistory: ChatHistoryService,
   ) {}
+
+  private saveReply(
+    conversationId: string,
+    tenantId: string | null,
+    userId: string,
+    payload: {
+      reply: string;
+      tokens?: { input: number; output: number; total: number };
+      model?: string;
+      provider?: string;
+    },
+  ): void {
+    void this.chatHistory.saveMessage({
+      tenantId: tenantId ?? 'unknown',
+      userId,
+      conversationId,
+      role: 'assistant',
+      content: payload.reply,
+      ...(payload.tokens ? { tokens: payload.tokens } : {}),
+      ...(payload.model ? { model: payload.model } : {}),
+      ...(payload.provider ? { provider: payload.provider } : {}),
+    });
+  }
 
   async send(
     dto: SendChatMessageDto,
@@ -54,6 +79,18 @@ export class ChatService {
     const conversationId =
       dto.conversationId ??
       `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const tenantIdForHistory = tenantIdFromJwt ?? null;
+    const userIdForHistory = userIdFromJwt ?? 'anonymous';
+
+    // Persist the user message immediately (fire-and-forget).
+    void this.chatHistory.saveMessage({
+      tenantId: tenantIdForHistory ?? 'unknown',
+      userId: userIdForHistory,
+      conversationId,
+      role: 'user',
+      content: dto.message,
+    });
 
     // Fire-and-forget chat:user_message activity. Failures are logged but never
     // break the chat flow — the ActivityEvent feed is observability, not a
@@ -73,7 +110,7 @@ export class ChatService {
     });
 
     if (!this.minimax.isConfigured()) {
-      return {
+      const result = {
         reply:
           'MiniMax is not configured on the server. Set MINIMAX_API_KEY in backend .env to enable the Ask AI assistant.',
         conversationId,
@@ -81,6 +118,13 @@ export class ChatService {
         model: 'unconfigured',
         provider: 'minimax',
       };
+      this.saveReply(
+        conversationId,
+        tenantIdForHistory,
+        userIdForHistory,
+        result,
+      );
+      return result;
     }
 
     // Resolve tenantId — prefer the JWT-supplied one (set by JwtAuthGuard)
@@ -116,7 +160,7 @@ export class ChatService {
         payload: { intent: 'project_creation', model: 'deterministic' },
         sourceEventId: `chat:${conversationId}:assistant`,
       });
-      return {
+      const result = {
         reply: projectCreationReply,
         conversationId,
         tokens: { input: 0, output: 0, total: 0 },
@@ -124,6 +168,13 @@ export class ChatService {
         provider: 'system',
         liveData,
       };
+      this.saveReply(
+        conversationId,
+        tenantIdForHistory,
+        userIdForHistory,
+        result,
+      );
+      return result;
     }
 
     // ACTION: Route to OfficialAgentGraph for tool execution
@@ -166,7 +217,7 @@ export class ChatService {
           sourceEventId: `chat:${conversationId}:assistant`,
         });
 
-        return {
+        const replyPayload = {
           reply: this.sanitizeReply(reply),
           conversationId,
           tokens: { input: 0, output: 0, total: 0 },
@@ -174,6 +225,13 @@ export class ChatService {
           provider: 'minimax',
           liveData,
         };
+        this.saveReply(
+          conversationId,
+          tenantIdForHistory,
+          userIdForHistory,
+          replyPayload,
+        );
+        return replyPayload;
       } catch (err) {
         this.logger.error(
           `[chat] Agent graph failed: ${(err as Error).message}`,
@@ -190,7 +248,7 @@ export class ChatService {
           payload: { intent: 'action', error: (err as Error).message },
           sourceEventId: `chat:${conversationId}:error`,
         });
-        return {
+        const result = {
           reply: errReply,
           conversationId,
           tokens: { input: 0, output: 0, total: 0 },
@@ -198,6 +256,13 @@ export class ChatService {
           provider: 'minimax',
           liveData,
         };
+        this.saveReply(
+          conversationId,
+          tenantIdForHistory,
+          userIdForHistory,
+          result,
+        );
+        return result;
       }
     }
 
@@ -291,7 +356,7 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
         sourceEventId: `chat:${conversationId}:assistant`,
       });
 
-      return {
+      const result = {
         reply: this.sanitizeReply(replyContent),
         conversationId,
         tokens,
@@ -299,6 +364,13 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
         provider: replyProvider,
         liveData,
       };
+      this.saveReply(
+        conversationId,
+        tenantIdForHistory,
+        userIdForHistory,
+        result,
+      );
+      return result;
     } catch (err) {
       this.logger.error(
         `Chat invoke failed: ${(err as Error).message}`,
@@ -316,7 +388,7 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
         payload: { intent: 'query', error: (err as Error).message },
         sourceEventId: `chat:${conversationId}:error`,
       });
-      return {
+      const result = {
         reply: errReply,
         conversationId,
         tokens: { input: 0, output: 0, total: 0 },
@@ -324,6 +396,13 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
         provider: 'minimax',
         liveData,
       };
+      this.saveReply(
+        conversationId,
+        tenantIdForHistory,
+        userIdForHistory,
+        result,
+      );
+      return result;
     }
   }
 

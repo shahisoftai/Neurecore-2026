@@ -27,6 +27,7 @@
     "test:integration": "jest --config jest.config.js --testPathPatterns=\"\\.integration-spec\\.ts$\"",
     "test:staged": "jest --config jest.config.js --staged",
     "test:ci": "jest --config jest.config.js --ci --coverage --reporters=default --reporters=jest-junit",
+    "verify": "tsc --noEmit && eslint \"src/**/*.ts\" --max-warnings=0 && jest --config jest.config.js --coverage && nest build",
     "seed:templates": "node prisma/seed-platform-templates.cjs",
     "seed:admin": "node scripts/make-superadmin.cjs",
     "seed:composition": "node prisma/seed-business-composition.cjs",

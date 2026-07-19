@@ -14,6 +14,7 @@ import { ApiCommon } from '../../common/decorators/api-common.decorator';
 import { SendChatMessageDto } from './dto/chat.dto';
 import { ChatService } from './chat.service';
 import { ChatSseService } from './chat-sse.service';
+import { ChatHistoryService } from './chat-history.service';
 import type { Response } from 'express';
 
 interface JwtPayload {
@@ -29,11 +30,15 @@ interface AuthedRequest {
 /**
  * Chat Controller
  *
- * Two endpoint styles exposed for tenant apps:
- *   - POST /api/v1/chat/messages — used by Command Center Ask AI
- *   - POST /api/v1/ai/chat       — used by core/services/ConversationalAIService
+ * Single canonical chat surface:
+ *   - POST /api/v1/chat/messages  — non-streaming query/action reply
+ *   - POST /api/v1/chat/stream    — SSE streaming reply
+ *   - GET  /api/v1/chat/history   — paginated message history (persisted)
+ *   - DELETE /api/v1/chat/history — clear conversation history
+ *   - POST /api/v1/chat/suggestions — stub (slash commands handled client-side)
  *
- * Both return the same shape: { reply, conversationId, tokens, model, provider, liveData }.
+ * Both `/chat/messages` and `/chat/stream` return the same shape:
+ * { reply, conversationId, tokens, model, provider, liveData }.
  *
  * The caller's tenantId is taken from the JWT (set by JwtAuthGuard) so the
  * LLM is grounded in real tenant data instead of hallucinating.
@@ -44,22 +49,16 @@ export class ChatController {
   constructor(
     private readonly chat: ChatService,
     private readonly chatSse: ChatSseService,
+    private readonly chatHistory: ChatHistoryService,
   ) {}
 
-  /** Command Center "Ask AI" entry point */
+  /** Command Center "Ask AI" entry point (non-streaming) */
   @Post('chat/messages')
   @HttpCode(HttpStatus.OK)
   async sendMessage(
     @Body() dto: SendChatMessageDto,
     @Req() req: AuthedRequest,
   ) {
-    return this.chat.send(dto, req.user?.tenantId, req.user?.sub);
-  }
-
-  /** Core ConversationalAIService entry point */
-  @Post('ai/chat')
-  @HttpCode(HttpStatus.OK)
-  async aiChat(@Body() dto: SendChatMessageDto, @Req() req: AuthedRequest) {
     return this.chat.send(dto, req.user?.tenantId, req.user?.sub);
   }
 
@@ -79,18 +78,41 @@ export class ChatController {
     await this.chatSse.stream(dto, req.user?.tenantId, res);
   }
 
-  /** Stub history endpoint — keeps existing frontend integration stable */
+  /**
+   * History endpoint — returns persisted messages for a conversation
+   * (or all conversations for the tenant when no conversationId supplied).
+   */
   @Get('chat/history')
   @HttpCode(HttpStatus.OK)
-  async history(@Query('limit') _limit?: string) {
-    return { data: [], total: 0 };
+  async history(
+    @Query('conversationId') conversationId: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Req() req: AuthedRequest,
+  ) {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) return { data: [], total: 0 };
+    return this.chatHistory.getHistory({
+      tenantId,
+      userId: req.user?.sub,
+      conversationId,
+      limit: limit ? Number(limit) : undefined,
+    });
   }
 
-  /** Stub clear history endpoint */
+  /** Clear history for a conversation (or all messages for the user if no id) */
   @Delete('chat/history')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async clearHistory(): Promise<void> {
-    return;
+  @HttpCode(HttpStatus.OK)
+  async clearHistory(
+    @Query('conversationId') conversationId: string | undefined,
+    @Req() req: AuthedRequest,
+  ) {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) return { deleted: 0 };
+    return this.chatHistory.clearHistory({
+      tenantId,
+      userId: req.user?.sub,
+      conversationId,
+    });
   }
 
   /** Stub suggestions endpoint (slash commands handled client-side) */

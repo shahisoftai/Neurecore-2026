@@ -41,11 +41,13 @@ const tenantChatConfig: ChatConfig = {
 };
 
 // ── Wired Singletons ────────────────────────────────────────────────────────
+export const jsonExtractor = new BraceBalancedJsonExtractor();
+
 export const chatService = new ChatService(
   restClient,
   tenantChatConfig,
   new KeywordFallbackReply(),
-  new BraceBalancedJsonExtractor(),
+  jsonExtractor,
   new TenantSystemPromptBuilder(),
 );
 

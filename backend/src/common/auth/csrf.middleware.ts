@@ -44,9 +44,9 @@ const EXEMPT_PATHS = new Set<string>([
   '/api/v1/auth/google',
   '/api/v1/auth/refresh',
   '/api/v1/chat/messages',
+  '/api/v1/chat/stream',
   '/api/v1/chat/history',
   '/api/v1/chat/suggestions',
-  '/api/v1/ai/chat',
 ]);
 
 @Injectable()
@@ -78,7 +78,7 @@ export class CsrfProtectionMiddleware implements NestMiddleware {
     const headerTokenRaw = req.headers['x-csrf-token'];
     const headerToken = Array.isArray(headerTokenRaw)
       ? headerTokenRaw[0]
-      : (headerTokenRaw as string | undefined);
+      : headerTokenRaw;
 
     if (!cookieToken || !headerToken) {
       this.logger.warn(
@@ -86,7 +86,8 @@ export class CsrfProtectionMiddleware implements NestMiddleware {
       );
       throw new ForbiddenException({
         code: 'CSRF_TOKEN_MISSING',
-        message: 'CSRF token missing. Include X-CSRF-Token header matching the __Host-nc_csrf cookie.',
+        message:
+          'CSRF token missing. Include X-CSRF-Token header matching the __Host-nc_csrf cookie.',
       });
     }
 

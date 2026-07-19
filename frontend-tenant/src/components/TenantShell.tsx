@@ -16,7 +16,7 @@
  *
  * Floating overlays (Phase 7):
  *   - ThingsToDoPanel (top-right, lg+)
- *   - InspectorPanel, CommandPalette, ConversationPanel, UnifiedChatPanel
+ *   - InspectorPanel, CommandPalette, UnifiedChatPanel
  *
  * Single source of truth for navigation: the IconRail defined in
  * components/layout/IconRail.tsx. There is intentionally no legacy sidebar.
@@ -31,9 +31,8 @@ import { IconRail } from '@/components/layout/IconRail';
 import { ActivityStream } from '@/components/layout/ActivityStream';
 import { InspectorPanel } from '@/components/layout/InspectorPanel';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
-import { ConversationPanel } from '@/components/chat/ConversationPanel';
 import { UnifiedChatPanel } from '@/shared/components/chat/UnifiedChatPanel';
-import { chatService, slashCommands, tenantChatConfig } from '@/core/services/chat/chat.factory';
+import { chatService, slashCommands, jsonExtractor, tenantChatConfig } from '@/core/services/chat/chat.factory';
 import { ThingsToDoPanel } from '@/components/checklist/ThingsToDoPanel';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { useActivityStream } from '@/hooks/useActivityStream';
@@ -114,10 +113,10 @@ export default function TenantShell({
 
         <InspectorPanel />
         <CommandPalette />
-        <ConversationPanel />
         <UnifiedChatPanel
           chatService={chatService}
           slashCommands={slashCommands}
+          jsonExtractor={jsonExtractor}
           config={tenantChatConfig}
         />
       </div>

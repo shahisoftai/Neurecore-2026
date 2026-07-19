@@ -9,9 +9,9 @@ import { EventsGateway } from '../../events/events.gateway';
 import { AgentEvaluatorService } from './agent-evaluator.service';
 import { ToolsService } from '../../tools/tools.service';
 import { GovernanceRulesService } from '../../governance/services/governance-rules.service';
-import { OfficialAgentGraph } from '../langgraph/langgraph-official';
 import { FeatureFlagService } from '../../../common/feature-flag/feature-flag.service';
 import { HermesRuntimeService } from '../../hermes/services/hermes-runtime.service';
+import { MetricsService } from '../../metrics/metrics.service';
 import type {
   IAgentExecutor,
   ExecutionContext,
@@ -43,9 +43,9 @@ export class AgentExecutorService implements IAgentExecutor {
     private readonly evaluator: AgentEvaluatorService,
     private readonly tools: ToolsService,
     private readonly governance: GovernanceRulesService,
-    private readonly officialGraph: OfficialAgentGraph,
     private readonly featureFlag: FeatureFlagService,
     @Optional() private readonly hermesRuntime?: HermesRuntimeService,
+    @Optional() private readonly metrics?: MetricsService,
   ) {}
 
   async execute(context: ExecutionContext): Promise<StepResult> {
@@ -141,227 +141,51 @@ export class AgentExecutorService implements IAgentExecutor {
     }
     // ─── End governance pre-check ───
 
-    // ─── Hermes routing (feature-flagged) ───
-    // Per-tenant override (`Tenant.settings.featureFlags.HERMES_ENABLED`)
-    // takes precedence over the global env default. Resolution is cached
-    // for ~30s on the FeatureFlagService.
-    const hermesEnabled = await this.featureFlag.isEnabled(
-      'HERMES_ENABLED',
-      tenantId,
-    );
-    if (hermesEnabled && this.hermesRuntime) {
-      return this.executeTaskViaHermes(taskId, agentId, tenantId, start);
+    // ─── Hermes-only execution path (Phase H, 2026-07-19) ───────────────────
+    // Phase H of the chat-unification refactor: the legacy OfficialAgentGraph
+    // direct path has been removed entirely. All agent execution flows through
+    // the Hermes runtime. The `HERMES_ENABLED` feature flag is no longer
+    // honored — every tenant uses Hermes by definition.
+    //
+    // Per-tenant emergency kill-switch is via `DISABLE_AI_ACTIONS` (already
+    // exists; checked elsewhere in the executor flow).
+
+    if (!this.hermesRuntime) {
+      this.metrics?.hermesExecutionPathTotal.inc({
+        hermes_enabled: 'true',
+        executor: 'hermes_runtime',
+        result: 'error',
+      });
+      this.logger.error(
+        `[AgentExecutor] HermesRuntimeService not injected — configuration error`,
+      );
+      throw new Error(
+        'HermesRuntimeService not available. Check HermesModule imports.',
+      );
     }
-    // ─── End Hermes routing ───
 
-    await this.prisma.task.update({
-      where: { id: taskId },
-      data: { status: TaskStatus.RUNNING, startedAt: new Date() },
-    });
-
-    await this.prisma.agent.update({
-      where: { id: agentId },
-      data: { status: AgentStatus.RUNNING },
-    });
-
-    this.events.emitToTenant(tenantId, 'task:started', { taskId, agentId });
-
-    // Use Official LangGraph for execution with streaming support
     try {
-      const agent = await this.prisma.agent.findUnique({
-        where: { id: agentId },
-        select: { model: true },
+      const result = await this.executeTaskViaHermes(taskId, agentId, tenantId, start);
+      this.metrics?.hermesExecutionPathTotal.inc({
+        hermes_enabled: 'true',
+        executor: 'hermes_runtime',
+        result: 'success',
       });
-
-      const stream = this.officialGraph.stream({
-        goal: `Execute task ${taskId}`,
-        agentId,
-        tenantId,
-        userId: 'system',
-        sessionId: taskId,
-        model: agent?.model ?? undefined,
+      return result;
+    } catch (err) {
+      this.metrics?.hermesExecutionPathTotal.inc({
+        hermes_enabled: 'true',
+        executor: 'hermes_runtime',
+        result: 'error',
       });
-
-      const steps: Array<{
-        stepId: string;
-        success: boolean;
-        output?: unknown;
-        error?: string;
-        durationMs: number;
-        tokensUsed?: number;
-        costUsd?: number;
-      }> = [];
-
-      let stepIndex = 0;
-      for await (const chunk of stream) {
-        // Emit progress events based on the chunk
-        if (chunk.currentNode) {
-          const stepId = `step-${stepIndex}`;
-          const stepStart = Date.now();
-
-          // Emit step start
-          this.events.emitToTenant(tenantId, 'task:step:start', {
-            taskId,
-            agentId,
-            stepId,
-            stepIndex,
-            description: `Executing ${chunk.currentNode}`,
-          });
-
-          // Check for tool calls
-          if (chunk.toolCalls && chunk.toolCalls.length > 0) {
-            for (const toolCall of chunk.toolCalls) {
-              this.events.emitToTenant(tenantId, 'task:tool:call', {
-                taskId,
-                agentId,
-                toolName: toolCall.name,
-                input: toolCall.input,
-              });
-            }
-          }
-
-          // Check for tool results
-          if (chunk.toolResults && chunk.toolResults.length > 0) {
-            for (const toolResult of chunk.toolResults) {
-              this.events.emitToTenant(tenantId, 'task:tool:result', {
-                taskId,
-                agentId,
-                toolName: toolResult.toolName,
-                output: toolResult.output,
-              });
-            }
-          }
-
-          // Emit step complete
-          const stepDuration = Date.now() - stepStart;
-          this.events.emitToTenant(tenantId, 'task:step:complete', {
-            taskId,
-            agentId,
-            stepId,
-            stepIndex,
-            description: `Completed ${chunk.currentNode}`,
-            durationMs: stepDuration,
-          });
-
-          steps.push({
-            stepId,
-            success: true,
-            output: chunk,
-            durationMs: stepDuration,
-          });
-
-          stepIndex++;
-        }
-
-        // Check for errors
-        if (chunk.error) {
-          const stepId = `step-${stepIndex}`;
-          this.events.emitToTenant(tenantId, 'task:step:error', {
-            taskId,
-            agentId,
-            stepId,
-            stepIndex,
-            error: chunk.error,
-          });
-
-          steps.push({
-            stepId,
-            success: false,
-            error: chunk.error,
-            durationMs: 0,
-          });
-        }
-      }
-
-      const totalDurationMs = Date.now() - start;
-      const success = steps.every((s) => s.success);
-
-      // Update task status
-      await this.prisma.task.update({
-        where: { id: taskId },
-        data: {
-          status: success ? TaskStatus.COMPLETED : TaskStatus.FAILED,
-          completedAt: new Date(),
-          output: JSON.stringify({
-            steps,
-            finalState: steps[steps.length - 1]?.output,
-          }),
-          error: success ? null : 'One or more steps failed',
-        },
-      });
-
-      // Update agent status
-      await this.prisma.agent.update({
-        where: { id: agentId },
-        data: { status: AgentStatus.IDLE },
-      });
-
-      // Emit completion event
-      const event = success ? 'task:completed' : 'task:failed';
-      this.events.emitToTenant(tenantId, event, {
-        taskId,
-        agentId,
-        success,
-        error: success ? null : 'One or more steps failed',
-      });
-
-      this.runningTasks.delete(taskId);
-
-      return {
-        taskId,
-        agentId,
-        success,
-        steps,
-        finalOutput: { steps, finalState: steps[steps.length - 1]?.output },
-        error: success ? undefined : 'One or more steps failed',
-        totalDurationMs,
-        totalTokensUsed: 0, // Would need to track from LangGraph
-        totalCostUsd: 0, // Would need to track from LangGraph
-      };
-    } catch (error) {
-      this.logger.error(`[executeTask] LangGraph execution failed`, error);
-      const totalDurationMs = Date.now() - start;
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      // Update task status to failed
-      await this.prisma.task.update({
-        where: { id: taskId },
-        data: {
-          status: TaskStatus.FAILED,
-          completedAt: new Date(),
-          error: errorMessage,
-        },
-      });
-
-      // Update agent status
-      await this.prisma.agent.update({
-        where: { id: agentId },
-        data: { status: AgentStatus.IDLE },
-      });
-
-      // Emit error event
-      this.events.emitAgentError(tenantId, agentId, taskId, errorMessage);
-      this.events.emitToTenant(tenantId, 'task:failed', {
-        taskId,
-        agentId,
-        success: false,
-        error: errorMessage,
-      });
-
-      this.runningTasks.delete(taskId);
-
-      return {
-        taskId,
-        agentId,
-        success: false,
-        steps: [],
-        error: errorMessage,
-        totalDurationMs,
-        totalTokensUsed: 0,
-        totalCostUsd: 0,
-      };
+      throw err;
     }
+    // ─── End Hermes-only execution path ────────────────────────────────────
+
+    // Unreachable code retained as TypeScript noImplicitReturns guard.
+    throw new Error(
+      '[AgentExecutor] Unreachable: legacy OfficialAgentGraph path was retired in Phase H (2026-07-19).',
+    );
   }
 
   async cancelTask(taskId: string): Promise<void> {

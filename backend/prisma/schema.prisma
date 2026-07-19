@@ -2163,6 +2163,14 @@ model Project {
   tags     String[]  @default([])
   metadata Json      @default("{}")
 
+  // AI-derived project shape (memory-bank-new/plans/ai-driven-project-shape-synthesis-2026-07-19.md)
+  // When set, this is the source of truth for stages/goals/members/CoS — bypassing
+  // ProjectType.template lookups. Set when CreateProjectTool's Hermes-driven path
+  // (ProjectShapeSynthesisService) is used. Versioned so future schema evolutions
+  // can be migrated.
+  derivedShape       Json?
+  derivedShapeVersion Int?           @default(1)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -5057,4 +5065,47 @@ model ServiceToken {
   @@index([tenantId, expiresAt])
   @@index([serviceIdentityId])
   @@map("service_tokens")
+}
+
+// ─── Phase B: Chat Persistence ────────────────────────────────────────────────
+// Purpose-built chat session/message store, independent of Hermes.
+// Each tenant+user gets persistent conversation history across devices.
+model ChatSession {
+  id             String   @id @default(cuid())
+  conversationId String   @unique
+  tenantId       String
+  userId         String
+  title          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastMessageAt  DateTime @default(now())
+
+  messages ChatMessage[]
+
+  @@index([tenantId, userId])
+  @@index([tenantId, lastMessageAt])
+  @@index([conversationId])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  sessionId      String
+  conversationId String
+  tenantId       String
+  userId         String
+  role           String   // 'user' | 'assistant' | 'system'
+  content        String   @db.Text
+  metadata       Json?
+  tokens         Json?    // { input: number, output: number, total: number }
+  model          String?
+  provider       String?
+  createdAt      DateTime @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([conversationId, createdAt])
+  @@index([tenantId, userId, createdAt])
+  @@map("chat_messages")
 }

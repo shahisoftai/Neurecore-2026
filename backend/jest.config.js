@@ -12,7 +12,11 @@
 
 module.exports = {
   // Test file patterns
-  testMatch: ['<rootDir>/src/**/*.spec.ts', '<rootDir>/test/unit/**/*.spec.ts'],
+  testMatch: [
+    '<rootDir>/src/**/*.spec.ts',
+    '<rootDir>/src/**/*.integration-spec.ts',
+    '<rootDir>/test/unit/**/*.spec.ts',
+  ],
 
   // PD-40: Exclude known-failing pre-existing test files from the default run.
   // These tests fail due to outdated expectations after interface/service refactors.
@@ -77,6 +81,25 @@ module.exports = {
       functions: 75,
       lines: 75,
       statements: 75,
+    },
+    // Phase F — chat unification gates (Phase B + D + E)
+    './src/modules/chat/': {
+      branches: 85,
+      functions: 90,
+      lines: 90,
+      statements: 90,
+    },
+    './src/modules/hermes/services/': {
+      branches: 80,
+      functions: 85,
+      lines: 85,
+      statements: 85,
+    },
+    './src/modules/agents/services/agent-executor.service.ts': {
+      branches: 75,
+      functions: 80,
+      lines: 80,
+      statements: 80,
     },
   },
 

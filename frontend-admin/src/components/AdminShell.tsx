@@ -9,7 +9,8 @@ import { TopBar } from "@/components/layout/TopBar";
 import { ActivityStream } from "@/components/layout/ActivityStream";
 import { InspectorPanel } from "@/components/layout/InspectorPanel";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
-import { ConversationPanel } from "@/components/chat/ConversationPanel";
+import { UnifiedChatPanel } from "@/shared/components/chat/UnifiedChatPanel";
+import { chatService, slashCommands, jsonExtractor, adminChatConfig } from "@/core/services/chat/chat.factory";
 import { registerAdminCommands } from "@/services/register-commands";
 import { NAV_GROUPS, ALL_NAV_ITEMS } from "@/components/sidebar/navigation.config";
 
@@ -107,7 +108,12 @@ export default function AdminShell({
       {/* ── Portals ─────────────────────────────────────────── */}
       <InspectorPanel />
       <CommandPalette />
-      <ConversationPanel />
+      <UnifiedChatPanel
+        chatService={chatService}
+        slashCommands={slashCommands}
+        jsonExtractor={jsonExtractor}
+        config={adminChatConfig}
+      />
     </div>
   );
 }

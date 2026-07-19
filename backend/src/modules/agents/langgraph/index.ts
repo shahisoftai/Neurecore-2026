@@ -1,7 +1,7 @@
 /**
- * LangGraph-style State Machine Module
+ * LangGraph Module — Exports for OfficialAgentGraph + state types.
  *
- * Exports for agent state machine implementation
+ * AgentStateMachine was retired (Phase D, 2026-07-19) — use OfficialAgentGraph instead.
  */
 
 export type {
@@ -23,7 +23,6 @@ export {
   evaluationPassed,
 } from './agent.state';
 
-export { AgentStateMachine } from './agent-state-machine';
 export { OfficialAgentGraph } from './langgraph-official';
 export { AgentCheckpointService } from './checkpoint.service';
 export type { CheckpointOptions } from './checkpoint.service';

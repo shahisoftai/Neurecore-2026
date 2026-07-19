@@ -57,6 +57,14 @@ export class FeatureFlagService implements OnModuleInit {
   /**
    * Re-read every known flag from the env and update the cache.
    * Cheap (one Map.clear + one env.get per flag), safe to call often.
+   *
+   * Per-flag defaults:
+   *   - HERMES_AUTO_LINK   → true  (auto-create HermesAgent on first execution)
+   *   - All other flags    → false unless explicitly set in env
+   *
+   * `HERMES_ENABLED` was retired in Phase H (2026-07-19) — Hermes is now the
+   * sole execution path. Per-tenant emergency kill-switch remains via
+   * `DISABLE_AI_ACTIONS`.
    */
   refresh(): void {
     const knownFlags: Array<[string, boolean]> = [
@@ -64,8 +72,10 @@ export class FeatureFlagService implements OnModuleInit {
         'DISABLE_AI_ACTIONS',
         bool(this.config.get<string>('DISABLE_AI_ACTIONS')),
       ],
-      ['HERMES_ENABLED', bool(this.config.get<string>('HERMES_ENABLED'))],
-      ['HERMES_AUTO_LINK', bool(this.config.get<string>('HERMES_AUTO_LINK'))],
+      [
+        'HERMES_AUTO_LINK',
+        bool(this.config.get<string>('HERMES_AUTO_LINK'), true),
+      ],
       [
         'HERMES_APPROVAL_REQUIRED',
         bool(this.config.get<string>('HERMES_APPROVAL_REQUIRED')),
@@ -97,9 +107,7 @@ export class FeatureFlagService implements OnModuleInit {
       ],
       [
         'COMM_CONVERSATION_INTELLIGENCE_ENABLED',
-        bool(
-          this.config.get<string>('COMM_CONVERSATION_INTELLIGENCE_ENABLED'),
-        ),
+        bool(this.config.get<string>('COMM_CONVERSATION_INTELLIGENCE_ENABLED')),
       ],
       [
         'COMM_DIGEST_ENABLED',
@@ -118,9 +126,13 @@ export class FeatureFlagService implements OnModuleInit {
         bool(this.config.get<string>('COMM_MENTIONS_ENABLED')),
       ],
       // AI Gateway v2 (ai-gateway-imp-plan.md §10, §11)
+      ['AI_GATEWAY_V2', bool(this.config.get<string>('AI_GATEWAY_V2'))],
+      // AI-driven project shape synthesis (memory-bank-new/plans/ai-driven-project-shape-synthesis-2026-07-19.md)
+      // When ON: CreateProjectTool defaults to AI synthesis when projectTypeId is absent.
+      // Default ON per user decision 2026-07-19.
       [
-        'AI_GATEWAY_V2',
-        bool(this.config.get<string>('AI_GATEWAY_V2')),
+        'AI_PROJECT_SHAPE_ENABLED',
+        bool(this.config.get<string>('AI_PROJECT_SHAPE_ENABLED', 'true')),
       ],
     ];
     for (const [key, value] of knownFlags) {
@@ -220,10 +232,10 @@ export class FeatureFlagService implements OnModuleInit {
   }
 }
 
-function bool(raw: unknown): boolean {
-  if (raw === undefined || raw === null) return false;
+function bool(raw: unknown, defaultValue = false): boolean {
+  if (raw === undefined || raw === null) return defaultValue;
   if (typeof raw === 'boolean') return raw;
   if (typeof raw === 'number') return raw !== 0;
   if (typeof raw === 'string') return /^(true|1|yes|on)$/i.test(raw.trim());
-  return false;
+  return defaultValue;
 }

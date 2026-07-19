@@ -51,6 +51,17 @@ export class MetricsService implements OnModuleInit {
   readonly aiActionCostUsdTotal: Counter<'model' | 'actionId'>;
   readonly aiActionErrorsTotal: Counter<'actionId' | 'errorType'>;
 
+  // ── Chat metrics (Phase G — chat unification) ──────────────────────────
+
+  /** Total chat messages sent, labelled by role + endpoint. */
+  readonly chatMessagesTotal: Counter<'role' | 'endpoint'>;
+  /** Total chat history GET/DELETE requests, labelled by operation + result. */
+  readonly chatHistoryOpsTotal: Counter<'operation' | 'result'>;
+  /** Latency for /chat/messages in seconds (non-streaming only). */
+  readonly chatMessageDurationSeconds: Histogram<string>;
+  /** Hermes execution path decisions — labels: hermes_enabled (true/false), executor (official_agent_graph/hermes_runtime). */
+  readonly hermesExecutionPathTotal: Counter<'hermes_enabled' | 'executor' | 'result'>;
+
   constructor() {
     this.registry = new Registry();
 
@@ -90,6 +101,35 @@ export class MetricsService implements OnModuleInit {
       name: 'neurecore_ai_action_errors_total',
       help: 'AI Action errors by error type',
       labelNames: ['actionId', 'errorType'] as const,
+      registers: [this.registry],
+    });
+
+    // Chat metrics
+    this.chatMessagesTotal = new Counter({
+      name: 'neurecore_chat_messages_total',
+      help: 'Total chat messages persisted, labelled by role (user/assistant/system) and endpoint (messages/stream)',
+      labelNames: ['role', 'endpoint'] as const,
+      registers: [this.registry],
+    });
+
+    this.chatHistoryOpsTotal = new Counter({
+      name: 'neurecore_chat_history_ops_total',
+      help: 'Total chat history operations (GET/DELETE), labelled by operation and result (ok/error)',
+      labelNames: ['operation', 'result'] as const,
+      registers: [this.registry],
+    });
+
+    this.chatMessageDurationSeconds = new Histogram({
+      name: 'neurecore_chat_message_duration_seconds',
+      help: 'End-to-end duration of POST /chat/messages in seconds',
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30],
+      registers: [this.registry],
+    });
+
+    this.hermesExecutionPathTotal = new Counter({
+      name: 'neurecore_hermes_execution_path_total',
+      help: 'Agent execution path decisions: hermes_enabled=true|false × executor=official_agent_graph|hermes_runtime × result=success|error',
+      labelNames: ['hermes_enabled', 'executor', 'result'] as const,
       registers: [this.registry],
     });
   }

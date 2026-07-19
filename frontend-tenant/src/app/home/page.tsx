@@ -6,6 +6,9 @@
  * Navigation is provided by the IconRail (rendered by TenantShell). The
  * /home page only renders the centre content + right widgets.
  *
+ * Chat is provided by the unified UnifiedChatPanel (mounted by TenantShell).
+ * This page only triggers external sends via the chat store (HomeHero prompt).
+ *
  * Layout:
  *   ┌─ IconRail (in TenantShell) ─┬─ Centre ────────────────────┬─ Right rail ──┐
  *   │                             │  Hero (date/greeting/AI)    │  Live Feed    │
@@ -31,10 +34,7 @@ import { HomeKpiStrip } from '@/components/home/HomeKpiStrip';
 import { HomeNetworkStatus } from '@/components/home/HomeNetworkStatus';
 import { RightPanel } from '@/components/home/RightPanel';
 import { GlassPanel } from '@/components/home/GlassPanel';
-import {
-  AIChatButton,
-  AIChatPanel,
-} from '@/features/ai-chat/components/AIChatPanel';
+import { useChatStore } from '@/core/services/chat/chat.factory';
 
 export default function HomePage() {
   const user = useTenantAuth();
@@ -52,8 +52,6 @@ export default function HomePage() {
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [monthCost, setMonthCost] = useState<number | null>(null);
-  const [aiChatOpen, setAiChatOpen] = useState(false);
-  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
   const { critical, routine } = useApprovals({ autoRefresh: true, refreshInterval: 120_000 });
   const pendingApprovals = useMemo(
@@ -115,9 +113,10 @@ export default function HomePage() {
     }
   };
 
+  // Route HomeHero prompt through the unified chat (mounted in TenantShell).
+  const requestExternalSend = useChatStore((s) => s.requestExternalSend);
   const handleSend = (message: string) => {
-    setPendingMessage(message);
-    setAiChatOpen(true);
+    requestExternalSend(message);
   };
 
   if (!hasHydrated || !user) {
@@ -166,13 +165,6 @@ export default function HomePage() {
             <RightPanel />
           </div>
         </div>
-
-        <AIChatButton onClick={() => setAiChatOpen(true)} />
-        <AIChatPanel
-          isOpen={aiChatOpen}
-          onClose={() => setAiChatOpen(false)}
-          initialMessage={pendingMessage ?? undefined}
-        />
       </div>
     </TenantShell>
   );
