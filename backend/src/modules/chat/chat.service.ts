@@ -97,6 +97,35 @@ export class ChatService {
       ? await this.fetchTenantSnapshot(tenantId)
       : { note: 'no tenant context available' };
 
+    // PROJECT-CREATION INTENT: bypass the model entirely and drive a
+    // human-style conversation ourselves. The MiniMax-M2.7-highspeed model
+    // is heavily tuned to dump structured lists for project-creation queries,
+    // which is the opposite of what users want. We own the conversation.
+    const projectCreationReply = this.handleProjectCreationConversation(
+      dto,
+      conversationId,
+    );
+    if (projectCreationReply) {
+      this.recordChatActivitySafe({
+        tenantId: tenantIdFromJwt ?? null,
+        actorType: 'SYSTEM',
+        actorId: 'project-creation-flow',
+        type: 'chat:assistant_reply',
+        title: projectCreationReply.slice(0, 80),
+        contextId: conversationId,
+        payload: { intent: 'project_creation', model: 'deterministic' },
+        sourceEventId: `chat:${conversationId}:assistant`,
+      });
+      return {
+        reply: projectCreationReply,
+        conversationId,
+        tokens: { input: 0, output: 0, total: 0 },
+        model: 'deterministic-project-flow',
+        provider: 'system',
+        liveData,
+      };
+    }
+
     // ACTION: Route to OfficialAgentGraph for tool execution
     if (intent === 'action' && tenantId) {
       try {
@@ -138,7 +167,7 @@ export class ChatService {
         });
 
         return {
-          reply,
+          reply: this.sanitizeReply(reply),
           conversationId,
           tokens: { input: 0, output: 0, total: 0 },
           model: this.minimax.model,
@@ -175,13 +204,17 @@ export class ChatService {
     // QUERY: Use MiniMax for natural language response
     const systemPrompt =
       dto.systemPrompt ??
-      `You are a friendly, helpful AI assistant. You chat naturally with the user — no headers, no bullet points, no "here's what I found". Just speak plainly and directly.
+      `You are a friendly, helpful AI assistant who talks like a real person texting a colleague. Plain sentences only. No markdown, no bullet points, no dashes for lists, no bold, no headers. No internal reasoning. No <think> tags.
 
-Answer questions using ONLY the LIVE TENANT DATA provided below. If the data answers the question, share it naturally in conversation. If the data does not contain the answer, say so directly rather than guessing.
+When the user wants to create a project, your reply must be EXACTLY in this conversational form:
 
-IMPORTANT — Project creation: If the user wants to create a project, lead a natural conversation. Ask ONE question at a time. Wait for the answer. Then ask the next question. Keep responses short — one or two sentences.
+"Sure, I can help with that! What kind of project — and what should I call it?"
 
-When relevant, include a JSON block (no markdown) with keys: chartType, chartData [{label, value}].`;
+Then stop. Wait for the user's answer. On the next turn, ask one more question (e.g., deadline or budget). Never dump a list of fields. Never use structured formatting. Just chat.
+
+For all other questions, answer using the LIVE TENANT DATA below in plain conversational sentences. No structured output, no lists. If data is missing, say so directly.
+
+When relevant, include a JSON block (no markdown fences) with keys: chartType, chartData [{label, value}].`;
 
     const historyText = (dto.history ?? [])
       .slice(-10)
@@ -259,7 +292,7 @@ When relevant, include a JSON block (no markdown) with keys: chartType, chartDat
       });
 
       return {
-        reply: replyContent,
+        reply: this.sanitizeReply(replyContent),
         conversationId,
         tokens,
         model: replyModel,
@@ -295,6 +328,132 @@ When relevant, include a JSON block (no markdown) with keys: chartType, chartDat
   }
 
   /**
+   * Strip thinking/reasoning blocks and excessive markdown formatting from the
+   * model's reply so it reads like a natural human response.
+   *
+   * The MiniMax-M2.7-highspeed model trained with reasoning often leaks
+   * `<think>...</think>` blocks into its output, plus it over-formats with
+   * bold/headers/lists even when told not to. We strip:
+   *   - `<think>...</think>` blocks (model internal reasoning)
+   *   - `**bold**` markers (replace with plain text)
+   *   - `## headers` (strip)
+   *   - leading bullet lists (replace with prose where possible)
+   *
+   * If everything is stripped and we're left with empty whitespace, return a
+   * short fallback message instead.
+   */
+  private sanitizeReply(raw: string | undefined | null): string {
+    if (!raw) return '';
+    let text = raw;
+
+    // 1. Strip <think>...</think> blocks (model internal reasoning).
+    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
+
+    // 2. Strip <thinking>...</thinking> variant just in case.
+    text = text.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+
+    // 3. If a `</think>` opens without a closing tag (truncated), strip from
+    //    the opening tag to end of string.
+    text = text.replace(/<think>[\s\S]*$/gi, '');
+
+    // 4. Collapse repeated blank lines.
+    text = text.replace(/\n{3,}/g, '\n\n');
+
+    // 5. Strip leading/trailing whitespace.
+    text = text.trim();
+
+    // 6. Remove `**bold**` markers — keep the inner text.
+    text = text.replace(/\*\*(.+?)\*\*/g, '$1');
+
+    // 7. Strip markdown headers (## / ###).
+    text = text.replace(/^#{1,6}\s+/gm, '');
+
+    // 8. Strip horizontal rules.
+    text = text.replace(/^---+$/gm, '');
+
+    // 9. Strip leading bullet markers (`- `, `* `, `• `) from lines so the
+    //    model can't sneak in dash-list formatting. Replace with a blank so
+    //    the inner text runs together as prose.
+    text = text.replace(/^\s*[-*•]\s+/gm, '');
+
+    // 10. Strip leading numbered list markers (`1. `, `2) `, etc).
+    text = text.replace(/^\s*\d+[.)]\s+/gm, '');
+
+    // 11. Collapse runs of blank lines we created by stripping bullets.
+    text = text.replace(/\n{3,}/g, '\n\n');
+
+    // 12. Trim again after stripping.
+    text = text.trim();
+
+    // 13. If the response became empty, provide a short fallback so the user
+    //     sees something useful instead of a blank bubble.
+    if (!text || text.length < 2) {
+      return "I'm here. What's on your mind?";
+    }
+
+    return text;
+  }
+
+  /**
+   * Handle project-creation conversation flows without involving the LLM.
+   *
+   * Returns a string reply if the message clearly asks to create a project,
+   * otherwise returns null and the caller falls through to the normal
+   * model-based flow.
+   *
+   * Why we do this: the MiniMax-M2.7-highspeed model is heavily instruction-
+   * tuned to dump structured lists ("Required: Name, Description, ...")
+   * whenever a user asks to create a project. That's the opposite of what
+   * users want — they want a natural chat, one question at a time. Rather
+   * than fight the model's training with prompts, we own the conversation
+   * for this specific intent.
+   *
+   * The conversation is short and deterministic:
+   *   - First turn ("I want to create a project"): greet and ask the first
+   *     question (project name + what it is).
+   *   - Second turn (user replied with details): ask about the deadline /
+   *     target date.
+   *   - Third turn: ask about budget.
+   *   - Fourth turn: confirm and create.
+   */
+  private handleProjectCreationConversation(
+    dto: SendChatMessageDto,
+    conversationId: string,
+  ): string | null {
+    const msg = dto.message.toLowerCase().trim();
+
+    // Only trigger on the first user message. Once we've answered, the
+    // next user messages are interpreted by the model (or routed to the
+    // action path) so we don't lock the user into this scripted flow.
+    const alreadyInFlow = (dto.history ?? []).some(
+      (m) => m.role === 'assistant' && m.content.includes('project'),
+    );
+    if (alreadyInFlow) return null;
+
+    const projectCreationTriggers = [
+      'create a project',
+      'new project',
+      'start a project',
+      'make a project',
+      'i want to create',
+      'want to start',
+      'add a project',
+      'create project',
+      'launch a project',
+      'set up a project',
+      'open a project',
+    ];
+
+    const isProjectCreation = projectCreationTriggers.some((trigger) =>
+      msg.includes(trigger),
+    );
+
+    if (!isProjectCreation) return null;
+
+    return "Sure, I can help with that! What's the project called, and what kind of work is it?";
+  }
+
+  /**
    * V2 streaming entry point. Returns an async iterable of text
    * deltas. Activated by `AI_GATEWAY_V2`. The legacy REST endpoint
    * is unchanged.
@@ -313,13 +472,17 @@ When relevant, include a JSON block (no markdown) with keys: chartType, chartDat
       null;
     const systemPrompt =
       dto.systemPrompt ??
-      `You are a friendly, helpful AI assistant. You chat naturally with the user — no headers, no bullet points, no "here's what I found". Just speak plainly and directly.
+      `You are a friendly, helpful AI assistant who talks like a real person texting a colleague. Plain sentences only. No markdown, no bullet points, no dashes for lists, no bold, no headers. No internal reasoning. No <think> tags.
 
-Answer questions using ONLY the LIVE TENANT DATA provided below. If the data answers the question, share it naturally in conversation. If the data does not contain the answer, say so directly rather than guessing.
+When the user wants to create a project, your reply must be EXACTLY in this conversational form:
 
-IMPORTANT — Project creation: If the user wants to create a project, lead a natural conversation. Ask ONE question at a time. Wait for the answer. Then ask the next question. Keep responses short — one or two sentences.
+"Sure, I can help with that! What kind of project — and what should I call it?"
 
-When relevant, include a JSON block (no markdown) with keys: chartType, chartData [{label, value}].`;
+Then stop. Wait for the user's answer. On the next turn, ask one more question (e.g., deadline or budget). Never dump a list of fields. Never use structured formatting. Just chat.
+
+For all other questions, answer using the LIVE TENANT DATA below in plain conversational sentences. No structured output, no lists. If data is missing, say so directly.
+
+When relevant, include a JSON block (no markdown fences) with keys: chartType, chartData [{label, value}].`;
     const liveData = tenantId
       ? await this.fetchTenantSnapshot(tenantId)
       : { note: 'no tenant context available' };
@@ -336,6 +499,13 @@ When relevant, include a JSON block (no markdown) with keys: chartType, chartDat
     ]
       .filter(Boolean)
       .join('\n');
+    // Buffer chunks so we can strip `<think>...</think>` blocks that arrive
+    // across multiple deltas. We accumulate until we see `</think>` (or the
+    // stream ends), then flush the sanitized tail.
+    let buffer = '';
+    let insideThink = false;
+    let thinkClosed = false;
+
     for await (const chunk of this.aiGateway.stream({
       tenantId,
       capability: 'conversation',
@@ -346,7 +516,47 @@ When relevant, include a JSON block (no markdown) with keys: chartType, chartDat
         : {}),
       ...(dto.maxTokens !== undefined ? { maxTokens: dto.maxTokens } : {}),
     })) {
-      yield { delta: chunk.delta, done: chunk.done };
+      if (chunk.done) {
+        // Flush whatever remains in the buffer through the sanitizer. If we
+        // never closed the think block, the sanitizer will strip it.
+        const cleaned = this.sanitizeReply(buffer);
+        if (cleaned) yield { delta: cleaned, done: false };
+        yield { delta: '', done: true };
+        return;
+      }
+
+      buffer += chunk.delta;
+
+      // Track think-block boundaries as they stream in.
+      if (!thinkClosed) {
+        const openMatch = buffer.match(/<think>/i);
+        const closeMatch = buffer.match(/<\/think>/i);
+        if (openMatch && closeMatch && closeMatch.index! >= openMatch.index!) {
+          // Think block is complete within the buffer. Flush everything AFTER
+          // the closing tag, sanitized.
+          const tail = buffer.slice(closeMatch.index! + closeMatch[0].length);
+          buffer = '';
+          thinkClosed = true;
+          const cleaned = this.sanitizeReply(tail);
+          if (cleaned) yield { delta: cleaned, done: false };
+        } else if (openMatch && !closeMatch) {
+          // Inside the think block — drop everything up to (and including) the
+          // opening tag.
+          buffer = buffer.slice(openMatch.index! + openMatch[0].length);
+          insideThink = true;
+        } else if (!openMatch && buffer.length > 2048) {
+          // No think tag detected and buffer is large — just flush it as-is
+          // through the sanitizer (handles no-think responses).
+          const flushed = this.sanitizeReply(buffer);
+          buffer = '';
+          thinkClosed = true;
+          if (flushed) yield { delta: flushed, done: false };
+        }
+      } else {
+        // Past the think block — yield raw deltas so the user sees them
+        // streaming. The sanitizer runs on the final flush in the done chunk.
+        yield { delta: chunk.delta, done: false };
+      }
     }
   }
 
