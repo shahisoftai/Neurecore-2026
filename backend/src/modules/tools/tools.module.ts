@@ -19,6 +19,10 @@ import { IntegrationsModule } from '../integrations/integrations.module';
 import { ModelsModule } from '../models/models.module';
 import { MemoryModule } from '../memory/memory.module';
 import { ProjectMemoryModule } from '../project-memory/project-memory.module';
+import { ProjectsModule } from '../projects/projects.module';
+import { OrchestrationModule } from '../orchestration/orchestration.module';
+import { ProjectShapeModule } from '../project-shape/project-shape.module';
+import { CustomersModule } from '../customers/customers.module';
 import {
   CreateTaskTool,
   CreateProjectTool,
@@ -93,11 +97,18 @@ import {
   AddProjectMemoryTool,
   SearchProjectMemoryTool,
   UpdateMemoryConfidenceTool,
+  CreateCustomerTool,
+  UpdateCustomerTool,
+  GetCustomerTool,
+  ListCustomersTool,
+  FindCustomerByNameTool,
+  ArchiveCustomerTool,
+  UnarchiveCustomerTool,
 } from './built-in/neurecore-tools';
 import type { IStructuredTool } from './interfaces/structured-tool.interface';
 
 @Module({
-  imports: [forwardRef(() => IntegrationsModule), ModelsModule, MemoryModule, ProjectMemoryModule],
+  imports: [forwardRef(() => IntegrationsModule), ModelsModule, MemoryModule, ProjectMemoryModule, ProjectsModule, OrchestrationModule, ProjectShapeModule, CustomersModule],
   controllers: [ToolsController],
   providers: [
     HttpRequestTool,
@@ -186,6 +197,13 @@ import type { IStructuredTool } from './interfaces/structured-tool.interface';
     AddProjectMemoryTool,
     SearchProjectMemoryTool,
     UpdateMemoryConfidenceTool,
+    CreateCustomerTool,
+    UpdateCustomerTool,
+    GetCustomerTool,
+    ListCustomersTool,
+    FindCustomerByNameTool,
+    ArchiveCustomerTool,
+    UnarchiveCustomerTool,
     ToolsService,
     StructuredToolRegistry,
   ],
@@ -280,6 +298,13 @@ export class ToolsModule implements OnModuleInit {
     private readonly addProjectMemory: AddProjectMemoryTool,
     private readonly searchProjectMemory: SearchProjectMemoryTool,
     private readonly updateMemoryConfidence: UpdateMemoryConfidenceTool,
+    private readonly createCustomer: CreateCustomerTool,
+    private readonly updateCustomer: UpdateCustomerTool,
+    private readonly getCustomer: GetCustomerTool,
+    private readonly listCustomers: ListCustomersTool,
+    private readonly findCustomerByName: FindCustomerByNameTool,
+    private readonly archiveCustomer: ArchiveCustomerTool,
+    private readonly unarchiveCustomer: UnarchiveCustomerTool,
   ) {
     this.logger = new Logger(ToolsModule.name);
   }
@@ -374,6 +399,13 @@ export class ToolsModule implements OnModuleInit {
       this.addProjectMemory,
       this.searchProjectMemory,
       this.updateMemoryConfidence,
+      this.createCustomer,
+      this.updateCustomer,
+      this.getCustomer,
+      this.listCustomers,
+      this.findCustomerByName,
+      this.archiveCustomer,
+      this.unarchiveCustomer,
     ].filter((t) => t !== null && t !== undefined) as IStructuredTool[];
 
     this.logger.log(`[ToolsModule] filtered tools count: ${tools.length}`);

@@ -22,6 +22,7 @@ import { ProjectsService } from '../../projects/projects.service';
 import { TasksService } from '../../orchestration/services/tasks.service';
 import { AgentsService } from '../../agents/services/agents.service';
 import { ProjectShapeSynthesisService } from '../../project-shape/project-shape-synthesis.service';
+import { CustomersService } from '../../customers/customers.service';
 
 // ─── Enums (matching Prisma schema) ────────────────────────────────────────
 
@@ -488,6 +489,60 @@ export const UpdateMemoryConfidenceInputSchema = z.object({
 });
 export type UpdateMemoryConfidenceInput = z.infer<typeof UpdateMemoryConfidenceInputSchema>;
 export type RespondToInboxItemInput = z.infer<typeof RespondToInboxItemInputSchema>;
+
+// ─── Customer Schemas ───────────────────────────────────────────────────────
+
+export const CreateCustomerInputSchema = z.object({
+  name: z.string().min(1).max(200).describe('Customer / company name (required)'),
+  industry: z.string().max(120).optional().describe('Industry vertical (e.g. "Healthcare", "Construction")'),
+  primaryEmail: z.string().email().optional().describe('Primary contact email for the customer'),
+  primaryPhone: z.string().max(40).optional().describe('Primary contact phone'),
+  billingInfo: z.record(z.string(), z.unknown()).optional().describe('Free-form billing details (address, tax id, PO number, etc.)'),
+  tags: z.array(z.string().min(1).max(40)).max(50).optional().describe('Tags to categorise the customer (e.g. ["vip", "net30"])'),
+});
+export type CreateCustomerInput = z.infer<typeof CreateCustomerInputSchema>;
+
+export const UpdateCustomerInputSchema = z.object({
+  customerId: z.string().describe('Customer ID (required)'),
+  name: z.string().min(1).max(200).optional().describe('Updated customer name'),
+  industry: z.string().max(120).optional().describe('Updated industry'),
+  primaryEmail: z.string().email().optional().describe('Updated primary email'),
+  primaryPhone: z.string().max(40).optional().describe('Updated primary phone'),
+  billingInfo: z.record(z.string(), z.unknown()).optional().describe('Updated billing details (replaces existing)'),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']).optional().describe('Updated status'),
+  tags: z.array(z.string().min(1).max(40)).max(50).optional().describe('Updated tags (replaces existing)'),
+});
+export type UpdateCustomerInput = z.infer<typeof UpdateCustomerInputSchema>;
+
+export const GetCustomerInputSchema = z.object({
+  customerId: z.string().describe('Customer ID'),
+});
+export type GetCustomerInput = z.infer<typeof GetCustomerInputSchema>;
+
+export const ListCustomersInputSchema = z.object({
+  search: z.string().max(200).optional().describe('Free-text search across customer name / industry / email'),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']).optional().describe('Filter by status (default: ACTIVE)'),
+  limit: z.number().int().positive().max(100).default(20).optional().describe('Max results to return'),
+  page: z.number().int().positive().default(1).optional().describe('Page number (1-based)'),
+  sortKey: z.enum(['name', 'industry', 'status', 'createdAt', 'updatedAt']).default('name').optional(),
+  sortDir: z.enum(['asc', 'desc']).default('asc').optional(),
+});
+export type ListCustomersInput = z.infer<typeof ListCustomersInputSchema>;
+
+export const ArchiveCustomerInputSchema = z.object({
+  customerId: z.string().describe('Customer ID to archive'),
+});
+export type ArchiveCustomerInput = z.infer<typeof ArchiveCustomerInputSchema>;
+
+export const UnarchiveCustomerInputSchema = z.object({
+  customerId: z.string().describe('Customer ID to unarchive (restore to ACTIVE)'),
+});
+export type UnarchiveCustomerInput = z.infer<typeof UnarchiveCustomerInputSchema>;
+
+export const FindCustomerByNameInputSchema = z.object({
+  name: z.string().min(1).max(200).describe('Customer name to look up (exact, case-insensitive match preferred)'),
+});
+export type FindCustomerByNameInput = z.infer<typeof FindCustomerByNameInputSchema>;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // P0 TOOL IMPLEMENTATIONS (corrected URGENT → CRITICAL)
@@ -2317,5 +2372,481 @@ export class UpdateMemoryConfidenceTool extends BaseStructuredTool {
       );
       return { success: true, data: { memoryId: updated.id, confidence: input.confidence }, metadata: { model: 'neurecore-memory-v1' } };
     } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Failed to update memory confidence' }; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CUSTOMER TOOL IMPLEMENTATIONS (2026-07-19)
+// ═══════════════════════════════════════════════════════════════════════════
+// Hermes can now create / read / list / update / archive customers via chat.
+// All operations route through CustomersService so tenant isolation, the
+// Prisma audit trail, and the @@unique([tenantId, name]) constraint are
+// enforced consistently with the REST /api/v1/customers endpoints.
+
+@Injectable()
+export class CreateCustomerTool extends BaseStructuredTool {
+  readonly name = 'createCustomer';
+  readonly description =
+    'Create a new customer record for this tenant. Routes through CustomersService so uniqueness, tenant isolation, and audit fields are enforced. Use when the user wants to add a client/company to the workspace — usually before linking them to a project.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = CreateCustomerInputSchema;
+  readonly requiredPermissions = ['customer:create'];
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly customersService?: CustomersService,
+  ) {
+    super();
+  }
+
+  protected async executeImpl(
+    input: CreateCustomerInput,
+    context?: Partial<ToolExecutionContext>,
+  ): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      // Prefer CustomersService so name-normalisation + BadRequestException +
+      // (tenantId, name) uniqueness all apply. Fall back to direct Prisma if
+      // the service isn't wired (mirrors the CreateProjectTool pattern).
+      if (this.customersService) {
+        const customer = await this.customersService.create(
+          {
+            name: input.name,
+            ...(input.industry !== undefined ? { industry: input.industry } : {}),
+            ...(input.primaryEmail !== undefined ? { primaryEmail: input.primaryEmail } : {}),
+            ...(input.primaryPhone !== undefined ? { primaryPhone: input.primaryPhone } : {}),
+            ...(input.billingInfo !== undefined ? { billingInfo: input.billingInfo } : {}),
+            ...(input.tags !== undefined ? { tags: input.tags } : {}),
+          },
+          context.tenantId as string,
+        );
+        return {
+          success: true,
+          data: this.toDto(customer),
+          metadata: { model: 'neurecore-customer-v1' },
+        };
+      }
+      const customer = await this.prisma.customer.create({
+        data: {
+          tenantId: context.tenantId as string,
+          name: input.name.trim(),
+          industry: input.industry ?? null,
+          primaryEmail: input.primaryEmail ?? null,
+          primaryPhone: input.primaryPhone ?? null,
+          billingInfo: input.billingInfo
+            ? (input.billingInfo as object as never)
+            : undefined,
+          tags: input.tags ?? [],
+        },
+      });
+      return {
+        success: true,
+        data: this.toDto(customer),
+        metadata: { model: 'neurecore-customer-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to create customer' };
+    }
+  }
+
+  private toDto(c: {
+    id: string;
+    name: string;
+    industry: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    billingInfo: unknown;
+    status: string;
+    tags: string[];
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    return {
+      customerId: c.id,
+      name: c.name,
+      industry: c.industry,
+      primaryEmail: c.primaryEmail,
+      primaryPhone: c.primaryPhone,
+      billingInfo: (c.billingInfo ?? null) as Record<string, unknown> | null,
+      status: c.status,
+      tags: c.tags,
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.updatedAt.toISOString(),
+    };
+  }
+}
+
+@Injectable()
+export class UpdateCustomerTool extends BaseStructuredTool {
+  readonly name = 'updateCustomer';
+  readonly description =
+    'Update an existing customer. Only the fields you pass are changed — others are preserved. Routes through CustomersService so tenant isolation + (tenantId, name) uniqueness are enforced.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = UpdateCustomerInputSchema;
+  readonly requiredPermissions = ['customer:update'];
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly customersService?: CustomersService,
+  ) {
+    super();
+  }
+
+  protected async executeImpl(
+    input: UpdateCustomerInput,
+    context?: Partial<ToolExecutionContext>,
+  ): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const { customerId, ...patch } = input;
+      if (this.customersService) {
+        const customer = await this.customersService.update(
+          customerId,
+          context.tenantId as string,
+          patch,
+        );
+        return {
+          success: true,
+          data: {
+            customerId: customer.id,
+            name: customer.name,
+            industry: customer.industry,
+            primaryEmail: customer.primaryEmail,
+            primaryPhone: customer.primaryPhone,
+            billingInfo: customer.billingInfo,
+            status: customer.status,
+            tags: customer.tags,
+            updatedAt: customer.updatedAt.toISOString(),
+          },
+          metadata: { model: 'neurecore-customer-v1' },
+        };
+      }
+      // Fallback: verify ownership then patch.
+      const existing = await this.prisma.customer.findFirst({
+        where: { id: customerId, tenantId: context.tenantId as string },
+      });
+      if (!existing) return { success: false, error: 'Customer not found' };
+      const updated = await this.prisma.customer.update({
+        where: { id: customerId },
+        data: {
+          ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+          ...(patch.industry !== undefined ? { industry: patch.industry } : {}),
+          ...(patch.primaryEmail !== undefined ? { primaryEmail: patch.primaryEmail } : {}),
+          ...(patch.primaryPhone !== undefined ? { primaryPhone: patch.primaryPhone } : {}),
+          ...(patch.billingInfo !== undefined
+            ? { billingInfo: patch.billingInfo as object as never }
+            : {}),
+          ...(patch.status !== undefined ? { status: patch.status } : {}),
+          ...(patch.tags !== undefined ? { tags: patch.tags } : {}),
+        },
+      });
+      return {
+        success: true,
+        data: {
+          customerId: updated.id,
+          name: updated.name,
+          status: updated.status,
+          updatedAt: updated.updatedAt.toISOString(),
+        },
+        metadata: { model: 'neurecore-customer-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to update customer' };
+    }
+  }
+}
+
+@Injectable()
+export class GetCustomerTool extends BaseStructuredTool {
+  readonly name = 'getCustomer';
+  readonly description =
+    'Fetch a single customer by ID — includes name, industry, contact info, billing, status, tags, and recent projects. Use when the user asks "show me details for customer X" or when you need to confirm a customerId before linking it to a project.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = GetCustomerInputSchema;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly customersService?: CustomersService,
+  ) {
+    super();
+  }
+
+  protected async executeImpl(
+    input: GetCustomerInput,
+    context?: Partial<ToolExecutionContext>,
+  ): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const customer = await this.prisma.customer.findFirst({
+        where: { id: input.customerId, tenantId: context.tenantId as string },
+        include: {
+          _count: { select: { projects: true, contacts: true } },
+        },
+      });
+      if (!customer) return { success: false, error: 'Customer not found' };
+      return {
+        success: true,
+        data: {
+          customerId: customer.id,
+          name: customer.name,
+          industry: customer.industry,
+          primaryEmail: customer.primaryEmail,
+          primaryPhone: customer.primaryPhone,
+          billingInfo: customer.billingInfo as Record<string, unknown> | null,
+          status: customer.status,
+          tags: customer.tags,
+          projectCount: customer._count.projects,
+          contactCount: customer._count.contacts,
+          createdAt: customer.createdAt.toISOString(),
+          updatedAt: customer.updatedAt.toISOString(),
+        },
+        metadata: { model: 'neurecore-customer-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to get customer' };
+    }
+  }
+}
+
+@Injectable()
+export class ListCustomersTool extends BaseStructuredTool {
+  readonly name = 'listCustomers';
+  readonly description =
+    'List customers for this tenant. Supports free-text search across name/industry/email and filter by status. Use when the user asks "who are our clients?" or "show me customers tagged X".';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListCustomersInputSchema;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly customersService?: CustomersService,
+  ) {
+    super();
+  }
+
+  protected async executeImpl(
+    input: ListCustomersInput,
+    context?: Partial<ToolExecutionContext>,
+  ): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = { tenantId: context.tenantId };
+      if (input.status) {
+        where.status = input.status;
+      }
+      if (input.search && input.search.trim().length > 0) {
+        const q = input.search.trim();
+        where.OR = [
+          { name: { contains: q, mode: 'insensitive' } },
+          { industry: { contains: q, mode: 'insensitive' } },
+          { primaryEmail: { contains: q, mode: 'insensitive' } },
+        ];
+      }
+      const limit = input.limit ?? 20;
+      const page = input.page ?? 1;
+      const sortKey = input.sortKey ?? 'name';
+      const sortDir = input.sortDir ?? 'asc';
+
+      const [data, total] = await Promise.all([
+        this.prisma.customer.findMany({
+          where,
+          take: limit,
+          skip: (page - 1) * limit,
+          orderBy: { [sortKey]: sortDir },
+          select: {
+            id: true,
+            name: true,
+            industry: true,
+            primaryEmail: true,
+            primaryPhone: true,
+            status: true,
+            tags: true,
+            createdAt: true,
+            _count: { select: { projects: true } },
+          },
+        }),
+        this.prisma.customer.count({ where }),
+      ]);
+
+      return {
+        success: true,
+        data: {
+          customers: data.map((c) => ({
+            customerId: c.id,
+            name: c.name,
+            industry: c.industry,
+            primaryEmail: c.primaryEmail,
+            primaryPhone: c.primaryPhone,
+            status: c.status,
+            tags: c.tags,
+            projectCount: c._count.projects,
+            createdAt: c.createdAt.toISOString(),
+          })),
+          total,
+          page,
+          limit,
+          hasMore: page * limit < total,
+        },
+        metadata: { model: 'neurecore-customer-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list customers' };
+    }
+  }
+}
+
+@Injectable()
+export class FindCustomerByNameTool extends BaseStructuredTool {
+  readonly name = 'findCustomerByName';
+  readonly description =
+    'Look up a customer by name (case-insensitive substring match). Returns the best match plus any other close matches. Use when the user says "the BlueStar client" and you need the customerId before creating a project.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = FindCustomerByNameInputSchema;
+
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  protected async executeImpl(
+    input: FindCustomerByNameInput,
+    context?: Partial<ToolExecutionContext>,
+  ): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const q = input.name.trim();
+      const matches = await this.prisma.customer.findMany({
+        where: {
+          tenantId: context.tenantId as string,
+          OR: [
+            { name: { equals: q, mode: 'insensitive' } },
+            { name: { contains: q, mode: 'insensitive' } },
+          ],
+        },
+        take: 10,
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          industry: true,
+          primaryEmail: true,
+          status: true,
+        },
+      });
+      return {
+        success: true,
+        data: {
+          query: q,
+          matchCount: matches.length,
+          bestMatch: matches[0] ?? null,
+          matches: matches.map((m) => ({
+            customerId: m.id,
+            name: m.name,
+            industry: m.industry,
+            primaryEmail: m.primaryEmail,
+            status: m.status,
+          })),
+        },
+        metadata: { model: 'neurecore-customer-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to find customer' };
+    }
+  }
+}
+
+@Injectable()
+export class ArchiveCustomerTool extends BaseStructuredTool {
+  readonly name = 'archiveCustomer';
+  readonly description =
+    'Soft-archive a customer. Sets status to ARCHIVED but preserves the row (and its project history). Use when the user says "archive the BlueStar client" — the customer remains queryable but stops appearing in active lists.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ArchiveCustomerInputSchema;
+  readonly requiredPermissions = ['customer:archive'];
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly customersService?: CustomersService,
+  ) {
+    super();
+  }
+
+  protected async executeImpl(
+    input: ArchiveCustomerInput,
+    context?: Partial<ToolExecutionContext>,
+  ): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      if (this.customersService) {
+        const customer = await this.customersService.archive(input.customerId, context.tenantId as string);
+        return {
+          success: true,
+          data: { customerId: customer.id, name: customer.name, previousStatus: 'ACTIVE', newStatus: customer.status },
+          metadata: { model: 'neurecore-customer-v1' },
+        };
+      }
+      const existing = await this.prisma.customer.findFirst({
+        where: { id: input.customerId, tenantId: context.tenantId as string },
+      });
+      if (!existing) return { success: false, error: 'Customer not found' };
+      const updated = await this.prisma.customer.update({
+        where: { id: input.customerId },
+        data: { status: 'ARCHIVED' },
+      });
+      return {
+        success: true,
+        data: { customerId: updated.id, name: updated.name, previousStatus: existing.status, newStatus: updated.status },
+        metadata: { model: 'neurecore-customer-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to archive customer' };
+    }
+  }
+}
+
+@Injectable()
+export class UnarchiveCustomerTool extends BaseStructuredTool {
+  readonly name = 'unarchiveCustomer';
+  readonly description =
+    'Restore an archived customer to ACTIVE. Use when the user says "reactivate the BlueStar client".';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = UnarchiveCustomerInputSchema;
+  readonly requiredPermissions = ['customer:archive'];
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly customersService?: CustomersService,
+  ) {
+    super();
+  }
+
+  protected async executeImpl(
+    input: UnarchiveCustomerInput,
+    context?: Partial<ToolExecutionContext>,
+  ): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      if (this.customersService) {
+        const customer = await this.customersService.unarchive(input.customerId, context.tenantId as string);
+        return {
+          success: true,
+          data: { customerId: customer.id, name: customer.name, previousStatus: 'ARCHIVED', newStatus: customer.status },
+          metadata: { model: 'neurecore-customer-v1' },
+        };
+      }
+      const existing = await this.prisma.customer.findFirst({
+        where: { id: input.customerId, tenantId: context.tenantId as string },
+      });
+      if (!existing) return { success: false, error: 'Customer not found' };
+      const updated = await this.prisma.customer.update({
+        where: { id: input.customerId },
+        data: { status: 'ACTIVE' },
+      });
+      return {
+        success: true,
+        data: { customerId: updated.id, name: updated.name, previousStatus: existing.status, newStatus: updated.status },
+        metadata: { model: 'neurecore-customer-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to unarchive customer' };
+    }
   }
 }
