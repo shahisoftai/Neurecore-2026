@@ -1,41 +1,23 @@
 'use client';
-// AgentInspector - renders full agent profile in inspector panel.
-// Tenant-specific profile fields (avatarUrl, designation, bio, color, emoji)
-// are read from `metadata.profile` (backend stores there) and are editable
-// inline via PATCH /api/v1/agents/:id.
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { STATUS_BADGE_CLASS, STATUS_COLOR_MAP } from '@/types/ui.types';
 import api from '@/services/api';
-import { unwrapItem } from '@/services/unwrap';
+import { unwrapItem, unwrapList } from '@/services/unwrap';
 import { AgentAvatar } from '@/components/agents/AgentAvatar';
 import { uploadsService, AGENT_AVATAR_UPLOAD } from '@/services/uploads.service';
-import { assetUrl } from '@/lib/url';
+import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 
-interface AgentProfile {
-  avatarUrl?: string | null;
-  designation?: string | null;
-  bio?: string | null;
-  color?: string | null;
-  emoji?: string | null;
-}
-
-interface AgentDetail {
-  id: string;
-  name: string;
-  type: string;
-  status: string;
-  systemPrompt?: string;
-  maxBudget?: number;
-  spentBudget?: number;
-  maxExecutionTime?: number;
-  successRate?: number;
-  model?: { name: string; provider: string };
-  department?: { name: string };
-  tools?: { name: string }[];
-  metadata?: Record<string, unknown> | null;
-  createdAt: string;
-}
+const AI_MODELS = [
+  'gpt-4o',
+  'gpt-4o-mini',
+  'gpt-4-turbo',
+  'claude-3-5-sonnet-20241022',
+  'claude-3-haiku-20240307',
+  'deepseek-chat',
+  'deepseek-reasoner',
+  'MiniMax-M2.7-highspeed',
+];
 
 const PROFILE_COLORS = [
   { value: 'blue', label: 'Blue' },
@@ -49,6 +31,49 @@ const PROFILE_COLORS = [
   { value: 'gray', label: 'Gray' },
 ];
 
+interface AgentProfile {
+  avatarUrl?: string | null;
+  designation?: string | null;
+  bio?: string | null;
+  color?: string | null;
+  emoji?: string | null;
+}
+
+interface AgentDetail {
+  id: string;
+  name: string;
+  description?: string | null;
+  type: string;
+  status: string;
+  model?: string | null;
+  systemPrompt?: string | null;
+  instructions?: string | null;
+  budgetPerDay?: number | null;
+  totalSpend?: string;
+  permissions?: string[];
+  config?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | null;
+  isActive?: boolean;
+  tenantId?: string;
+  departmentId?: string | null;
+  templateId?: string;
+  emailProvider?: string;
+  isSelected?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  _count?: {
+    tasks?: number;
+    memoryEntries?: number;
+    executionLogs?: number;
+  };
+  department?: { id?: string; name?: string };
+}
+
+interface Department {
+  id: string;
+  name: string;
+}
+
 function extractProfile(metadata?: Record<string, unknown> | null): AgentProfile {
   const p = (metadata?.profile as Record<string, unknown> | undefined) ?? {};
   return {
@@ -60,6 +85,30 @@ function extractProfile(metadata?: Record<string, unknown> | null): AgentProfile
   };
 }
 
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center py-2 border-b border-surface-border last:border-0">
+      <span className="text-xs text-zinc-500">{label}</span>
+      <span className="text-xs text-zinc-300 font-medium text-right max-w-[60%]">{value}</span>
+    </div>
+  );
+}
+
+function SectionHeader({ title, onClick, expanded }: { title: string; onClick?: () => void; expanded?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 w-full text-left py-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider hover:text-zinc-300 transition-colors"
+    >
+      {expanded !== undefined && (
+        expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />
+      )}
+      {title}
+    </button>
+  );
+}
+
 export function AgentInspector({ id }: { id: string }) {
   const [agent, setAgent] = useState<AgentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,14 +116,37 @@ export function AgentInspector({ id }: { id: string }) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingDepts, setLoadingDepts] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Editable profile state
+  // Core agent fields
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [model, setModel] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
+  const [budgetPerDay, setBudgetPerDay] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [systemPrompt, setSystemPrompt] = useState('');
+
+  // Profile fields
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [designation, setDesignation] = useState('');
   const [bio, setBio] = useState('');
   const [color, setColor] = useState<string | null>(null);
   const [emoji, setEmoji] = useState('');
+
+  const loadDepartments = () => {
+    setLoadingDepts(true);
+    api.get('/departments?limit=100')
+      .then((res) => {
+        const data = unwrapList(res);
+        setDepartments((data.items as Department[]) ?? []);
+      })
+      .catch(() => setDepartments([]))
+      .finally(() => setLoadingDepts(false));
+  };
 
   const load = () => {
     setLoading(true);
@@ -83,21 +155,27 @@ export function AgentInspector({ id }: { id: string }) {
       .then((r) => {
         const data = unwrapItem(r) as AgentDetail | null;
         setAgent(data);
-        const p = extractProfile(data?.metadata);
-        setAvatarUrl(p.avatarUrl ?? null);
-        setDesignation(p.designation ?? '');
-        setBio(p.bio ?? '');
-        setColor(p.color ?? null);
-        setEmoji(p.emoji ?? '');
+        if (data) {
+          setName(data.name ?? '');
+          setDescription(data.description ?? '');
+          setModel(data.model ?? 'gpt-4o-mini');
+          setDepartmentId(data.departmentId ?? '');
+          setBudgetPerDay(data.budgetPerDay?.toString() ?? '');
+          setInstructions(data.instructions ?? '');
+          setSystemPrompt(data.systemPrompt ?? '');
+          const p = extractProfile(data.metadata);
+          setAvatarUrl(p.avatarUrl ?? null);
+          setDesignation(p.designation ?? '');
+          setBio(p.bio ?? '');
+          setColor(p.color ?? null);
+          setEmoji(p.emoji ?? '');
+        }
       })
       .catch(() => setAgent(null))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  useEffect(() => { load(); }, [id]);
 
   const handleAvatarFile = async (file: File | undefined) => {
     if (!file) return;
@@ -128,6 +206,13 @@ export function AgentInspector({ id }: { id: string }) {
     setError(null);
     try {
       const payload: Record<string, unknown> = {
+        name: name.trim() || undefined,
+        description: description.trim() || null,
+        model: model || undefined,
+        departmentId: departmentId || null,
+        budgetPerDay: budgetPerDay ? parseFloat(budgetPerDay) : undefined,
+        instructions: instructions.trim() || null,
+        systemPrompt: systemPrompt.trim() || null,
         avatarUrl: avatarUrl || null,
         designation: designation.trim() || null,
         bio: bio.trim() || null,
@@ -147,6 +232,13 @@ export function AgentInspector({ id }: { id: string }) {
   const handleCancel = () => {
     if (!agent) return;
     const p = extractProfile(agent.metadata);
+    setName(agent.name ?? '');
+    setDescription(agent.description ?? '');
+    setModel(agent.model ?? 'gpt-4o-mini');
+    setDepartmentId(agent.departmentId ?? '');
+    setBudgetPerDay(agent.budgetPerDay?.toString() ?? '');
+    setInstructions(agent.instructions ?? '');
+    setSystemPrompt(agent.systemPrompt ?? '');
     setAvatarUrl(p.avatarUrl ?? null);
     setDesignation(p.designation ?? '');
     setBio(p.bio ?? '');
@@ -159,12 +251,15 @@ export function AgentInspector({ id }: { id: string }) {
   if (loading) {
     return (
       <div className="p-6 flex flex-col gap-4 animate-pulse">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-4 bg-surface-muted rounded"
-            style={{ width: `${60 + i * 6}%` }}
-          />
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-surface-muted" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 bg-surface-muted rounded w-1/2" />
+            <div className="h-3 bg-surface-muted rounded w-1/3" />
+          </div>
+        </div>
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="h-4 bg-surface-muted rounded" style={{ width: `${50 + i * 5}%` }} />
         ))}
       </div>
     );
@@ -174,274 +269,364 @@ export function AgentInspector({ id }: { id: string }) {
     return <div className="p-6 text-zinc-500 text-sm">Agent not found.</div>;
   }
 
-  const statusColor = STATUS_COLOR_MAP[agent.status] ?? 'neutral';
-  const budgetPct =
-    agent.maxBudget && agent.spentBudget
-      ? Math.min(100, Math.round((agent.spentBudget / agent.maxBudget) * 100))
-      : null;
-
   const profile = extractProfile(agent.metadata);
+  const statusColor = STATUS_COLOR_MAP[agent.status] ?? 'neutral';
+  const totalSpendNum = parseFloat(agent.totalSpend ?? '0');
+  const budgetPct =
+    agent.budgetPerDay && totalSpendNum
+      ? Math.min(100, Math.round((totalSpendNum / agent.budgetPerDay) * 100))
+      : null;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="p-6 flex flex-col gap-5"
+      className="flex flex-col"
     >
-      {/* Identity */}
-      <div className="flex items-start gap-4">
-        <AgentAvatar
-          name={agent.name}
-          avatarUrl={profile.avatarUrl}
-          emoji={profile.emoji}
-          color={profile.color}
-          size={56}
-        />
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold text-zinc-100 truncate">{agent.name}</h2>
-          {profile.designation && (
-            <p className="text-xs text-zinc-400 truncate">{profile.designation}</p>
-          )}
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="text-xs text-zinc-500">{agent.type}</span>
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE_CLASS[statusColor]}`}
-            >
-              {agent.status}
-            </span>
-          </div>
-          {agent.department && (
-            <p className="text-xs text-zinc-600 mt-1">📁 {agent.department.name}</p>
-          )}
-        </div>
-      </div>
-
-      {profile.bio && !editing && (
-        <p className="text-xs text-zinc-400 leading-relaxed">{profile.bio}</p>
-      )}
-
-      {/* Profile editor */}
-      {editing && (
-        <div className="flex flex-col gap-3 p-4 rounded-xl border border-surface-border bg-surface/40">
-          <div className="flex items-center gap-3">
-            <AgentAvatar
-              name={agent.name}
-              avatarUrl={avatarUrl}
-              emoji={emoji || null}
-              color={color}
-              size={48}
-            />
-            <div className="flex gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={AGENT_AVATAR_UPLOAD.allowedTypes.join(',')}
-                className="hidden"
-                onChange={(e) => void handleAvatarFile(e.target.files?.[0])}
-                disabled={uploading}
-              />
-              <button
-                type="button"
-                className="text-xs py-1.5 px-3 rounded-lg bg-surface-muted hover:bg-surface-overlay text-zinc-300 transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
+      {/* Header */}
+      <div className="p-6 pb-4 border-b border-surface-border">
+        <div className="flex items-start gap-4">
+          <AgentAvatar
+            name={agent.name}
+            avatarUrl={profile.avatarUrl}
+            emoji={profile.emoji}
+            color={profile.color}
+            size={56}
+          />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-bold text-zinc-100 truncate">{agent.name}</h2>
+            {profile.designation && (
+              <p className="text-xs text-zinc-400 truncate">{profile.designation}</p>
+            )}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span className="text-xs text-zinc-500">{agent.type}</span>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE_CLASS[statusColor]}`}
               >
-                {uploading ? 'Uploading…' : avatarUrl ? 'Replace avatar' : 'Upload avatar'}
-              </button>
-              {avatarUrl && (
-                <button
-                  type="button"
-                  className="text-xs py-1.5 px-3 rounded-lg hover:bg-surface-overlay text-zinc-400 transition-colors"
-                  onClick={() => setAvatarUrl(null)}
-                  disabled={uploading}
-                >
-                  Remove
-                </button>
+                {agent.status}
+              </span>
+              {agent.isSelected && (
+                <span className="text-xs px-1.5 py-0.5 rounded bg-accent-500/20 text-accent-400 font-medium">
+                  Selected
+                </span>
               )}
             </div>
           </div>
-
-          <Field
-            label="Designation"
-            value={designation}
-            onChange={setDesignation}
-            placeholder="e.g. Sales Lead, Fleet Manager"
-            maxLength={100}
-          />
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-zinc-500">Bio</label>
-            <textarea
-              className="text-xs text-zinc-200 bg-surface p-2 rounded-lg border border-surface-border resize-y min-h-[60px]"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Short bio shown on hover / inspector"
-              maxLength={1000}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-zinc-500">Color</label>
-              <select
-                className="text-xs text-zinc-200 bg-surface p-2 rounded-lg border border-surface-border"
-                value={color ?? ''}
-                onChange={(e) => setColor(e.target.value || null)}
-              >
-                <option value="">Default</option>
-                {PROFILE_COLORS.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Field
-              label="Emoji (optional)"
-              value={emoji}
-              onChange={setEmoji}
-              placeholder="e.g. 🔧"
-              maxLength={8}
-            />
-          </div>
-
-          {error && (
-            <p className="text-xs text-status-risk" role="alert">
-              {error}
-            </p>
-          )}
-
-          <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              className="flex-1 py-2 text-sm rounded-xl bg-status-ops/10 hover:bg-status-ops/20 text-status-ops border border-status-ops/20 transition-colors font-medium disabled:opacity-50"
-              onClick={handleSave}
-              disabled={saving || uploading}
-            >
-              {saving ? 'Saving…' : 'Save profile'}
-            </button>
-            <button
-              type="button"
-              className="flex-1 py-2 text-sm rounded-xl bg-surface-muted hover:bg-surface-overlay text-zinc-300 transition-colors disabled:opacity-50"
-              onClick={handleCancel}
-              disabled={saving}
-            >
-              Cancel
-            </button>
-          </div>
         </div>
-      )}
+        {profile.bio && (
+          <p className="text-xs text-zinc-400 leading-relaxed mt-3">{profile.bio}</p>
+        )}
+      </div>
 
-      {/* Model */}
-      {agent.model && (
-        <Row label="Model" value={`${agent.model.provider} / ${agent.model.name}`} />
-      )}
-
-      {/* Budget */}
-      {agent.maxBudget !== undefined && (
-        <div>
-          <div className="flex justify-between text-xs text-zinc-500 mb-1">
-            <span>Budget Used</span>
-            <span>
-              ${(agent.spentBudget ?? 0).toFixed(4)} / ${agent.maxBudget}
-            </span>
-          </div>
-          {budgetPct !== null && (
-            <div className="w-full h-1.5 bg-surface-muted rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${budgetPct > 80 ? 'bg-status-risk' : budgetPct > 50 ? 'bg-status-warn' : 'bg-status-profit'}`}
-                style={{ width: `${budgetPct}%` }}
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Edit Mode */}
+        {editing ? (
+          <div className="p-6 space-y-6">
+            {/* Avatar Section */}
+            <div className="flex items-center gap-4">
+              <AgentAvatar
+                name={name}
+                avatarUrl={avatarUrl}
+                emoji={emoji || null}
+                color={color}
+                size={64}
               />
+              <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={AGENT_AVATAR_UPLOAD.allowedTypes.join(',')}
+                  className="hidden"
+                  onChange={(e) => void handleAvatarFile(e.target.files?.[0])}
+                  disabled={uploading}
+                />
+                <button
+                  type="button"
+                  className="text-xs py-2 px-3 rounded-lg bg-surface-muted hover:bg-surface-overlay text-zinc-300 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : avatarUrl ? 'Replace' : 'Upload'}
+                </button>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    className="text-xs py-2 px-3 rounded-lg hover:bg-surface-overlay text-zinc-400 transition-colors"
+                    onClick={() => setAvatarUrl(null)}
+                    disabled={uploading}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      )}
 
-      {/* Performance */}
-      {agent.successRate !== undefined && (
-        <Row label="Success Rate" value={`${agent.successRate}%`} />
-      )}
+            {/* Identity Section */}
+            <div className="space-y-3">
+              <SectionHeader title="Identity" />
+              <div className="space-y-3 pl-4">
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Agent Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition"
+                    placeholder="Agent name"
+                    maxLength={100}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Description</label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition resize-y min-h-[60px]"
+                    placeholder="Brief description of this agent's role"
+                    maxLength={500}
+                  />
+                </div>
+              </div>
+            </div>
 
-      {/* System prompt */}
-      {agent.systemPrompt && (
-        <div>
-          <p className="text-xs text-zinc-500 mb-1">System Prompt</p>
-          <p className="text-xs text-zinc-400 font-mono bg-surface p-3 rounded-lg border border-surface-border leading-relaxed line-clamp-4">
-            {agent.systemPrompt}
-          </p>
-        </div>
-      )}
+            {/* Profile Section */}
+            <div className="space-y-3">
+              <SectionHeader title="Profile" />
+              <div className="space-y-3 pl-4">
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Designation</label>
+                  <input
+                    type="text"
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition"
+                    placeholder="e.g. Senior Financial Analyst"
+                    maxLength={100}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Bio</label>
+                  <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition resize-y min-h-[80px]"
+                    placeholder="Short bio shown on hover and in inspector"
+                    maxLength={1000}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-1 block">Color</label>
+                    <select
+                      value={color ?? ''}
+                      onChange={(e) => setColor(e.target.value || null)}
+                      className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition"
+                    >
+                      <option value="">Default</option>
+                      {PROFILE_COLORS.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-1 block">Emoji</label>
+                    <input
+                      type="text"
+                      value={emoji}
+                      onChange={(e) => setEmoji(e.target.value)}
+                      className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition"
+                      placeholder="e.g. 💼"
+                      maxLength={8}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
 
-      {/* Tools */}
-      {agent.tools && agent.tools.length > 0 && (
-        <div>
-          <p className="text-xs text-zinc-500 mb-2">Connected Tools</p>
-          <div className="flex flex-wrap gap-1.5">
-            {agent.tools.map((t) => (
-              <span
-                key={t.name}
-                className="text-xs px-2 py-1 rounded bg-surface-muted text-zinc-300 border border-surface-border"
+            {/* Configuration Section */}
+            <div className="space-y-3">
+              <SectionHeader title="Configuration" />
+              <div className="space-y-3 pl-4">
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">AI Model</label>
+                  <select
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition"
+                  >
+                    {AI_MODELS.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Department</label>
+                  <select
+                    value={departmentId}
+                    onChange={(e) => setDepartmentId(e.target.value)}
+                    disabled={loadingDepts}
+                    className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition disabled:opacity-50"
+                  >
+                    <option value="">— No department —</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Daily Budget ($)</label>
+                  <input
+                    type="number"
+                    value={budgetPerDay}
+                    onChange={(e) => setBudgetPerDay(e.target.value)}
+                    className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition"
+                    placeholder="50"
+                    min="0"
+                    max="1000"
+                    step="1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Instructions Section */}
+            <div className="space-y-3">
+              <SectionHeader title="Instructions" />
+              <div className="space-y-3 pl-4">
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Instructions</label>
+                  <textarea
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
+                    className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition resize-y min-h-[80px]"
+                    placeholder="Additional instructions for this agent..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Advanced Section */}
+            <div className="space-y-3">
+              <SectionHeader
+                title="Advanced"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                expanded={showAdvanced}
+              />
+              {showAdvanced && (
+                <div className="space-y-3 pl-4">
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-1 block">System Prompt</label>
+                    <textarea
+                      value={systemPrompt}
+                      onChange={(e) => setSystemPrompt(e.target.value)}
+                      className="w-full px-3 py-2 text-sm text-zinc-200 bg-surface rounded-lg border border-surface-border focus:border-accent-500 outline-none transition resize-y min-h-[100px] font-mono text-xs"
+                      placeholder="Custom system prompt (advanced)..."
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div className="text-xs text-state-danger bg-state-danger/10 border border-state-danger/30 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                className="flex-1 py-2.5 text-sm rounded-xl bg-accent-500 hover:bg-accent-600 text-white font-medium transition-colors disabled:opacity-50"
+                onClick={handleSave}
+                disabled={saving || uploading}
               >
-                {t.name}
-              </span>
-            ))}
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                type="button"
+                className="flex-1 py-2.5 text-sm rounded-xl bg-surface-muted hover:bg-surface-overlay text-zinc-300 transition-colors disabled:opacity-50"
+                onClick={handleCancel}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          /* View Mode */
+          <div className="p-6 space-y-4">
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="card-surface p-3 text-center border border-surface-border">
+                <p className="text-xs text-zinc-500">Tasks</p>
+                <p className="text-lg font-bold text-zinc-100">{agent._count?.tasks ?? 0}</p>
+              </div>
+              <div className="card-surface p-3 text-center border border-surface-border">
+                <p className="text-xs text-zinc-500">Budget Used</p>
+                <p className="text-lg font-bold text-zinc-100">
+                  {agent.budgetPerDay ? `${budgetPct ?? 0}%` : '—'}
+                </p>
+              </div>
+            </div>
 
-      <Row label="Created" value={new Date(agent.createdAt).toLocaleDateString()} />
+            {/* Details */}
+            <div>
+              <SectionHeader title="Details" />
+              <div className="px-1">
+                <Row label="Model" value={agent.model ?? 'gpt-4o-mini'} />
+                <Row label="Department" value={agent.departmentId ? departments.find(d => d.id === agent.departmentId)?.name ?? agent.departmentId : '—'} />
+                <Row label="Daily Budget" value={agent.budgetPerDay ? `$${agent.budgetPerDay}` : '—'} />
+                <Row label="Total Spend" value={agent.totalSpend ? `$${parseFloat(agent.totalSpend).toFixed(4)}` : '$0'} />
+                <Row label="Template" value={agent.templateId ?? '—'} />
+                <Row label="Email Provider" value={agent.emailProvider ?? '—'} />
+                <Row label="Active" value={agent.isActive ? 'Yes' : 'No'} />
+                <Row label="Created" value={agent.createdAt ? new Date(agent.createdAt).toLocaleDateString() : '—'} />
+                <Row label="Last Updated" value={agent.updatedAt ? new Date(agent.updatedAt).toLocaleDateString() : '—'} />
+              </div>
+            </div>
 
-      {/* Actions */}
-      <div className="flex flex-col gap-2 pt-2 border-t border-surface-border">
-        <button className="w-full py-2 text-sm rounded-xl bg-status-ops/10 hover:bg-status-ops/20 text-status-ops border border-status-ops/20 transition-colors font-medium">
-          View Execution Logs
-        </button>
-        {!editing && (
-          <button
-            className="w-full py-2 text-sm rounded-xl bg-surface-muted hover:bg-surface-overlay text-zinc-300 border border-surface-border transition-colors"
-            onClick={() => setEditing(true)}
-          >
-            Edit Profile
-          </button>
+            {/* Description */}
+            {agent.description && (
+              <div>
+                <SectionHeader title="Description" />
+                <p className="text-xs text-zinc-400 leading-relaxed px-1">{agent.description}</p>
+              </div>
+            )}
+
+            {/* Instructions */}
+            {agent.instructions && (
+              <div>
+                <SectionHeader title="Instructions" />
+                <p className="text-xs text-zinc-400 leading-relaxed px-1">{agent.instructions}</p>
+              </div>
+            )}
+
+            {/* System Prompt */}
+            {agent.systemPrompt && (
+              <div>
+                <SectionHeader title="System Prompt" />
+                <pre className="text-xs text-zinc-400 bg-surface p-3 rounded-lg border border-surface-border leading-relaxed overflow-x-auto px-1">
+                  {agent.systemPrompt}
+                </pre>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2 pt-4 border-t border-surface-border">
+              <button className="w-full py-2.5 text-sm rounded-xl bg-status-ops/10 hover:bg-status-ops/20 text-status-ops border border-status-ops/20 transition-colors font-medium">
+                View Execution Logs
+              </button>
+              <button
+                className="w-full py-2.5 text-sm rounded-xl bg-surface-muted hover:bg-surface-overlay text-zinc-300 border border-surface-border transition-colors font-medium"
+                onClick={() => { loadDepartments(); setEditing(true); }}
+              >
+                Edit Agent
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </motion.div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between items-center">
-      <span className="text-xs text-zinc-500">{label}</span>
-      <span className="text-xs text-zinc-300 font-medium">{value}</span>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  maxLength,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  maxLength?: number;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs text-zinc-500">{label}</label>
-      <input
-        type="text"
-        className="text-xs text-zinc-200 bg-surface p-2 rounded-lg border border-surface-border"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        maxLength={maxLength}
-      />
-    </div>
   );
 }

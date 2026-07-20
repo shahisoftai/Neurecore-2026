@@ -59,6 +59,58 @@ Status legend: 🔴 Not started · 🟡 In progress / partial / scaffold only ·
 
 ---
 
+## 0c. 2026-07-20 — Post-Migration: Mali Financial Services Setup + Agent Inspector Fix (Kilo)
+
+> **Session goal:** Set up Mali Live Inc. as financial services tenant with departments and AI employees, fix Agent Inspect/Audit panel, and implement comprehensive edit profile functionality.
+
+### Status snapshot (2026-07-20 PKT)
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| §0c.1 — Mali tenant industry set to financial_services | ✅ | Updated tenant-mali industry field |
+| §0c.2 — Create 5 departments (Finance, Accounting, Treasury, Risk & Compliance, Investor Relations) | ✅ | All 5 departments created |
+| §0c.3 — Create 11 AI employees across departments | ✅ | CFO, Financial Analyst, GL Accountant, Financial Reporting Specialist, Cost Accountant, Treasury Accountant, Budget Accountant, Financial Risk Analyst, Tax Compliance Specialist, Chief IR Officer, Financial Communications Specialist |
+| §0c.4 — Fix Agent Inspect/Audit "Agent not found" | ✅ | Created FlexibleIdPipe replacing ParseUUIDPipe; fixed AgentInspector interface |
+| §0c.5 — Comprehensive Edit Profile panel | ✅ | All fields editable: name, description, model, department, budget, instructions, system prompt |
+| §0c.6 — Auto-generate bios on agent creation | ✅ | Backend generates designation, bio, color, emoji based on agent name/type |
+| §0c.7 — Admin login cookie fix | ✅ | Middleware now uses `__Host-nc_at` instead of `auth-token` |
+
+### Mali Financial Services Tenant Structure
+
+**Tenant:** Mali Live Inc. (`tenant-mali`)
+- Industry: `financial_services`
+- Tier: Enterprise (200 agents / 50 departments cap)
+
+**Departments (5):**
+| Department | Agents |
+| --- | --- |
+| Finance | Chief Financial Officer, Financial Analyst |
+| Accounting | General Ledger Accountant, Financial Reporting Specialist, Cost Accountant |
+| Treasury | Treasury Accountant, Budget Accountant |
+| Risk & Compliance | Financial Risk Analyst, Tax Compliance Specialist |
+| Investor Relations | Chief Investor Relations Officer, Financial Communications Specialist |
+
+### Files Changed
+
+| File | Change |
+| --- | --- |
+| `backend/src/common/pipes/flexible-id.pipe.ts` | **NEW** — FlexibleIdPipe accepting any non-empty string ID |
+| `backend/src/modules/agents/agents.controller.ts` | Replaced ParseUUIDPipe with FlexibleIdPipe |
+| `backend/src/modules/agents/utils/agent-bio-generator.ts` | **NEW** — Contextual bio generator for agents |
+| `backend/src/modules/agents/services/agents.service.ts` | Auto-generate profile on agent creation |
+| `frontend-tenant/src/components/inspector/AgentInspector.tsx` | Comprehensive edit panel with all fields |
+| `frontend-admin/src/middleware.ts` | Cookie name `__Host-nc_at` fix |
+
+### Docs Updated
+- `fixes.md` — FIX-MIGRATION-002 and FIX-MIGRATION-003 entries added
+- `system-state.md` — Agent section updated
+- `backend.md` — Agent creation section updated
+
+### Open Items
+- `PresenceService sweepStale failed` warning persists (non-critical, Upstash Redis unavailable)
+
+---
+
 ## 0. 2026-07-09 — Projects Phases 1–7 + EIE Phase 2 sub-phases (Kilo)
 
 > **Session goal:** Fix all gaps/errors/missed tasks between IMPLEMENTATION-PLAN.md + project-creation-imp-plan.md and the actual codebase, then deploy to Contabo production and verify all features work in browser.

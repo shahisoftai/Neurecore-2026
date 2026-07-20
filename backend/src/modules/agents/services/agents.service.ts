@@ -14,6 +14,7 @@ import type {
   CreateAgentInput,
   UpdateAgentInput,
 } from '../interfaces/agent.interface';
+import { generateAgentProfile } from '../utils/agent-bio-generator';
 
 @Injectable()
 export class AgentsService implements IAgentService {
@@ -154,6 +155,14 @@ export class AgentsService implements IAgentService {
       process.env['DEFAULT_AGENT_MODEL']!.length > 0
         ? process.env['DEFAULT_AGENT_MODEL']!
         : 'gpt-4o-mini';
+
+    // Auto-generate profile if metadata is not provided
+    const metadata = input.metadata ?? {};
+    if (!metadata.profile) {
+      const generated = generateAgentProfile(input.name, input.type);
+      metadata.profile = generated;
+    }
+
     const agent = await this.prisma.agent.create({
       data: {
         name: input.name,
@@ -165,7 +174,7 @@ export class AgentsService implements IAgentService {
         budgetPerDay: input.budgetPerDay,
         permissions: (input.permissions ?? []) as never,
         config: (input.config ?? {}) as never,
-        metadata: (input.metadata ?? {}) as never,
+        metadata: metadata as never,
         tenantId,
         createdById: userId,
       },

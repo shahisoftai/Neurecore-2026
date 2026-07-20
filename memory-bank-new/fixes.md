@@ -3393,10 +3393,154 @@ Since all production data was experimental (no real customers), migrate fully to
 - Backend 217 restarts — from migration restarts, now stable
 
 ### Docs Updated
-- `system-state.md` — DB section updated to Contabo PG
+- `system-state.md` — header + DB section
 - `contabo-ops.md` — DB section updated
 - `backend.md` — DB configuration updated
 - `.env.production` — Neon refs removed
 - `plans/neon-to-contabo-migration-plan.md` — full plan and status
 - `fixes.md` — this entry
+
+### Test Credentials Created
+- Super Admin: `mnipiracha@gmail.com` / `Shahikhail@@0098`
+- Enterprise Tenant: `mali@live.com` / `Shahikhail@@0098` (tenant: Mali Live Inc.)
+- Test Tenant 1: `test1@neurecore.test` / `Shahikhail@@0098` (tenant: Test Tenant 1)
+- Test Tenant 2: `test2@neurecore.test` / `Shahikhail@@0098` (tenant: Test Tenant 2)
+
+---
+
+## FIX-MIGRATION-002 — Agent Inspect/Audit Panel "Agent not found" (2026-07-20)
+
+**Severity:** high (UX blocking)
+**Component:** backend (agents.controller.ts), frontend-tenant (AgentInspector.tsx)
+**Status:** resolved
+**Resolver:** Kilo
+
+### Problem
+Clicking "Inspect" or "Audit" on any AI Employee card in the Marketplace → My Agents tab opened the right panel but displayed "Agent not found." All 11 Mali tenant agents showed this issue.
+
+### Root Cause
+`AgentsController` used `ParseUUIDPipe` on all `:id` route params. This pipe validates that IDs are valid UUIDs (e.g., `550e8400-e29b-41d4-a716-446655440000`). NeureCore agents use human-readable string IDs (e.g., `agent-cfo-mali`) not UUIDs. The validation failed at the NestJS pipe layer before the handler was reached, returning HTTP 400 with "Validation failed (uuid is expected)" — which the frontend treated as "not found."
+
+### Fix Applied
+
+**1. Created `FlexibleIdPipe`** (`backend/src/common/pipes/flexible-id.pipe.ts`):
+```typescript
+@Injectable()
+export class FlexibleIdPipe implements PipeTransform<string, string> {
+  transform(value: string): string {
+    if (!value || typeof value !== 'string' || value.trim() === '') {
+      throw new BadRequestException('ID is required');
+    }
+    return value.trim(); // Accept any non-empty string
+  }
+}
+```
+
+**2. Updated `agents.controller.ts`:**
+- Removed `ParseUUIDPipe` from NestJS imports
+- Added `FlexibleIdPipe` import from `../../common/pipes/flexible-id.pipe`
+- Replaced all 15+ instances of `ParseUUIDPipe` with `FlexibleIdPipe` in route decorators
+
+**3. Updated `AgentInspector.tsx`** (`frontend-tenant/src/components/inspector/`):
+- Rewrote `AgentDetail` interface to match actual API response (removed `model: {name, provider}`, fixed `department`, added all actual fields)
+- Fixed budget display: `totalSpend` is a string, `budgetPerDay` is `number | null`
+- Removed `successRate` (not in API response)
+- Fixed `departmentId` display (was expecting `department.name` object)
+
+### Files Changed
+- `backend/src/common/pipes/flexible-id.pipe.ts` — **NEW**
+- `backend/src/modules/agents/agents.controller.ts` — replaced ParseUUIDPipe with FlexibleIdPipe
+- `frontend-tenant/src/components/inspector/AgentInspector.tsx` — interface + rendering fixes
+
+### Verification
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://brain.neurecore.com/api/v1/agents/agent-cfo-mali"
+# Returns 200 with full agent data
+```
+
+---
+
+## FIX-MIGRATION-003 — AgentInspector Comprehensive Edit Panel + Auto-Generated Bios (2026-07-20)
+
+**Severity:** medium (UX enhancement)
+**Component:** backend (agents.service.ts, agent-bio-generator.ts), frontend-tenant (AgentInspector.tsx)
+**Status:** resolved
+**Resolver:** Kilo
+
+### Problem
+1. The "Edit Profile" button in the Agent Inspector only allowed editing avatar + designation + bio + color + emoji. Other important fields (name, description, model, department, budget, instructions, system prompt) were not editable.
+2. When new agents were deployed, they had no profile data (designation, bio, color, emoji) — leaving cards looking empty.
+
+### Fix Applied
+
+**1. Comprehensive Edit Panel** (`AgentInspector.tsx`):
+New collapsible sections with all editable fields:
+
+| Section | Fields |
+|---------|--------|
+| Identity | Name, Description |
+| Profile | Designation, Bio, Color (9 options), Emoji, Avatar upload |
+| Configuration | AI Model (8 options), Department (from API), Daily Budget |
+| Instructions | Additional instructions textarea |
+| Advanced (collapsible) | System Prompt (monospace) |
+
+Read-only details shown: Type, Status, Tasks count, Budget %, Total Spend, Template, Email Provider, Active flag, Created/Updated dates
+
+**2. Available AI Models** (in model dropdown):
+- `gpt-4o`
+- `gpt-4o-mini`
+- `gpt-4-turbo`
+- `claude-3-5-sonnet-20241022`
+- `claude-3-haiku-20240307`
+- `deepseek-chat`
+- `deepseek-reasoner`
+- `MiniMax-M2.7-highspeed`
+
+**3. Auto-Generated Bios on Agent Creation** (`backend/src/modules/agents/utils/agent-bio-generator.ts`):
+When agents are created via API, the backend now automatically generates contextually appropriate:
+- **designation** — e.g., "Senior Specialist, Chief Financial Officer"
+- **bio** — professional bio based on agent category (Finance, Accounting, HR, etc.)
+- **color** — randomly selected from 9-color palette
+- **emoji** — category-appropriate (💼 for executives, ⚡ for functional, 💰 for finance, etc.)
+
+Generation is based on agent name + type inference. Category detection: Finance (budget/treasury), Accounting (account/payroll/tax/audit), HR (human/people/recruit), Sales (account/client), Marketing (market/brand/campaign), Engineering (engineer/devops/architect), Operations (operat/supply/logistic), Risk (risk/compliance/govern), Legal (legal/counsel/contract), IT (it/tech/infrastructure), Data (data/analyst/science), Customer Success (customer/success/support).
+
+**4. Backend Integration** (`agents.service.ts` create method):
+```typescript
+const metadata = input.metadata ?? {};
+if (!metadata.profile) {
+  const generated = generateAgentProfile(input.name, input.type);
+  metadata.profile = generated;
+}
+```
+
+### Files Changed
+- `backend/src/modules/agents/utils/agent-bio-generator.ts` — **NEW**
+- `backend/src/modules/agents/services/agents.service.ts` — auto-generate profile on create
+- `frontend-tenant/src/components/inspector/AgentInspector.tsx` — comprehensive edit panel
+
+### Agent Fields (API Response)
+| Field | Type | Notes |
+|--------|------|-------|
+| `id` | string | e.g., `agent-cfo-mali` |
+| `name` | string | Agent display name |
+| `description` | string | Role description |
+| `type` | string | EXECUTIVE/FUNCTIONAL/CORE/META |
+| `status` | string | IDLE/ACTIVE/RUNNING/PAUSED/ERROR |
+| `model` | string | AI model identifier |
+| `departmentId` | string | Department ID |
+| `tenantId` | string | Tenant ID |
+| `templateId` | string | Template used |
+| `budgetPerDay` | number \| null | Daily budget limit |
+| `totalSpend` | string | Accumulated spend |
+| `systemPrompt` | string \| null | Custom system prompt |
+| `instructions` | string \| null | Additional instructions |
+| `permissions` | string[] | Permission list |
+| `metadata.profile` | object | {designation, bio, color, emoji, avatarUrl} |
+| `isActive` | boolean | Active flag |
+| `isSelected` | boolean | Selected flag |
+| `createdAt` | ISO date | Creation timestamp |
+| `updatedAt` | ISO date | Last update |
+| `_count.tasks` | number | Task count |
 

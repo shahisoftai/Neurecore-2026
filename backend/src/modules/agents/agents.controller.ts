@@ -7,12 +7,12 @@ import {
   Body,
   Param,
   Query,
-  ParseUUIDPipe,
   HttpCode,
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
 import { AgentsService } from './services/agents.service';
+import { FlexibleIdPipe } from '../../common/pipes/flexible-id.pipe';
 import { AgentExecutorService } from './services/agent-executor.service';
 import { CreateAgentDto } from './dto/create-agent.dto';
 import { UpdateAgentDto } from './dto/update-agent.dto';
@@ -98,7 +98,7 @@ export class AgentsController {
 
   @Get(':id')
   async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
@@ -112,7 +112,7 @@ export class AgentsController {
 
   @Get(':id/status')
   getStatus(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
@@ -139,7 +139,7 @@ export class AgentsController {
     UserRole.ADMIN,
   )
   async update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @Body() dto: UpdateAgentDto & { tenantId?: string },
     @CurrentUser() user: JwtPayload,
   ) {
@@ -162,7 +162,7 @@ export class AgentsController {
     UserRole.ADMIN,
   )
   updatePermissions(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @Body() dto: UpdatePermissionsDto,
     @CurrentUser() user: JwtPayload,
   ) {
@@ -180,7 +180,7 @@ export class AgentsController {
   @Patch(':id/integration-config')
   @HttpCode(HttpStatus.OK)
   updateIntegrationConfig(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @Body()
     dto: {
       emailAlias?: string;
@@ -208,7 +208,7 @@ export class AgentsController {
   @Post(':id/pause')
   @HttpCode(HttpStatus.OK)
   async pause(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<ActionResult<AgentResponseDto>> {
     if (!user.tenantId) throw new Error('Tenant ID required');
@@ -227,7 +227,7 @@ export class AgentsController {
   @Post(':id/resume')
   @HttpCode(HttpStatus.OK)
   async resume(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<ActionResult<AgentResponseDto>> {
     if (!user.tenantId) throw new Error('Tenant ID required');
@@ -252,7 +252,7 @@ export class AgentsController {
   )
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
@@ -262,7 +262,7 @@ export class AgentsController {
   @Patch(':id/archive')
   @Roles(UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN)
   archive(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
@@ -272,7 +272,7 @@ export class AgentsController {
   @Patch(':id/deprecate')
   @Roles(UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN)
   deprecate(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
@@ -282,7 +282,7 @@ export class AgentsController {
   @Patch(':id/restore')
   @Roles(UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN)
   restore(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', FlexibleIdPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ) {
     if (!user.tenantId) throw new Error('Tenant ID required');
@@ -292,7 +292,7 @@ export class AgentsController {
   @Post(':id/dispatch')
   @HttpCode(HttpStatus.ACCEPTED)
   async dispatch(
-    @Param('id', ParseUUIDPipe) agentId: string,
+    @Param('id', FlexibleIdPipe) agentId: string,
     @Body() dto: DispatchTaskDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<ActionResult<{ taskId: string; agentId: string }>> {
@@ -308,7 +308,7 @@ export class AgentsController {
   @Post(':id/task')
   @HttpCode(HttpStatus.ACCEPTED)
   async dispatchTask(
-    @Param('id', ParseUUIDPipe) agentId: string,
+    @Param('id', FlexibleIdPipe) agentId: string,
     @Body() dto: DispatchTaskDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<ActionResult<{ taskId: string; agentId: string }>> {
@@ -324,7 +324,7 @@ export class AgentsController {
   @Post(':id/cancel/:taskId')
   @HttpCode(HttpStatus.OK)
   async cancel(
-    @Param('taskId', ParseUUIDPipe) taskId: string,
+    @Param('taskId', FlexibleIdPipe) taskId: string,
   ): Promise<ActionResult<null>> {
     await this.executorService.cancelTask(taskId);
     return { success: true, message: 'Task cancelled' };

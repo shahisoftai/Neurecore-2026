@@ -22,8 +22,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Extract token from cookie
-  const token = request.cookies.get('auth-token')?.value;
+  // Extract token from cookie (uses __Host- prefix for security)
+  const token = request.cookies.get('__Host-nc_at')?.value;
 
   if (!token) {
     // No token — redirect to login
