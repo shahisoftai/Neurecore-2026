@@ -281,15 +281,16 @@ Errors (via `GlobalExceptionFilter`):
 
 | Item | Value |
 |---|---|
-| Provider | Neon PostgreSQL (serverless) |
-| Pooled URL | `ep-summer-pond-adpkqy1m-pooler.c-2.us-east-1.aws.neon.tech:5432` |
-| Unpooled URL | `DATABASE_URL_UNPOOLED` (for migrations) |
-| Database | `neondb`, schema `public` |
-| Migrations applied | **19** — 18 previous + Simulation-5 migration `20260717_simulation_5_honest_forward.sql` (5 new tables, 7 enums, 17 nullable columns, 14 indexes, 2 triggers, 10 DB safeguards) |
-| Pool size | `DATABASE_POOL_SIZE` env (default 10) |
-| Statement timeout | `DATABASE_STATEMENT_TIMEOUT` env (default 30s) |
-| Connection timeout | `DATABASE_CONNECTION_TIMEOUT` env (default 10s) |
+| Provider | Contabo Local PostgreSQL 16 (VM-hosted) |
+| Host | `127.0.0.1` |
+| Port | `5433` |
+| Database | `neurecore`, schema `public` |
+| User | `neurecore_app` (password: `NeureCoreDB123`) |
+| SSL | Disabled (local connection) |
+| Extensions | `plpgsql`, `vector` (pgvector) |
+| Schema sync | `prisma db push --accept-data-loss` (2026-07-20) |
 | Migrations location | `/opt/neurecore/backend/backend/prisma/migrations/` |
+| **Migration note** | Migration files have ordering bugs (duplicate CREATE TABLE). Use `prisma db push` instead of `prisma migrate deploy` for schema sync. |
 
 **~80 Prisma models** (groups):
 - Identity: `User`, `Session`, `RefreshToken`, `OAuthToken`, `ApiKey`, `AuditLog`

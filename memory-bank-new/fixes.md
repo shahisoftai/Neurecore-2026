@@ -3334,8 +3334,69 @@ Commit `a1bcfd8`. Docs `f33dd91`.
 
 ### Prevention
  Honest audits of future phases should:
-1. Verify every registered event is actually emitted somewhere in the code
-2. Check every public service method has a corresponding test or integration verification
-3. Confirm compound-where-clause guards exist for all cross-tenant operations
-4. Run full test suite before declaring a phase complete
+ 1. Verify every registered event is actually emitted somewhere in the code
+ 2. Check every public service method has a corresponding test or integration verification
+ 3. Confirm compound-where-clause guards exist for all cross-tenant operations
+ 4. Run full test suite before declaring a phase complete
+
+---
+
+## FIX-MIGRATION-001 — Neon → Contabo PostgreSQL Migration (2026-07-20)
+
+**Severity:** critical (infrastructure)
+**Component:** database, backend, contabo
+**Status:** complete
+**Resolver:** Kilo
+
+### Problem
+Neon PostgreSQL compute quota exhausted on 2026-07-19. All production data (users, tenants, projects, Hermes data) on Neon became inaccessible. No dump possible without compute.
+
+### Decision
+Since all production data was experimental (no real customers), migrate fully to Contabo local PostgreSQL:
+- Contabo local PostgreSQL 16 on port 5433 (already running, idle)
+- Pool data (706 agents, 57 departments, 83 packages, etc.) is real and must be preserved
+- User/tenant/project data was experimental and acceptable to lose
+
+### Actions Taken
+1. Created `neurecore` database and `neurecore_app` user on Contabo PG
+2. Installed `pgvector` extension
+3. Pushed schema via `prisma db push --force-reset --accept-data-loss` (migration files had ordering bugs)
+4. Patched `seed-accounting-packages.cjs`: replaced `"Accountant"` → `"Cost Accountant"` and `"Account Executive"` → `"Strategic Account Manager"`
+5. Seeded all pool data successfully
+6. Updated `.env` and `.env.production` to use Contabo PG
+7. Restarted backend, all PM2 services healthy
+
+### Data Lost
+- All user accounts (no real users)
+- All tenant organizations (experimental)
+- All projects/goals/deliverables (experimental)
+- All chat history (new, not critical)
+
+### Data Preserved
+- 706 agent templates
+- 57 department templates
+- 24 industries
+- 19 features
+- 4 tier templates
+- 83 packages (including 15 accounting packages)
+- 150 project types
+- 20 question packs
+
+### Production Status After Migration
+- Backend: `https://brain.neurecore.com/api/v1/health` → 200 healthy
+- Tenant frontend: `https://hq.neurecore.com` → 200
+- Admin frontend: `https://cc.neurecore.com` → 200
+- DB queries working correctly
+
+### Warnings (Non-Critical)
+- `PresenceService sweepStale failed: TypeError: fetch failed` — Upstash Redis unavailable; presence features degraded
+- Backend 217 restarts — from migration restarts, now stable
+
+### Docs Updated
+- `system-state.md` — DB section updated to Contabo PG
+- `contabo-ops.md` — DB section updated
+- `backend.md` — DB configuration updated
+- `.env.production` — Neon refs removed
+- `plans/neon-to-contabo-migration-plan.md` — full plan and status
+- `fixes.md` — this entry
 

@@ -264,7 +264,18 @@ The database lives on Neon's managed PostgreSQL — we don't host it. Recovery o
    '
    ```
 
-**There is currently no automated DB snapshot policy.** Neon retains 7 days of history on the free tier; paid tiers retain 30 days. If you need longer retention, schedule periodic `pg_dump` to `/opt/neurecore/_archives/db-*.sql`.
+**There is currently no automated DB snapshot policy.** Contabo local PostgreSQL — schedule periodic `pg_dump` to `/opt/neurecore/_archives/db-*.dump`.
+
+**New backup procedure for Contabo PG:**
+```bash
+ssh contabo '
+  SNAP=/opt/neurecore/_archives/$(date +%Y%m%d-%H%M%S)
+  mkdir -p "$SNAP"
+  PGPASSWORD=NeureCoreDB123 pg_dump -h 127.0.0.1 -p 5433 -U neurecore_app -d neurecore -Fc -b -f "$SNAP/neurecore_db.dump"
+  # Also export SQL for readability
+  PGPASSWORD=NeureCoreDB123 pg_dump -h 127.0.0.1 -p 5433 -U neurecore_app -d neurecore -Fc -b > "$SNAP/neurecore_db.sql"
+'
+```
 
 ---
 

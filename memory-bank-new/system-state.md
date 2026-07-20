@@ -1,6 +1,13 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-17 — All 14 enterprise integration phases COMPLETE. Simulation-5 AEIC score: 83/100 (B+, Production Ready). Phase 14 honest audit remediation complete (event emissions added to PlatformEvolution). All phases deployed (Phase 14 source complete, pending Contabo pnpm stabilization). See [backend.md §18](backend.md#18-enterprise-integration-phases-714).
+**Last verified:** 2026-07-20 PKT — Neon → Contabo migration COMPLETE. All 14 enterprise integration phases deployed. Production running on Contabo local PostgreSQL (no Neon). See [plans/neon-to-contabo-migration-plan.md](plans/neon-to-contabo-migration-plan.md) for full details.
+
+**Migration Status (2026-07-20):**
+- ✅ Migrated from Neon PostgreSQL to Contabo local PostgreSQL 16
+- ✅ Pool data seeded: 706 agents, 57 departments, 24 industries, 83 packages, 150 project types, 20 question packs
+- ⚠️ No user/tenant/project data (experimental data on Neon was not recoverable due to quota exhaustion)
+- ⚠️ PresenceService shows warnings (Upstash Redis unavailable — non-critical)
+- ⚠️ Backend has 217 restarts (from migration restarts; running stable since)
 
 ---
 
@@ -429,10 +436,10 @@ Other non-neurecore PM2 apps on the box (out of scope but share resources): `app
 | Controllers | **40+** (projects, customers, project-types, deliverables, project-decisions, project-memory, project-stages, project-members, project-health, execution-log, portal controllers added) |
 | Services | **90+** (all new domain services added) |
 | Prisma models | **70+** (Projects + EIE models added) |
-| Prisma migrations applied | **37** total (all Projects + EIE migrations applied on Neon prod) |
+| Prisma migrations applied | Schema pushed via `prisma db push` (migrations bypassed due to ordering issues; schema is in sync with `schema.prisma`) |
 | `.env` keys | 112+ |
 | Env file location | `/opt/neurecore/backend/backend/.env` — **NEVER sync from local, NEVER commit** |
-| DB | Neon PostgreSQL pooled: `ep-summer-pond-adpkqy1m-pooler.c-2.us-east-1.aws.neon.tech:5432`, db `neondb`, schema `public` |
+| DB | Contabo Local PostgreSQL 16: `127.0.0.1:5433`, db `neurecore`, user `neurecore_app` (sslmode=disable). **Migrated from Neon 2026-07-20.**
 | Cache | Redis: host-installed `redis-server` on `127.0.0.1:6379` + Upstash at `lasting-gobbler-72608.upstash.io` (ENOTFOUND — non-fatal) |
 
 **NestJS modules** (`src/modules/`) — Projects + EIE additions:
@@ -513,15 +520,20 @@ goals (extended with projectId FK)
 | Purpose | Dev-mode browser requests where CORS preflight hits CORS proxy on 3004 → forwarded to backend 3003 with regenerated CORS headers. |
 | Backup | `/opt/neurecore/_archives/cors-proxy.js.bak.20260704-083542` |
 
-### 2.7 Database (external)
+### 2.7 Database (Contabo Local PostgreSQL)
 
 | Item | Value |
 |---|---|
-| Provider | Neon PostgreSQL (serverless pooler) |
-| Pooled URL | `ep-summer-pond-adpkqy1m-pooler.c-2.us-east-1.aws.neon.tech:5432` |
-| Database | `neondb`, schema `public` |
-| Migrations | 14 applied (`prisma migrate status` reports up-to-date) |
-| Local on Contabo | None. Pure cloud-managed. |
+| Provider | Contabo Local PostgreSQL 16 (VM-hosted) |
+| Host | `127.0.0.1` (local) |
+| Port | `5433` |
+| Database | `neurecore`, schema `public` |
+| User | `neurecore_app` (password: `NeureCoreDB123`) |
+| SSL | Disabled (local connection) |
+| Extensions | `plpgsql`, `vector` (pgvector) |
+| Schema sync | `prisma db push --accept-data-loss` (2026-07-20) |
+| Pool data seeded | 706 agents, 57 departments, 24 industries, 19 features, 4 tier templates, 68 packages, 150 project types, 20 question packs |
+| **NEON NOTE** | Neon is decommissioned. `neondb` on `ep-summer-pond-adpkqy1m` is no longer used. |
 
 ### 2.8 TLS certificates
 

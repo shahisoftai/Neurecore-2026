@@ -31,7 +31,7 @@
 
 **Other tenants** on the box (NOT neurecore): `app-frontend` (GUV, port 3001/3100), `gfcportal`, `shahisoft-nextjs`, `lifeosa-backend`, `ecoearthshop-backend` (cluster), `cookie-refresher`, `gfcportal`. Don't break these.
 
-**Database:** Neon PostgreSQL (managed cloud, `ep-summer-pond-adpkqy1m-pooler.c-2.us-east-1.aws.neon.tech`).
+**Database:** Contabo Local PostgreSQL 16 (`127.0.0.1:5433`, db `neurecore`, user `neurecore_app`). **Migrated from Neon on 2026-07-20.**
 **Cache:** Redis on `127.0.0.1:6379` (host-installed). **Note:** Upstash (`lasting-gobbler-72608.upstash.io`) returns `ENOTFOUND` — non-fatal, backend still healthy.
 **Observability:** Prometheus `:9090`, Alertmanager `:9093`, Grafana `:3200` (all containers under `/opt/neurecore/observability/`).
 

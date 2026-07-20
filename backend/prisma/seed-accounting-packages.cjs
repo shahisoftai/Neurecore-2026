@@ -58,7 +58,7 @@ const PACKAGES = [
     tierSlug: 'starter',
     description: 'Core back-office management for accounting firms.',
     departments: ['Accounting', 'Administration'],
-    agents: ['Bookkeeper & Controller', 'Finance Tracker', 'Accountant'],
+    agents: ['Bookkeeper & Controller', 'Finance Tracker', 'Cost Accountant'],
     features: ['ms365_integration', 'audit_logs', 'sso'],
   },
   {
@@ -157,7 +157,7 @@ const PACKAGES = [
     description: 'Full-service firm operations across all major service lines.',
     departments: ['Accounting', 'Administration', 'Legal Operations'],
     agents: [
-      'Accountant', 'Finance Administrator & Accounting Coordinator',
+      'Cost Accountant', 'Finance Administrator & Accounting Coordinator',
       'Internal Auditor', 'Audit Coordinator', 'Compliance Officer',
       'Records Management & Compliance Officer',
     ],
@@ -197,7 +197,7 @@ const PACKAGES = [
     description: 'Client experience, satisfaction, and account management.',
     departments: ['Customer Success', 'Sales'],
     agents: [
-      'Customer Success Manager (Mid-Market)', 'Account Executive',
+      'Customer Success Manager (Mid-Market)', 'Strategic Account Manager',
       'Account Strategist', 'Strategic Account Manager',
     ],
     features: ['crm_integration', 'voice_calling', 'custom_reports'],

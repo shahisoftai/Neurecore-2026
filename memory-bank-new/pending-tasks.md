@@ -558,3 +558,33 @@ grep -l "TODO.*OAuth" backend/src/modules/connectors/adapters/*.ts
 
 **Pre-Existing Audit Owner:** Kilo (FIX-025 post-deploy review).
 **Re-audit cadence:** Recommended after each major deploy (D-series items) or monthly, whichever comes first.
+
+---
+
+## 0c. 2026-07-20 — Neon → Contabo Database Migration
+
+> **Session goal:** Migrate from Neon PostgreSQL (quota exhausted) to Contabo local PostgreSQL.
+
+### Status (2026-07-20 PKT — COMPLETE)
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| Create neurecore DB on Contabo PG | ✅ Complete | PostgreSQL 16 on port 5433 |
+| Create neurecore_app user | ✅ Complete | Password: NeureCoreDB123 |
+| Install pgvector extension | ✅ Complete | For vector embeddings |
+| Push schema via prisma db push | ✅ Complete | Migration files had ordering bugs |
+| Seed pool data | ✅ Complete | 706 agents, 57 depts, 83 packages, 150 project types, 20 q-packs, 24 industries, 19 features, 4 tier templates |
+| Update .env to Contabo PG | ✅ Complete | sslmode=disable |
+| Restart backend | ✅ Complete | All PM2 services online |
+| Verify health | ✅ Complete | brain.neurecore.com/api/v1/health → 200 |
+| Verify frontends | ✅ Complete | hq.neurecore.com + cc.neurecore.com → 200 |
+| Update memory-bank docs | ✅ Complete | system-state, backend, contabo-ops, fixes, disaster-recovery |
+
+### Data Impact
+- ⚠️ **Lost:** All user accounts, tenants, projects (experimental data on Neon — quota exhausted, no dump possible)
+- ✅ **Preserved:** All pool data (agents, departments, packages, etc.)
+- ✅ **No customer data lost** (all experimental)
+
+### Non-Critical Warnings
+- PresenceService sweepStale failed — Upstash Redis unavailable
+- Backend has 217 restarts (from migration process, now stable)
