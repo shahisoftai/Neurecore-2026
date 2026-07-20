@@ -111,6 +111,55 @@ Status legend: 🔴 Not started · 🟡 In progress / partial / scaffold only ·
 
 ---
 
+## 0d. 2026-07-20 — Org Chart Overhaul (Kilo)
+
+> **Session goal:** Fix dead code (OrgChartSidebar), persist moveAgent to API, fix Department domain types, replace old TreeView with new hierarchical visualization.
+
+### Status snapshot (2026-07-20 PKT)
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| §0d.1 — Fix `Department` domain type | ✅ | `parentId`, `status`, `headAgentId`, `_count` added |
+| §0d.2 — `moveAgent` to store + repo | ✅ | Optimistic update + rollback; `departmentId` in `UpdateAgentDto` |
+| §0d.3 — Wire `moveAgent` in hook | ✅ | `useOrgChart.ts` calls `agentStore.moveAgent()` |
+| §0d.4 — Remove local shadow interfaces | ✅ | `departments/page.tsx` imports from `domain.types` |
+| §0d.5 — New org chart visualization | ✅ | `OrgChartView` + `DeptCard` + `EmployeeCard` + `dept-colors` |
+| §0d.6 — Refactor OrgTree sidebar | ✅ | Uses repositories instead of raw `api.get()` |
+| §0d.7 — Fix layout (padding + truncation) | 🟡 **IN PROGRESS** | `max-w-[220px]` on `EmployeeCard` truncates long names |
+
+### Files Created (4)
+
+| File | Purpose |
+| --- | --- |
+| `features/org-chart/components/OrgChartView.tsx` | Top-to-bottom tree renderer with CSS connector lines |
+| `features/org-chart/components/DeptCard.tsx` | Per-department card with expand/collapse, agent grid |
+| `features/org-chart/components/EmployeeCard.tsx` | Agent sub-card: name, designation, date joined, workload, success rate |
+| `features/org-chart/utils/dept-colors.ts` | 12-color deterministic palette per department |
+
+### Files Modified (7)
+
+| File | Change |
+| --- | --- |
+| `shared/types/domain.types.ts` | Added `parentId`, `status`, `headAgentId`, `_count` to `Department` |
+| `stores/agentStore.ts` | Added `moveAgent` action with rollback |
+| `core/repositories/AgentRepository.ts` | Added `departmentId` to `UpdateAgentDto` |
+| `features/org-chart/hooks/useOrgChart.ts` | `tenantTree` + `buildHierarchy()` + wired `moveAgent` |
+| `app/departments/page.tsx` | Removed local shadows; uses `OrgChartPanel` |
+| `features/org-chart/components/OrgChartPanel.tsx` | Rewritten to use `OrgChartView` |
+| `components/sidebar/OrgTree.tsx` | Refactored to repository pattern |
+
+### Remaining Work
+
+- **Layout fix:** `EmployeeCard.tsx` `max-w-[220px]` truncates long names/designations; `DeptCard.tsx` `w-64` too narrow; `OrgChartPanel` has excess outer padding
+
+### DR Snapshots
+
+- `20260720-123951-pre-orgchart-deploy`
+- `20260720-125808-pre-orgchart-viz`
+- `20260720-131158-pre-orgchart-colors`
+
+---
+
 ## 0. 2026-07-09 — Projects Phases 1–7 + EIE Phase 2 sub-phases (Kilo)
 
 > **Session goal:** Fix all gaps/errors/missed tasks between IMPLEMENTATION-PLAN.md + project-creation-imp-plan.md and the actual codebase, then deploy to Contabo production and verify all features work in browser.

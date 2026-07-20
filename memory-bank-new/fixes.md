@@ -3544,3 +3544,49 @@ if (!metadata.profile) {
 | `updatedAt` | ISO date | Last update |
 | `_count.tasks` | number | Task count |
 
+---
+
+## FIX-ORGCHART-001 — Org Chart: Dead Code, moveAgent Not Persisted, Missing Types, New Visualization (2026-07-20)
+
+**Severity:** high (broken feature + dead code)
+**Component:** frontend-tenant
+**Status:** partially resolved (core impl complete; layout fix in progress)
+**Resolver:** Kilo
+
+### Problems
+
+1. **`OrgChartSidebar.tsx`** — FULLY implemented but NEVER imported anywhere (100% dead code)
+2. **`moveAgent()` in `useOrgChart.ts`** — only mutated local `overrides` state, never called API to persist
+3. **`Department` domain type** — missing `parentId`, `status`, `headAgentId`, `_count`
+4. **`AgentRepository.UpdateAgentDto`** — missing `departmentId` field
+5. **Inline `Department`/`AgentLite` shadows** in `departments/page.tsx` — shadow the shared domain type
+6. **Old `OrgChartTab` TreeView** — only showed departments, no agents, no drag-drop, no search
+7. **`OrgTree.tsx` sidebar** — direct API calls instead of repository pattern; ignores `parentId` hierarchy
+
+### Fixes Applied
+
+| # | File | Change |
+|---|---|---|
+| 1 | `shared/types/domain.types.ts` | Added `parentId`, `status`, `headAgentId`, `_count` to `Department` |
+| 2 | `stores/agentStore.ts` | Added `moveAgent` with optimistic update + rollback; fixed Zustand v5 `(set, get)` signature |
+| 3 | `core/repositories/AgentRepository.ts` | Added `departmentId?: string \| null` to `UpdateAgentDto` |
+| 4 | `features/org-chart/hooks/useOrgChart.ts` | `moveAgent` now calls `agentStore.moveAgent()` with rollback |
+| 5 | `app/departments/page.tsx` | Removed local shadow interfaces; imports from `domain.types` |
+| 6 | `features/org-chart/components/OrgChartPanel.tsx` | Rewritten to use new `OrgChartView` |
+| 7 | `features/org-chart/components/OrgChartView.tsx` | **NEW** — top-to-bottom tree renderer with CSS connector lines |
+| 8 | `features/org-chart/components/DeptCard.tsx` | **NEW** — per-department card with expand/collapse, agent grid |
+| 9 | `features/org-chart/components/EmployeeCard.tsx` | **NEW** — agent sub-card with name, designation, date joined, workload, success rate |
+| 10 | `features/org-chart/utils/dept-colors.ts` | **NEW** — 12-color deterministic palette per department |
+| 11 | `components/sidebar/OrgTree.tsx` | Refactored to use repositories instead of raw `api.get()` |
+
+### New Data Model
+
+- `useOrgChart.ts` now exposes both `tree: OrgNode[]` (backward compat) and `tenantTree: OrgNode` (single root with phantom tenant node)
+- `buildHierarchy()` uses `parentId` to wire departments into a tree
+- Color assignment is deterministic via `hashString(deptId) % PALETTE.length`
+
+### Remaining Issue (IN PROGRESS)
+
+- **Layout:** excessive empty padding on right/left inside container; employee name/designation getting cut off due to `max-w-[220px]` on `EmployeeCard`
+- Files needing fix: `EmployeeCard.tsx` (widen or remove max-w), `DeptCard.tsx` (w-64 fixed), `OrgChartPanel.tsx` (container padding), `OrgChartView.tsx` (outer wrapper)
+
