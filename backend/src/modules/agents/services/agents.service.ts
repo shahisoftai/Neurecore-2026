@@ -309,6 +309,46 @@ export class AgentsService implements IAgentService {
   }
 
   /**
+   * Archive an agent (sets status=ARCHIVED and isActive=false).
+   * Mirrors the lifecycle in the tool's ArchiveAgentTool.
+   */
+  async archive(id: string, tenantId: string): Promise<unknown> {
+    await this.assertOwnership(id, tenantId);
+    const agent = await this.prisma.agent.update({
+      where: { id },
+      data: { status: 'ARCHIVED', isActive: false },
+    });
+    this.events.emitAgentStatusUpdated(tenantId, id, 'ARCHIVED');
+    this.logger.log(`Agent ${id} (tenant ${tenantId}) archived`);
+    return agent;
+  }
+
+  /**
+   * Bulk create agents. Creates each agent one by one so that the per-agent
+   * Drive provisioning and metadata generation logic stays consistent.
+   */
+  async bulkCreate(
+    inputs: CreateAgentInput[],
+    userId: string,
+    tenantId: string,
+  ): Promise<Array<{ agent?: unknown; error?: string; index: number; name?: string }>> {
+    const results: Array<{ agent?: unknown; error?: string; index: number; name?: string }> = [];
+    for (let i = 0; i < inputs.length; i++) {
+      try {
+        const agent = await this.create(inputs[i], userId, tenantId);
+        results.push({ agent, index: i, name: inputs[i].name });
+      } catch (err) {
+        results.push({
+          index: i,
+          name: inputs[i].name,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    return results;
+  }
+
+  /**
    * Get orchestration data for all agents
    * Aggregates agent status, current tasks, and performance
    * SOLID: SRP - Only orchestration aggregation

@@ -36,7 +36,7 @@ export function PackagePreview({
 
       <div className="grid grid-cols-3 gap-2 text-center">
         <Stat label="Depts" value={totals.departments} />
-        <Stat label="Agents" value={totals.agents} />
+        <Stat label="Employees" value={totals.agents} />
         <Stat label="Features" value={totals.features} />
       </div>
 

@@ -81,7 +81,7 @@ export function StepAgent({ form, patch }: Props) {
 
       {!agents.length && (
         <p className="text-sm text-zinc-500 text-center py-4">
-          No agents in this department yet.
+          No employees in this department yet.
         </p>
       )}
     </div>

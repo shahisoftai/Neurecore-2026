@@ -13,7 +13,7 @@ import type { LanguageCode }       from '@/core/services/voice/interfaces/IVoice
 // ─── Available command actions for mapping ────────────────────────────────────
 const COMMAND_ACTIONS: { value: VoiceCommandAction; label: string }[] = [
   { value: 'navigateToDashboard', label: 'Go to Dashboard' },
-  { value: 'navigateToAgents',    label: 'Go to Agents' },
+  { value: 'navigateToAgents',    label: 'Go to Employees' },
   { value: 'navigateToTasks',     label: 'Go to Tasks' },
   { value: 'navigateToWorkflows', label: 'Go to Workflows' },
   { value: 'navigateToApprovals', label: 'Go to Approvals' },

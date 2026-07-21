@@ -37,9 +37,7 @@ EXCLUDES=(
   --exclude=dist
   --exclude=coverage
   --exclude=test
-  --exclude=.env
   --exclude=.env.local
-  --exclude=.env.production
   --exclude=tsconfig.tsbuildinfo
   --exclude=.git
 )

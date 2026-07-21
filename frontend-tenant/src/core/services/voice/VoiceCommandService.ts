@@ -69,9 +69,9 @@ const BUILT_IN_COMMANDS: VoiceCommand[] = [
     label: 'Go to Dashboard',
   },
   {
-    phrases: ['show me agents', 'go to agents', 'open agents', 'my agents'],
+    phrases: ['show me employees', 'go to employees', 'open employees', 'my employees'],
     action: 'navigateToAgents',
-    label: 'Go to Agents',
+    label: 'Go to Employees',
   },
   {
     phrases: ['show tasks', 'go to tasks', 'open tasks', 'my tasks'],

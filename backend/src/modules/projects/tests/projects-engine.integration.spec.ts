@@ -244,17 +244,12 @@ describe('ProjectsService.create — engine integration', () => {
     return { service, adapter, module };
   }
 
-  it('with no projectTypeId: writes empty EntityCompleteness and skips engine work', async () => {
+  it('with no projectTypeId and no derivedShape: throws BadRequestException', async () => {
     const projectRepo = makeProjectRepo();
     const responseRepo = makeResponseRepo();
     const completenessRepo = makeCompletenessRepo();
 
-    projectRepo.create.mockResolvedValue(makeProject({ projectTypeId: null }));
-    projectRepo.findById.mockResolvedValue(
-      makeProject({ projectTypeId: null }),
-    );
-
-    const { service, adapter } = await buildModule({
+    const { service } = await buildModule({
       projectRepo,
       sourceRepo: makeSourceRepo(),
       responseRepo,
@@ -264,27 +259,10 @@ describe('ProjectsService.create — engine integration', () => {
       projectTypesService: makeProjectTypesServiceStub(null),
     });
 
-    const adapterSpy = jest.spyOn(adapter, 'onProjectCreated');
-
-    await service.create({ name: 'No-type' }, TENANT_ID);
-
-    // eslint-disable-next-line no-console
-    console.log('adapter called:', adapterSpy.mock.calls.length);
-    // eslint-disable-next-line no-console
-    console.log(
-      'upsert calls:',
-      (completenessRepo.upsert as jest.Mock).mock.calls.length,
-    );
-
-    expect(completenessRepo.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        entityType: 'PROJECT',
-        entityId: PROJECT_ID,
-        score: 100,
-        totalRequired: 0,
-      }),
-    );
-    expect(responseRepo.create).not.toHaveBeenCalled();
+    // Phase 0-6: validation now requires either projectTypeId or derivedShape
+    await expect(
+      service.create({ name: 'No-type' }, TENANT_ID),
+    ).rejects.toThrow('Either projectTypeId or derivedShape is required');
   });
 
   it('with projectTypeId + informationRequirements: seeds responses and recomputes', async () => {

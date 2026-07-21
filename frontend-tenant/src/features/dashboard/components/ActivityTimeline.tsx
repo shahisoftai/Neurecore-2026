@@ -135,7 +135,7 @@ export function ActivityTimeline({ events, loading = false, maxItems = 20 }: Act
   if (!visible.length) {
     return (
       <p className="text-sm text-zinc-600 italic text-center py-6">
-        No activity yet — your agents are getting started.
+        No activity yet — your employees are getting started.
       </p>
     );
   }

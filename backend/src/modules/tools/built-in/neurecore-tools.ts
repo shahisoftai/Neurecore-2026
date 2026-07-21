@@ -2850,3 +2850,1280 @@ export class UnarchiveCustomerTool extends BaseStructuredTool {
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 7 EXPANSION — 25 NEW HERMES TOOLS
+// ═══════════════════════════════════════════════════════════════════════════
+// These tools fill gaps where the LLM was hallucinating tool names
+// (e.g. "query") instead of using existing functionality. Each tool
+// follows the same pattern: Zod input schema + service-based execution.
+
+// ─── New enums ───────────────────────────────────────────────────────────
+
+const ProjectStatusAllEnum = z.enum(['LEAD', 'PROPOSAL_SENT', 'WON', 'LOST', 'ACTIVE', 'ON_HOLD', 'REVIEW', 'COMPLETED', 'ARCHIVED']);
+const WorkflowStatusEnum = z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']);
+const GoalStatusEnum = z.enum(['ACTIVE', 'COMPLETED', 'PAUSED', 'ARCHIVED']);
+const StageStatusEnum = z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED']);
+const NotificationTypeEnum = z.enum(['INFO', 'WARNING', 'ERROR', 'SUCCESS', 'TASK', 'APPROVAL', 'BUDGET', 'SYSTEM']);
+const ProjectRoleEnum = z.enum([
+  'PROJECT_DIRECTOR', 'PROJECT_MANAGER', 'RESEARCH_LEAD', 'QUALITY_LEAD',
+  'REVIEWER', 'COMPLIANCE_OFFICER', 'CLIENT_LIAISON', 'DOCUMENTATION_LEAD',
+  'KNOWLEDGE_MANAGER', 'CHIEF_OF_STAFF',
+]);
+const ActorTypeEnum = z.enum(['HUMAN', 'AI', 'SYSTEM']);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROJECTS — Fill the most critical gap (no listProjects!)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ListProjectsInputSchema = z.object({
+  status: ProjectStatusAllEnum.optional(),
+  departmentId: z.string().optional(),
+  customerId: z.string().optional(),
+  search: z.string().optional().describe('Search by project name (case-insensitive substring)'),
+  limit: z.number().int().positive().max(100).default(20).optional(),
+});
+export type ListProjectsInput = z.infer<typeof ListProjectsInputSchema>;
+
+@Injectable()
+export class ListProjectsTool extends BaseStructuredTool {
+  readonly name = 'listProjects';
+  readonly description = 'List projects in the workspace. Use when the user asks about projects, wants to see active work, or needs a project ID.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListProjectsInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListProjectsInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = { tenantId: context.tenantId };
+      if (input.status) where.status = input.status;
+      if (input.departmentId) where.departmentId = input.departmentId;
+      if (input.customerId) where.customerId = input.customerId;
+      if (input.search) where.name = { contains: input.search, mode: 'insensitive' };
+      const projects = await this.prisma.project.findMany({
+        where,
+        take: input.limit ?? 20,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, name: true, status: true, priority: true,
+          budgetType: true, budgetAmount: true, budgetCurrency: true,
+          targetDate: true, createdAt: true, customerId: true, departmentId: true,
+        },
+      });
+      return {
+        success: true,
+        data: {
+          projects: projects.map((p) => ({
+            id: p.id, name: p.name, status: p.status, priority: p.priority,
+            budgetType: p.budgetType, budgetAmount: p.budgetAmount?.toString() ?? null,
+            budgetCurrency: p.budgetCurrency, targetDate: p.targetDate?.toISOString() ?? null,
+            customerId: p.customerId, departmentId: p.departmentId,
+            createdAt: p.createdAt.toISOString(),
+          })),
+          total: projects.length,
+        },
+        metadata: { model: 'neurecore-project-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list projects' };
+    }
+  }
+}
+
+export const SearchProjectsInputSchema = z.object({
+  query: z.string().min(1).describe('Free-text search across project name and description'),
+  limit: z.number().int().positive().max(50).default(10).optional(),
+});
+export type SearchProjectsInput = z.infer<typeof SearchProjectsInputSchema>;
+
+@Injectable()
+export class SearchProjectsTool extends BaseStructuredTool {
+  readonly name = 'searchProjects';
+  readonly description = 'Full-text search across project names and descriptions. Use when the user asks for projects matching a specific topic.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = SearchProjectsInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: SearchProjectsInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const projects = await this.prisma.project.findMany({
+        where: {
+          tenantId: context.tenantId as string,
+          OR: [
+            { name: { contains: input.query, mode: 'insensitive' } },
+            { description: { contains: input.query, mode: 'insensitive' } },
+          ],
+        },
+        take: input.limit ?? 10,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, status: true, description: true, createdAt: true },
+      });
+      return {
+        success: true,
+        data: {
+          projects: projects.map((p) => ({
+            id: p.id, name: p.name, status: p.status,
+            description: p.description?.slice(0, 200) ?? null,
+            createdAt: p.createdAt.toISOString(),
+          })),
+          total: projects.length,
+        },
+        metadata: { model: 'neurecore-project-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to search projects' };
+    }
+  }
+}
+
+export const GetProjectByNameInputSchema = z.object({
+  name: z.string().min(1).describe('Project name to look up (exact or close match)'),
+});
+export type GetProjectByNameInput = z.infer<typeof GetProjectByNameInputSchema>;
+
+@Injectable()
+export class GetProjectByNameTool extends BaseStructuredTool {
+  readonly name = 'getProjectByName';
+  readonly description = 'Find a project by its name (case-insensitive substring match). Returns the best match plus any close alternatives.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = GetProjectByNameInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: GetProjectByNameInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const matches = await this.prisma.project.findMany({
+        where: {
+          tenantId: context.tenantId as string,
+          name: { contains: input.name, mode: 'insensitive' },
+        },
+        take: 5,
+        select: { id: true, name: true, status: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (matches.length === 0) {
+        return { success: false, error: `No project found matching "${input.name}"` };
+      }
+      return {
+        success: true,
+        data: {
+          project: matches[0],
+          alternatives: matches.slice(1),
+          total: matches.length,
+        },
+        metadata: { model: 'neurecore-project-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to find project' };
+    }
+  }
+}
+
+export const UpdateProjectStatusInputSchema = z.object({
+  projectId: z.string().describe('Project ID'),
+  status: ProjectStatusAllEnum,
+  lostReason: z.string().optional().describe('Required when status is LOST or CANCELLED'),
+});
+export type UpdateProjectStatusInput = z.infer<typeof UpdateProjectStatusInputSchema>;
+
+@Injectable()
+export class UpdateProjectStatusTool extends BaseStructuredTool {
+  readonly name = 'updateProjectStatus';
+  readonly description = 'Change a project status (LEAD → ACTIVE → COMPLETED, etc). Returns the updated project.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = UpdateProjectStatusInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: UpdateProjectStatusInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const existing = await this.prisma.project.findFirst({
+        where: { id: input.projectId, tenantId: context.tenantId as string },
+        select: { id: true, status: true },
+      });
+      if (!existing) return { success: false, error: 'Project not found' };
+
+      if (input.status === 'LOST' && !input.lostReason) {
+        return { success: false, error: `lostReason is required when setting status to ${input.status}` };
+      }
+
+      const project = await this.prisma.project.update({
+        where: { id: input.projectId },
+        data: {
+          status: input.status as 'LEAD' | 'PROPOSAL_SENT' | 'WON' | 'LOST' | 'ACTIVE' | 'ON_HOLD' | 'REVIEW' | 'COMPLETED' | 'ARCHIVED',
+          ...(input.status === 'COMPLETED' ? { completedAt: new Date() } : {}),
+          ...(input.lostReason ? { lostReason: input.lostReason } : {}),
+        },
+        select: { id: true, name: true, status: true, completedAt: true, updatedAt: true },
+      });
+      return {
+        success: true,
+        data: { previousStatus: existing.status, project },
+        metadata: { model: 'neurecore-project-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to update project status' };
+    }
+  }
+}
+
+export const AddProjectMemberInputSchema = z.object({
+  projectId: z.string(),
+  actorId: z.string().describe('Agent or user ID to add as a member'),
+  actorType: ActorTypeEnum.default('HUMAN'),
+  role: ProjectRoleEnum.default('PROJECT_MANAGER'),
+});
+export type AddProjectMemberInput = z.infer<typeof AddProjectMemberInputSchema>;
+
+@Injectable()
+export class AddProjectMemberTool extends BaseStructuredTool {
+  readonly name = 'addProjectMember';
+  readonly description = 'Add an agent or user to a project as a member with a specific role.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = AddProjectMemberInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: AddProjectMemberInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const project = await this.prisma.project.findFirst({
+        where: { id: input.projectId, tenantId: context.tenantId as string },
+        select: { id: true },
+      });
+      if (!project) return { success: false, error: 'Project not found' };
+
+      const member = await this.prisma.projectMember.upsert({
+        where: {
+          projectId_actorId_role: {
+            projectId: input.projectId,
+            actorId: input.actorId,
+            role: input.role as 'PROJECT_DIRECTOR' | 'PROJECT_MANAGER' | 'RESEARCH_LEAD' | 'QUALITY_LEAD' | 'REVIEWER' | 'COMPLIANCE_OFFICER' | 'CLIENT_LIAISON' | 'DOCUMENTATION_LEAD' | 'KNOWLEDGE_MANAGER' | 'CHIEF_OF_STAFF',
+          },
+        },
+        update: {},
+        create: {
+          projectId: input.projectId,
+          actorId: input.actorId,
+          actorType: input.actorType as 'HUMAN' | 'AI' | 'SYSTEM',
+          role: input.role as 'PROJECT_DIRECTOR' | 'PROJECT_MANAGER' | 'RESEARCH_LEAD' | 'QUALITY_LEAD' | 'REVIEWER' | 'COMPLIANCE_OFFICER' | 'CLIENT_LIAISON' | 'DOCUMENTATION_LEAD' | 'KNOWLEDGE_MANAGER' | 'CHIEF_OF_STAFF',
+        },
+      });
+      return {
+        success: true,
+        data: { memberId: member.id, projectId: member.projectId, actorId: member.actorId, role: member.role, assignedAt: member.assignedAt.toISOString() },
+        metadata: { model: 'neurecore-project-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to add project member' };
+    }
+  }
+}
+
+export const RemoveProjectMemberInputSchema = z.object({
+  projectId: z.string(),
+  memberId: z.string().describe('ProjectMember ID (not the actor ID)'),
+});
+export type RemoveProjectMemberInput = z.infer<typeof RemoveProjectMemberInputSchema>;
+
+@Injectable()
+export class RemoveProjectMemberTool extends BaseStructuredTool {
+  readonly name = 'removeProjectMember';
+  readonly description = 'Remove a member from a project by their ProjectMember ID.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = RemoveProjectMemberInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: RemoveProjectMemberInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const member = await this.prisma.projectMember.findFirst({
+        where: { id: input.memberId, projectId: input.projectId },
+        select: { id: true },
+      });
+      if (!member) return { success: false, error: 'Member not found on this project' };
+      await this.prisma.projectMember.delete({ where: { id: input.memberId } });
+      return { success: true, data: { memberId: input.memberId, removed: true }, metadata: { model: 'neurecore-project-v1' } };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to remove project member' };
+    }
+  }
+}
+
+export const ListProjectMembersInputSchema = z.object({
+  projectId: z.string(),
+});
+export type ListProjectMembersInput = z.infer<typeof ListProjectMembersInputSchema>;
+
+@Injectable()
+export class ListProjectMembersTool extends BaseStructuredTool {
+  readonly name = 'listProjectMembers';
+  readonly description = 'List all members (agents and humans) on a project with their roles.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListProjectMembersInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListProjectMembersInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const project = await this.prisma.project.findFirst({
+        where: { id: input.projectId, tenantId: context.tenantId as string },
+        select: { id: true, name: true },
+      });
+      if (!project) return { success: false, error: 'Project not found' };
+
+      const members = await this.prisma.projectMember.findMany({
+        where: { projectId: input.projectId },
+        orderBy: { assignedAt: 'asc' },
+      });
+      const agentIds = members.filter((m) => m.actorType === 'AI').map((m) => m.actorId);
+      const agents = agentIds.length > 0
+        ? await this.prisma.agent.findMany({
+            where: { id: { in: agentIds } },
+            select: { id: true, name: true, status: true },
+          })
+        : [];
+      const agentMap = new Map(agents.map((a) => [a.id, a]));
+
+      return {
+        success: true,
+        data: {
+          projectId: project.id,
+          projectName: project.name,
+          members: members.map((m) => ({
+            id: m.id,
+            actorId: m.actorId,
+            actorType: m.actorType,
+            role: m.role,
+            assignedAt: m.assignedAt.toISOString(),
+            actorName: agentMap.get(m.actorId)?.name ?? m.actorId,
+            actorStatus: agentMap.get(m.actorId)?.status ?? null,
+          })),
+          total: members.length,
+        },
+        metadata: { model: 'neurecore-project-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list project members' };
+    }
+  }
+}
+
+export const ListProjectStagesInputSchema = z.object({
+  projectId: z.string(),
+});
+export type ListProjectStagesInput = z.infer<typeof ListProjectStagesInputSchema>;
+
+@Injectable()
+export class ListProjectStagesTool extends BaseStructuredTool {
+  readonly name = 'listProjectStages';
+  readonly description = 'List the stages (milestones) of a project in order with their statuses.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListProjectStagesInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListProjectStagesInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const stages = await this.prisma.projectStage.findMany({
+        where: { projectId: input.projectId },
+        orderBy: { order: 'asc' },
+        select: { id: true, name: true, description: true, order: true, status: true, startDate: true, endDate: true },
+      });
+      return {
+        success: true,
+        data: {
+          projectId: input.projectId,
+          stages: stages.map((s) => ({
+            ...s,
+            startDate: s.startDate?.toISOString() ?? null,
+            endDate: s.endDate?.toISOString() ?? null,
+          })),
+          total: stages.length,
+        },
+        metadata: { model: 'neurecore-project-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list project stages' };
+    }
+  }
+}
+
+export const UpdateProjectStageInputSchema = z.object({
+  stageId: z.string(),
+  status: StageStatusEnum.optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+});
+export type UpdateProjectStageInput = z.infer<typeof UpdateProjectStageInputSchema>;
+
+@Injectable()
+export class UpdateProjectStageTool extends BaseStructuredTool {
+  readonly name = 'updateProjectStage';
+  readonly description = 'Update a project stage (rename, change description, or mark status).';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = UpdateProjectStageInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: UpdateProjectStageInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const data: Record<string, unknown> = {};
+      if (input.status) data.status = input.status;
+      if (input.name) data.name = input.name;
+      if (input.description !== undefined) data.description = input.description;
+      if (Object.keys(data).length === 0) {
+        return { success: false, error: 'No fields to update' };
+      }
+      const stage = await this.prisma.projectStage.update({
+        where: { id: input.stageId },
+        data,
+        select: { id: true, name: true, status: true, order: true, updatedAt: true },
+      });
+      return { success: true, data: { stage }, metadata: { model: 'neurecore-project-v1' } };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to update project stage' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WORKFLOWS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ListWorkflowsInputSchema = z.object({
+  status: WorkflowStatusEnum.optional(),
+  isActive: z.boolean().optional(),
+  limit: z.coerce.number().int().positive().max(100).default(20).optional(),
+});
+export type ListWorkflowsInput = z.infer<typeof ListWorkflowsInputSchema>;
+
+@Injectable()
+export class ListWorkflowsTool extends BaseStructuredTool {
+  readonly name = 'listWorkflows';
+  readonly description = 'List workflows in the workspace. Use when user asks about automations, DAGs, or repeatable task sequences.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListWorkflowsInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListWorkflowsInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = { tenantId: context.tenantId };
+      if (input.status) where.status = input.status;
+      if (input.isActive !== undefined) where.isActive = input.isActive;
+      const workflows = await this.prisma.workflow.findMany({
+        where,
+        take: input.limit ?? 20,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, name: true, description: true, status: true, isActive: true,
+          executionCount: true, successRate: true, lastExecutedAt: true, createdAt: true,
+        },
+      });
+      return {
+        success: true,
+        data: {
+          workflows: workflows.map((w) => ({
+            ...w,
+            lastExecutedAt: w.lastExecutedAt?.toISOString() ?? null,
+            createdAt: w.createdAt.toISOString(),
+          })),
+          total: workflows.length,
+        },
+        metadata: { model: 'neurecore-workflow-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list workflows' };
+    }
+  }
+}
+
+export const GetWorkflowInputSchema = z.object({
+  workflowId: z.string(),
+});
+export type GetWorkflowInput = z.infer<typeof GetWorkflowInputSchema>;
+
+@Injectable()
+export class GetWorkflowTool extends BaseStructuredTool {
+  readonly name = 'getWorkflow';
+  readonly description = 'Get a single workflow by ID including its DAG definition and execution history.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = GetWorkflowInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: GetWorkflowInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const workflow = await this.prisma.workflow.findFirst({
+        where: { id: input.workflowId, tenantId: context.tenantId as string },
+        select: {
+          id: true, name: true, description: true, status: true, isActive: true,
+          executionCount: true, successRate: true,
+          lastExecutedAt: true, createdAt: true, updatedAt: true,
+        },
+      });
+      if (!workflow) return { success: false, error: 'Workflow not found' };
+      const recentExecutions = await this.prisma.workflowExecution.findMany({
+        where: { workflowId: input.workflowId },
+        take: 5,
+        orderBy: { startedAt: 'desc' },
+        select: { id: true, status: true, startedAt: true, completedAt: true },
+      });
+      return {
+        success: true,
+        data: {
+          workflow: {
+            ...workflow,
+            lastExecutedAt: workflow.lastExecutedAt?.toISOString() ?? null,
+            createdAt: workflow.createdAt.toISOString(),
+            updatedAt: workflow.updatedAt.toISOString(),
+          },
+          recentExecutions: recentExecutions.map((r) => ({
+            ...r,
+            startedAt: r.startedAt.toISOString(),
+            completedAt: r.completedAt?.toISOString() ?? null,
+          })),
+        },
+        metadata: { model: 'neurecore-workflow-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to get workflow' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GOALS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ListGoalsInputSchema = z.object({
+  status: GoalStatusEnum.optional(),
+  parentId: z.string().optional(),
+  limit: z.coerce.number().int().positive().max(100).default(20).optional(),
+});
+export type ListGoalsInput = z.infer<typeof ListGoalsInputSchema>;
+
+@Injectable()
+export class ListGoalsTool extends BaseStructuredTool {
+  readonly name = 'listGoals';
+  readonly description = 'List goals in the workspace. Use when user asks about objectives, OKRs, or progress.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListGoalsInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListGoalsInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = { tenantId: context.tenantId };
+      if (input.status) where.status = input.status;
+      if (input.parentId) where.parentId = input.parentId;
+      const goals = await this.prisma.goal.findMany({
+        where,
+        take: input.limit ?? 20,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, title: true, description: true, status: true, progress: true, level: true, parentId: true, createdAt: true },
+      });
+      return {
+        success: true,
+        data: {
+          goals: goals.map((g) => ({ ...g, createdAt: g.createdAt.toISOString() })),
+          total: goals.length,
+        },
+        metadata: { model: 'neurecore-goal-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list goals' };
+    }
+  }
+}
+
+export const UpdateGoalProgressInputSchema = z.object({
+  goalId: z.string(),
+  progress: z.number().int().min(0).max(100).describe('Progress percentage 0-100'),
+  status: GoalStatusEnum.optional(),
+});
+export type UpdateGoalProgressInput = z.infer<typeof UpdateGoalProgressInputSchema>;
+
+@Injectable()
+export class UpdateGoalProgressTool extends BaseStructuredTool {
+  readonly name = 'updateGoalProgress';
+  readonly description = "Update a goal's progress percentage (0-100) and optionally its status.";
+  readonly category = ToolCategory.API;
+  readonly inputSchema = UpdateGoalProgressInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: UpdateGoalProgressInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const goal = await this.prisma.goal.update({
+        where: { id: input.goalId },
+        data: {
+          progress: input.progress,
+          ...(input.progress >= 100
+            ? { status: 'COMPLETED' as const }
+            : input.status
+              ? { status: input.status as 'ACTIVE' | 'COMPLETED' | 'PAUSED' | 'ARCHIVED' }
+              : {}),
+        },
+        select: { id: true, title: true, progress: true, status: true, updatedAt: true },
+      });
+      return { success: true, data: { goal }, metadata: { model: 'neurecore-goal-v1' } };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to update goal progress' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUDGET POLICIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ListBudgetPoliciesInputSchema = z.object({
+  scope: z.enum(['TENANT', 'DEPARTMENT', 'AGENT', 'PROJECT']).optional(),
+  limit: z.coerce.number().int().positive().max(100).default(20).optional(),
+});
+export type ListBudgetPoliciesInput = z.infer<typeof ListBudgetPoliciesInputSchema>;
+
+@Injectable()
+export class ListBudgetPoliciesTool extends BaseStructuredTool {
+  readonly name = 'listBudgetPolicies';
+  readonly description = 'List budget policies (spending caps) at tenant, department, agent, or project scope.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListBudgetPoliciesInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListBudgetPoliciesInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = { tenantId: context.tenantId };
+      if (input.scope) where.scope = input.scope;
+      const policies = await this.prisma.budgetPolicy.findMany({
+        where,
+        take: input.limit ?? 20,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, limitCents: true, period: true, scope: true, currentSpendCents: true, createdAt: true },
+      });
+      return {
+        success: true,
+        data: {
+          policies: policies.map((p) => ({
+            ...p,
+            limitCents: p.limitCents?.toString() ?? null,
+            currentSpendCents: p.currentSpendCents?.toString() ?? null,
+            createdAt: p.createdAt.toISOString(),
+          })),
+          total: policies.length,
+        },
+        metadata: { model: 'neurecore-budget-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list budget policies' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEPARTMENTS — Additional read tools
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const GetDepartmentInputSchema = z.object({
+  departmentId: z.string().optional(),
+  name: z.string().optional().describe('Look up department by name (exact match preferred)'),
+});
+export type GetDepartmentInput = z.infer<typeof GetDepartmentInputSchema>;
+
+@Injectable()
+export class GetDepartmentTool extends BaseStructuredTool {
+  readonly name = 'getDepartment';
+  readonly description = 'Get a single department by ID or name with agent/member counts and manager info.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = GetDepartmentInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: GetDepartmentInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    if (!input.departmentId && !input.name) {
+      return { success: false, error: 'Either departmentId or name is required' };
+    }
+    try {
+      const department = input.departmentId
+        ? await this.prisma.department.findFirst({
+            where: { id: input.departmentId, tenantId: context.tenantId as string },
+          })
+        : await this.prisma.department.findFirst({
+            where: { tenantId: context.tenantId as string, name: input.name! },
+          });
+      if (!department) return { success: false, error: 'Department not found' };
+      const [agentCount, runningAgentCount] = await Promise.all([
+        this.prisma.agent.count({ where: { departmentId: department.id } }),
+        this.prisma.agent.count({ where: { departmentId: department.id, status: 'RUNNING' } }),
+      ]);
+      return {
+        success: true,
+        data: {
+          department: {
+            id: department.id,
+            name: department.name,
+            description: department.description,
+            status: department.status,
+            headAgentId: department.headAgentId,
+            agentCount,
+            runningAgentCount,
+            createdAt: department.createdAt.toISOString(),
+          },
+        },
+        metadata: { model: 'neurecore-dept-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to get department' };
+    }
+  }
+}
+
+export const ListDepartmentMembersInputSchema = z.object({
+  departmentId: z.string(),
+  status: AgentStatusEnum.optional(),
+});
+export type ListDepartmentMembersInput = z.infer<typeof ListDepartmentMembersInputSchema>;
+
+@Injectable()
+export class ListDepartmentMembersTool extends BaseStructuredTool {
+  readonly name = 'listDepartmentMembers';
+  readonly description = 'List all agents that belong to a department.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListDepartmentMembersInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListDepartmentMembersInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = { departmentId: input.departmentId };
+      if (input.status) where.status = input.status;
+      const agents = await this.prisma.agent.findMany({
+        where: { departmentId: input.departmentId },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, type: true, status: true, createdAt: true },
+      });
+      return {
+        success: true,
+        data: {
+          departmentId: input.departmentId,
+          agents: agents.map((a) => ({ ...a, createdAt: a.createdAt.toISOString() })),
+          total: agents.length,
+        },
+        metadata: { model: 'neurecore-agent-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list department members' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENTS — Additional tools
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ListAgentsByDepartmentInputSchema = z.object({
+  departmentId: z.string(),
+  status: AgentStatusEnum.optional(),
+  limit: z.coerce.number().int().positive().max(100).default(50).optional(),
+});
+export type ListAgentsByDepartmentInput = z.infer<typeof ListAgentsByDepartmentInputSchema>;
+
+@Injectable()
+export class ListAgentsByDepartmentTool extends BaseStructuredTool {
+  readonly name = 'listAgentsByDepartment';
+  readonly description = 'List all agents in a specific department. More targeted than listAgents when user names a department.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListAgentsByDepartmentInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListAgentsByDepartmentInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = { departmentId: input.departmentId };
+      if (input.status) where.status = input.status;
+      const agents = await this.prisma.agent.findMany({
+        where,
+        take: input.limit ?? 50,
+        orderBy: [{ name: 'asc' }],
+        select: { id: true, name: true, type: true, status: true, createdAt: true },
+      });
+      return {
+        success: true,
+        data: {
+          departmentId: input.departmentId,
+          agents: agents.map((a) => ({ ...a, createdAt: a.createdAt.toISOString() })),
+          total: agents.length,
+        },
+        metadata: { model: 'neurecore-agent-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list agents' };
+    }
+  }
+}
+
+export const SearchAgentsInputSchema = z.object({
+  query: z.string().min(1).describe('Search query for agent name or role'),
+  limit: z.coerce.number().int().positive().max(50).default(10).optional(),
+});
+export type SearchAgentsInput = z.infer<typeof SearchAgentsInputSchema>;
+
+@Injectable()
+export class SearchAgentsTool extends BaseStructuredTool {
+  readonly name = 'searchAgents';
+  readonly description = 'Search agents by name or role across the workspace.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = SearchAgentsInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: SearchAgentsInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const agents = await this.prisma.agent.findMany({
+        where: {
+          tenantId: context.tenantId as string,
+          OR: [
+            { name: { contains: input.query, mode: 'insensitive' } },
+            { description: { contains: input.query, mode: 'insensitive' } },
+          ],
+        },
+        take: input.limit ?? 10,
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, type: true, status: true, departmentId: true, description: true },
+      });
+      return {
+        success: true,
+        data: { agents, total: agents.length },
+        metadata: { model: 'neurecore-agent-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to search agents' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CUSTOMERS — Additional tools
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const GetCustomerProjectsInputSchema = z.object({
+  customerId: z.string(),
+});
+export type GetCustomerProjectsInput = z.infer<typeof GetCustomerProjectsInputSchema>;
+
+@Injectable()
+export class GetCustomerProjectsTool extends BaseStructuredTool {
+  readonly name = 'getCustomerProjects';
+  readonly description = 'Get all projects that belong to a specific customer.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = GetCustomerProjectsInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: GetCustomerProjectsInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const customer = await this.prisma.customer.findFirst({
+        where: { id: input.customerId, tenantId: context.tenantId as string },
+        select: { id: true, name: true },
+      });
+      if (!customer) return { success: false, error: 'Customer not found' };
+      const projects = await this.prisma.project.findMany({
+        where: { customerId: input.customerId, tenantId: context.tenantId as string },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, status: true, budgetAmount: true, budgetCurrency: true, createdAt: true },
+      });
+      return {
+        success: true,
+        data: {
+          customer,
+          projects: projects.map((p) => ({
+            ...p,
+            budgetAmount: p.budgetAmount?.toString() ?? null,
+            createdAt: p.createdAt.toISOString(),
+          })),
+          total: projects.length,
+        },
+        metadata: { model: 'neurecore-customer-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to get customer projects' };
+    }
+  }
+}
+
+export const ListCustomerContactsInputSchema = z.object({
+  customerId: z.string(),
+});
+export type ListCustomerContactsInput = z.infer<typeof ListCustomerContactsInputSchema>;
+
+@Injectable()
+export class ListCustomerContactsTool extends BaseStructuredTool {
+  readonly name = 'listCustomerContacts';
+  readonly description = 'List contacts associated with a customer (primary, billing, technical, etc).';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListCustomerContactsInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListCustomerContactsInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const customer = await this.prisma.customer.findFirst({
+        where: { id: input.customerId, tenantId: context.tenantId as string },
+        select: { id: true, name: true },
+      });
+      if (!customer) return { success: false, error: 'Customer not found' };
+      const contacts = await this.prisma.customerContact.findMany({
+        where: { customerId: input.customerId },
+        orderBy: [{ isPrimary: 'desc' }, { name: 'asc' }],
+      });
+      return {
+        success: true,
+        data: {
+          customer,
+          contacts: contacts.map((c) => ({
+            id: c.id, name: c.name, email: c.email, phone: c.phone, role: c.role,
+            isPrimary: c.isPrimary, createdAt: c.createdAt.toISOString(),
+          })),
+          total: contacts.length,
+        },
+        metadata: { model: 'neurecore-customer-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list customer contacts' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS — Additional tools
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ListAllNotificationsInputSchema = z.object({
+  unreadOnly: z.boolean().default(false).optional(),
+  type: NotificationTypeEnum.optional(),
+  limit: z.coerce.number().int().positive().max(100).default(20).optional(),
+});
+export type ListAllNotificationsInput = z.infer<typeof ListAllNotificationsInputSchema>;
+
+@Injectable()
+export class ListAllNotificationsTool extends BaseStructuredTool {
+  readonly name = 'listAllNotifications';
+  readonly description = 'List all tenant notifications (across all users). Use for admin/dashboard views.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListAllNotificationsInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListAllNotificationsInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = { tenantId: context.tenantId };
+      if (input.unreadOnly) where.isRead = false;
+      if (input.type) where.type = input.type;
+      const notifications = await this.prisma.notification.findMany({
+        where,
+        take: input.limit ?? 20,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, type: true, title: true, message: true, isRead: true, userId: true, createdAt: true },
+      });
+      return {
+        success: true,
+        data: {
+          notifications: notifications.map((n) => ({
+            ...n,
+            message: n.message.slice(0, 200),
+            createdAt: n.createdAt.toISOString(),
+          })),
+          total: notifications.length,
+        },
+        metadata: { model: 'neurecore-notification-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list notifications' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIVITY FEED
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const GetActivityFeedInputSchema = z.object({
+  since: z.string().optional().describe('ISO timestamp; only events after this are returned'),
+  limit: z.coerce.number().int().positive().max(100).default(30).optional(),
+  entityType: z.string().optional().describe('Filter by entity type (PROJECT, TASK, AGENT, etc)'),
+});
+export type GetActivityFeedInput = z.infer<typeof GetActivityFeedInputSchema>;
+
+@Injectable()
+export class GetActivityFeedTool extends BaseStructuredTool {
+  readonly name = 'getActivityFeed';
+  readonly description = 'Get recent activity events for the workspace (project created, task completed, etc).';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = GetActivityFeedInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: GetActivityFeedInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = { tenantId: context.tenantId };
+      if (input.since) where.createdAt = { gte: new Date(input.since) };
+      if (input.entityType) where.entityType = input.entityType;
+      const events = await this.prisma.activityEvent.findMany({
+        where,
+        take: input.limit ?? 30,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, actorType: true, actorId: true, type: true, title: true,
+          description: true, entityType: true, entityId: true, severity: true, createdAt: true,
+        },
+      });
+      return {
+        success: true,
+        data: {
+          events: events.map((e) => ({
+            ...e,
+            description: e.description?.slice(0, 200) ?? null,
+            createdAt: e.createdAt.toISOString(),
+          })),
+          total: events.length,
+        },
+        metadata: { model: 'neurecore-activity-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to get activity feed' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// APPROVALS — Additional tools
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ListMyApprovalHistoryInputSchema = z.object({
+  status: ApprovalStatusEnum.optional(),
+  limit: z.coerce.number().int().positive().max(100).default(20).optional(),
+});
+export type ListMyApprovalHistoryInput = z.infer<typeof ListMyApprovalHistoryInputSchema>;
+
+@Injectable()
+export class ListMyApprovalHistoryTool extends BaseStructuredTool {
+  readonly name = 'listMyApprovalHistory';
+  readonly description = 'List approvals I have actioned (approved/rejected), as opposed to those still pending.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = ListMyApprovalHistoryInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: ListMyApprovalHistoryInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    if (!context?.userId) return { success: false, error: 'User context required' };
+    try {
+      const where: Record<string, unknown> = {
+        tenantId: context.tenantId,
+        reviewedById: context.userId,
+        status: { in: ['APPROVED', 'REJECTED', 'CANCELLED', 'EXPIRED'] },
+      };
+      if (input.status) where.status = input.status;
+      const approvals = await this.prisma.approvalRequest.findMany({
+        where,
+        take: input.limit ?? 20,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, title: true, status: true, approvedAt: true, rejectedAt: true, rejectionReason: true, resourceType: true, resourceId: true, createdAt: true },
+      });
+      return {
+        success: true,
+        data: {
+          approvals: approvals.map((a) => ({
+            id: a.id, title: a.title, status: a.status,
+            approvedAt: a.approvedAt?.toISOString() ?? null,
+            rejectedAt: a.rejectedAt?.toISOString() ?? null,
+            reason: a.rejectionReason,
+            resourceType: a.resourceType, resourceId: a.resourceId,
+            createdAt: a.createdAt.toISOString(),
+          })),
+          total: approvals.length,
+        },
+        metadata: { model: 'neurecore-approval-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to list approval history' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TASKS — Additional tools
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const SearchTasksInputSchema = z.object({
+  query: z.string().min(1).describe('Search by task title or description'),
+  status: TaskStatusEnum.optional(),
+  limit: z.coerce.number().int().positive().max(50).default(20).optional(),
+});
+export type SearchTasksInput = z.infer<typeof SearchTasksInputSchema>;
+
+@Injectable()
+export class SearchTasksTool extends BaseStructuredTool {
+  readonly name = 'searchTasks';
+  readonly description = 'Full-text search across task titles and descriptions.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = SearchTasksInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: SearchTasksInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const where: Record<string, unknown> = {
+        tenantId: context.tenantId,
+        OR: [
+          { title: { contains: input.query, mode: 'insensitive' } },
+          { description: { contains: input.query, mode: 'insensitive' } },
+        ],
+      };
+      if (input.status) where.status = input.status;
+      const tasks = await this.prisma.task.findMany({
+        where,
+        take: input.limit ?? 20,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, title: true, status: true, priority: true, agentId: true, createdAt: true },
+      });
+      return {
+        success: true,
+        data: {
+          tasks: tasks.map((t) => ({ ...t, createdAt: t.createdAt.toISOString() })),
+          total: tasks.length,
+        },
+        metadata: { model: 'neurecore-task-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to search tasks' };
+    }
+  }
+}
+
+export const GetTaskStatsInputSchema = z.object({
+  agentId: z.string().optional().describe('Stats for a specific agent'),
+  departmentId: z.string().optional().describe('Stats for a specific department'),
+});
+export type GetTaskStatsInput = z.infer<typeof GetTaskStatsInputSchema>;
+
+@Injectable()
+export class GetTaskStatsTool extends BaseStructuredTool {
+  readonly name = 'getTaskStats';
+  readonly description = 'Get task statistics: counts by status, by priority, overdue count. Optionally filter by agent or department.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = GetTaskStatsInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: GetTaskStatsInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const baseWhere: Record<string, unknown> = { tenantId: context.tenantId };
+      if (input.agentId) baseWhere.agentId = input.agentId;
+      if (input.departmentId) baseWhere.departmentId = input.departmentId;
+
+      const [byStatus, byPriority, overdueCount] = await Promise.all([
+        this.prisma.task.groupBy({
+          by: ['status'],
+          where: baseWhere,
+          _count: { _all: true },
+        }),
+        this.prisma.task.groupBy({
+          by: ['priority'],
+          where: baseWhere,
+          _count: { _all: true },
+        }),
+        this.prisma.task.count({
+          where: { ...baseWhere, status: { in: ['PENDING', 'QUEUED', 'RUNNING'] }, scheduledAt: { lt: new Date() } },
+        }),
+      ]);
+
+      const statusMap = Object.fromEntries(byStatus.map((b) => [b.status, b._count._all]));
+      const priorityMap = Object.fromEntries(byPriority.map((b) => [b.priority, b._count._all]));
+      const total = Object.values(statusMap).reduce((a, b) => a + b, 0);
+
+      return {
+        success: true,
+        data: {
+          total,
+          byStatus: statusMap,
+          byPriority: priorityMap,
+          overdueCount,
+          filter: { agentId: input.agentId ?? null, departmentId: input.departmentId ?? null },
+        },
+        metadata: { model: 'neurecore-task-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to get task stats' };
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL SEARCH
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const GlobalSearchInputSchema = z.object({
+  query: z.string().min(1).describe('Search query'),
+  limit: z.coerce.number().int().positive().max(50).default(10).optional(),
+});
+export type GlobalSearchInput = z.infer<typeof GlobalSearchInputSchema>;
+
+@Injectable()
+export class GlobalSearchTool extends BaseStructuredTool {
+  readonly name = 'globalSearch';
+  readonly description = 'Search across projects, tasks, agents, customers, and departments in one call. Returns mixed results grouped by entity type.';
+  readonly category = ToolCategory.API;
+  readonly inputSchema = GlobalSearchInputSchema;
+  constructor(private readonly prisma: PrismaService) { super(); }
+
+  protected async executeImpl(input: GlobalSearchInput, context?: Partial<ToolExecutionContext>): Promise<StructuredToolResult> {
+    if (!context?.tenantId) return { success: false, error: 'Tenant context required' };
+    try {
+      const tenantId = context.tenantId as string;
+      const limit = input.limit ?? 10;
+      const [projects, tasks, agents, customers, departments] = await Promise.all([
+        this.prisma.project.findMany({
+          where: { tenantId, OR: [{ name: { contains: input.query, mode: 'insensitive' } }, { description: { contains: input.query, mode: 'insensitive' } }] },
+          take: limit,
+          select: { id: true, name: true, status: true },
+        }),
+        this.prisma.task.findMany({
+          where: { tenantId, OR: [{ title: { contains: input.query, mode: 'insensitive' } }, { description: { contains: input.query, mode: 'insensitive' } }] },
+          take: limit,
+          select: { id: true, title: true, status: true },
+        }),
+        this.prisma.agent.findMany({
+          where: { tenantId, OR: [{ name: { contains: input.query, mode: 'insensitive' } }, { description: { contains: input.query, mode: 'insensitive' } }] },
+          take: limit,
+          select: { id: true, name: true, type: true, status: true },
+        }),
+        this.prisma.customer.findMany({
+          where: { tenantId, OR: [{ name: { contains: input.query, mode: 'insensitive' } }] },
+          take: limit,
+          select: { id: true, name: true, status: true },
+        }),
+        this.prisma.department.findMany({
+          where: { tenantId, OR: [{ name: { contains: input.query, mode: 'insensitive' } }] },
+          take: limit,
+          select: { id: true, name: true, status: true },
+        }),
+      ]);
+
+      return {
+        success: true,
+        data: {
+          query: input.query,
+          total: projects.length + tasks.length + agents.length + customers.length + departments.length,
+          projects, tasks, agents, customers, departments,
+        },
+        metadata: { model: 'neurecore-search-v1' },
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to perform global search' };
+    }
+  }
+}

@@ -103,6 +103,12 @@ export interface AgentState {
   error: string | null;
   shouldContinue: boolean;
   currentNode: AgentNode;
+
+  // Tool allowlist (Phase 1.4 / 4.1 of remediation plan).
+  // null  ⇒ unrestricted (legacy chat path)
+  // []    ⇒ deny-all
+  // [...names] ⇒ whitelist enforced by both plannerNode and toolNode
+  allowedTools?: string[] | null;
 }
 
 /**

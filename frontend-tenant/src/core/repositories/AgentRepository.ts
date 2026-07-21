@@ -22,6 +22,7 @@ export type CreateAgentDto = {
 export type UpdateAgentDto = Partial<CreateAgentDto> & {
   isActive?: boolean;
   status?: string;
+  departmentId?: string | null;
 };
 
 export class AgentRepository extends BaseRepository<Agent, CreateAgentDto, UpdateAgentDto> {

@@ -5,6 +5,8 @@ export const HERMES_EVENTS = {
   TOOL_RESULT: 'hermes:tool:result',
   TOOL_DENIED: 'hermes:tool:denied',
   APPROVAL_REQUESTED: 'hermes:approval:requested',
+  APPROVAL_GRANTED: 'hermes:approval:granted',
+  APPROVAL_REJECTED: 'hermes:approval:rejected',
   APPROVAL_COMPLETED: 'hermes:approval:completed',
   MEMORY_STORED: 'hermes:memory:stored',
   ERROR: 'hermes:error',

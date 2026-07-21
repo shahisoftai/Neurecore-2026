@@ -39,6 +39,7 @@ export function useChat(
   const setOpen = useChatStore((s) => s.setOpen);
   const toggleOpen = useChatStore((s) => s.toggleOpen);
   const setSending = useChatStore((s) => s.setSending);
+  const pendingExternalMessage = useChatStore((s) => s.pendingExternalMessage);
   const consumeExternalMessage = useChatStore((s) => s.consumeExternalMessage);
 
   const [error, setError] = useState<string | null>(null);
@@ -138,12 +139,16 @@ export function useChat(
   }, [sendMessage]);
 
   // Consume external message requests (e.g., HomeHero prompt bar).
+  // Subscribe to pendingExternalMessage so the effect re-runs when a new
+  // request arrives AFTER mount (Zustand selectors are stable references,
+  // so depending only on `consumeExternalMessage` would never re-fire).
   useEffect(() => {
+    if (!pendingExternalMessage) return;
     const pending = consumeExternalMessage();
     if (pending) {
       void sendMessageRef.current?.(pending);
     }
-  }, [consumeExternalMessage]);
+  }, [pendingExternalMessage, consumeExternalMessage]);
 
   return {
     messages,

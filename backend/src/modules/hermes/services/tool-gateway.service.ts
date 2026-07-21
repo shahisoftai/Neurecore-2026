@@ -20,15 +20,19 @@ export class ToolGatewayService implements IToolGateway {
     const descriptor = toolSet.find((t) => t.name === toolName);
 
     if (!descriptor) {
-      const toolExists = !!this.toolRegistry.get(toolName);
-      if (!toolExists) {
-        return {
-          allowed: false,
-          requiresApproval: false,
-          reason: `Tool "${toolName}" not found in registry`,
-        };
-      }
-      return { allowed: true, requiresApproval: false };
+      // FAIL-CLOSED: a tool not declared in the Hermes-type descriptor is
+      // NOT allowed by default. Adding a new tool to the global registry
+      // must not silently grant every Hermes type access. The fix in
+      // memory-bank-new/plans/comprehensive-remediation-plan-2026-07-20.md
+      // §4.3 (Critical 10).
+      this.logger.warn(
+        `Tool "${toolName}" is registered globally but has no descriptor for Hermes type ${hermesType}; denying by default`,
+      );
+      return {
+        allowed: false,
+        requiresApproval: false,
+        reason: `Tool "${toolName}" is not declared for Hermes type ${hermesType}`,
+      };
     }
 
     if (descriptor.permission === 'DENY') {

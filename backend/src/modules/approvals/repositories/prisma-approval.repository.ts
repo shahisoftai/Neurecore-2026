@@ -8,7 +8,7 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
-import type { IApprovalRepository } from '../interfaces/approval.interface';
+import type { IApprovalRepository, CreateApprovalRequestInput, ApprovalRequestRecord } from '../interfaces/approval.interface';
 import type { ApprovalFeedback } from '../../../shared/types/approvals.types';
 
 @Injectable()
@@ -35,6 +35,16 @@ export class PrismaApprovalRepository implements IApprovalRepository {
       AND status = ${status}
       ORDER BY "riskLevel" DESC, "createdAt" DESC
     `;
+  }
+
+  async findOne(
+    approvalId: string,
+    tenantId: string,
+  ): Promise<ApprovalRequestRecord | null> {
+    const row = await this.prisma.approvalRequest.findFirst({
+      where: { id: approvalId, tenantId },
+    });
+    return row as ApprovalRequestRecord | null;
   }
 
   async insertFeedback(
@@ -66,12 +76,46 @@ export class PrismaApprovalRepository implements IApprovalRepository {
   async updateApprovalStatus(
     approvalId: string,
     tenantId: string,
-    status: 'APPROVED' | 'REJECTED',
+    status: 'APPROVED' | 'REJECTED' | 'PENDING' | 'CANCELLED',
+    reviewerId?: string,
+    rejectionReason?: string,
   ): Promise<void> {
-    await this.prisma.$executeRaw`
-      UPDATE approval_requests
-      SET status = ${status}, "updatedAt" = NOW()
-      WHERE id = ${approvalId} AND "tenantId" = ${tenantId}
-    `;
+    const now = new Date();
+    const updateData: Record<string, unknown> = {
+      status,
+      updatedAt: now,
+    };
+    if (reviewerId) updateData.reviewedById = reviewerId;
+    if (status === 'APPROVED') updateData.approvedAt = now;
+    if (status === 'REJECTED') {
+      updateData.rejectedAt = now;
+      if (rejectionReason) updateData.rejectionReason = rejectionReason;
+    }
+    await this.prisma.approvalRequest.updateMany({
+      where: { id: approvalId, tenantId },
+      data: updateData,
+    });
+  }
+
+  async create(
+    tenantId: string,
+    input: CreateApprovalRequestInput,
+  ): Promise<ApprovalRequestRecord> {
+    const created = await this.prisma.approvalRequest.create({
+      data: {
+        tenantId,
+        title: input.title,
+        description: input.description,
+        resourceType: input.resourceType,
+        resourceId: input.resourceId,
+        priority: input.priority ?? 'MEDIUM',
+        requestedById: input.requestedById,
+        expiresAt: input.expiresAt,
+        requiredRole: input.requiredRole,
+        payload: (input.payload ?? {}) as object,
+        status: 'PENDING',
+      },
+    });
+    return created as ApprovalRequestRecord;
   }
 }

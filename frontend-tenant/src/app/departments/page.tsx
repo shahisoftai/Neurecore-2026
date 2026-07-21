@@ -47,6 +47,8 @@ import { QuickAction } from '@/components/creatio/QuickAction';
 import api from '@/services/api';
 import { unwrapArrayOrEmpty } from '@/services/unwrap';
 import { departmentTemplatesService, type DepartmentTemplate } from '@/services/department-templates.service';
+import type { Department, Agent } from '@/shared/types/domain.types';
+import { OrgChartPanel } from '@/features/org-chart/components/OrgChartPanel';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 type RosterTab =
@@ -58,26 +60,6 @@ type RosterTab =
   | 'routines'
   | 'goals'
   | 'projects';
-
-interface Department {
-  id: string;
-  name: string;
-  description?: string;
-  parentId?: string | null;
-  status?: string;
-  agentCount?: number;
-  activeAgentCount?: number;
-  completedTasksToday?: number;
-  harmonyScore?: number;
-  _count?: { agents: number };
-}
-
-interface AgentLite {
-  id: string;
-  name: string;
-  status: string;
-  departmentId?: string;
-}
 
 interface TemplatePack {
   slug: string;
@@ -225,7 +207,7 @@ export default function DepartmentsRosterPage() {
 // ─── Tab 1: Departments ───────────────────────────────────────────────────
 function DepartmentsTab() {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [agents, setAgents] = useState<AgentLite[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -238,7 +220,7 @@ function DepartmentsTab() {
         api.get('/agents?limit=100'),
       ]);
       setDepartments(unwrapArrayOrEmpty(deptRes) as Department[]);
-      setAgents(unwrapArrayOrEmpty(agentRes) as AgentLite[]);
+      setAgents(unwrapArrayOrEmpty(agentRes) as Agent[]);
     } catch {
       setDepartments([]);
       setAgents([]);
@@ -275,7 +257,7 @@ function DepartmentsTab() {
       {/* KPI strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Departments" value={departments.length} color="ops" icon={<Building2 className="w-4 h-4" />} loading={loading} />
-        <KpiCard label="Total Agents" value={totalAgents} color="strategy" icon={<Users className="w-4 h-4" />} loading={loading} />
+        <KpiCard label="Total Employees" value={totalAgents} color="strategy" icon={<Users className="w-4 h-4" />} loading={loading} />
         <KpiCard label="Running" value={runningAgents} color="profit" icon={<Activity className="w-4 h-4" />} loading={loading} />
         <KpiCard label="Root / Sub" value={`${rootDepts} / ${subDepts}`} color="neutral" icon={<GitBranch className="w-4 h-4" />} loading={loading} />
       </div>
@@ -399,7 +381,7 @@ function DepartmentsTab() {
                   {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                   {deptAgents.length > 0
                     ? `View ${deptAgents.length} agent${deptAgents.length === 1 ? '' : 's'}`
-                    : 'No agents yet'}
+                    : 'No employees yet'}
                 </button>
                 <AnimatePresence>
                   {isExpanded && deptAgents.length > 0 && (
@@ -462,108 +444,7 @@ function DepartmentsTab() {
 
 // ─── Tab 2: Org Chart ──────────────────────────────────────────────────────
 function OrgChartTab() {
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    api.get('/departments?limit=100')
-      .then((res) => setDepartments(unwrapArrayOrEmpty(res) as Department[]))
-      .catch(() => setDepartments([]))
-      .finally(() => setLoading(false));
-  }, []);
-
-  // Build tree from flat list
-  const tree = useMemo(() => buildTree(departments), [departments]);
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
-        <GitBranch className="w-4 h-4 text-status-strategy" />
-        Organization chart
-      </h2>
-
-      {loading ? (
-        <div className="card-surface p-8 text-center text-zinc-500 text-sm">Loading org chart…</div>
-      ) : departments.length === 0 ? (
-        <div className="card-surface p-12 text-center">
-          <GitBranch className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-          <p className="text-sm text-zinc-300 font-medium">No departments to chart</p>
-          <p className="text-xs text-zinc-500 mt-1">
-            Deploy a department template from the Templates tab.
-          </p>
-        </div>
-      ) : (
-        <div className="card-surface p-6">
-          <TreeView nodes={tree} depth={0} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Org Chart Tree Node ──────────────────────────────────────────────────
-function TreeView({ nodes, depth }: { nodes: TreeNode[]; depth: number }) {
-  if (nodes.length === 0) return null;
-  return (
-    <div className={depth > 0 ? 'ml-6 border-l border-surface-border pl-4' : ''}>
-      {nodes.map((node) => (
-        <div key={node.dept.id} className="mb-3">
-          <Link
-            href={`/departments/${encodeURIComponent(node.dept.id)}/workspace`}
-            className="flex items-center gap-3 p-2 rounded-md hover:bg-surface-overlay transition group"
-          >
-            <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
-              depth === 0 ? 'bg-accent-500/15 text-accent-500' :
-              depth === 1 ? 'bg-status-ops/15 text-status-ops' :
-                             'bg-surface-overlay text-zinc-400'
-            }`}>
-              <Building2 className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-zinc-100 truncate">{node.dept.name}</p>
-              {node.dept.description && (
-                <p className="text-xs text-zinc-500 truncate">{node.dept.description}</p>
-              )}
-            </div>
-            <span className="text-xs text-zinc-500 flex items-center gap-1">
-              <Users className="w-3 h-3" />
-              {node.dept._count?.agents ?? 0}
-            </span>
-            {node.children.length > 0 && (
-              <span className="text-xs text-zinc-500 flex items-center gap-1 ml-2">
-                <GitBranch className="w-3 h-3" />
-                {node.children.length}
-              </span>
-            )}
-          </Link>
-          {node.children.length > 0 && (
-            <TreeView nodes={node.children} depth={depth + 1} />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-interface TreeNode {
-  dept: Department;
-  children: TreeNode[];
-}
-
-function buildTree(flat: Department[]): TreeNode[] {
-  const map = new Map<string, TreeNode>();
-  flat.forEach((d) => map.set(d.id, { dept: d, children: [] }));
-  const roots: TreeNode[] = [];
-  flat.forEach((d) => {
-    const node = map.get(d.id)!;
-    if (d.parentId && map.has(d.parentId)) {
-      map.get(d.parentId)!.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-  return roots;
+  return <OrgChartPanel />;
 }
 
 // ─── Tab 3: Templates ──────────────────────────────────────────────────────

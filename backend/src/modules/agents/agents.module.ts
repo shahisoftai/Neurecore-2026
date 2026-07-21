@@ -30,7 +30,7 @@ import { MetricsModule } from '../metrics/metrics.module';
 @Module({
   imports: [
     forwardRef(() => EventsModule),
-    ToolsModule,
+    forwardRef(() => ToolsModule),
     forwardRef(() => IntegrationsModule),
     GovernanceModule,
     ModelsModule,

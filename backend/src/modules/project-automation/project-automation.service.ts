@@ -1,10 +1,12 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { RoleTemplateService } from './services/role-template.service';
 import { GoalTemplateService } from './services/goal-template.service';
 import { TaskPlannerService } from './services/task-planner.service';
 import { ChiefOfStaffService } from './services/chief-of-staff.service';
 import { MemorySeederService } from './services/memory-seeder.service';
+import { DerivedShapeApplier } from '../projects/services/derived-shape-applier.service';
 import {
   PROJECT_AUTOMATION_REPOSITORY,
   type IProjectAutomationRepository,
@@ -34,6 +36,11 @@ export class ProjectAutomationService {
     @Inject(PROJECT_AUTOMATION_REPOSITORY)
     private readonly automationRepo: IProjectAutomationRepository,
     private readonly prisma: PrismaService,
+    // Lazy-resolved via ModuleRef to avoid the
+    // ProjectsModule → AgentsModule → ToolsModule cycle when re-exporting
+    // DerivedShapeApplier's class. Used by replan() to re-derive goals/members
+    // from a stored Project.derivedShape.
+    private readonly moduleRef: ModuleRef,
   ) {}
 
   async onProjectCreated(
@@ -157,18 +164,22 @@ export class ProjectAutomationService {
     const errors: string[] = [];
     let tasksCreated = 0;
     let goalsProcessed = 0;
+    let agentsSpawned = 0;
 
     try {
       const project = await this.prisma.project.findUnique({
         where: { id: projectId },
-        select: { id: true, projectTypeId: true },
+        select: { id: true, projectTypeId: true, derivedShape: true },
       });
 
       if (!project) {
         errors.push(`Project ${projectId} not found`);
-      } else if (!project.projectTypeId) {
-        errors.push('Project has no projectTypeId — cannot replan');
-      } else {
+      } else if (!project.projectTypeId && !project.derivedShape) {
+        errors.push(
+          'Project has neither projectTypeId nor derivedShape — cannot replan. Re-create the project via Hermes chat to get a fresh shape.',
+        );
+      } else if (project.projectTypeId) {
+        // Template-driven path (existing behavior)
         const goalsResult = await this.goalTemplateService.createGoalsFromTemplate(
           projectId,
           project.projectTypeId,
@@ -192,6 +203,44 @@ export class ProjectAutomationService {
           tasksCreated = taskResult.totalTasks;
           errors.push(...taskResult.results.flatMap((r) => r.errors));
         }
+      } else if (project.derivedShape) {
+        // Hermes-driven path — re-derive goals/members from the stored shape
+        // using the same DerivedShapeApplier ProjectsService uses on create.
+        // SRP: this branch reuses DerivedShapeApplier rather than duplicating
+        // its logic. The applier is idempotent so re-running is safe.
+        const applier = this.moduleRef.get(DerivedShapeApplier, { strict: false });
+        if (!applier) {
+          errors.push('DerivedShapeApplier unavailable — cannot replan derived-shape project');
+        } else {
+          const shapeResult = await applier.apply(
+            projectId,
+            project.derivedShape as never,
+            tenantId,
+          );
+          goalsProcessed = shapeResult.goalsCreated;
+          agentsSpawned = shapeResult.membersCreated;
+          errors.push(...shapeResult.errors);
+          // Re-decompose tasks from the goals
+          if (shapeResult.goalsCreated > 0) {
+            const goals = await this.prisma.goal.findMany({
+              where: { projectId },
+              select: { id: true, title: true, status: true, measurableCriteria: true },
+            });
+            const existingMembers = await this.prisma.projectMember.findMany({
+              where: { projectId, actorType: 'AI' },
+              select: { actorId: true },
+            });
+            const spawnedAgents = existingMembers.map((m) => ({ id: m.actorId } as never));
+            const taskResult = await this.taskPlannerService.decomposeAll(
+              goals as never,
+              spawnedAgents as never,
+              tenantId,
+              actorId,
+            );
+            tasksCreated = taskResult.totalTasks;
+            errors.push(...taskResult.results.flatMap((r) => r.errors));
+          }
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -200,7 +249,7 @@ export class ProjectAutomationService {
     }
 
     const result: AutomationResult = {
-      agentsSpawned: 0,
+      agentsSpawned,
       goalsCreated: goalsProcessed,
       tasksCreated,
       chiefOfStaffAssigned: false,

@@ -165,6 +165,7 @@ export function UnifiedChatMessage({ message, onSuggestionSelect, sending }: Uni
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18 }}
       className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-2`}
+      data-testid={isUser ? 'chat-message-user' : 'chat-message-assistant'}
     >
       <div
         className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${

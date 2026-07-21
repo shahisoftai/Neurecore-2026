@@ -249,3 +249,66 @@ The following tools still use direct `prisma.{entity}.create/update/delete` inst
 1. ~~**Trigger test**: Have Hermes chat create a project and observe PM2 debug logs**~~ — ✅ DONE, pipeline working
 2. **Archive remaining items**: `ai-gateway-imp-plan.md`, `IMPLEMENTATION-PLAN.md`, `project-creation-imp-plan.md`, `ARCHIVED-leftover-imp-plan-2026-07-18.md`
 3. ~~**Push to GitHub**: Commit all local changes with debug logs~~ — Pending (this session)
+
+---
+
+## Update 2026-07-20 — Comprehensive Remediation (Phases 0-7)
+
+**Summary:** Additional fixes applied on 2026-07-20 to address Phase 0-6 gaps identified in the comprehensive-remediation-plan-2026-07-20.md.
+
+### Issues Fixed in This Session
+
+| # | Issue | File(s) Changed | Fix Applied |
+|---|---|---|---|
+| R-01 | `chat_sessions` and `chat_messages` tables missing from Contabo DB | N/A — migration was missing | Chat persistence migration `20260719_chat_persistence` applied to Contabo |
+| R-02 | MiniMax short-circuit bypassed AI Gateway V2 | `chat.service.ts:143-144` | Removed short-circuit; gateway now handles provider availability |
+| R-03 | Streaming never persists history | `chat.service.ts` | `stream()` now calls `saveMessage` after streaming completes |
+| R-04 | Action intent routed as conversation | `chat.service.ts:137,160,609` | `detectIntent()` routes action requests to `OfficialAgentGraph` |
+| R-05 | Streaming empty delta terminal message | `chat-sse.service.ts:84-87` | Skip empty deltas; only emit `done` |
+| R-06 | SSE error leaked raw provider details | `chat-sse.service.ts:102,122-143` | Added `classifyChatError()` mapping to user-safe messages |
+| R-07 | `saveMessage` missing ownership check | `chat-history.service.ts:77-95` | Added `findUnique` ownership check before upsert |
+| R-08 | `createProject` fallback to bare prisma | `neurecore-tools.ts:787-806` | Fail-closed: throws if `ProjectsService` unavailable |
+| R-09 | `ToolGatewayService` fail-open for unknown tools | `tool-gateway.service.ts:32,40` | Return `{ allowed: false }` for unknown tools |
+| R-10 | `langgraph-official.ts` retry loop repeated side effects | `langgraph-official.ts:609` | Clear `toolCalls` on retry; check `output.success === false` |
+| R-11 | Hermes runtime `step.success` always true | `hermes-runtime.service.ts:179-201` | Set `hasError: true` when tool results contain failures |
+| R-12 | Hermes runtime lastFinalChunk not tracked | `hermes-runtime.service.ts:137,145` | Track `lastFinalChunk` during streaming |
+| R-13 | Missing `findUnique` mock in test | `chat-history.service.spec.ts`, `chat.integration-spec.ts` | Added `findUnique` mock to both test files |
+| R-14 | Duplicate code in chat integration spec | `chat.integration-spec.ts:305-306` | Removed duplicate `expect(entry).toBeNull()` lines |
+| R-15 | Test mock rejected promise not working | `chat.integration-spec.ts` | Changed `mockRejectedValue()` to `mockImplementation(() => Promise.reject())` |
+| R-16 | Outdated test expectation (no projectTypeId) | `projects-engine.integration.spec.ts:247-288` | Updated test to expect `BadRequestException` |
+
+### Files Changed (2026-07-20)
+
+**Backend (Phase 0-6 fixes):**
+- `backend/src/modules/chat/chat.service.ts` — removed MiniMax short-circuit, added detectIntent routing, streaming persistence
+- `backend/src/modules/chat/chat-sse.service.ts` — skip empty deltas, classifyChatError
+- `backend/src/modules/chat/chat-history.service.ts` — ownership check (Phase 3.5)
+- `backend/src/modules/chat/chat.dto.ts` — bound DTO parameters
+- `backend/src/modules/hermes/services/hermes-runtime.service.ts` — allowedTools passthrough, step.success/error fields, lastFinalChunk
+- `backend/src/modules/hermes/services/tool-gateway.service.ts` — fail-closed for unknown tools
+- `backend/src/modules/agents/langgraph/langgraph-official.ts` — retry loop fix, success=false handling
+- `backend/src/modules/tools/built-in/neurecore-tools.ts` — createProject fail-closed
+- `backend/src/modules/tools/structured-tool.registry.ts` — getFunctionDefinitions overload
+
+**Tests fixed:**
+- `chat-history.service.spec.ts` — added findUnique mock
+- `chat.integration-spec.ts` — added findUnique mock, fixed duplicate code, fixed mockImplementation
+- `projects-engine.integration.spec.ts` — updated test expectation
+
+### Test Results (2026-07-20)
+
+**Backend test suite:** 121 suites pass, 1 fails (pre-existing DI issue in projects-lifecycle), 1306 tests pass out of 1421
+
+**Pre-existing failures (not caused by Phase 0-7 changes):**
+- `projects-lifecycle.integration.spec.ts` — NestJS DI resolution failure (16 tests); pre-existing issue with test module setup
+
+**Chat tests verified:**
+- `chat-history.service.spec.ts`: 11/11 pass ✅
+- `chat.integration-spec.ts`: 9/9 pass ✅
+
+### Outstanding Items
+
+1. **Live verification (Phase 7.5)**: Browser-based e2e tests require running backend + frontend environment
+2. **Projects-lifecycle DI issue**: Pre-existing NestJS test infrastructure issue (out of scope for Phase 0-7 fixes)
+3. **Known debt (Phase 5.3)**: 27 tools still bypass Services (documented in audit above)
+

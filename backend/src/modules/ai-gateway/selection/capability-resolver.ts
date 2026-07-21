@@ -19,7 +19,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SecretProviderService } from '../../security/providers/secret.provider';
 import type { Capability } from '../domain/capabilities';
-import { AiGatewayBudgetExceededError } from '../domain/errors';
+import {
+  AiGatewayBudgetExceededError,
+  AiGatewayUnconfiguredError,
+} from '../domain/errors';
 import type { ResolvedModel, SelectOptions } from '../domain/types';
 import { FallbackChainBuilder } from '../failover/fallback-chain';
 import { AiModelRepository } from './ai-model.repository';
@@ -44,9 +47,14 @@ export class CapabilityResolver {
       capability,
       opts.modelId,
     );
+    // Phase 2.5: structured error — single source of truth for
+    // "no model for this capability". Callers can `instanceof`-match
+    // instead of string-comparing the message.
     if (chain.length === 0) {
-      throw new Error(
-        `No models available for capability ${capability}. Add one via /admin/models.`,
+      throw new AiGatewayUnconfiguredError(
+        `capability=${capability}; no active catalog models for this tenant. ` +
+          `Add a model with this capability via /admin/models, or set a ` +
+          `TenantModelOverride.`,
       );
     }
     if (opts.preferSpeed) {
@@ -99,9 +107,13 @@ export class CapabilityResolver {
         },
       };
     }
-    throw new Error(
-      `No usable model for capability ${capability}. ` +
-        `All candidates lack a configured API key.`,
+    // Every candidate had a missing API key. Surface the FIRST env var
+    // the user should set so the error is actionable.
+    const firstMissing = chain[0]?.apiKeyEnv ?? 'UNKNOWN';
+    throw new AiGatewayUnconfiguredError(
+      `capability=${capability}; ${chain.length} candidate model(s) found but ` +
+        `all lack a configured API key. Set the env var (e.g. ${firstMissing}) ` +
+        `in the backend .env to enable routing.`,
     );
   }
 }

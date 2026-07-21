@@ -17,13 +17,13 @@ export class KeywordFallbackReply implements IFallbackReply {
     }
     if (lower.includes('agent')) {
       return {
-        reply: 'Head to the Agents page to review agent status and performance metrics.',
+        reply: 'Head to the Employees page to review employee status and performance metrics.',
         suggestions: this.generateSuggestions('agent'),
       };
     }
     if (lower.includes('task')) {
       return {
-        reply: 'Open the Tasks page to review pending and in-progress tasks across all agents.',
+        reply: 'Open the Tasks page to review pending and in-progress tasks across all employees.',
         suggestions: this.generateSuggestions('task'),
       };
     }

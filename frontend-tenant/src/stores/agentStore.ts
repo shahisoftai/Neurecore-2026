@@ -21,12 +21,13 @@ interface AgentState {
   fetchAgent: (id: string) => Promise<void>;
   setAgents: (agents: Agent[]) => void;
   updateAgentStatus: (id: string, status: AgentStatus) => void;
+  moveAgent: (agentId: string, departmentId: string) => Promise<void>;
   reset: () => void;
 }
 
 export const useAgentStore = create<AgentState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       agents: [],
       selected: null,
       total: 0,
@@ -64,6 +65,21 @@ export const useAgentStore = create<AgentState>()(
           agents: state.agents.map((a) => (a.id === id ? { ...a, status } : a)),
           selected: state.selected?.id === id ? { ...state.selected, status } : state.selected,
         })),
+
+      moveAgent: async (agentId, departmentId) => {
+        const prevAgents = get().agents;
+        set((state) => ({
+          agents: state.agents.map((a) =>
+            a.id === agentId ? { ...a, departmentId } : a,
+          ),
+        }));
+        try {
+          await agentRepository.update(agentId, { departmentId });
+        } catch (err) {
+          set({ agents: prevAgents });
+          throw err;
+        }
+      },
 
       reset: () => set({ agents: [], selected: null, total: 0, loading: false, error: null }),
     }),

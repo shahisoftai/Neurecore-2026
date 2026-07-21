@@ -160,6 +160,162 @@ const AGENT_POLICY_CONFIGS: Record<
   },
 
   /**
+   * AI Assistant Agent - used by tenant chat to execute tools on behalf of users
+   * (createProject, createTask, listAgents, getTenantSnapshot, etc.).
+   * Uses explicit allowlist of safe structured tools. Dangerous operations
+   * (shell, file, database, exec) are blocked. Destructive mutations
+   * (delete, archive) are also excluded from the allowlist to prevent
+   * accidental data loss via LLM misbehavior.
+   */
+  'ai-assistant': {
+    allowedTools: [
+      // Project operations (create/list/get only - no update/archive/delete/clone)
+      'createProject',
+      'getProject',
+      'getProjectByName',
+      'listProjects',
+      'searchProjects',
+      'updateProjectStatus',
+      'addProjectMember',
+      'removeProjectMember',
+      'listProjectMembers',
+      'listProjectStages',
+      'updateProjectStage',
+      // Task operations (create/list/get only - no update/delete/clone)
+      'createTask',
+      'getTask',
+      'getMyTasks',
+      'getOverdueTasks',
+      'listSubtasks',
+      'searchTasks',
+      'getTaskStats',
+      // Department operations (read-only)
+      'listDepartments',
+      'getDepartment',
+      'listDepartmentMembers',
+      // Agent operations (read-only and state control only)
+      'listAgents',
+      'getAgent',
+      'getAgentWorkload',
+      'pauseAgent',
+      'resumeAgent',
+      'listAgentsByDepartment',
+      'searchAgents',
+      // Workflows
+      'listWorkflows',
+      'getWorkflow',
+      // Goals
+      'listGoals',
+      'updateGoalProgress',
+      // Budget policies
+      'listBudgetPolicies',
+      // Tenant and company data
+      'getTenantSnapshot',
+      'getCompanyProfile',
+      'getTenantSettings',
+      // Notifications
+      'getMyNotifications',
+      'markNotificationRead',
+      'markAllNotificationsRead',
+      // Dashboard and reporting
+      'getDashboardSummary',
+      'getOverdueTaskReport',
+      // Inbox
+      'getInboxSummary',
+      'listInboxItems',
+      'getInboxItem',
+      'respondToInboxItem',
+      // Approvals (read-only)
+      'listPendingApprovals',
+      'getApproval',
+      'getMyPendingApprovals',
+      // Finance (read-only)
+      'getCostReport',
+      'getCostByDepartment',
+      'getCostByAgent',
+      'getCostByProject',
+      'getTodayCost',
+      'setBudgetAlert',
+      // Customers (read-only)
+      'getCustomer',
+      'listCustomers',
+      'findCustomerByName',
+      'getCustomerProjects',
+      'listCustomerContacts',
+      // Notifications
+      'listAllNotifications',
+      // Activity feed
+      'getActivityFeed',
+      // Approval history (read-only)
+      'listMyApprovalHistory',
+      // Global search
+      'globalSearch',
+      // Project memory
+      'addProjectMemory',
+      'searchProjectMemory',
+      'updateMemoryConfidence',
+    ],
+    blockedTools: [
+      'shell',
+      'bash',
+      'exec',
+      'file.read',
+      'file.write',
+      'file.delete',
+      'http.request',
+      'database.query',
+      'database.modify',
+      // Explicitly block all destructive operations
+      'deleteProject',
+      'archiveProject',
+      'cloneProject',
+      'updateProject',
+      'deleteTask',
+      'updateTask',
+      'cloneTask',
+      'markTaskComplete',
+      'markTaskInProgress',
+      'reopenTask',
+      'changeTaskPriority',
+      'bulkAssignTasks',
+      'bulkChangeStatus',
+      'assignTask',
+      'unassignTask',
+      'addSubtask',
+      'deleteDepartment',
+      'archiveDepartment',
+      'updateDepartment',
+      'assignManager',
+      'unassignManager',
+      'updateAgent',
+      'archiveAgent',
+      'assignAgentToDepartment',
+      'removeAgentFromProject',
+      'bulkCreateAgents',
+      'bulkAssignToDepartment',
+      'approveRequest',
+      'rejectRequest',
+      'bulkApprove',
+      'bulkReject',
+      'createApprovalRequest',
+      'resubmitApproval',
+      'cancelApprovalRequest',
+      'updateCompanyProfile',
+      'updateCustomer',
+      'archiveCustomer',
+      'unarchiveCustomer',
+    ],
+    allowedPaths: ['/workspace'],
+    blockedPaths: ['/etc', '/root', '/home', '/var', '/proc', '/sys', '/boot'],
+    allowedDomains: [],
+    blockedDomains: ['*'],
+    maxFileSizeBytes: 10 * 1024 * 1024, // 10MB
+    promptInjectionDetection: true,
+    commandValidation: true,
+    resourceValidation: true,
+  },
+
+  /**
    * Default agent policy - restrictive baseline
    */
   default: {

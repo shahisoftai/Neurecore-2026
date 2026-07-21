@@ -158,11 +158,17 @@ export interface Workflow {
 
 // ─── Department ───────────────────────────────────────────────────────────────
 
+export type DepartmentStatus = 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+
 export interface Department {
   id: EntityId;
   name: string;
   description?: string;
   tenantId: EntityId;
+  parentId?: string | null;
+  status?: DepartmentStatus;
+  headAgentId?: string | null;
+  _count?: { agents: number };
   agentCount: number;
   activeAgentCount: number;
   completedTasksToday: number;

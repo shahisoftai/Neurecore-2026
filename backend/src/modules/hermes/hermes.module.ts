@@ -45,6 +45,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { ModelsModule } from '../models/models.module';
 import { MissionFeedModule } from '../mission-feed/mission-feed.module';
 import { EventsModule } from '../events/events.module';
+import { ApprovalsModule } from '../approvals/approvals.module';
+import { HermesApprovalResumeConsumer } from './consumers/hermes-approval-resume.consumer';
 
 @Global()
 @Module({
@@ -56,6 +58,7 @@ import { EventsModule } from '../events/events.module';
     ModelsModule,
     MissionFeedModule,
     EventsModule,
+    ApprovalsModule,
   ],
   controllers: [ExplainabilityController, ComplianceController],
   providers: [
@@ -96,6 +99,7 @@ import { EventsModule } from '../events/events.module';
     WorkflowTemplateService,
     NotificationPreferenceService,
     RetentionJobService,
+    HermesApprovalResumeConsumer,
   ],
   exports: [
     HermesRegistryService,

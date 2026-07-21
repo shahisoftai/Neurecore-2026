@@ -2,9 +2,9 @@
  * AI Model Repository
  *
  * Read-side cache over the Prisma `model_providers`, `ai_models`, and
- * `tenant_model_overrides` tables. Cache is LRU+TTL; the TTL is read
- * from `AiGatewayConfig.cacheTtlSeconds`. Mutations through the admin
- * endpoints call `invalidate()` so changes propagate within 60s.
+ * `tenant_model_overrides` tables. Cache is FIFO with TTL (60s default).
+ * Mutations through the admin endpoints call `invalidate()` so changes
+ * propagate within the TTL.
  *
  * SOLID: SRP — the repo is the only place that reads catalog tables
  * outside of the seed script.
@@ -68,13 +68,28 @@ export class AiModelRepository {
             provider: { isActive: true },
           },
           include: { provider: true },
-          orderBy: [{ isDefault: 'desc' }, { priority: 'asc' }],
+          orderBy: [
+            { isDefault: 'desc' },
+            { priority: 'asc' },
+            { createdAt: 'asc' },
+          ],
         })
         .then((rows) => rows.map(toCatalogModel)),
     );
   }
 
+  /**
+   * Find the canonical active model for a public `modelId`. With the
+   * `(providerId, modelId) @@unique` index, the same `modelId` may
+   * exist under multiple providers — we deterministically pick the
+   * highest-priority active match.
+   *
+   * Phase 2.2: replaces the previous `findFirst({ where: { modelId } })`
+   * which returned nondeterministic results across providers.
+   */
   async findByModelId(modelId: string): Promise<CatalogModel | null> {
+    // Use the same active-catalog list as `listAvailable()` — already
+    // filtered, ordered, and provider-validated.
     const all = await this.listAvailable();
     return all.find((m) => m.modelId === modelId) ?? null;
   }
@@ -109,9 +124,9 @@ export class AiModelRepository {
     const models = await loader();
     if (this.cache.size >= this.maxEntries) {
       // Evict the oldest entry by insertion order. `Map` iterates
-      // in insertion order, so the first key is the LRU candidate.
-      for (const key of this.cache.keys()) {
-        this.cache.delete(key);
+      // in insertion order, so the first key is the FIFO candidate.
+      for (const k of this.cache.keys()) {
+        this.cache.delete(k);
         break;
       }
     }

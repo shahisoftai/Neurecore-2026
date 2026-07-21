@@ -38,6 +38,19 @@ export class DeploymentService {
     private readonly events: EventsGateway,
   ) {}
 
+  /**
+   * Normalise actorId for the `agents.createdById` FK column. The column is
+   * nullable (User?) and `actorId='SYSTEM'` indicates a programmatic spawn
+   * (ProjectAutomationService, backfills, …). Storing 'SYSTEM' as the FK
+   * value would violate the FK constraint because no user has that id —
+   * so we collapse it to null. Real user ids (cuid format) pass through.
+   */
+  private normaliseActorId(actorId: string | null | undefined): string | null {
+    if (!actorId) return null;
+    if (actorId === 'SYSTEM') return null;
+    return actorId;
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // 1. Spawn one agent from a platform template
   // ─────────────────────────────────────────────────────────────────────────
@@ -49,6 +62,10 @@ export class DeploymentService {
     actorTenantId: string | null,
     actorRole: string,
   ) {
+    // Normalise actorId → null when this is a programmatic ('SYSTEM') spawn,
+    // because createdById is a nullable FK to users.id and 'SYSTEM' is not a
+    // valid cuid. Real user actors (cuid format) pass through unchanged.
+    const actorUserId = this.normaliseActorId(actorId);
     // Tenant scope enforcement: non-SUPER_ADMIN actors can only spawn into
     // their own tenant. Prevents cross-tenant privilege escalation.
     if (actorRole !== 'SUPER_ADMIN') {
@@ -91,6 +108,11 @@ export class DeploymentService {
     }
 
     // Copy template fields → new Agent
+    // actorId='SYSTEM' (programmatic spawn) — set createdById to null since
+    // there's no real user. Otherwise the FK constraint to users.id is
+    // violated for non-user-actor spawns (ProjectAutomationService,
+    // backfills, etc).
+    const createdById = actorId === 'SYSTEM' ? null : actorId;
     const agent = await this.prisma.agent.create({
       data: {
         name: dto.name,
@@ -106,7 +128,7 @@ export class DeploymentService {
           : null,
         isActive: true,
         tenantId: dto.tenantId,
-        createdById: actorId,
+        createdById,
         templateId,
         templateVersion: template.version,
         departmentId: dto.departmentId ?? null,
@@ -189,7 +211,7 @@ export class DeploymentService {
               : null,
             isActive: true,
             tenantId,
-            createdById: actorId,
+            createdById: this.normaliseActorId(actorId),
             templateId: item.templateId,
             templateVersion: tmpl.version,
             departmentId: item.departmentId ?? null,
@@ -332,7 +354,7 @@ export class DeploymentService {
                 config: (matchTemplate.config ?? {}) as never,
                 isActive: true,
                 tenantId,
-                createdById: actorId,
+                createdById: this.normaliseActorId(actorId),
                 templateId: matchTemplate.id,
                 templateVersion: matchTemplate.version,
                 departmentId: deptId,
@@ -371,7 +393,7 @@ export class DeploymentService {
             config: (matchTemplate.config ?? {}) as never,
             isActive: true,
             tenantId,
-            createdById: actorId,
+            createdById: this.normaliseActorId(actorId),
             templateId: matchTemplate.id,
             templateVersion: matchTemplate.version,
             departmentId: deptId,
@@ -502,7 +524,7 @@ export class DeploymentService {
             config: (matchTemplate.config ?? {}) as never,
             isActive: true,
             tenantId,
-            createdById: actorId,
+            createdById: this.normaliseActorId(actorId),
             templateId: matchTemplate.id,
             templateVersion: matchTemplate.version,
             departmentId: created.id,

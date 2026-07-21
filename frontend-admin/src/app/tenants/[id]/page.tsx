@@ -35,7 +35,7 @@ type Tab = 'overview' | 'departments' | 'agents' | 'deploy';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'departments', label: 'Departments' },
-  { id: 'agents', label: 'Agents' },
+  { id: 'agents', label: 'Employees' },
   { id: 'deploy', label: 'Deploy' },
 ];
 
@@ -356,7 +356,7 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
             </div>
             <div className="flex flex-wrap gap-3 items-center ml-auto">
               <Stat label="Plan" value={tenant.tier?.name ?? tenant.tier?.slug ?? tenant.plan ?? '—'} />
-              <Stat label="Agent Limit" value={String(tenant.tier?.maxAgents ?? tenant.agentLimit ?? '—')} />
+              <Stat label="Employee Limit" value={String(tenant.tier?.maxAgents ?? tenant.agentLimit ?? '—')} />
               <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_BADGE[tenant.status] ?? 'bg-zinc-800 text-zinc-400'}`}>
                 {tenant.status}
               </span>
@@ -514,7 +514,7 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                       </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <TierStat label="Max Agents" value={String(tenant.tier.maxAgents)} />
+                      <TierStat label="Max Employees" value={String(tenant.tier.maxAgents)} />
                       <TierStat label="Max Departments" value={String(tenant.tier.maxDepartments)} />
                       <TierStat label="Max Users" value={String(tenant.tier.maxUsers)} />
                       <TierStat label="Storage" value={tenant.tier.maxStorageGB ? `${tenant.tier.maxStorageGB} GB` : '—'} />
@@ -590,7 +590,7 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
               {loadingAgents ? (
                 <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-12 rounded-lg bg-surface-raised animate-pulse" />)}</div>
               ) : agents.length === 0 ? (
-                <Empty message="No agents deployed." action="Deploy Agents" onAction={() => setTab('deploy')} />
+                <Empty message="No employees deployed." action="Deploy Employees" onAction={() => setTab('deploy')} />
               ) : (
                 <div className="rounded-xl border border-surface-border overflow-hidden">
                   <table className="w-full text-sm">
@@ -691,7 +691,7 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                 </DeployCard>
 
                 {/* ── Flow 2: Deploy Agents ── */}
-                <DeployCard title="Deploy Agents" subtitle="Pick agent templates, configure each one, then bulk-deploy to this tenant.">
+                <DeployCard title="Deploy Employees" subtitle="Pick agent templates, configure each one, then bulk-deploy to this tenant.">
                   {agentDeployResult !== null ? (
                     <SuccessBox>
                       <strong>{agentDeployResult}</strong> agent{agentDeployResult !== 1 ? 's' : ''} deployed.

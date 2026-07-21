@@ -16,7 +16,7 @@ interface KpiSectionProps {
 function buildKpis(m: CompanyMetrics): KpiTileProps[] {
   return [
     {
-      label: 'Total Agents',
+      label: 'Total Employees',
       value: m.totalAgents,
       delta: m.activeAgents,
       deltaLabel: `${m.activeAgents} active`,

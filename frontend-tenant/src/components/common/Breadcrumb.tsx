@@ -42,7 +42,7 @@ export interface BreadcrumbProps {
  *
  * @example
  * <Breadcrumb items={[
- *   { label: 'Agents', href: '/agents' },
+ *   { label: 'Employees', href: '/agents' },
  *   { label: 'Alex AI Agent', active: true }
  * ]} />
  *

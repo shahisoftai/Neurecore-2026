@@ -78,7 +78,7 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   { id: 'overview',   label: 'Overview',   icon: Activity },
-  { id: 'agents',     label: 'Agents',     icon: Users },
+  { id: 'agents',     label: 'Employees',     icon: Users },
   { id: 'tasks',      label: 'Tasks',      icon: ListTodo },
   { id: 'workflows',  label: 'Workflows',  icon: GitBranch },
   { id: 'routines',   label: 'Routines',   icon: Repeat },
@@ -647,7 +647,7 @@ function OverviewTab(props: {
       {/* KPI strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          label="Agents"
+          label="Employees"
           value={props.agentCount}
           delta={props.runningAgents}
           deltaLabel="running"
@@ -750,8 +750,8 @@ function AgentsTab({ deptAgents, onInspect }: { deptAgents: unknown[]; onInspect
     return (
       <EmptyTab
         icon={<Users className="w-10 h-10" />}
-        title="No agents in this department yet"
-        description="Spawn your first agent from the marketplace."
+        title="No employees in this department yet"
+        description="Spawn your first employee from the marketplace."
       />
     );
   }
@@ -1138,7 +1138,7 @@ function CostsTab({
           color="ops"
         />
         <KpiCard
-          label="Active Agents"
+          label="Active Employees"
           value={loading ? '—' : costRows.length}
           color="strategy"
         />

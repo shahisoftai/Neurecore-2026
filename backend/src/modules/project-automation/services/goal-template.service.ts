@@ -42,9 +42,27 @@ export class GoalTemplateService {
 
     const goalEntries = version.goalTemplate as GoalTemplateEntry[];
 
+    // Idempotency: skip goals that already exist for this project with the same title.
+    // The Phase 8 sync call in ProjectsService.create() AND the Phase 3A
+    // fire-and-forget call in ProjectAutomationService.onProjectCreated() both
+    // invoke this method. Without idempotency, every project gets its goals
+    // created twice.
+    const existing = await this.goalsService.findAll(tenantId, { projectId });
+    const existingTitles = new Set(
+      (existing.data ?? []).map((g) => g.title.trim().toLowerCase()),
+    );
+
     for (const entry of goalEntries) {
       if (!entry.title || !entry.title.trim()) {
         result.skipped.push(`(empty title entry)`);
+        continue;
+      }
+      const normalizedTitle = entry.title.trim().toLowerCase();
+      if (existingTitles.has(normalizedTitle)) {
+        result.skipped.push(`${entry.title} (already exists)`);
+        this.logger.debug(
+          `Goal "${entry.title}" already exists for project ${projectId} — skipping duplicate`,
+        );
         continue;
       }
 
@@ -59,6 +77,7 @@ export class GoalTemplateService {
         );
 
         result.goals.push(goal);
+        existingTitles.add(normalizedTitle);
         this.logger.debug(`Created goal "${goal.title}" (${goal.id}) for project ${projectId}`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

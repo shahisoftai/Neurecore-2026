@@ -22,8 +22,6 @@ interface UnifiedChatPanelProps {
   jsonExtractor: IJsonExtractor;
   config: ChatConfig;
   pageContext?: string;
-  pendingMessage?: string;
-  onPendingConsumed?: () => void;
 }
 
 export function UnifiedChatPanel({
@@ -32,8 +30,6 @@ export function UnifiedChatPanel({
   jsonExtractor,
   config,
   pageContext,
-  pendingMessage,
-  onPendingConsumed,
 }: UnifiedChatPanelProps) {
   const {
     messages,
@@ -48,15 +44,6 @@ export function UnifiedChatPanel({
   } = useChat(chatService, slashCommands, jsonExtractor, config, pageContext);
 
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  // Consume pending message once (from HomeHero or external prompt)
-  useEffect(() => {
-    if (pendingMessage) {
-      sendMessage(pendingMessage);
-      onPendingConsumed?.();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount with pendingMessage
-  }, []);
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -99,6 +86,7 @@ export function UnifiedChatPanel({
               exit={{ x: 320, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 280, damping: 30 }}
               className="fixed bottom-16 right-20 z-40 w-80 max-h-[520px] flex flex-col rounded-2xl border border-surface-border bg-surface-raised shadow-2xl overflow-hidden"
+              data-testid="chat-panel"
             >
               {/* Header */}
               <UnifiedChatHeader
@@ -110,7 +98,7 @@ export function UnifiedChatPanel({
               />
 
               {/* Messages thread */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              <div className="flex-1 overflow-y-auto p-3 space-y-1" data-testid="chat-messages">
                 {messages.length === 0 && (
                   <UnifiedChatEmptyState
                     starterPrompts={config.starterPrompts}
@@ -132,7 +120,10 @@ export function UnifiedChatPanel({
 
               {/* Error banner */}
               {error && (
-                <div className="px-3 py-1.5 mx-3 mb-1 rounded-lg border border-red-700/40 bg-red-950/30">
+                <div
+                  className="px-3 py-1.5 mx-3 mb-1 rounded-lg border border-red-700/40 bg-red-950/30"
+                  data-testid="chat-error"
+                >
                   <button
                     onClick={() => setError(null)}
                     className="text-[10px] text-red-400 hover:text-red-300 transition w-full text-left"

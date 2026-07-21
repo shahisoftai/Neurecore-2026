@@ -9,6 +9,14 @@
  *
  * All endpoints are SuperAdmin-only (matches the existing
  * ModelsAdminController guard).
+ *
+ * Phase 2.3 + 2.4 + 2.7 fixes (2026-07-20):
+ *   - `ModelBody.capabilities` accepted and validated with `isCapability()`.
+ *   - Models created via this surface are routable (was: empty array).
+ *   - `updateRouting` validates the chosen model possesses the capability
+ *     before marking it default.
+ *   - `testProvider` actually pings the selected provider's models, not
+ *     the global gateway.
  */
 
 import {
@@ -22,12 +30,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { BadRequestException } from '@nestjs/common';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { AiModelRepository } from '../selection/ai-model.repository';
 import { AiGatewayService } from '../ai-gateway.service';
+import { CAPABILITIES, isCapability } from '../domain/capabilities';
 
 /* ------------------------------------------------------------------ */
 /*  DTO types                                                         */
@@ -45,6 +55,13 @@ interface ProviderBody {
 interface ModelBody {
   name: string;
   modelId: string;
+  /**
+   * Phase 2.3: capabilities advertised by this model. Validated with
+   * `isCapability()` from the AI Gateway domain. If absent, defaults
+   * to `['conversation']` (the most common capability) so the model
+   * is at least routable. Empty arrays are rejected.
+   */
+  capabilities?: string[];
   contextWindow?: number;
   maxTokens?: number;
   isEnabled?: boolean;
@@ -232,12 +249,26 @@ export class AiProvidersController {
     const provider = await this.prisma.modelProvider.findUniqueOrThrow({ where: { id } });
     const start = Date.now();
     try {
-      const models = await this.prisma.aiModel.findFirst({
-        where: { providerId: id, isAvailable: true },
-        orderBy: { priority: 'asc' },
+      // Phase 2.7: pick THIS provider's model (capability-matching) and
+      // ask the gateway to ping it. Previous version ignored `models`
+      // and pinged the global chain, which could falsely report a
+      // healthy provider when a different one handled the request.
+      const candidate = await this.prisma.aiModel.findFirst({
+        where: {
+          providerId: id,
+          isAvailable: true,
+          capabilities: { has: 'conversation' },
+        },
+        orderBy: [{ isDefault: 'desc' }, { priority: 'asc' }],
       });
-      if (!models) return { success: false, latency: 0, error: 'No available models' };
-      const result = await this.gateway.ping(null, 'conversation');
+      if (!candidate) {
+        return {
+          success: false,
+          latency: 0,
+          error: 'No available models for this provider with capability=conversation',
+        };
+      }
+      const result = await this.gateway.ping(null, 'conversation', candidate.modelId);
       return { success: result.ok, latency: Date.now() - start };
     } catch (err) {
       return {
@@ -265,12 +296,14 @@ export class AiProvidersController {
     @Body() body: ModelBody,
     @CurrentUser() user: { id: string },
   ) {
+    // Phase 2.3: validate + normalise capabilities.
+    const capabilities = this.normaliseCapabilities(body.capabilities);
     const created = await this.prisma.aiModel.create({
       data: {
         providerId,
         modelId: body.modelId,
         displayName: body.name,
-        capabilities: [],
+        capabilities,
         contextWindow: body.contextWindow ?? 8192,
         costPer1kInput: new Prisma.Decimal(0),
         costPer1kOutput: new Prisma.Decimal(0),
@@ -296,6 +329,10 @@ export class AiProvidersController {
     if (body.isEnabled !== undefined) updateData.isAvailable = body.isEnabled;
     if (body.isDefault !== undefined) updateData.isDefault = body.isDefault;
     if (body.contextWindow !== undefined) updateData.contextWindow = body.contextWindow;
+    // Phase 2.3: allow capability updates (deduped, validated).
+    if (body.capabilities !== undefined) {
+      updateData.capabilities = this.normaliseCapabilities(body.capabilities);
+    }
 
     const updated = await this.prisma.aiModel.update({
       where: { id: modelId },
@@ -358,22 +395,38 @@ export class AiProvidersController {
     @Body() body: RoutingBody,
     @CurrentUser() user: { id: string },
   ) {
+    // Phase 2.4: validate every capability name AND every selected
+    // model. Previous version marked ANY model isDefault=true even if
+    // it didn't advertise the capability, leaving the chain to skip
+    // it on lookup.
     const entries = Object.entries(body) as [string, string][];
     for (const [capability, modelId] of entries) {
-      const model = await this.prisma.aiModel.findFirst({
-        where: { modelId, isAvailable: true },
-      });
-      if (model) {
-        await this.prisma.aiModel.updateMany({
-          where: { capabilities: { has: capability } },
-          data: { isDefault: false },
-        });
-        await this.prisma.aiModel.update({
-          where: { id: model.id },
-          data: { isDefault: true },
-        });
-        await this.writeAudit(user.id, 'update', 'AiModel', model.id, null, { isDefault: true, capability });
+      if (!isCapability(capability)) {
+        throw new BadRequestException(
+          `Unknown capability "${capability}". Valid: ${CAPABILITIES.join(', ')}`,
+        );
       }
+      const model = await this.prisma.aiModel.findFirst({
+        where: {
+          modelId,
+          isAvailable: true,
+          capabilities: { has: capability },
+        },
+      });
+      if (!model) {
+        throw new BadRequestException(
+          `Model "${modelId}" is not available for capability "${capability}"`,
+        );
+      }
+      await this.prisma.aiModel.updateMany({
+        where: { capabilities: { has: capability } },
+        data: { isDefault: false },
+      });
+      await this.prisma.aiModel.update({
+        where: { id: model.id },
+        data: { isDefault: true },
+      });
+      await this.writeAudit(user.id, 'update', 'AiModel', model.id, null, { isDefault: true, capability });
     }
     this.repo.invalidate();
     return this.getRouting();
@@ -393,6 +446,43 @@ export class AiProvidersController {
   }
 
   /* ---- Audit helper ---- */
+
+  /**
+   * Phase 2.3: validate + dedupe + lower-case a caller-supplied
+   * `capabilities` array. Throws `BadRequestException` on:
+   *   - empty array (a model with no capabilities is invisible to
+   *     every chain builder; reject it loudly)
+   *   - any unknown capability string
+   *
+   * When `input` is undefined, defaults to `['conversation']` so
+   * `POST /settings/ai/providers/:id/models` without a body still
+   * produces a routable model.
+   *
+   * Pure: no I/O, no DB calls, no side effects. SRP.
+   */
+  private normaliseCapabilities(input: string[] | undefined): string[] {
+    const src = input ?? ['conversation'];
+    if (src.length === 0) {
+      throw new BadRequestException(
+        'capabilities must be a non-empty array (use ["conversation"] for a generic chat model)',
+      );
+    }
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of src) {
+      const c = raw.trim().toLowerCase();
+      if (!isCapability(c)) {
+        throw new BadRequestException(
+          `Unknown capability "${raw}". Valid: ${CAPABILITIES.join(', ')}`,
+        );
+      }
+      if (!seen.has(c)) {
+        seen.add(c);
+        out.push(c);
+      }
+    }
+    return out;
+  }
 
   private async writeAudit(
     actorId: string,

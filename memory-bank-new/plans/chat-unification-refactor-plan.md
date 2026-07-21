@@ -1240,3 +1240,139 @@ bash scripts/chat-unification-rollout.sh rollback stage1  # if needed
 - Backend: 1 (agent-state-machine.ts, 661 LOC)
 - Frontend-admin: 5 (legacy chat files)
 - Frontend-admin: ~450 LOC chat legacy
+
+---
+
+## 12. Post-Implementation: Production Deploy + Bug Fixes (2026-07-19)
+
+### Bug: OfficialAgentGraph missing from AgentsModule DI providers
+
+**Discovered:** During production deployment on Contabo.
+
+**Symptom:**
+```
+Nest can't resolve dependencies of the ChatService (MiniMaxClient, PrismaService, ?,
+ActivityService, FeatureFlagService, AiGatewayService, ChatHistoryService). Please make
+sure that the argument OfficialAgentGraph at index [2] is available in the ChatModule context.
+```
+
+Backend entered a crash loop (multiple restarts per second) until the DI token was restored.
+
+**Root cause:**
+Phase H correctly removed the `officialGraph.stream(...)` direct call from `agent-executor.service.ts`, but incorrectly removed `OfficialAgentGraph` from `AgentsModule`'s `providers` and `exports` arrays. Three other services still inject `OfficialAgentGraph` via DI:
+
+| Service | Module | Injection style |
+|---------|--------|-----------------|
+| `ChatService` | `ChatModule` | Required constructor param (used for deterministic project-creation tool execution) |
+| `HermesRuntimeService` | `HermesModule` | Required constructor param (Hermes delegates to OfficialAgentGraph internally) |
+| `ChiefOfStaffService` | `ChiefOfStaffModule` | `@Optional()` (unused, but DI token must exist) |
+
+The class file itself was never deleted — only its provider registration was removed.
+
+**Fix:** Restored `OfficialAgentGraph` to both `providers` and `exports` arrays in `agents.module.ts`.
+
+**Prevention:** Before removing any NestJS DI provider, run `grep -rn "import.*OfficialAgentGraph" backend/src/` to find all consumers. Phase H's audit correctly identified zero *callers* of `AgentStateMachine` (dead class) but incorrectly assumed the same for `OfficialAgentGraph` which has three active consumers.
+
+### Production Deploy Results (2026-07-19)
+
+| Step | Result |
+|---|---|
+| Git push to GitHub (`origin/006-simulation-readiness`) | ✅ `6dd5116` — 2 commits |
+| Rsync `frontend-tenant` → Contabo | ✅ Source synced, `next build` succeeded at 21:28 |
+| Rsync `frontend-admin` → Contabo | ✅ Source synced, `npm install --legacy-peer-deps` + `next build` at 21:32 |
+| Rsync `backend` → Contabo | ✅ Source synced, `nest build` at 21:42 |
+| `prisma migrate deploy` | ⚠️ **Blocked** — Neon compute quota exhausted on `ep-summer-pond-adpkqy1m.c-2.us-east-1.aws.neon.tech` |
+| PM2 restart `neurecore-backend` | ✅ PID 197568, uptime 0s after fix |
+| PM2 restart `neurecore-tenant` | ✅ PID 184595, uptime 5m |
+| PM2 restart `neurecore-admin` | ✅ PID 188470, uptime 0s |
+| PM2 save | ✅ `/root/.pm2/dump.pm2` saved |
+
+**Production state (confirmed):**
+
+| Component | URL | Status |
+|-----------|-----|--------|
+| Backend health | `https://brain.neurecore.com/api/v1/health` | ✅ 200 `{"status":"healthy"}` |
+| Tenant (HQ) | `https://hq.neurecore.com/` | ✅ 200 |
+| Admin (CC) | `https://cc.neurecore.com/` | ✅ 200 |
+
+**FeatureFlag bootstrap log (live on Contabo):**
+```
+[Nest] FeatureFlag HERMES_AUTO_LINK: unset → true
+```
+`HERMES_ENABLED` is no longer logged — confirmed removed in Phase H.
+
+**Production URLs:**
+- Backend API: `https://brain.neurecore.com/api/v1/` (health, chat, metrics, etc.)
+- Tenant portal: `https://hq.neurecore.com/`
+- Admin portal: `https://cc.neurecore.com/`
+
+### Known Production Issue: Neon DB Quota
+
+`prisma migrate deploy` cannot run because Neon (`ep-summer-pond-adpkqy1m.c-2.us-east-1.aws.neon.tech`) reports:
+```
+ERROR: Your account or project has exceeded the compute time quota.
+```
+
+The `chat_sessions` and `chat_messages` tables do not exist yet. Chat persistence will log `[chat-history] saveMessage failed` warnings and silently fall back to in-memory only (by design). All other functionality works normally.
+
+**To resolve:**
+```bash
+ssh contabo 'cd /opt/neurecore/backend/backend && ./node_modules/.bin/prisma migrate deploy'
+```
+Run after Neon quota resets (typically within 1–2 hours). Migration is idempotent — safe to re-run.
+
+**Alternative if quota persists:** Execute migration SQL directly:
+```bash
+ssh contabo "PGPASSWORD='...' psql -h ep-summer-pond-adpkqy1m.c-2.us-east-1.aws.neon.tech -U neondb_owner -d neondb" < backend/prisma/migrations/20260719_chat_persistence/migration.sql
+```
+
+### Updated Done Definition
+
+- [x] Frontend-tenant has exactly one chat panel mounted (`UnifiedChatPanel`)
+- [x] Frontend-admin has exactly one chat panel mounted (`UnifiedChatPanel`)
+- [x] Backend has exactly one chat POST route (`/chat/messages`) + one SSE route (`/chat/stream`)
+- [x] `grep -rn "ConversationPanel\|AIChatPanel\|ConversationalAIService\|AgentStateMachine" neurecore/` returns 0 results
+- [x] `grep -rn "/ai/chat" neurecore/frontend*/src/` returns 0 results
+- [x] `npx tsc --noEmit` clean on all three packages
+- [x] All CI gates pass (Phase F)
+- [ ] ~~Production smoke test passes on Contabo~~ (blocked on Neon quota; health + frontends confirmed)
+- [x] Net LOC removed: ~3,200 (across all phases)
+- [x] Bundle size decreased for both frontends
+- [x] Hermes default-on with confirmed `HERMES_AUTO_LINK: unset → true` in production logs
+- [x] All plans in `memory-bank-new/plans/` updated to reflect final state
+
+---
+
+## Update 2026-07-20 — Phase 0-7 Remediation Applied
+
+**Summary:** Chat persistence, SSE reliability, and Hermes/LangGraph fixes from comprehensive-remediation-plan-2026-07-20.md.
+
+### What Was Fixed
+
+| Issue | File | Fix |
+|---|---|---|
+| MiniMax short-circuit bypassed AI Gateway V2 | `chat.service.ts` | Removed; gateway handles provider availability |
+| Streaming never persisted history | `chat.service.ts` | `stream()` now calls `saveMessage` after streaming |
+| Action intent routed as conversation | `chat.service.ts` | `detectIntent()` routes to `OfficialAgentGraph` |
+| SSE empty delta terminal message | `chat-sse.service.ts` | Skip empty deltas |
+| SSE error leaked raw provider details | `chat-sse.service.ts` | `classifyChatError()` maps to user-safe messages |
+| `saveMessage` missing ownership check | `chat-history.service.ts` | Added `findUnique` ownership verification |
+| `createProject` fail-open | `neurecore-tools.ts` | Fail-closed: throws if `ProjectsService` unavailable |
+| `ToolGatewayService` fail-open | `tool-gateway.service.ts` | Returns `{ allowed: false }` for unknown tools |
+| LangGraph retry loop side effects | `langgraph-official.ts` | Clear `toolCalls` on retry; check `success === false` |
+| Hermes step.success always true | `hermes-runtime.service.ts` | Set `hasError: true` on tool failure |
+
+### Chat Tables Status (2026-07-20)
+
+The `chat_sessions` and `chat_messages` tables now exist on Contabo PostgreSQL (port 5432). Migration `20260719_chat_persistence` was applied.
+
+### Test Results
+
+- `chat-history.service.spec.ts`: 11/11 ✅
+- `chat.integration-spec.ts`: 9/9 ✅
+- AI Gateway tests: 28/28 ✅
+
+### Known Issues
+
+- **Pre-existing**: `projects-lifecycle.integration.spec.ts` (16 tests) — NestJS DI resolution failure, unrelated to chat
+- **Frontend e2e**: Playwright tests require live environment (backend + browser)

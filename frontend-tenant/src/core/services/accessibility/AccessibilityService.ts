@@ -50,7 +50,7 @@ export class AccessibilityService implements IAccessibilityService {
     { key: 'Ctrl+K',       action: 'openCommandPalette',  label: 'Open Command Palette',    code: 'KeyK',       ctrlKey: true  },
     { key: 'Ctrl+/',       action: 'search',              label: 'Focus Search',             code: 'Slash',      ctrlKey: true  },
     { key: 'Ctrl+G D',     action: 'goToDashboard',       label: 'Go to Dashboard',          code: 'KeyD',       ctrlKey: true, shiftKey: true },
-    { key: 'Ctrl+G A',     action: 'goToAgents',          label: 'Go to Agents',             code: 'KeyA',       ctrlKey: true, shiftKey: true },
+    { key: 'Ctrl+G A',     action: 'goToAgents',          label: 'Go to Employees',             code: 'KeyA',       ctrlKey: true, shiftKey: true },
     { key: 'Ctrl+G T',     action: 'goToTasks',           label: 'Go to Tasks',              code: 'KeyT',       ctrlKey: true, shiftKey: true },
     { key: 'Ctrl+G W',     action: 'goToWorkflows',       label: 'Go to Workflows',          code: 'KeyW',       ctrlKey: true, shiftKey: true },
     { key: 'Ctrl+G R',     action: 'goToAnalytics',       label: 'Go to Analytics',          code: 'KeyR',       ctrlKey: true, shiftKey: true },

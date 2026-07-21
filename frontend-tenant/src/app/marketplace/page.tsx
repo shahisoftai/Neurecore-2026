@@ -96,7 +96,7 @@ type ViewMode = 'grid' | 'list';
 type FilterStatus = 'ALL' | 'ACTIVE' | 'RUNNING' | 'PAUSED' | 'IDLE' | 'ERROR' | 'ARCHIVED' | 'DEPRECATED';
 
 const TABS: { id: MarketplaceTab; label: string; icon: typeof Users }[] = [
-  { id: 'agents',     label: 'My Agents',      icon: Users },
+  { id: 'agents',     label: 'My Employees',      icon: Users },
   { id: 'templates',  label: 'Agent Templates', icon: Sparkles },
   { id: 'packages',   label: 'Packages',       icon: Briefcase },
   { id: 'connectors', label: 'Connectors',     icon: Plug },
@@ -368,11 +368,11 @@ function MyAgentsTab({
         <div className="card-surface p-12 text-center">
           <Users className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
           <p className="text-sm text-zinc-300 font-medium">
-            {agents.length === 0 ? 'No agents yet' : 'No agents match your filters'}
+            {agents.length === 0 ? 'No employees yet' : 'No employees match your filters'}
           </p>
           <p className="text-xs text-zinc-500 mt-1 max-w-md mx-auto">
             {agents.length === 0
-              ? 'Spawn your first agent from the Agent Templates tab to get started.'
+              ? 'Spawn your first employee from the Agent Templates tab to get started.'
               : 'Try a different search term or status filter.'}
           </p>
           {agents.length === 0 && (

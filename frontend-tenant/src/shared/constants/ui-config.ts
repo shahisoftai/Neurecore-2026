@@ -13,7 +13,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',     href: ROUTES.DASHBOARD,         icon: '⬡' },
-  { label: 'Agents',        href: ROUTES.AGENTS.ROOT,       icon: '◈' },
+  { label: 'Employees',        href: ROUTES.AGENTS.ROOT,       icon: '◈' },
   { label: 'Departments',   href: ROUTES.DEPARTMENTS.ROOT,  icon: '⬟' },
   { label: 'Tasks',         href: ROUTES.TASKS.ROOT,        icon: '◫' },
   { label: 'Delegate',      href: ROUTES.TASKS.DELEGATE,    icon: '⟲' },

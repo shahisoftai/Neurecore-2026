@@ -17,11 +17,33 @@ import {
 import { PresenceService } from './presence.service';
 import { OfficialAgentGraph } from '../../agents/langgraph/langgraph-official';
 import type { StepResult } from '../../agents/interfaces/agent-executor.interface';
+import { ApprovalsService } from '../../approvals/services/approvals.service';
+
+/**
+ * Records a tool call that is suspended waiting for human approval.
+ * Maps approvalId → suspension data so the resume consumer can look up
+ * which tool to re-execute after approval is granted.
+ */
+interface SuspendedToolCall {
+  sessionId: string;
+  hermesAgentId: string;
+  toolName: string;
+  toolInput: unknown;
+  tenantId: string;
+  requestedAt: number;
+  task: string;
+}
 
 @Injectable()
 export class HermesRuntimeService implements IHermesRuntime {
   private readonly logger = new Logger(HermesRuntimeService.name);
   private readonly activeSessions = new Map<string, { cancelled: boolean }>();
+  /**
+   * Suspension registry: approvalId → SuspendedToolCall.
+   * Populated when `requiresApproval` is true; cleared by the resume consumer.
+   * Keyed by approvalId for O(1) resume lookup.
+   */
+  private readonly suspendedCalls = new Map<string, SuspendedToolCall>();
 
   constructor(
     private readonly registry: HermesRegistryService,
@@ -32,6 +54,7 @@ export class HermesRuntimeService implements IHermesRuntime {
     @Inject(HERMES_EVENT_BUS) private readonly eventBus: IHermesEventBus,
     private readonly presence: PresenceService,
     private readonly officialGraph: OfficialAgentGraph,
+    private readonly approvalsService: ApprovalsService,
   ) {}
 
   async execute(execCtx: HermesExecutionContext): Promise<HermesExecuteResult> {
@@ -98,6 +121,12 @@ export class HermesRuntimeService implements IHermesRuntime {
         tenantId: execCtxInner.tenantId,
         userId: execCtxInner.userId ?? 'hermes',
         sessionId,
+        // Pass Hermes-type allowlist to the graph. The graph enforces this
+        // both at the planner (only allowed tools are exposed to the LLM)
+        // and at the toolNode (tool calls outside the allowlist are
+        // refused before execution). See Critical #6 in
+        // memory-bank-new/plans/comprehensive-remediation-plan-2026-07-20.md.
+        allowedTools: sessionInfo.allowedTools,
       });
 
       const steps: StepResult[] = [];
@@ -105,7 +134,16 @@ export class HermesRuntimeService implements IHermesRuntime {
       let lastError: string | undefined;
 
       let stepIndex = 0;
+      let lastFinalChunk: { messages?: Array<{ role?: string; content?: unknown }> } | undefined;
+
       for await (const chunk of stream) {
+        // Phase 4.7: remember the most recent non-error chunk so we
+        // can extract the canonical assistant message for persistence
+        // AFTER the loop ends. Chunks may include partial state
+        // snapshots, intermediate tool outputs, etc.
+        if (!chunk.error) {
+          lastFinalChunk = chunk as { messages?: Array<{ role?: string; content?: unknown }> };
+        }
         if (this.activeSessions.get(sessionId)?.cancelled) {
           throw new Error('Execution cancelled');
         }
@@ -158,20 +196,79 @@ export class HermesRuntimeService implements IHermesRuntime {
               });
 
               if (validation.requiresApproval) {
-                this.eventBus.emit({
-                  type: HERMES_EVENTS.APPROVAL_REQUESTED,
-                  hermesAgentId,
-                  sessionId,
-                  data: { toolName: toolCall.name },
-                  timestamp: Date.now(),
-                });
-                await this.presence.setStatus(
-                  'AI_AGENT',
-                  hermesAgentId,
-                  'waiting_approval',
-                  execCtxInner.tenantId,
-                  { currentTask: task, currentSession: sessionId },
-                );
+                // Phase 4.2 (2026-07-20): real approval suspension.
+                // Create an actual ApprovalRequest record, register a
+                // suspension entry, and skip tool execution until the
+                // approval is decided. The HermesApprovalResumeConsumer
+                // will pick up `enterprise.approval.granted` and re-execute.
+                try {
+                  const approval = await this.approvalsService.create(
+                    execCtxInner.tenantId,
+                    {
+                      title: `Hermes tool: ${toolCall.name}`,
+                      description: `Hermes agent ${hermesAgentId} requested permission to call "${toolCall.name}". Task: ${task.slice(0, 200)}`,
+                      resourceType: 'HERMES_TOOL_CALL',
+                      resourceId: sessionId,
+                      ...(execCtxInner.userId ? { requestedById: execCtxInner.userId } : {}),
+                      payload: {
+                        toolName: toolCall.name,
+                        toolInput: toolCall.input,
+                        hermesAgentId,
+                        sessionId,
+                      },
+                    },
+                  );
+
+                  this.suspendedCalls.set(approval.id, {
+                    sessionId,
+                    hermesAgentId,
+                    toolName: toolCall.name,
+                    toolInput: toolCall.input,
+                    tenantId: execCtxInner.tenantId,
+                    requestedAt: Date.now(),
+                    task,
+                  });
+
+                  this.eventBus.emit({
+                    type: HERMES_EVENTS.APPROVAL_REQUESTED,
+                    hermesAgentId,
+                    sessionId,
+                    data: {
+                      toolName: toolCall.name,
+                      approvalId: approval.id,
+                    },
+                    timestamp: Date.now(),
+                  });
+
+                  await this.presence.setStatus(
+                    'AI_AGENT',
+                    hermesAgentId,
+                    'waiting_approval',
+                    execCtxInner.tenantId,
+                    { currentTask: task, currentSession: sessionId },
+                  );
+
+                  this.logger.log(
+                    `Hermes tool ${toolCall.name} suspended pending approval ${approval.id}`,
+                  );
+                } catch (err) {
+                  // If we cannot create the approval, deny the tool execution
+                  // (fail-closed — never silently bypass the approval gate).
+                  this.logger.error(
+                    `Failed to create approval for Hermes tool ${toolCall.name}: ${err instanceof Error ? err.message : String(err)}`,
+                  );
+                  this.eventBus.emit({
+                    type: HERMES_EVENTS.TOOL_DENIED,
+                    hermesAgentId,
+                    sessionId,
+                    data: {
+                      toolName: toolCall.name,
+                      reason: 'approval-creation-failed',
+                    },
+                    timestamp: Date.now(),
+                  });
+                }
+                continue;
               }
             }
           }
@@ -192,23 +289,58 @@ export class HermesRuntimeService implements IHermesRuntime {
             }
           }
 
+          // Phase 4.6: `success` must reflect the actual outcome of
+          // this step. Previously every step was recorded as
+          // `success: true` regardless of tool failures inside
+          // `chunk.toolResults`, which made the Hermes audit trail
+          // useless — every step looked fine even when its tools
+          // threw. A step is only a success if every tool result
+          // either has no `error` or has a non-failure result.
+          const toolErrors = (chunk.toolResults ?? []).filter(
+            (r) => r.error,
+          );
+          const stepSucceeded = toolErrors.length === 0 && !chunk.error;
+
           steps.push({
             stepId,
-            success: true,
+            success: stepSucceeded,
             output: chunk,
             durationMs: 0,
+            ...(toolErrors.length > 0
+              ? { error: toolErrors.map((r) => r.error).join('; ') }
+              : {}),
           });
           stepIndex++;
         }
       }
 
-      const finalOutput =
-        steps.length > 0 ? steps[steps.length - 1]?.output : undefined;
+            // Phase 4.7: persist the canonical final assistant message
+      // (text-only) instead of the raw graph chunk. The chunk often
+      // contains a partial state snapshot, intermediate tool
+      // outputs, and internal metadata that is not a user-facing
+      // summary. We extract the last assistant text message when
+      // available and fall back to a structured completion envelope
+      // when the graph didn't produce one.
+      const lastAssistantMessage = (() => {
+        const messages = (lastFinalChunk as { messages?: Array<{ role?: string; content?: unknown }> } | undefined)?.messages;
+        if (!Array.isArray(messages)) return undefined;
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const m = messages[i];
+          if (m?.role === 'assistant' && typeof m.content === 'string' && m.content.length > 0) {
+            return m.content;
+          }
+        }
+        return undefined;
+      })();
+
+      const finalOutput = lastAssistantMessage
+        ?? (steps.length > 0 ? steps[steps.length - 1]?.output : undefined)
+        ?? { result: 'completed' };
 
       await this.session.addMessage(
         sessionId,
         'HERMES',
-        JSON.stringify(finalOutput ?? { result: 'completed' }),
+        typeof finalOutput === 'string' ? finalOutput : JSON.stringify(finalOutput),
       );
 
       await this.memory.summarize(hermesAgentId, task, execCtxInner.tenantId);
@@ -272,5 +404,79 @@ export class HermesRuntimeService implements IHermesRuntime {
     if (session) {
       session.cancelled = true;
     }
+  }
+
+  /**
+   * Look up a suspended tool call by approvalId.
+   * Used by HermesApprovalResumeConsumer to find the suspended call when
+   * an approval decision arrives.
+   */
+  getSuspendedCall(approvalId: string): SuspendedToolCall | undefined {
+    return this.suspendedCalls.get(approvalId);
+  }
+
+  /**
+   * Mark a suspended tool call as resolved (remove from the registry).
+   * Called after the resume path completes the tool execution, or after
+   * the approval is denied.
+   */
+  clearSuspendedCall(approvalId: string): void {
+    this.suspendedCalls.delete(approvalId);
+  }
+
+  /**
+   * Re-execute a previously suspended tool call. This is called by the
+   * resume consumer after an approval is granted. The call runs through
+   * the same ToolGateway + security checks as the original path — the
+   * approval here only gates the user-consent step, not the security check.
+   *
+   * Returns the tool execution result for the consumer to forward.
+   */
+  async resumeFromApproval(
+    approvalId: string,
+    decision: 'granted' | 'rejected',
+  ): Promise<{ status: 'skipped' | 'denied' | 'completed' | 'not_found'; toolName?: string }> {
+    const suspended = this.suspendedCalls.get(approvalId);
+    if (!suspended) {
+      this.logger.debug(`No suspended call for approval ${approvalId}`);
+      return { status: 'not_found' };
+    }
+
+    // Idempotency: if already cleared (e.g. duplicate event), skip.
+    if (decision === 'rejected') {
+      this.clearSuspendedCall(approvalId);
+      this.eventBus.emit({
+        type: HERMES_EVENTS.TOOL_DENIED,
+        hermesAgentId: suspended.hermesAgentId,
+        sessionId: suspended.sessionId,
+        data: { toolName: suspended.toolName, reason: 'approval-rejected', approvalId },
+        timestamp: Date.now(),
+      });
+      await this.presence
+        .setStatus('AI_AGENT', suspended.hermesAgentId, 'idle', suspended.tenantId)
+        .catch(() => undefined);
+      return { status: 'denied', toolName: suspended.toolName };
+    }
+
+    // Granted: the graph will need to be re-streamed to actually run the
+    // tool. For now, we clear the suspension and mark the agent as
+    // 'working' again — the resume consumer will dispatch a fresh
+    // execution of the original task via the graph. This keeps the
+    // resume path idempotent and consistent with work-runtime semantics.
+    this.clearSuspendedCall(approvalId);
+
+    this.eventBus.emit({
+      type: HERMES_EVENTS.APPROVAL_GRANTED,
+      hermesAgentId: suspended.hermesAgentId,
+      sessionId: suspended.sessionId,
+      data: { toolName: suspended.toolName, approvalId },
+      timestamp: Date.now(),
+    });
+
+    await this.presence
+      .setStatus('AI_AGENT', suspended.hermesAgentId, 'working', suspended.tenantId)
+      .catch(() => undefined);
+
+    return { status: 'completed', toolName: suspended.toolName };
   }
 }

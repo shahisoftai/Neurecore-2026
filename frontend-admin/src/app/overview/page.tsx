@@ -27,7 +27,7 @@ interface TenantRow {
 const QUICK_LINKS = [
   { label: 'Tenants', href: '/tenants', icon: '⬟', color: 'border-indigo-700/40 hover:border-indigo-500/60' },
   { label: 'Users', href: '/users', icon: '◫', color: 'border-blue-700/40 hover:border-blue-500/60' },
-  { label: 'Agent Fleet', href: '/agents', icon: '◈', color: 'border-violet-700/40 hover:border-violet-500/60' },
+  { label: 'Employee Fleet', href: '/agents', icon: '◈', color: 'border-violet-700/40 hover:border-violet-500/60' },
   { label: 'Models', href: '/models', icon: '⬡', color: 'border-cyan-700/40 hover:border-cyan-500/60' },
   { label: 'Monitoring', href: '/monitoring', icon: '◻', color: 'border-emerald-700/40 hover:border-emerald-500/60' },
   { label: 'Security', href: '/security', icon: '◌', color: 'border-amber-700/40 hover:border-amber-500/60' },
@@ -85,7 +85,7 @@ export default function OverviewPage() {
         {/* ── KPI tiles ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiTile label="Active Tenants" value={kpis?.activeTenants ?? '—'} delta={kpis?.totalTenants} deltaLabel="total" color="ops" loading={kpisLoading} />
-          <KpiTile label="Running Agents" value={kpis?.runningAgents ?? '—'} delta={kpis?.totalAgents} deltaLabel="total" color="strategy" loading={kpisLoading} />
+          <KpiTile label="Running Employees" value={kpis?.runningAgents ?? '—'} delta={kpis?.totalAgents} deltaLabel="total" color="strategy" loading={kpisLoading} />
           <KpiTile label="Success Rate" value={kpis ? `${kpis.successRate}%` : '—'} color="profit" loading={kpisLoading} />
           <KpiTile label="Platform Cost" value={kpis ? `$${kpis.totalCostUsd.toFixed(0)}` : '—'} color="warn" loading={kpisLoading} />
         </div>

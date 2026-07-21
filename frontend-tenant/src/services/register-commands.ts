@@ -33,7 +33,7 @@ export function registerTenantCommands(router: AppRouterInstance): () => void {
     },
     {
       id: 'nav:agents',
-      label: 'Go to Agents',
+      label: 'Go to Employees',
       group: 'Navigate',
       shortcut: 'G A',
       action: () => router.push('/agents'),

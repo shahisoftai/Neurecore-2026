@@ -70,8 +70,33 @@ export class StructuredToolRegistry {
     return Array.from(names).map(n => this.tools.get(n)).filter((t): t is IStructuredTool => t !== undefined);
   }
 
-  getFunctionDefinitions(): Array<{ type: 'function'; function: { name: string; description: string; parameters: { type: 'object'; properties: Record<string, unknown>; required: string[] } } }> {
-    return this.getAll().map(tool => tool.toFunctionCall());
+  /**
+   * Get function definitions for LLM tool calling.
+   *
+   * @param allowedNames Optional whitelist. When provided, only tools whose
+   *   name is in the set are returned. Used by Hermes runtime to honour
+   *   per-type tool policy, and by the graph to enforce the allowedTools
+   *   list passed in via state.
+   */
+  getFunctionDefinitions(allowedNames?: string[] | null): Array<{ type: 'function'; function: { name: string; description: string; parameters: { type: 'object'; properties: Record<string, unknown>; required: string[] } } }> {
+    const all = this.getAll();
+    if (!allowedNames || allowedNames.length === 0) {
+      return all.map(tool => tool.toFunctionCall());
+    }
+    const allowSet = new Set(allowedNames);
+    return all.filter(t => allowSet.has(t.name)).map(tool => tool.toFunctionCall());
+  }
+
+  /**
+   * Return the names of tools that should be exposed given an allowlist.
+   * Empty allowlist means "all registered tools".
+   */
+  resolveAllowedToolNames(allowedNames?: string[] | null): string[] {
+    if (!allowedNames || allowedNames.length === 0) {
+      return this.listToolNames();
+    }
+    const allowSet = new Set(allowedNames);
+    return this.listToolNames().filter(n => allowSet.has(n));
   }
 
   getToolDefinitions(): ToolDefinition[] {

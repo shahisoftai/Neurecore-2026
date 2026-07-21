@@ -114,7 +114,7 @@ export const RAIL_SECTIONS: RailSection[] = [
       label: 'Marketplace',
       items: [
         { id: 'marketplace', label: 'Marketplace', href: '/marketplace', icon: Store },
-        { id: 'agents',      label: 'Agents',      href: '/marketplace?tab=agents', icon: Users },
+        { id: 'agents',      label: 'Employees',      href: '/marketplace?tab=agents', icon: Users },
         { id: 'connectors',  label: 'Connectors',  href: '/marketplace?tab=connectors', icon: Plug },
         { id: 'ai-skills',   label: 'AI Skills',   href: '/marketplace?tab=templates', icon: Lightbulb },
       ],

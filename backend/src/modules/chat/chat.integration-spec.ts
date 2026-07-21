@@ -44,6 +44,11 @@ function buildMockPrisma() {
 
   return {
     chatSession: {
+      findUnique: jest.fn(async ({ where }: any) => {
+        const s = sessions.get(where.conversationId);
+        if (!s) return null;
+        return { id: s.id, tenantId: s.tenantId, userId: s.userId };
+      }),
       upsert: jest.fn(async ({ where, update, create }: any) => {
         const existing = sessions.get(where.conversationId);
         if (existing) {
@@ -227,17 +232,19 @@ describe('ChatHistoryService (integration)', () => {
   // ── Tenant isolation ─────────────────────────────────────────────────────
   describe('Tenant isolation', () => {
     it('does not leak messages across tenants', async () => {
+      // Phase 3.5: ownership check prevents cross-tenant conversationId reuse.
+      // Each tenant must use their own conversationId.
       await service.saveMessage({
         tenantId: 'tenant-A',
         userId: 'u1',
-        conversationId: 'c1',
+        conversationId: 'c-A',
         role: 'user',
         content: 'A secret',
       });
       await service.saveMessage({
         tenantId: 'tenant-B',
         userId: 'u1',
-        conversationId: 'c1',
+        conversationId: 'c-B',
         role: 'user',
         content: 'B secret',
       });
@@ -250,6 +257,27 @@ describe('ChatHistoryService (integration)', () => {
       expect(aHistory.data[0].content).toBe('A secret');
       expect(bHistory.data[0].content).toBe('B secret');
     });
+
+    it('rejects reuse of a conversationId by a different tenant (ownership check)', async () => {
+      // First: tenant-A creates conversationId 'c1'
+      await service.saveMessage({
+        tenantId: 'tenant-A',
+        userId: 'u1',
+        conversationId: 'c1',
+        role: 'user',
+        content: 'A secret',
+      });
+      // Phase 3.5: tenant-B trying to use the same conversationId must be rejected
+      await expect(
+        service.saveMessage({
+          tenantId: 'tenant-B',
+          userId: 'u1',
+          conversationId: 'c1',
+          role: 'user',
+          content: 'B secret',
+        }),
+      ).rejects.toThrow('Conversation is owned by a different tenant or user.');
+    });
   });
 
   // ── Failure resilience ───────────────────────────────────────────────────
@@ -257,7 +285,8 @@ describe('ChatHistoryService (integration)', () => {
     it('returns null when Prisma fails on save', async () => {
       const failingPrisma = {
         chatSession: {
-          upsert: jest.fn().mockRejectedValue(new Error('db down')),
+          findUnique: jest.fn().mockResolvedValue(null),
+          upsert: jest.fn().mockImplementation(() => Promise.reject(new Error('db down'))),
         },
         chatMessage: { create: jest.fn() },
       };

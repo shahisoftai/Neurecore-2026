@@ -70,6 +70,24 @@ export interface CreateProjectInput {
   metadata?: Record<string, unknown>;
   customFieldValues?: Record<string, unknown> | null;
   clonedFromProjectId?: string | null;
+  /**
+   * AI-derived project shape (from Hermes via ProjectShapeSynthesisService).
+   * When set, ProjectsService.create() applies the shape inline (stages,
+   * goals, members, CoS) and skips the ProjectType-based Phase 8/3A pipeline.
+   * Persisted on Project.derivedShape for replan + corpus learning.
+   * See memory-bank-new/plans/ai-driven-project-shape-synthesis-2026-07-19.md
+   */
+  derivedShape?: unknown;
+  /** Schema version of derivedShape. Defaults to 1. */
+  derivedShapeVersion?: number | null;
+  /**
+   * When true, allow creating a bare project with no projectTypeId and no
+   * derivedShape. The project will be created with minimal info (name +
+   * optional budget/priority/deadline) and NO automation pipeline will fire
+   * (no goals, stages, members, CoS). Used by the CreateProjectTool as a
+   * fallback when AI synthesis fails. Defaults to false (strict mode).
+   */
+  allowBareProject?: boolean;
 }
 
 export interface UpdateProjectInput {

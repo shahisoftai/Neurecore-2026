@@ -34,6 +34,19 @@ function createMockPrisma() {
 
   const prisma = {
     chatSession: {
+      findUnique: jest.fn(
+        async ({
+          where,
+          select,
+        }: {
+          where: { conversationId: string };
+          select: { id: true; tenantId: true; userId: true };
+        }) => {
+          const s = sessions.get(where.conversationId);
+          if (!s) return null;
+          return { id: s.id, tenantId: s.tenantId, userId: s.userId };
+        },
+      ),
       upsert: jest.fn(
         async ({
           where,

@@ -415,7 +415,7 @@ export default function BrainMapCanvas() {
           </div>
         ) : visibleGraph.nodes.length === 0 ? (
           <div className="w-full h-full flex items-center justify-center text-zinc-500 text-sm">
-            No data — deploy some agents first
+            No data — deploy some employees first
           </div>
         ) : (
           <svg width={size.width} height={size.height}>

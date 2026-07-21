@@ -298,7 +298,7 @@ function AnalyticsTab() {
         <ChartCard title="Cost Trend (USD)" icon={<Wallet className="w-4 h-4 text-state-success" />}>
           <LineChartComponent data={costData} dataKey="value" xKey="timestamp" color="#22c55e" loading={costLoading} height={200} />
         </ChartCard>
-        <ChartCard title="Active Agents" icon={<Cpu className="w-4 h-4 text-status-strategy" />}>
+        <ChartCard title="Active Employees" icon={<Cpu className="w-4 h-4 text-status-strategy" />}>
           <LineChartComponent data={agentData} dataKey="value" xKey="timestamp" color="#06b6d4" loading={agentLoading} height={200} />
         </ChartCard>
       </div>

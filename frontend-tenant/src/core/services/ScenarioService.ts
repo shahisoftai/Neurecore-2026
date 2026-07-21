@@ -19,7 +19,7 @@ const SCENARIO_TEMPLATES: ScenarioTemplate[] = [
     icon:        '🤖',
     variables: [
       {
-        id: 'agent-count',   label: 'Active Agents',
+        id: 'agent-count',   label: 'Active Employees',
         description: 'Number of agents running concurrently',
         baseline: 40,        min: 10, max: 200, step: 5, unit: 'agents', impactWeight: 0.45,
       },

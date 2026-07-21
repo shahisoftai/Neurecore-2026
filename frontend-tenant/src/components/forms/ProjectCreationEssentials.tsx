@@ -86,21 +86,36 @@ export function ProjectCreationEssentials({
       .list({ status: 'ACTIVE' })
       .then(({ items }) => setCustomers(items))
       .catch(() => setCustomers([]));
-    void tenantsService
-      .getCurrent()
-      .then((tenant) => {
-        return projectTypesService.list({
-          limit: 100,
-          industry: tenant.industry ?? undefined,
-        });
-      })
-      .then(({ items }) => setProjectTypes(items))
-      .catch(() => {
-        void projectTypesService
-          .list({ limit: 100 })
-          .then(({ items }) => setProjectTypes(items))
-          .catch(() => setProjectTypes([]));
-      });
+    // Issue fix: previous logic filtered by tenant.industry, which often
+    // returned zero rows when the tenant's industry (e.g. "Accounting")
+    // didn't match any seeded project type. The fallback ran ONLY on
+    // network error, not on an empty success. Now we always try the
+    // tenant-scoped query first; if it returns zero rows we fall back
+    // to the unfiltered catalog so the dropdown is never empty.
+    void (async () => {
+      try {
+        const tenant = await tenantsService.getCurrent();
+        const tenantIndustry = tenant.industry ?? undefined;
+        if (tenantIndustry) {
+          const { items } = await projectTypesService.list({
+            limit: 100,
+            industry: tenantIndustry,
+          });
+          if (items.length > 0) {
+            setProjectTypes(items);
+            return;
+          }
+        }
+      } catch {
+        // ignore — fall through to unfiltered fetch
+      }
+      try {
+        const { items } = await projectTypesService.list({ limit: 100 });
+        setProjectTypes(items);
+      } catch {
+        setProjectTypes([]);
+      }
+    })();
   }, []);
 
   useEffect(() => {

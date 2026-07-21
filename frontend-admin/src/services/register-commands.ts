@@ -31,7 +31,7 @@ export function registerAdminCommands(router: AppRouterInstance): () => void {
     },
     {
       id: 'nav:agents',
-      label: 'Go to Agent Fleet',
+      label: 'Go to Employee Fleet',
       group: 'Navigate',
       shortcut: 'G A',
       action: () => router.push('/agents'),

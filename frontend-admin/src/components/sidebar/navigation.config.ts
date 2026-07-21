@@ -52,7 +52,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'fleet',
     label: 'Fleet',
     items: [
-      { label: 'Agent Fleet', href: '/agents', icon: '◈' },
+      { label: 'Employee Fleet', href: '/agents', icon: '◈' },
     ],
   },
   {

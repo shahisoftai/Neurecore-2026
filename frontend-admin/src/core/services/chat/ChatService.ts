@@ -42,7 +42,19 @@ export class ChatService implements IChatService {
         history: request.history ?? [],
       });
 
-      const response = apiResponse.data!;
+      // Handle backend-level errors (structured error responses)
+      if (apiResponse.status === 'error' || !apiResponse.data) {
+        const errorCode = apiResponse.error?.code ?? 'UNKNOWN_ERROR';
+        const errorMessage = apiResponse.error?.message ?? 'An unexpected error occurred';
+        return {
+          reply: this.classifyBackendError(errorCode, errorMessage),
+          conversationId: '',
+          tokens: { input: 0, output: 0 },
+          suggestions: [],
+        };
+      }
+
+      const response = apiResponse.data;
 
       if (!response || !response.reply) {
         throw new Error('Empty reply from chat backend');
@@ -71,15 +83,66 @@ export class ChatService implements IChatService {
         chartType,
         suggestions,
       };
-    } catch {
-      const fb = this.fallback.generate(request.message);
+    } catch (err) {
+      // Network errors, parse errors, or unexpected exceptions
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
-        reply: fb.reply,
+        reply: this.classifyError(errorMessage),
         conversationId: '',
         tokens: { input: 0, output: 0 },
-        suggestions: fb.suggestions,
+        suggestions: [],
       };
     }
+  }
+
+  /**
+   * Classify backend error codes into user-friendly messages.
+   * Addresses Phase 6.2: Surface real error messages in chat UI.
+   */
+  private classifyBackendError(code: string, message: string): string {
+    const codeLower = code.toLowerCase();
+    if (codeLower.includes('unauthorized') || codeLower.includes('401')) {
+      return 'Session expired. Please log in again.';
+    }
+    if (codeLower.includes('forbidden') || codeLower.includes('403') || codeLower.includes('access denied')) {
+      return "You don't have access to this operation.";
+    }
+    if (codeLower.includes('not_found') || codeLower.includes('404')) {
+      return 'The requested resource was not found.';
+    }
+    if (codeLower.includes('rate_limit') || codeLower.includes('429')) {
+      return 'Too many requests. Please wait a moment and try again.';
+    }
+    if (codeLower.includes('server_error') || codeLower.includes('500') || codeLower.includes('503') || codeLower.includes('bad_gateway')) {
+      return 'Service temporarily unavailable. Please try again later.';
+    }
+    if (codeLower.includes('validation') || codeLower.includes('bad_request') || codeLower.includes('400')) {
+      return `Request error: ${message}`;
+    }
+    if (codeLower.includes('network') || codeLower.includes('timeout') || codeLower.includes('ECONNREFUSED')) {
+      return 'Connection issue. Please check your network and try again.';
+    }
+    // Generic fallback — never expose raw error details to users
+    return 'Something went wrong. Please try again.';
+  }
+
+  /**
+   * Classify caught exceptions into user-friendly messages.
+   * Addresses Phase 6.1: Remove catch-all keyword fallback for unexpected errors.
+   */
+  private classifyError(errorMessage: string): string {
+    const msg = errorMessage.toLowerCase();
+    if (msg.includes('network') || msg.includes('timeout') || msg.includes('econnrefused') || msg.includes('fetch')) {
+      return 'Connection issue. Please check your network and try again.';
+    }
+    if (msg.includes('abort')) {
+      return 'Request was cancelled.';
+    }
+    if (msg.includes('parse') || msg.includes('json')) {
+      return 'Received an invalid response from the server.';
+    }
+    // Generic fallback — do not expose raw error details
+    return 'Something went wrong. Please try again.';
   }
 
   async getHistory(_limit?: number): Promise<ChatMessage[]> {

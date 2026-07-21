@@ -17,10 +17,10 @@ function EmptyState() {
       animate={{ opacity: 1 }}
       className="flex flex-col items-center justify-center py-20 gap-4"
       role="status"
-      aria-label="No agents found"
+      aria-label="No employees found"
     >
       <span className="text-5xl select-none" aria-hidden="true">🤖</span>
-      <p className="text-zinc-500 text-sm">No agents match your filters.</p>
+      <p className="text-zinc-500 text-sm">No employees match your filters.</p>
       <p className="text-zinc-600 text-xs">Try adjusting the search or status filter.</p>
     </motion.div>
   );

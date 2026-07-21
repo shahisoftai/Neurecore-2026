@@ -66,8 +66,10 @@ export class ChatController {
    * SSE streaming endpoint — streams AI response tokens as Server-Sent Events.
    * Used by the frontend chat panel for real-time token-by-token rendering.
    *
-   * NOTE: This streams the QUERY path only. Action requests (create project, etc.)
-   * still route through the non-streaming `send()` → OfficialAgentGraph path.
+   * Phase 3.2: action requests now route through the agent graph
+   * inside the stream path too (previously only the non-streaming
+   * `send()` path did this). The action result is yielded as a
+   * single delta followed by `done`.
    */
   @Post('chat/stream')
   async chatStream(
@@ -75,7 +77,12 @@ export class ChatController {
     @Req() req: AuthedRequest,
     @Res() res: Response,
   ): Promise<void> {
-    await this.chatSse.stream(dto, req.user?.tenantId, res);
+    await this.chatSse.stream(
+      dto,
+      req.user?.tenantId,
+      req.user?.sub,
+      res,
+    );
   }
 
   /**
@@ -118,7 +125,7 @@ export class ChatController {
   /** Stub suggestions endpoint (slash commands handled client-side) */
   @Post('chat/suggestions')
   @HttpCode(HttpStatus.OK)
-  async suggestions(@Body() _body: { query?: string }) {
+  suggestions(@Body() _body: { query?: string }) {
     return { suggestions: [] };
   }
 }

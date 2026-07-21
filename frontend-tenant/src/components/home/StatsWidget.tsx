@@ -27,7 +27,7 @@ export function StatsWidget() {
         ).length;
 
         return [
-            { name: 'Agents', value: activeAgentCount, timestamp: 'Active' },
+            { name: 'Employees', value: activeAgentCount, timestamp: 'Active' },
             { name: 'Depts', value: safeDepts.length, timestamp: 'Total' },
             { name: 'Pending', value: pendingCount, timestamp: 'Pending' },
             { name: 'Running', value: runningCount, timestamp: 'Running' },

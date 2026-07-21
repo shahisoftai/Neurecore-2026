@@ -78,8 +78,8 @@ export default function AdminAgentFleetPage() {
         {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-zinc-100">Agent Fleet</h1>
-            <p className="text-sm text-zinc-500 mt-0.5">{total} agents across all tenants</p>
+            <h1 className="text-xl font-semibold text-zinc-100">Employee Fleet</h1>
+            <p className="text-sm text-zinc-500 mt-0.5">{total} employees across all tenants</p>
           </div>
           <button
             onClick={() => void fetchAgents()}
@@ -94,7 +94,7 @@ export default function AdminAgentFleetPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search agents or tenants…"
+            placeholder="Search employees or tenants…"
             className="flex-1 min-w-48 rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition"
           />
           <div className="flex gap-1 flex-wrap">
@@ -132,7 +132,7 @@ export default function AdminAgentFleetPage() {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <div className="py-20 text-center text-zinc-500 text-sm">No agents match your filters.</div>
+          <div className="py-20 text-center text-zinc-500 text-sm">No employees match your filters.</div>
         ) : (
           <AnimatePresence mode="popLayout">
             <div className={`grid gap-3 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1 max-w-3xl'}`}>

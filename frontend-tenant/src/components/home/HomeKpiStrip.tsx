@@ -76,7 +76,7 @@ export function HomeKpiStrip({ monthCost, pendingApprovals = 0, loading = false 
   return (
     <section aria-label="Workspace KPIs" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <KpiTile
-        label="Active Agents"
+        label="Active Employees"
         value={safeAgents.length}
         badge={`${runningAgents} running`}
         badgeTone="ops"

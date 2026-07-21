@@ -6,7 +6,7 @@ export interface CreateDeptInput {
   name: string;
   description?: string;
   status?: DepartmentStatus;
-  headAgentId?: string;
+  headAgentId?: string | null;
   parentId?: string;
 }
 

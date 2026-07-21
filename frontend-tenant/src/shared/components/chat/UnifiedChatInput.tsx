@@ -99,11 +99,13 @@ export function UnifiedChatInput({
           placeholder={placeholder}
           className="flex-1 resize-none bg-surface-overlay rounded-lg px-3 py-2 text-xs text-zinc-200 placeholder-zinc-600 border border-surface-border focus:outline-none focus:border-violet-600 transition min-h-[32px] max-h-[80px]"
           style={{ height: 'auto' }}
+          data-testid="chat-input"
         />
         <button
           onClick={submit}
           disabled={disabled || !value.trim()}
           className="shrink-0 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-2 text-xs transition"
+          data-testid="chat-submit"
         >
           {disabled ? '…' : '↵'}
         </button>

@@ -35,7 +35,10 @@ export class PrismaProjectRepository implements IProjectRepository {
   ) {}
 
   async create(data: CreateProjectInput, tenantId: string): Promise<Project> {
-    this.logger.debug(`Creating project: ${data.name}`);
+    this.logger.debug(`[DEBUG-REPO-CREATE] start: name=${data.name}, hasProjectTypeId=${!!data.projectTypeId}, hasDerivedShape=${!!data.derivedShape}, derivedShapeVersion=${data.derivedShapeVersion ?? 'none'}`);
+    if (data.derivedShape) {
+      this.logger.debug(`[DEBUG-REPO-CREATE] derivedShape size=${JSON.stringify(data.derivedShape).length} bytes`);
+    }
     const createData: Prisma.ProjectUncheckedCreateInput = {
       tenantId,
       name: data.name,
@@ -60,15 +63,37 @@ export class PrismaProjectRepository implements IProjectRepository {
         | undefined,
       metadata: (data.metadata as Prisma.InputJsonValue) ?? Prisma.JsonNull,
       status: 'LEAD',
+      derivedShape: data.derivedShape
+        ? (data.derivedShape as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
+      derivedShapeVersion: data.derivedShapeVersion ?? null,
     };
 
-    // Transactional outbox: create the project AND publish
-    // enterprise.project.created in the SAME transaction when the fabric is
-    // wired. Falls back to a plain create when the transport is absent.
+    // Phase 1: Persist the project.
+    // The project MUST persist regardless of downstream event-publish
+    // failures. Previously the creation was coupled in a transaction with
+    // transport.publish() — if publish failed (e.g. enterpriseEventOutbox
+    // unique constraint, Prisma model mismatch, connection drop), the
+    // entire transaction rolled back silently and the project was never
+    // persisted. This is the root cause of "chat says project created but
+    // no row in DB".
+    //
+    // Phase 2 (fire-and-forget): Publish enterprise.project.created.
+    // Logged but never rolled back — consistency for the event stream is
+    // handled by the event fabric's own retry loop.
+    this.logger.debug(`[DEBUG-REPO-CREATE] about to call prisma.project.create with createData=${JSON.stringify({ name: createData.name, tenantId: createData.tenantId, projectTypeId: createData.projectTypeId, derivedShape: createData.derivedShape ? 'present' : 'absent', status: createData.status })}`);
+    let project: Awaited<ReturnType<PrismaService['project']['create']>>;
+    try {
+      project = await this.prisma.project.create({ data: createData });
+      this.logger.debug(`[DEBUG-REPO-CREATE] prisma.project.create succeeded, project.id=${project.id}`);
+    } catch (createErr) {
+      this.logger.error(`[DEBUG-REPO-CREATE] prisma.project.create FAILED: ${createErr instanceof Error ? createErr.message : String(createErr)}, stack=${createErr instanceof Error ? createErr.stack : ''}`);
+      throw createErr;
+    }
+
     if (this.transport) {
-      const created = await this.prisma.$transaction(async (tx) => {
-        const project = await tx.project.create({ data: createData });
-        await this.transport!.publish(
+      try {
+        await this.transport.publish(
           {
             eventType: 'enterprise.project.created',
             tenantId,
@@ -86,14 +111,15 @@ export class PrismaProjectRepository implements IProjectRepository {
               status: project.status,
             },
           } as PublishEventInput,
-          tx,
         );
-        return project;
-      });
-      return this.mapToProject(created);
+      } catch (pubErr) {
+        this.logger.error(
+          `Failed to publish enterprise.project.created for ${project.id}: ${pubErr instanceof Error ? pubErr.message : String(pubErr)}`,
+        );
+        // Do NOT rethrow — the project is already persisted.
+      }
     }
 
-    const project = await this.prisma.project.create({ data: createData });
     return this.mapToProject(project);
   }
 

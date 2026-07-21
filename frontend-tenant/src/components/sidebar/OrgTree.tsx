@@ -2,31 +2,28 @@
 // ─── OrgTree ──────────────────────────────────────────────────────────────────
 // S — Single Responsibility: renders hierarchical Dept → Agent sidebar tree only
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInspectorStore } from '@/stores/inspectorStore';
-import api from '@/services/api';
-import { unwrapList } from '@/services/unwrap';
-
-interface AgentNode {
-  id: string;
-  name: string;
-  status: string;
-}
+import { departmentRepository } from '@/core/repositories/DepartmentRepository';
+import { agentRepository } from '@/core/repositories/AgentRepository';
+import type { Agent } from '@/shared/types/domain.types';
 
 interface DeptNode {
   id: string;
   name: string;
-  agents: AgentNode[];
+  agents: Agent[];
 }
 
 const STATUS_DOT: Record<string, string> = {
-  RUNNING: 'bg-status-ops',
-  ACTIVE:  'bg-status-profit',
-  IDLE:    'bg-zinc-600',
-  FAILED:  'bg-status-risk',
-  PAUSED:  'bg-status-warn',
+  RUNNING:    'bg-status-ops',
+  ACTIVE:     'bg-status-profit',
+  IDLE:       'bg-zinc-600',
+  ERROR:      'bg-status-risk',
+  PAUSED:     'bg-status-warn',
+  INACTIVE:   'bg-zinc-600',
+  TRAINING:   'bg-amber-400',
+  TERMINATED: 'bg-zinc-600',
 };
 
 export function OrgTree() {
@@ -36,35 +33,30 @@ export function OrgTree() {
   const pathname = usePathname();
 
   useEffect(() => {
-    Promise.allSettled([
-      api.get<{ data: { data: { id: string; name: string; parentId: string | null }[] } }>('/departments?limit=50'),
-      api.get<{ data: { id: string; name: string; status: string; departmentId: string | null }[] }>('/agents?limit=100'),
-    ]).then(([deptsRes, agentsRes]) => {
-      const deptList = deptsRes.status === 'fulfilled' ? unwrapList(deptsRes.value).items ?? [] : [];
-      const agentList = agentsRes.status === 'fulfilled' ? unwrapList(agentsRes.value).items ?? [] : [];
-
-      const tree: DeptNode[] = deptList.map((d) => ({
-        id: d.id,
-        name: d.name,
-        agents: agentList
-          .filter((a) => a.departmentId === d.id)
-          .map((a) => ({ id: a.id, name: a.name, status: a.status })),
-      }));
-
-      // Unassigned agents bucket
-      const unassigned = agentList.filter((a) => !a.departmentId);
-      if (unassigned.length > 0) {
-        tree.push({
-          id: '__unassigned',
-          name: 'Unassigned',
-          agents: unassigned.map((a) => ({ id: a.id, name: a.name, status: a.status })),
-        });
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ items: deptList }, { items: agentList }] = await Promise.all([
+          departmentRepository.findAll({ limit: 100 }),
+          agentRepository.findAll({ limit: 200 }),
+        ]);
+        if (cancelled) return;
+        const tree: DeptNode[] = deptList.map((d) => ({
+          id: d.id,
+          name: d.name,
+          agents: agentList.filter((a) => a.departmentId === d.id),
+        }));
+        const unassigned = agentList.filter((a) => !a.departmentId);
+        if (unassigned.length > 0) {
+          tree.push({ id: '__unassigned', name: 'Unassigned', agents: unassigned });
+        }
+        setDepts(tree);
+        if (tree[0]) setExpanded(new Set([tree[0].id]));
+      } catch {
+        // silently fail — sidebar tree is non-critical
       }
-
-      setDepts(tree);
-      // Auto-expand first dept
-      if (tree[0]) setExpanded(new Set([tree[0].id]));
-    });
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const toggle = (id: string) =>

@@ -143,7 +143,7 @@ export default function PackageDetailPage() {
 
                <Section title={`AI Employees (${pkg.aiAgents?.length ?? 0})`}>
                 {(pkg.aiAgents ?? []).length === 0 ? (
-                  <Empty label="No agents attached." />
+                   <Empty label="No employees attached." />
                 ) : (
                   <ul className="space-y-1">
                     {pkg.aiAgents!.map((a) => (

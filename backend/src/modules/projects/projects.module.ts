@@ -20,12 +20,21 @@ import { PrismaProjectRepository } from './repositories/prisma-project.repositor
 import { ProjectTypesModule } from '../project-types/project-types.module';
 import { ProjectTypesService } from '../project-types/project-types.service';
 import { InformationEngineModule } from '../information-engine/information-engine.module';
+import { GoalsModule } from '../goals/goals.module';
+import { DerivedShapeApplier } from './services/derived-shape-applier.service';
+// ProjectAutomationService + GoalTemplateService + DeploymentService +
+// ChiefOfStaffService are all resolved lazily via ModuleRef in onModuleInit()
+// because @Global() doesn't fix the
+// ProjectsModule-initialized-before-ProjectAutomationModule init-order issue
+// when @Optional() is used. DerivedShapeApplier uses the same pattern for
+// DeploymentService (AgentsModule → ToolsModule → ProjectsModule cycle).
 
 @Module({
-  imports: [ProjectTypesModule, InformationEngineModule],
+  imports: [ProjectTypesModule, InformationEngineModule, GoalsModule],
   controllers: [ProjectsController],
   providers: [
     ProjectsService,
+    DerivedShapeApplier,
     {
       provide: PROJECT_REPOSITORY,
       useClass: PrismaProjectRepository,
@@ -35,6 +44,6 @@ import { InformationEngineModule } from '../information-engine/information-engin
       useExisting: ProjectTypesService,
     },
   ],
-  exports: [ProjectsService, PROJECT_REPOSITORY],
+  exports: [ProjectsService, PROJECT_REPOSITORY, DerivedShapeApplier],
 })
 export class ProjectsModule {}

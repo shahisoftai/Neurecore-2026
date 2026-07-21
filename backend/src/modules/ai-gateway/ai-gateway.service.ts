@@ -31,6 +31,7 @@ import {
   AiGatewayAllProvidersFailedError,
   AiGatewayError,
   AiGatewayStructuredValidationError,
+  AiGatewayUnconfiguredError,
   type AiGatewayAttemptedModel,
 } from './domain/errors';
 import type { LLMUsage } from './domain/types';
@@ -193,7 +194,10 @@ export class AiGatewayService implements OnModuleInit {
       opts.modelId,
     );
     if (chain.length === 0) {
-      throw new Error(`No models available for capability ${opts.capability}`);
+      // Phase 2.5: structured error type (was a plain `Error`).
+      throw new AiGatewayUnconfiguredError(
+        `capability=${opts.capability}; no chain links available`,
+      );
     }
     const tried: AiGatewayAttemptedModel[] = [];
     for (const link of chain) {
@@ -334,62 +338,138 @@ export class AiGatewayService implements OnModuleInit {
   }
 
   async *stream(opts: InvokeOptions): AsyncGenerator<LLMStreamChunk> {
-    const resolved = await this.select(opts.tenantId, opts.capability, {
-      preferSpeed: opts.preferSpeed,
-      budgetCents: opts.budgetCents,
-    });
-    const url = `${resolved.provider.apiBaseUrl}/chat/completions`;
+    // Phase 2.8: stream-path failover. The previous implementation
+    // only tried the FIRST chain link returned by `select()`. If that
+    // model 503'd mid-stream we lost the response. Now we build the
+    // full chain, then try each link in order. The first link that
+    // produces ANY chunks wins; a transport error before the first
+    // chunk tries the next link.
+    const chain = await this.chainBuilder.build(
+      opts.tenantId,
+      opts.capability,
+      opts.modelId,
+    );
+    if (chain.length === 0) {
+      throw new AiGatewayUnconfiguredError(
+        `capability=${opts.capability}; no chain links available for streaming`,
+      );
+    }
+
     const messages = this.toMessages(opts);
-    const start = Date.now();
-    let finalUsage: LLMUsage | undefined;
-    let finalProvider = resolved.provider.slug;
-    for await (const chunk of this.transport.stream({
-      url,
-      apiKey: resolved.apiKey,
-      model: resolved.model.modelId,
-      capability: opts.capability,
-      messages,
-      temperature: opts.temperature ?? this.config.AI_DEFAULT_TEMPERATURE,
-      maxTokens: opts.maxTokens ?? this.config.AI_DEFAULT_MAX_TOKENS,
-      timeoutMs: this.config.AI_DEFAULT_TIMEOUT_MS,
-      signal: opts.signal,
-    })) {
-      if (chunk.done && chunk.usage) {
-        finalUsage = chunk.usage;
+    const tried: AiGatewayAttemptedModel[] = [];
+    let lastError: unknown = undefined;
+
+    for (const link of chain) {
+      const apiKey = this.resolveApiKey(link.apiKeyEnv);
+      if (!apiKey) {
+        tried.push({
+          provider: link.providerSlug,
+          model: link.modelId,
+          errorCode: 'UNCONFIGURED',
+        });
+        continue;
       }
-      yield chunk;
+      const fullModel = await this.modelRepo.findById(link.aiModelId);
+      if (!fullModel) {
+        tried.push({
+          provider: link.providerSlug,
+          model: link.modelId,
+          errorCode: 'NOT_FOUND',
+        });
+        continue;
+      }
+
+      const url = `${link.apiBaseUrl}/chat/completions`;
+      const start = Date.now();
+      let finalUsage: LLMUsage | undefined;
+      let producedAnyChunk = false;
+
+      try {
+        for await (const chunk of this.transport.stream({
+          url,
+          apiKey,
+          model: link.modelId,
+          capability: opts.capability,
+          messages,
+          temperature: opts.temperature ?? this.config.AI_DEFAULT_TEMPERATURE,
+          maxTokens: opts.maxTokens ?? this.config.AI_DEFAULT_MAX_TOKENS,
+          timeoutMs: this.config.AI_DEFAULT_TIMEOUT_MS,
+          signal: opts.signal,
+        })) {
+          producedAnyChunk = true;
+          if (chunk.done && chunk.usage) {
+            finalUsage = chunk.usage;
+          }
+          yield chunk;
+        }
+
+        // Success — record cost attribution and return.
+        const elapsed = Date.now() - start;
+        if (finalUsage) {
+          this.costAttributor
+            .record({
+              tenantId: opts.tenantId,
+              sourceModule: opts.sourceModule,
+              sourceEventId: `stream:${uuidv4()}`,
+              capability: opts.capability,
+              providerId: link.providerId,
+              aiModelId: fullModel.id,
+              provider: link.providerSlug,
+              modelId: link.modelId,
+              inputTokens: finalUsage.inputTokens,
+              outputTokens: finalUsage.outputTokens,
+              costPer1kInput: fullModel.costPer1kInput,
+              costPer1kOutput: fullModel.costPer1kOutput,
+              latencyMs: elapsed,
+            })
+            .catch(() => undefined);
+        }
+        this.structuredLogger.invoke({
+          capability: opts.capability,
+          provider: link.providerSlug,
+          model: link.modelId,
+          tenantId: opts.tenantId,
+          sourceModule: opts.sourceModule,
+          latencyMs: elapsed,
+          inputTokens: finalUsage?.inputTokens ?? 0,
+          outputTokens: finalUsage?.outputTokens ?? 0,
+          costCents: 0,
+          ok: true,
+        });
+        return;
+      } catch (err) {
+        // If we already yielded chunks, the client has seen partial
+        // output. Aborting the stream now would produce a malformed
+        // response. Surface the error AFTER the partial stream
+        // finishes (which happens automatically when the for-await
+        // loop exits on the throw). The next caller (chat) will
+        // rethrow the same error.
+        if (producedAnyChunk) {
+          throw err;
+        }
+        const errorCode = this.classifyErrorCode(err);
+        tried.push({
+          provider: link.providerSlug,
+          model: link.modelId,
+          errorCode,
+        });
+        lastError = err;
+        this.logger.warn(
+          `[stream] ${link.providerSlug}/${link.modelId} (capability=${opts.capability}) ` +
+            `failed before first chunk (${errorCode}); trying next candidate`,
+        );
+        // Non-fallback errors propagate immediately.
+        if (!isFallbackCandidate(err)) {
+          throw err;
+        }
+      }
     }
-    const elapsed = Date.now() - start;
-    if (finalUsage) {
-      const costAttributionInput = {
-        tenantId: opts.tenantId,
-        sourceModule: opts.sourceModule,
-        sourceEventId: `stream:${uuidv4()}`,
-        capability: opts.capability,
-        providerId: resolved.provider.id,
-        aiModelId: resolved.model.id,
-        provider: finalProvider,
-        modelId: resolved.model.modelId,
-        inputTokens: finalUsage.inputTokens,
-        outputTokens: finalUsage.outputTokens,
-        costPer1kInput: resolved.model.costPer1kInput,
-        costPer1kOutput: resolved.model.costPer1kOutput,
-        latencyMs: elapsed,
-      };
-      this.costAttributor.record(costAttributionInput).catch(() => undefined);
-    }
-    this.structuredLogger.invoke({
-      capability: opts.capability,
-      provider: finalProvider,
-      model: resolved.model.modelId,
-      tenantId: opts.tenantId,
-      sourceModule: opts.sourceModule,
-      latencyMs: elapsed,
-      inputTokens: finalUsage?.inputTokens ?? 0,
-      outputTokens: finalUsage?.outputTokens ?? 0,
-      costCents: 0,
-      ok: true,
-    });
+    // Every candidate failed before producing chunks.
+    throw new AiGatewayAllProvidersFailedError(
+      `All ${chain.length} candidate models failed for streaming capability ${opts.capability}`,
+      tried,
+      lastError,
+    );
   }
 
   async invokeStructured<T>(
@@ -491,6 +571,12 @@ export class AiGatewayService implements OnModuleInit {
   async ping(
     tenantId: string | null,
     capability: Capability,
+    /**
+     * Optional modelId to pin the ping to. Phase 2.7: used by
+     * `testProvider` admin endpoint so the selected provider is
+     * actually exercised instead of the global chain's first match.
+     */
+    explicitModelId?: string,
   ): Promise<{
     ok: boolean;
     latencyMs: number;
@@ -498,7 +584,9 @@ export class AiGatewayService implements OnModuleInit {
     model: string;
   }> {
     const start = Date.now();
-    const resolved = await this.select(tenantId, capability);
+    const resolved = await this.select(tenantId, capability, {
+      modelId: explicitModelId,
+    });
     const url = `${resolved.provider.apiBaseUrl}/chat/completions`;
     await this.transport.invoke({
       url,
@@ -598,6 +686,30 @@ export class AiGatewayService implements OnModuleInit {
   private resolveApiKey(envVar: string): string | null {
     const result = this.secrets.resolve(`env:${envVar}`);
     return result.value && result.value.length > 0 ? result.value : null;
+  }
+
+  /**
+   * Map an arbitrary thrown value to a stable error code string.
+   * Used in `tried[]` arrays surfaced via `AiGatewayAllProvidersFailedError`.
+   * SRP — single source of truth for error classification.
+   */
+  private classifyErrorCode(err: unknown): string {
+    if (err instanceof AiGatewayError) {
+      return err.code;
+    }
+    if (err instanceof Error) {
+      const m = err.message.toLowerCase();
+      if (m.includes('timeout') || m.includes('etimedout')) return 'AI_GATEWAY_TIMEOUT';
+      if (m.includes('401') || m.includes('403') || m.includes('unauthor')) {
+        return 'AI_GATEWAY_AUTH';
+      }
+      if (m.includes('429') || m.includes('rate')) return 'AI_GATEWAY_RATE_LIMIT';
+      if (m.includes('500') || m.includes('502') || m.includes('503') || m.includes('504')) {
+        return 'AI_GATEWAY_PROVIDER';
+      }
+      return 'AI_GATEWAY_PROVIDER';
+    }
+    return 'AI_GATEWAY_UNKNOWN';
   }
 
   private flattenEnv(): Record<string, unknown> {

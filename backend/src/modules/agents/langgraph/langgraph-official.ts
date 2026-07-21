@@ -74,9 +74,10 @@ const AgentStateAnnotation = Annotation.Root({
     default: () => null,
   }),
 
-  // Tool execution
+  // Tool execution — toolCalls is the CURRENT batch the planner emitted;
+  // overwrite (not append) so toolNode doesn't re-run the same calls on every loop.
   toolCalls: Annotation<ToolCall[]>({
-    reducer: (left, right) => [...left, ...right],
+    reducer: (_left, right) => right,
     default: () => [],
   }),
 
@@ -91,6 +92,15 @@ const AgentStateAnnotation = Annotation.Root({
   >({
     reducer: (left, right) => [...left, ...right],
     default: () => [],
+  }),
+
+  // Allowed-tools whitelist (DIP: enforced by the graph, not just by callers).
+  // `null` / `undefined` ⇒ no restriction (legacy chat path).
+  // `[]` (empty array) ⇒ no tools allowed (Hermes deny-all).
+  // Non-empty ⇒ only these tool names may be exposed to the LLM and executed.
+  allowedTools: Annotation<string[] | null>({
+    reducer: (_left, right) => right ?? null,
+    default: () => null,
   }),
 
   // Evaluation
@@ -249,8 +259,15 @@ export class OfficialAgentGraph {
       // Emit event for streaming
       this.emitNodeEvent(PLANNER_NODE, state.agentId, { status: 'started' });
 
-      // Get available tools for LLM
-      const toolDefs = this.toolRegistry.getFunctionDefinitions();
+      // Get available tools for LLM, filtered by state.allowedTools.
+      // - `null` (default) ⇒ unrestricted (chat path)
+      // - `[]`              ⇒ deny-all (Hermes type with no permitted tools)
+      // - Non-empty         ⇒ whitelist
+      // The graph enforces this — callers cannot bypass Hermes policy by
+      // omitting post-tool validation.
+      const toolDefs = this.toolRegistry.getFunctionDefinitions(
+        state.allowedTools ?? undefined,
+      );
 
       if (toolDefs.length === 0) {
         // No tools available, respond with text
@@ -416,6 +433,23 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
         const startTime = Date.now();
 
         try {
+          // ENFORCE allowedTools whitelist at execution time too.
+          // Even if the planner was bypassed or the LLM emits a disallowed
+          // tool call, the toolNode refuses to execute it.
+          if (
+            Array.isArray(state.allowedTools) &&
+            !state.allowedTools.includes(toolCall.name)
+          ) {
+            toolResults.push({
+              toolName: toolCall.name,
+              input: toolCall.input,
+              output: null,
+              error: `Tool '${toolCall.name}' is not permitted by the current execution policy`,
+              durationMs: Date.now() - startTime,
+            });
+            continue;
+          }
+
           // Use toolRegistry.get() not getTool()
           const tool = this.toolRegistry.get(toolCall.name);
           if (!tool) {
@@ -464,13 +498,30 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
             tenantId: state.tenantId,
             agentId: state.agentId,
             userId: state.userId,
+            // Pass the user's goal into the tool context so tools like
+            // CreateProjectTool can use it as synthesis input when the user
+            // didn't supply a projectTypeId.
+            metadata: { goal: state.goal },
           };
 
           const result = await tool.execute(validatedInput, toolContext);
+          // Phase 4.5: a tool that returns `{ success: false, error }`
+          // is a FAILED tool call, not a successful one whose result
+          // just happens to look like an error. Surface it as
+          // `error` so the retry / shouldContinue logic treats it
+          // correctly and the user sees an honest failure message.
+          const toolResult = (result ?? null) as
+            | { success?: boolean; error?: string; data?: unknown }
+            | null;
+          const failed =
+            !!toolResult && toolResult.success === false
+              ? toolResult.error ?? 'Tool returned success=false'
+              : undefined;
           toolResults.push({
             toolName: toolCall.name,
             input: toolCall.input,
-            output: result,
+            output: failed ? null : result,
+            ...(failed ? { error: failed } : {}),
             durationMs: Date.now() - startTime,
           });
         } catch (error) {
@@ -523,7 +574,6 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
             timestamp: Date.now(),
           },
         ],
-        toolCalls: [], // Clear tool calls after execution
         currentNode: EVALUATOR_NODE,
         shouldContinue: false, // Done after execution
       };
@@ -572,6 +622,12 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
 
       const hasErrors = state.error !== null;
       const hasToolErrors = state.toolResults.some((r) => r.error);
+      // Security/policy blocks are permanent — retrying won't help and just
+      // burns LangGraph recursion budget. Break the loop in that case so the
+      // user gets the failure message instead of a recursion limit error.
+      const hasSecurityBlock = state.toolResults.some((r) =>
+        typeof r.error === 'string' && r.error.startsWith('Security blocked'),
+      );
 
       const success = allStepsComplete && !hasErrors && !hasToolErrors;
 
@@ -579,18 +635,29 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
       await Promise.resolve();
 
       return {
-        shouldContinue: !success,
+        shouldContinue: !success && !hasSecurityBlock,
+        // Phase 4.4: clear `toolCalls` so the next planner iteration
+        // doesn't re-run the exact same tool with the exact same
+        // input. The previous behaviour kept `toolCalls` in state,
+        // so the conditional `shouldExecuteTool` edge would route
+        // back to the executor with the SAME calls — a guaranteed
+        // infinite loop on any non-recoverable tool failure.
+        toolCalls: success || hasSecurityBlock ? [] : state.toolCalls,
         evaluation: {
           score: success ? 1.0 : 0.5,
           success,
           reflection: success
             ? 'All steps completed successfully'
-            : 'Some steps failed or incomplete',
+            : hasSecurityBlock
+              ? 'Tool blocked by security policy'
+              : 'Some steps failed or incomplete',
           suggestions: success ? [] : ['Retry failed steps'],
-          shouldRetry: !success && iteration < maxIterations,
+          shouldRetry: !success && !hasSecurityBlock && iteration < maxIterations,
         },
         currentNode: EVALUATOR_NODE,
-        iteration: 1, // Increment for next iteration
+        // Phase 4.4 fix: properly increment iteration so maxIterations
+        // can terminate the loop. Previously was hardcoded to 1.
+        iteration: iteration + 1,
       };
     } catch (error) {
       this.logger.error('[evaluator] Error evaluating results', error);
@@ -609,16 +676,16 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
    */
   private shouldExecuteTool(state: AgentGraphState): string {
     if (state.error) {
-      return END as string;
+      return 'end';
     }
 
     // If LLM returned tool calls, route to executor which will run them via tool_node
     if (state.toolCalls && state.toolCalls.length > 0) {
-      return EXECUTOR_NODE as string;
+      return 'executor';
     }
 
     // No tool calls - LLM responded with text, we're done
-    return END as string;
+    return 'end';
   }
 
   /**
@@ -628,20 +695,21 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
   private shouldContinue(state: AgentGraphState): string {
     // Check if we should continue
     if (!state.shouldContinue) {
-      return END as string;
+      return 'end';
     }
 
     // Check max iterations
     if (state.iteration >= state.maxIterations) {
-      return END as string;
+      return 'end';
     }
 
     // If LLM returned more tool calls, route back through executor
     if (state.toolCalls && state.toolCalls.length > 0) {
-      return EXECUTOR_NODE as string;
+      return 'executor';
     }
 
-    return END as string;
+    // No pending tool calls and no errors — single-turn tool execution is done.
+    return 'end';
   }
 
   /**
@@ -759,12 +827,21 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
     sessionId?: string;
     threadId?: string;
     resumeFromCheckpoint?: boolean;
+    /**
+     * Optional tool allowlist. Same semantics as `stream()` — see
+     * `stream()` JSDoc and Phase 4.1 of the remediation plan.
+     */
+    allowedTools?: string[] | null;
   }): Promise<AgentGraphState> {
     if (!this.compiledGraph) {
       throw new Error('Graph not initialized');
     }
 
     const threadId = params.threadId ?? params.sessionId ?? params.agentId;
+
+    // Normalise `undefined` to `null` so the annotation default doesn't override.
+    const allowedTools =
+      params.allowedTools === undefined ? null : params.allowedTools;
 
     // Try to load checkpoint for resumption
     let initialState: AgentGraphState | null = null;
@@ -782,6 +859,9 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
             `[run] Resuming from checkpoint for thread: ${threadId}`,
           );
           initialState = this.convertToGraphState(checkpointState);
+          // Always re-apply the allowlist from the caller — a resumed
+          // checkpoint must NOT silently bypass tool policy.
+          initialState.allowedTools = allowedTools;
         }
       } catch (error) {
         this.logger.warn(
@@ -810,6 +890,7 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
         error: null,
         shouldContinue: true,
         model: null,
+        allowedTools,
       };
     }
 
@@ -851,6 +932,7 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
       toolResults: state.toolResults ?? [],
       evaluation: state.evaluation ?? null,
       messages: state.messages ?? [],
+      allowedTools: state.allowedTools ?? null,
       currentNode: state.currentNode ?? PLANNER_NODE,
       iteration: state.iterations ?? 0,
       maxIterations: state.maxIterations ?? 10,
@@ -891,10 +973,26 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
     userId: string;
     sessionId?: string;
     model?: string;
+    /**
+     * Optional whitelist of tool names this execution may invoke.
+     *   - `undefined` / `null` ⇒ no restriction (legacy chat path).
+     *   - `[]` (empty)        ⇒ no tools allowed (deny-all).
+     *   - Non-empty           ⇒ only these tool names are exposed to the LLM
+     *                            and may be executed by the tool node.
+     *
+     * Used by Hermes runtime to enforce per-Hermes-type tool policy. The
+     * graph itself enforces this, so callers cannot bypass by omitting
+     * post-tool validation.
+     */
+    allowedTools?: string[] | null;
   }): AsyncGenerator<Partial<AgentGraphState>> {
     if (!this.compiledGraph) {
       throw new Error('Graph not initialized');
     }
+
+    // Normalise `undefined` to `null` so the annotation default doesn't override.
+    const allowedTools =
+      params.allowedTools === undefined ? null : params.allowedTools;
 
     const initialState: AgentGraphState = {
       goal: params.goal,
@@ -914,6 +1012,7 @@ Keep responses concise. Use tools whenever the user asks for an action.`;
       error: null,
       shouldContinue: true,
       model: params.model ?? null,
+      allowedTools,
     };
 
     this.logger.log(

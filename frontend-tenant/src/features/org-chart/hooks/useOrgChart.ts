@@ -8,59 +8,106 @@ import { useDepartmentStore } from '@/stores/departmentStore';
 import { useAgentStore }      from '@/stores/agentStore';
 import type { Department, Agent } from '@/shared/types/domain.types';
 
+export type OrgNodeType = 'tenant' | 'department' | 'agent';
+
 export interface OrgNode {
-  type:       'department' | 'agent';
-  id:         string;
-  name:       string;
-  /** For agents: their department id */
-  parentId?:  string;
-  status?:    string;
-  mood?:      string;
-  avatarUrl?: string | null;
+  type:         OrgNodeType;
+  id:           string;
+  name:         string;
+  parentId?:    string;
+  status?:      string;
+  mood?:        string;
+  avatarUrl?:   string | null;
   workloadGauge?: number;
-  /** Computed children (agents under this dept) */
-  children?:  OrgNode[];
-  /** Raw source */
-  _dept?: Department;
-  _agent?: Agent;
+  children?:    OrgNode[];
+  _dept?:       Department;
+  _agent?:      Agent;
+  /** Only for tenant type */
+  departmentCount?: number;
+  agentCount?:    number;
 }
 
 interface UseOrgChartReturn {
-  tree:         OrgNode[];
-  filteredTree: OrgNode[];
-  query:        string;
-  selectedId:   string | null;
-  draggingId:   string | null;
-  isLoading:    boolean;
-  setQuery:     (q: string) => void;
-  select:       (id: string | null) => void;
-  setDragging:  (id: string | null) => void;
-  /** Move agent to a new department */
-  moveAgent:    (agentId: string, toDeptId: string) => void;
+  /** Flat list of root departments (with agents as children) — for sidebar/drag-drop */
+  tree:           OrgNode[];
+  /** Tenant-rooted single tree node — for OrgChartView */
+  tenantTree:     OrgNode;
+  filteredTree:  OrgNode[];
+  query:         string;
+  selectedId:     string | null;
+  draggingId:    string | null;
+  isLoading:     boolean;
+  setQuery:      (q: string) => void;
+  select:        (id: string | null) => void;
+  setDragging:   (id: string | null) => void;
+  moveAgent:     (agentId: string, toDeptId: string) => Promise<void>;
   expandedDepts: Set<string>;
-  toggleDept:   (id: string) => void;
+  toggleDept:    (id: string) => void;
 }
 
-function buildTree(departments: Department[], agents: Agent[]): OrgNode[] {
-  return departments.map((dept): OrgNode => ({
-    type:     'department',
-    id:       dept.id,
-    name:     dept.name,
-    _dept:    dept,
-    children: agents
-      .filter((a) => a.departmentId === dept.id)
-      .map((a): OrgNode => ({
-        type:         'agent',
-        id:           a.id,
-        name:         a.name,
-        parentId:     dept.id,
-        status:       a.status,
-        mood:         a.mood,
-        avatarUrl:    a.avatarUrl,
+function buildHierarchy(departments: Department[], agents: Agent[]): OrgNode[] {
+  const agentMap = new Map<string, Agent[]>();
+  for (const a of agents) {
+    if (!a.departmentId) continue;
+    if (!agentMap.has(a.departmentId)) agentMap.set(a.departmentId, []);
+    agentMap.get(a.departmentId)!.push(a);
+  }
+
+  const deptMap = new Map<string, OrgNode>();
+  const roots: OrgNode[] = [];
+
+  for (const d of departments) {
+    const node: OrgNode = {
+      type:    'department',
+      id:      d.id,
+      name:    d.name,
+      parentId: d.parentId ?? undefined,
+      _dept:   d,
+      children: (agentMap.get(d.id) ?? []).map((a): OrgNode => ({
+        type:          'agent',
+        id:            a.id,
+        name:          a.name,
+        parentId:      d.id,
+        status:        a.status,
+        mood:          a.mood,
+        avatarUrl:     a.avatarUrl,
         workloadGauge: a.workloadGauge,
-        _agent:       a,
+        _agent:        a,
       })),
-  }));
+    };
+    deptMap.set(d.id, node);
+  }
+
+  for (const d of departments) {
+    const node = deptMap.get(d.id)!;
+    if (d.parentId && deptMap.has(d.parentId)) {
+      deptMap.get(d.parentId)!.children!.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  return roots;
+}
+
+function buildTenantTree(
+  roots: OrgNode[],
+  tenantName: string,
+): OrgNode {
+  const totalDepts = roots.length;
+  const totalAgents = roots.reduce(
+    (sum, r) => sum + (r.children?.length ?? 0),
+    0,
+  );
+
+  return {
+    type:            'tenant',
+    id:              '__tenant__',
+    name:            tenantName,
+    children:        roots,
+    departmentCount: totalDepts,
+    agentCount:      totalAgents,
+  };
 }
 
 function nodeMatchesQuery(node: OrgNode, q: string): boolean {
@@ -116,14 +163,21 @@ export function useOrgChart(): UseOrgChartReturn {
     [agents, overrides],
   );
 
-  const tree = useMemo(
-    () => buildTree(departments, agentsWithOverrides),
+  const hierarchy = useMemo(
+    () => buildHierarchy(departments, agentsWithOverrides),
     [departments, agentsWithOverrides],
   );
 
+  const tree = hierarchy; // flat list for OrgChartSidebar backward compat
+
+  const tenantTree = useMemo(
+    () => buildTenantTree(hierarchy, 'Organization'),
+    [hierarchy],
+  );
+
   const filteredTree = useMemo(
-    () => filterTree(tree, query),
-    [tree, query],
+    () => filterTree(hierarchy, query),
+    [hierarchy, query],
   );
 
   const toggleDept = useCallback((id: string) => {
@@ -134,14 +188,23 @@ export function useOrgChart(): UseOrgChartReturn {
     });
   }, []);
 
-  const moveAgent = useCallback((agentId: string, toDeptId: string) => {
+  const moveAgent = useCallback(async (agentId: string, toDeptId: string) => {
     setOverrides((prev) => ({ ...prev, [agentId]: toDeptId }));
-    // Expand target dept
     setExpanded((prev) => new Set([...prev, toDeptId]));
+    try {
+      await useAgentStore.getState().moveAgent(agentId, toDeptId);
+    } catch {
+      setOverrides((prev) => {
+        const next = { ...prev };
+        delete next[agentId];
+        return next;
+      });
+    }
   }, []);
 
   return {
     tree,
+    tenantTree,
     filteredTree,
     query,
     selectedId,

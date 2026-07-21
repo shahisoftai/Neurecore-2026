@@ -65,7 +65,7 @@ const EmptyState: React.FC<{ filter: string }> = ({ filter }) => (
     <div className="col-span-full py-12 text-center">
         <Zap className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
         <p className="text-slate-600 dark:text-slate-400 font-medium">
-            No agents found {filter !== 'all' ? `with status "${filter}"` : ''}
+            No employees found {filter !== 'all' ? `with status "${filter}"` : ''}
         </p>
     </div>
 );
@@ -117,7 +117,7 @@ export const AgentOrchestrationBoardComponent: React.FC<AgentOrchestrationBoardP
     );
 
     const filterOptions = [
-        { value: 'all', label: 'All Agents', count: agents.length },
+        { value: 'all', label: 'All Employees', count: agents.length },
         {
             value: 'active',
             label: 'Active',

@@ -8,13 +8,18 @@
  * - DIP: Depends on IApprovalRepository abstraction
  */
 
-import { Injectable, HttpException, HttpStatus, Inject, Logger } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import type {
     ApprovalRequest,
     StratifiedApprovalsResponse,
     ApprovalFeedback,
 } from '../../../shared/types/approvals.types';
-import type { IApprovalRepository, IApprovalsService } from '../interfaces/approval.interface';
+import type {
+  IApprovalRepository,
+  IApprovalsService,
+  CreateApprovalRequestInput,
+  ApprovalRequestRecord,
+} from '../interfaces/approval.interface';
 import { APPROVAL_REPOSITORY } from '../interfaces/approval.interface';
 
 @Injectable()
@@ -92,10 +97,13 @@ export class ApprovalsService implements IApprovalsService {
 
     async approveRequest(
         tenantId: string,
-        approvalId: string
+        approvalId: string,
+        reviewerId?: string,
     ): Promise<void> {
+        if (!tenantId) throw new BadRequestException('Tenant ID required');
+        if (!approvalId) throw new BadRequestException('Approval ID required');
         try {
-            await this.repository.updateApprovalStatus(approvalId, tenantId, 'APPROVED');
+            await this.repository.updateApprovalStatus(approvalId, tenantId, 'APPROVED', reviewerId);
         } catch (error) {
             this.logger.error('Failed to approve request', error);
             throw new HttpException(
@@ -107,10 +115,14 @@ export class ApprovalsService implements IApprovalsService {
 
     async rejectRequest(
         tenantId: string,
-        approvalId: string
+        approvalId: string,
+        reviewerId?: string,
+        reason?: string,
     ): Promise<void> {
+        if (!tenantId) throw new BadRequestException('Tenant ID required');
+        if (!approvalId) throw new BadRequestException('Approval ID required');
         try {
-            await this.repository.updateApprovalStatus(approvalId, tenantId, 'REJECTED');
+            await this.repository.updateApprovalStatus(approvalId, tenantId, 'REJECTED', reviewerId, reason);
         } catch (error) {
             this.logger.error('Failed to reject request', error);
             throw new HttpException(
@@ -118,6 +130,114 @@ export class ApprovalsService implements IApprovalsService {
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    async create(
+        tenantId: string,
+        input: CreateApprovalRequestInput,
+    ): Promise<ApprovalRequestRecord> {
+        if (!tenantId) throw new BadRequestException('Tenant ID required');
+        if (!input.title) throw new BadRequestException('Title required');
+        if (!input.resourceType) throw new BadRequestException('Resource type required');
+        const created = await this.repository.create(tenantId, input);
+        this.logger.log(`Created approval request ${created.id} (${input.resourceType}) for tenant ${tenantId}`);
+        return created;
+    }
+
+    async findOne(
+        approvalId: string,
+        tenantId: string,
+    ): Promise<ApprovalRequestRecord | null> {
+        if (!tenantId) throw new BadRequestException('Tenant ID required');
+        return this.repository.findOne(approvalId, tenantId);
+    }
+
+    async resubmit(
+        tenantId: string,
+        approvalId: string,
+    ): Promise<ApprovalRequestRecord> {
+        if (!tenantId) throw new BadRequestException('Tenant ID required');
+        const existing = await this.repository.findOne(approvalId, tenantId);
+        if (!existing) throw new NotFoundException(`Approval ${approvalId} not found`);
+        if (existing.status !== 'REJECTED' && existing.status !== 'CANCELLED') {
+            throw new BadRequestException(
+                `Cannot resubmit approval in status ${existing.status}`,
+            );
+        }
+        await this.repository.updateApprovalStatus(approvalId, tenantId, 'PENDING');
+        const refreshed = await this.repository.findOne(approvalId, tenantId);
+        return refreshed as ApprovalRequestRecord;
+    }
+
+    async cancel(
+        tenantId: string,
+        approvalId: string,
+    ): Promise<void> {
+        if (!tenantId) throw new BadRequestException('Tenant ID required');
+        const existing = await this.repository.findOne(approvalId, tenantId);
+        if (!existing) throw new NotFoundException(`Approval ${approvalId} not found`);
+        await this.repository.updateApprovalStatus(approvalId, tenantId, 'CANCELLED');
+    }
+
+    async bulkApprove(
+        tenantId: string,
+        approvalIds: string[],
+        reviewerId?: string,
+    ): Promise<Array<{ id: string; status: 'approved' | 'failed'; error?: string }>> {
+        const results: Array<{ id: string; status: 'approved' | 'failed'; error?: string }> = [];
+        for (const id of approvalIds) {
+            try {
+                const existing = await this.repository.findOne(id, tenantId);
+                if (!existing) {
+                    results.push({ id, status: 'failed', error: 'Not found' });
+                    continue;
+                }
+                if (existing.status !== 'PENDING') {
+                    results.push({ id, status: 'failed', error: `Cannot approve in status ${existing.status}` });
+                    continue;
+                }
+                await this.approveRequest(tenantId, id, reviewerId);
+                results.push({ id, status: 'approved' });
+            } catch (err) {
+                results.push({
+                    id,
+                    status: 'failed',
+                    error: err instanceof Error ? err.message : String(err),
+                });
+            }
+        }
+        return results;
+    }
+
+    async bulkReject(
+        tenantId: string,
+        approvalIds: string[],
+        reviewerId?: string,
+        reason?: string,
+    ): Promise<Array<{ id: string; status: 'rejected' | 'failed'; error?: string }>> {
+        const results: Array<{ id: string; status: 'rejected' | 'failed'; error?: string }> = [];
+        for (const id of approvalIds) {
+            try {
+                const existing = await this.repository.findOne(id, tenantId);
+                if (!existing) {
+                    results.push({ id, status: 'failed', error: 'Not found' });
+                    continue;
+                }
+                if (existing.status !== 'PENDING') {
+                    results.push({ id, status: 'failed', error: `Cannot reject in status ${existing.status}` });
+                    continue;
+                }
+                await this.rejectRequest(tenantId, id, reviewerId, reason);
+                results.push({ id, status: 'rejected' });
+            } catch (err) {
+                results.push({
+                    id,
+                    status: 'failed',
+                    error: err instanceof Error ? err.message : String(err),
+                });
+            }
+        }
+        return results;
     }
 
     private transformApproval(approval: any): ApprovalRequest {

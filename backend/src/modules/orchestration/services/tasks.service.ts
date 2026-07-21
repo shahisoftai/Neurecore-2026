@@ -70,11 +70,11 @@ export class TasksService {
     description?: string;
     priority?: TaskPriority;
     input?: Record<string, unknown>;
-    agentId?: string;
+    agentId?: string | null;
     workflowId?: string;
     scheduledAt?: string;
-    createdById: string;
-    goalId?: string;
+    createdById?: string | null;
+    goalId?: string | null;
     acceptanceCriteria?: string;
     expectedOutput?: Record<string, unknown>;
   }, tenantId: string) {
@@ -90,7 +90,7 @@ export class TasksService {
           ? new Date(input.scheduledAt)
           : undefined,
         tenantId,
-        createdById: input.createdById,
+        createdById: input.createdById ?? null,
         goalId: input.goalId ?? null,
         acceptanceCriteria: input.acceptanceCriteria ?? null,
         expectedOutput: input.expectedOutput
@@ -103,9 +103,11 @@ export class TasksService {
   async update(
     id: string,
     data: {
+      title?: string;
+      description?: string;
       priority?: TaskPriority;
       input?: Record<string, unknown>;
-      agentId?: string;
+      agentId?: string | null;
       goalId?: string | null;
       acceptanceCriteria?: string | null;
       expectedOutput?: Record<string, unknown> | null;
@@ -139,9 +141,17 @@ export class TasksService {
   ) {
     await this.assertOwnership(id, tenantId);
 
+    const existing = await this.prisma.task.findFirst({
+      where: { id, tenantId },
+      select: { startedAt: true },
+    });
+
     const updateData: Record<string, unknown> = { status };
     if (status === 'COMPLETED') {
       updateData.completedAt = new Date();
+    }
+    if (status === 'RUNNING' && existing && !existing.startedAt) {
+      updateData.startedAt = new Date();
     }
 
     const updated = await this.prisma.task.update({
@@ -201,6 +211,108 @@ export class TasksService {
     return this.prisma.task.findMany({
       where: { goalId, tenantId },
       orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  /**
+   * Reopen a previously completed/failed task back to PENDING.
+   * Clears completion timestamp and any error message.
+   */
+  async reopen(id: string, tenantId: string) {
+    await this.assertOwnership(id, tenantId);
+    return this.prisma.task.update({
+      where: { id },
+      data: {
+        status: 'PENDING',
+        completedAt: null,
+        error: null,
+      } as Prisma.TaskUpdateInput,
+    });
+  }
+
+  /**
+   * Find all subtasks of a given parent task. Uses the JSON `input.parentTaskId`
+   * path until a proper parent-child relationship exists.
+   */
+  async findSubtasks(parentId: string, tenantId: string) {
+    return this.prisma.task.findMany({
+      where: {
+        tenantId,
+        input: { path: ['parentTaskId'], equals: parentId },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  /**
+   * Find tasks that are overdue — status not in COMPLETED/CANCELLED and
+   * either has no completedAt timestamp, or was completed after the due date.
+   * For now (no dueDate column), returns non-completed tasks as a proxy.
+   */
+  async findOverdue(tenantId: string, options?: { departmentId?: string; limit?: number }) {
+    const { departmentId, limit = 50 } = options ?? {};
+    return this.prisma.task.findMany({
+      where: {
+        tenantId,
+        status: { notIn: ['COMPLETED', 'CANCELLED'] },
+        ...(departmentId ? { departmentId } : {}),
+      },
+      take: limit,
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  /**
+   * Bulk update status for multiple tasks. Each transition may emit events.
+   */
+  async bulkUpdateStatus(ids: string[], status: TaskStatus, tenantId: string) {
+    const results: Array<{ id: string; status: 'updated' | 'failed'; error?: string }> = [];
+    for (const id of ids) {
+      try {
+        await this.updateStatus(id, status, tenantId);
+        results.push({ id, status: 'updated' });
+      } catch (err) {
+        results.push({
+          id,
+          status: 'failed',
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Clone a task to create a new task with the same properties (minus status,
+   * timestamps, and IDs). Useful for templating.
+   */
+  async clone(sourceId: string, tenantId: string, overrides?: { assigneeId?: string; title?: string }) {
+    const source = await this.findOne(sourceId, tenantId);
+    return this.create(
+      {
+        title: overrides?.title ?? `${source.title} (Copy)`,
+        description: source.description ?? undefined,
+        priority: source.priority,
+        agentId: overrides?.assigneeId !== undefined ? overrides.assigneeId : source.agentId,
+        input: (source.input as Record<string, unknown> | null) ?? {},
+        goalId: source.goalId ?? undefined,
+      },
+      tenantId,
+    );
+  }
+
+  /**
+   * Find tasks assigned to a specific agent (used by getMyTasks).
+   */
+  async findByAgent(agentId: string, tenantId: string, options?: { status?: TaskStatus; limit?: number }) {
+    return this.prisma.task.findMany({
+      where: {
+        tenantId,
+        agentId,
+        ...(options?.status ? { status: options.status } : {}),
+      },
+      take: options?.limit ?? 50,
+      orderBy: { createdAt: 'desc' },
     });
   }
 

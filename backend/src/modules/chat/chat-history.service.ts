@@ -4,8 +4,15 @@
 //
 // Independent of Hermes (which is agent-execution-scoped). Chat history is a
 // user/tenant concern, not an agent concern.
+//
+// Phase 3.5 (2026-07-20): validate conversationId ownership on
+// persistence. A different tenant trying to write to a session it
+// doesn't own would be silently accepted by the previous upsert
+// (collision on `conversationId` would simply re-use the first
+// tenant's row). Now we read the existing session (if any) and
+// reject the write when tenantId/userId don't match the caller.
 
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { MetricsService } from '../metrics/metrics.service';
 
@@ -50,6 +57,10 @@ export class ChatHistoryService {
    * Persist a single chat message. Auto-creates the session row if needed.
    * Failures are logged but never thrown — chat flow must not break on
    * persistence errors (persistence is observability, not a critical path).
+   *
+   * @throws ForbiddenException when an existing session belongs to a
+   *   different tenant or user. Phase 3.5 — previously silently cross-
+   *   polluted history.
    */
   async saveMessage(params: {
     tenantId: string;
@@ -63,6 +74,26 @@ export class ChatHistoryService {
     provider?: string;
   }): Promise<ChatHistoryEntry | null> {
     try {
+      // Phase 3.5: if a session with this conversationId already
+      // exists, verify it belongs to the SAME (tenantId, userId) as
+      // the caller. Otherwise an attacker who guesses / fabricates a
+      // conversationId would inject messages into another tenant's
+      // history.
+      const existing = await this.prisma.chatSession.findUnique({
+        where: { conversationId: params.conversationId },
+        select: { id: true, tenantId: true, userId: true },
+      });
+      if (
+        existing &&
+        (existing.tenantId !== params.tenantId ||
+          existing.userId !== params.userId)
+      ) {
+        throw new ForbiddenException({
+          code: 'CHAT_CONVERSATION_FORBIDDEN',
+          message: 'Conversation is owned by a different tenant or user.',
+        });
+      }
+
       const session = await this.prisma.chatSession.upsert({
         where: { conversationId: params.conversationId },
         update: { lastMessageAt: new Date() },
@@ -95,6 +126,12 @@ export class ChatHistoryService {
       this.metrics?.chatMessagesTotal.inc({ role: params.role, endpoint: 'messages' });
       return this.toEntry(msg);
     } catch (err) {
+      // Phase 3.7: distinguish persistence failure (e.g. DB down) from
+      // ownership violation. The latter MUST propagate as 403 so the
+      // client knows to stop reusing that conversationId.
+      if (err instanceof ForbiddenException) {
+        throw err;
+      }
       this.logger.warn(
         `[chat-history] saveMessage failed: ${(err as Error).message}`,
       );

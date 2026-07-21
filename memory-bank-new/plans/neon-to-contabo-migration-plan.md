@@ -358,3 +358,60 @@ If we cannot obtain a Neon dump:
 7. ✅ All 48 migrations apply cleanly (if fresh schema)
 8. ✅ Documentation updated
 9. ✅ 7-day observation period passes without issues
+
+---
+
+## Update 2026-07-20 — Gaps Discovered Post-Migration
+
+**Summary:** Additional gaps discovered and remediated on 2026-07-20 via comprehensive-remediation-plan-2026-07-20.md.
+
+### Gaps Discovered
+
+| Gap | Impact | Status |
+|---|---|---|
+| `chat_sessions` and `chat_messages` tables missing | Chat persistence broken | ✅ FIXED — migration applied |
+| `_prisma_migrations` not properly synced | 65 migrations reported unapplied | ⚠️ Partial — 64 of 65 seeded |
+| Live `.env` not production values | Dev config in prod | ✅ FIXED — `.env` replaced with `.env.production` |
+| `AI_GATEWAY_V2=false` | Gateway V2 disabled | ✅ FIXED — set to `true` |
+| `SESSION_SECRET` empty | Security risk | ✅ FIXED — generated 48-byte secret |
+| MiniMax short-circuit | Blocked gateway V2 path | ✅ FIXED — removed |
+| Redis URL conflict | Inconsistent Redis config | ✅ FIXED — unified to `.env.production` |
+
+### Current DB State (Contabo PostgreSQL, port 5432)
+
+```
+ai_models: 1 row (minimax, active, capabilities: {planning,conversation})
+tenants: 1 row (test-corp)
+users: 1 row (Mali)
+chat_sessions: EXISTS ✅
+chat_messages: EXISTS ✅
+_prisma_migrations: 64 rows (verified)
+```
+
+### Environment Fixes Applied
+
+| Variable | Before | After |
+|---|---|---|
+| `NODE_ENV` | `development` | `production` |
+| `AI_GATEWAY_V2` | `false` | `true` |
+| `SESSION_SECRET` | empty | generated 48-byte secret |
+| `TENANT_FRONTEND_URL` | `http://localhost:3001` | `https://hq.neurecore.com` |
+| `ADMIN_FRONTEND_URL` | `http://localhost:3002` | `https://cc.neurecore.com` |
+| `SESSION_COOKIE_SECURE` | `false` | `true` |
+
+### Migration File Synced
+
+```bash
+# Migration file was synced to Contabo:
+rsync -avz backend/prisma/migrations/20260719_chat_persistence/ \
+  contabo:/opt/neurecore/backend/backend/prisma/migrations/20260719_chat_persistence/
+
+# Applied:
+cd /opt/neurecore/backend/backend && npx prisma migrate deploy
+```
+
+### Outstanding Items
+
+1. **Contabo `.env` verification**: Verify on Contabo that `.env` was actually replaced with `.env.production`
+2. **PRISMA_MIGRATION table**: The 65th migration (if any) was never seeded — verify if any migration is missing
+3. **Redis URL**: Confirm `.env.production` Redis URL (Upstash) is correct and accessible
