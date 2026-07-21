@@ -689,3 +689,92 @@ grep -l "TODO.*OAuth" backend/src/modules/connectors/adapters/*.ts
 ### Non-Critical Warnings
 - PresenceService sweepStale failed — Upstash Redis unavailable
 - Backend has 217 restarts (from migration process, now stable)
+
+---
+
+## 0e. 2026-07-21 — Browser Chat Panel Fixes + LangGraph Tool Execution (Kilo)
+
+> **Session goal:** Fix browser chat panel 401 re-auth issue and resolve LangGraph infinite loop triggered by `createProject` tool.
+
+### Status snapshot (2026-07-21 PKT)
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| Browser chat panel 401 re-auth | ✅ Fixed | `ChatService` `userIdFromJwt` forwarding in SSE streaming |
+| LangGraph infinite loop (`createProject`) | 🔴 **ACTIVE** | `allowedTools` annotation missing in `langgraph-official.ts` |
+| PM2 restart | ✅ Complete | Backend restarted successfully |
+| Tool count verification | ✅ 119 tools | `tools.module.ts` now registers 119 tools (up from 91) |
+| Verified working tools | ✅ | `listProjects`, `globalSearch`, `getActivityFeed`, `listGoals`, `listWorkflows`, `listBudgetPolicies`, `getTaskStats` |
+
+### Database Configuration
+- **DATABASE_URL:** `postgresql://neurecore:NeureCoreDB123@149.102.225.13:5432/neurecore` (port **5432**, has data)
+- Second Contabo DB at port 5433 with same credentials is **EMPTY**
+
+### ai_models Capabilities Seeded
+All 7 model capabilities in `ai_models` table:
+- `conversation`
+- `planning`
+- `tools`
+- `execution`
+- `evaluation`
+- `reasoning`
+- `coding`
+
+### Backend Health
+- `https://brain.neurecore.com/api/v1/health` → **200 OK**
+
+### Known Issues
+
+| Issue | Status | Details |
+| --- | --- | --- |
+| LangGraph infinite loop on `createProject` | 🔴 **ACTIVE** | `langgraph-official.ts` `allowedTools` annotation missing, causing Hermes tool node to enter infinite loop when `createProject` is called. **FIX IN PROGRESS.** |
+| Browser chat panel 401 | ✅ Fixed | `chat-sse.service.ts` now forwards `userIdFromJwt` correctly |
+| `lastFinalChunk` tracking | ✅ Implemented | `hermes-runtime.service.ts` tracks streaming state for sanitization |
+
+### Verified Working Tools
+The following tools are verified working via browser test:
+- `listProjects`
+- `globalSearch`
+- `getActivityFeed`
+- `listGoals`
+- `listWorkflows`
+- `listBudgetPolicies`
+- `getTaskStats`
+
+### Browser Test: "Phase7 Browser Test" Project
+- Created in DB (`budgetType=FIXED_FEE`, `budgetAmount=30000.00`, `status=LEAD`)
+- Triggered LangGraph infinite loop (root cause: missing `allowedTools` annotation)
+
+### Key Files Modified
+
+| File | Change |
+| --- | --- |
+| `backend/src/modules/chat/chat-sse.service.ts` | `userIdFromJwt` forwarding in streaming |
+| `backend/src/modules/chat/chat.service.ts` | Streaming persistence, detectIntent routing, `stripChainOfThought()` |
+| `backend/src/modules/chat/chat-history.service.ts` | `saveMessage` ownership check |
+| `backend/src/modules/chat/chat.dto.ts` | Bound DTO parameters |
+| `backend/src/modules/agents/langgraph/langgraph-official.ts` | `allowedTools` annotation, plannerNode filter, toolNode rejection, retry loop, success=false handling (**infinite loop bug**) |
+| `backend/src/modules/hermes/services/hermes-runtime.service.ts` | `allowedTools` passthrough, step.success/error fields, `lastFinalChunk` |
+| `backend/src/modules/tools/structured-tool.registry.ts` | `getFunctionDefinitions(allowedNames?)` overload |
+| `backend/src/modules/tools/built-in/neurecore-tools.ts` | `createProject` fail-closed, 25 new tools, 4116 lines |
+| `backend/src/modules/tools/tools.module.ts` | 26 new tool imports (tool count 91→119) |
+| `backend/src/modules/agents/security/providers/security-policy.provider.ts` | 26 new tools added to ai-assistant allowedTools |
+| `frontend/src/components/ProjectCreationEssentials.tsx` | Project type dropdown fallback |
+
+### Committed Files
+
+| File | Purpose |
+| --- | --- |
+| `comms/hermes-tools.md` | **NEW** — Full Hermes tools reference document |
+
+---
+
+## Cross-Reference: LangGraph Infinite Loop Root Cause
+
+**File:** `backend/src/modules/agents/langgraph/langgraph-official.ts`
+
+**Issue:** When `createProject` tool is invoked, the LangGraph `toolNode` enters an infinite loop because the `allowedTools` annotation on the graph state is missing or not being properly enforced.
+
+**Fix required:** Add `allowedTools` array to the `@State` annotation and ensure `toolNode` properly rejects tools not in the allowlist.
+
+**Reference:** `hermes-runtime.service.ts` has `allowedTools` passthrough but the LangGraph `toolNode` is not respecting it.
