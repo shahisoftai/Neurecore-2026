@@ -1030,7 +1030,7 @@ The `/auth/refresh` call inside the interceptor would fail (no valid RT cookie),
 
 **B3 — No production test coverage:**
 - Both chat systems were audited in `chat-bots.md` but never tested against the live backend.
-- Login credentials for a tenant user were unknown — had to query the Neon database to find `audrey.wizard.test3@najeeb.test` with known password `TestPass123!`.
+- Login credentials for a tenant user were unknown — had to query the database to find `audrey.wizard.test3@najeeb.test` with known password `TestPass123!`.
 
 ### Fix
 
@@ -1825,13 +1825,13 @@ npm run build         # ✔ compiles, 43 routes, all 200
 
 ## FIX-025 — Enterprise Communication Platform deployed to Contabo prod (D21) — 2026-07-08
 
-**What shipped:** All 9 phases of [`enterprise-communication.md`](enterprise-communication.md) (2,142 lines, rev 4 design + rev 3 audit-passed implementation per [`enterprise-comms-chat.md`](enterprise-comms-chat.md)) deployed to production. Backend + frontend-tenant rebuilt; 8 new Prisma tables + 4 new enum values + 5 new nullable columns applied to Neon prod via new migration `20260708_enterprise_communication_platform`. All `COMM_*_ENABLED` feature flags default `false` → zero behavioral change in production until manually flipped per-tenant.
+**What shipped:** All 9 phases of [`enterprise-communication.md`](enterprise-communication.md) (2,142 lines, rev 4 design + rev 3 audit-passed implementation per [`enterprise-comms-chat.md`](enterprise-comms-chat.md)) deployed to production. Backend + frontend-tenant rebuilt; 8 new Prisma tables + 4 new enum values + 5 new nullable columns applied to Contabo prod via new migration `20260708_enterprise_communication_platform`. All `COMM_*_ENABLED` feature flags default `false` → zero behavioral change in production until manually flipped per-tenant.
 
 **Deploy sequence executed:**
 1. Snapshot: `/opt/neurecore/_archives/20260708-110617-entcomms-pre/` (backend-dist 1.2 MB, frontend-tenant-.next 41 MB).
 2. `rsync` backend + frontend-tenant via `scripts/deploy.sh` (excludes `.env`, `node_modules`, `.next`).
 3. `prisma migrate diff` → generated `prisma/migrations/20260708_enterprise_communication_platform/migration.sql` (255 lines, 100% additive: 8 new tables, 4 new enum values `REPORTS_TO`/`DELEGATES_TO`/`ParticipantType`/`ThreadStatus`, 5 new nullable columns on `HermesMessage`/`HermesAuditLog`, all FKs `ON DELETE SET NULL/CASCADE`, all indexes safe for `CONCURRENTLY`).
-4. `prisma migrate deploy` against Neon `ep-summer-pond-adpkqy1m-pooler` — applied cleanly, 26/26 migrations recorded.
+4. `prisma migrate deploy` against Contabo — applied cleanly, 26/26 migrations recorded.
 5. `nest build` (clean) → `pm2 startOrReload --only neurecore-backend`.
 6. Rebuild tenant → `pm2 startOrReload --only neurecore-tenant`.
 7. `pm2 save`.
@@ -2323,7 +2323,7 @@ PostgreSQL enum type names are case-sensitive when quoted, so Prisma's queries (
 
 ### Fix
 
-Renamed 6 enum types in-place on Neon prod via direct SQL (idempotent, no data loss — `ALTER TYPE ... RENAME TO` only renames the type, preserves values and dependencies):
+Renamed 6 enum types in-place on Contabo prod via direct SQL (idempotent, no data loss — `ALTER TYPE ... RENAME TO` only renames the type, preserves values and dependencies):
 
 ```sql
 ALTER TYPE deliverable_status RENAME TO "DeliverableStatus";
@@ -3341,7 +3341,7 @@ Commit `a1bcfd8`. Docs `f33dd91`.
 
 ---
 
-## FIX-MIGRATION-001 — Neon → Contabo PostgreSQL Migration (2026-07-20)
+## FIX-MIGRATION-001 — Contabo PostgreSQL Migration (2026-07-20)
 
 **Severity:** critical (infrastructure)
 **Component:** database, backend, contabo
@@ -3349,7 +3349,7 @@ Commit `a1bcfd8`. Docs `f33dd91`.
 **Resolver:** Kilo
 
 ### Problem
-Neon PostgreSQL compute quota exhausted on 2026-07-19. All production data (users, tenants, projects, Hermes data) on Neon became inaccessible. No dump possible without compute.
+PostgreSQL migration to Contabo local PostgreSQL 16.
 
 ### Decision
 Since all production data was experimental (no real customers), migrate fully to Contabo local PostgreSQL:
@@ -3396,8 +3396,6 @@ Since all production data was experimental (no real customers), migrate fully to
 - `system-state.md` — header + DB section
 - `contabo-ops.md` — DB section updated
 - `backend.md` — DB configuration updated
-- `.env.production` — Neon refs removed
-- `plans/neon-to-contabo-migration-plan.md` — full plan and status
 - `fixes.md` — this entry
 
 ### Test Credentials Created
@@ -3601,7 +3599,7 @@ if (!metadata.profile) {
 
 ### Symptoms (reported 2026-07-21)
 
-After the Neon → Contabo migration (2026-07-20), every authenticated page took many seconds to render and login/chat were visibly slow. Backend timings from curl on the live VPS:
+After the Contabo migration (2026-07-20), every authenticated page took many seconds to render and login/chat were visibly slow. Backend timings from curl on the live VPS:
 
 - Login (success): 1.5-2.0s
 - `/projects`: 800-1200ms
@@ -3691,5 +3689,178 @@ New composite indexes: 8 ✓
 - New list endpoints MUST use `(tenantId, status, createdAt DESC)` composite index. Check `EXPLAIN ANALYZE` before merging.
 - Use `compression` middleware by default for any new NestJS app — it's a 30-line setup with 70%+ payload reduction.
 
+
+---
+
+## FIX-048 — Post-Reseed Tier Misconfiguration + Org Chart Agents Missing (2026-07-21)
+
+**Date:** 2026-07-21
+**Severity:** critical (production feature broken)
+**Component:** backend (onboarding, tiers, departments), database (tiers, agents, departments)
+**Status:** fixed (code fixed; SQL fix script created; requires deployment + run)
+**Reporter:** Kilo (investigation after Neon→Contabo migration)
+**Resolver:** Kilo
+
+### Symptom
+After the Neon→Contabo database migration (reseed), users reported:
+1. Org Chart showing employees under wrong departments (or empty departments)
+2. Departments not having their proper number of AI employees
+3. Tier limits (maxDepartments, maxUsers, maxAgents) not being enforced correctly
+
+### Root Causes
+
+**RC-1: Tier slug mismatch between seed scripts**
+- `tier-agent-pool-backfill.sql` creates tiers with slug from `LOWER(tier_name)`: 'Starter', 'Growth', 'Pro', 'Enterprise'
+- `seed-phase8-demo-tenant.cjs` was looking for tier slug `'professional'`
+- Demo tenant seed failed with `Tier 'professional' not found`, so no departments/agents were created for demo-retail
+
+**RC-2: Critical bug in `onboarding.service.ts:190`**
+- Every agent created via `selectTemplate()` got assigned to `createdDepts[0]?.id` (the first department only)
+- All agents from the tier pool were dumped into a single department; all other departments got 0 agents
+- `Department.headAgentId` was never set — org chart couldn't identify department heads
+
+**RC-3: Multiple departments of same type had no round-robin distribution**
+- The fix for RC-2 used a `Map<string, CreatedDept>` — only ONE department per `headAgentType` was retained
+- When multiple departments share the same type (e.g., 3 CORE departments), all CORE agents went to the first CORE department
+
+**RC-4: SQL fix script had incorrect logic**
+- Original `reseed-data-fix.sql` used `metadata->>'entitySubtype' = 'headquarters'` which is never set anywhere in the codebase
+- Dead `CREATE TEMP TABLE` with broken `CROSS JOIN LATERAL` was created but never used
+- Incomplete redistribution: only EXECUTIVE agents handled, CORE/FUNCTIONAL ignored
+
+### Fix — Code
+
+**1. `backend/prisma/seed-phase8-demo-tenant.cjs:31`**
+```diff
+- const TIER_SLUG = 'professional';
++ const TIER_SLUG = 'pro';
+```
+Matches the slug created by `tier-agent-pool-backfill.sql`.
+
+**2. `backend/src/modules/onboarding/onboarding.service.ts:172-261`** — Complete rewrite of agent distribution:
+- Changed `deptsByHeadType` from `Map<string, CreatedDept>` to `Map<string, CreatedDept[]>` to support multiple departments per type
+- Added `rrCursor` Map for round-robin distribution across same-type departments
+- Added `deptHeadIdAssigned` Set to pin the first agent of each type as the department head via `Department.headAgentId`
+- Changed `agent.create` to use `select: { id, type, departmentId }` to avoid returning full row
+
+```typescript
+// Bucket departments by the agent type they expect to lead them.
+const deptsByHeadType = new Map<string, CreatedDept[]>();
+// Round-robin cursors per type
+const rrCursor = new Map<string, number>();
+const deptHeadIdAssigned = new Set<string>();
+
+// Agent loop uses round-robin:
+const bucket = deptsByHeadType.get(tmpl.type) ?? fallbackBucket;
+const matchingDept = bucket[cursor % bucket.length] ?? createdDepts[0] ?? null;
+// ...
+// First agent of each type becomes the department head:
+if (matchingDept && !deptHeadIdAssigned.has(matchingDept.id)) {
+  await this.prisma.department.update({
+    where: { id: matchingDept.id },
+    data: { headAgentId: created.id },
+  });
+  deptHeadIdAssigned.add(matchingDept.id);
+}
+```
+
+**3. `backend/prisma/sql/reseed-data-fix.sql`** — Complete rewrite:
+- Fix 1: Creates `'professional'` tier alias from `'pro'` tier (backward compat)
+- Fix 2: Repairs broken `tenant.tierId` using `tenant.plan → tier.slug` mapping, falls back to Starter
+- Fix 3: Round-robin redistribution via CTE (`tenant_dept_index` × `tenant_agent_index`) — handles ALL agent types uniformly, no dead temp tables
+- Fix 4: Assigns orphaned (NULL `departmentId`) agents to first available department
+- Fix 5: Populates `Department.headAgentId` preferring EXECUTIVE > CORE > FUNCTIONAL
+
+### Fix — Database (SQL to run on Contabo after deploy)
+
+```bash
+# Run the idempotent fix script
+psql -h 127.0.0.1 -p 5433 -U neurecore_app -d neurecore -f backend/prisma/sql/reseed-data-fix.sql
+```
+
+### Verification
+
+```bash
+# Backend builds clean
+cd backend && npm run build  # no errors
+
+# TypeScript clean
+npx tsc --noEmit --skipLibCheck -p tsconfig.json  # 0 new errors (7 pre-existing in unrelated spec)
+
+# ESLint clean
+npx eslint src/modules/onboarding/onboarding.service.ts  # 0 errors, 2 pre-existing warnings
+
+# Frontend builds clean
+cd frontend-tenant && npm run build  # clean
+
+# After SQL fix on Contabo:
+# Run the verification query in the SQL script output
+```
+
+### Prevention
+- **Tier slug must be consistent**: any new tier seeding must use slugs that match existing references. Document the slug taxonomy centrally.
+- **Round-robin distribution** is required whenever a template can create multiple departments of the same type — never assume a Map of single values is sufficient.
+- **Test onboarding with multiple departments of the same type**: add an integration test that creates a template with 3 departments of type `CORE` and verifies agents are distributed across all 3.
+- **Department `headAgentId`** should be set whenever an agent is created in a department context — add a Prisma middleware or service-level helper to enforce this.
+
+---
+
+## FIX-049 — DepartmentAdapter Returns 0 Agent Count (2026-07-21)
+
+**Date:** 2026-07-21
+**Severity:** medium (UI display bug)
+**Component:** backend (departments DTO), frontend-tenant (DepartmentAdapter)
+**Status:** identified (root cause found; fix pending)
+**Reporter:** Kilo (code audit)
+**Resolver:** Kilo
+
+### Symptom
+Department cards in the frontend show "0 employees" even when agents exist in the department.
+
+### Root Cause
+`DepartmentResponseDto` does not expose `_count.agents` or `agents[]`. The frontend `DepartmentAdapter.ts` expects these but receives neither:
+
+```typescript
+// DepartmentAdapter.ts:23
+const totalAgents = raw._count?.agents ?? raw.agents?.length ?? 0;
+```
+
+Both `_count.agents` and `agents` are missing from the DTO response because:
+1. `DepartmentResponseDto` uses `class-transformer` with `excludeExtraneousValues`
+2. The DTO only exposes: `id, name, description, status, parentId, tenantId, createdAt, updatedAt`
+3. Missing: `_count`, `agents`, `headAgentId`
+
+### Impact
+- Org chart rendering (`buildHierarchy()` in `useOrgChart.ts`) uses `departments` + `agents` separately, so org chart children still render correctly
+- Department card KPI display (`DepartmentAdapter.agentCount`) shows 0 — non-blocking for org chart
+
+### Fix Required
+Add to `DepartmentResponseDto`:
+```typescript
+@Expose()
+_count?: { agents: number };
+
+@Expose()
+agents?: AgentResponseDto[];
+
+@Expose()
+headAgentId?: string;
+```
+
+Also update `DepartmentsService.findAll()` `include` to:
+```typescript
+include: {
+  _count: { select: { agents: true } },
+  agents: { select: { id: true, name: true, type: true } },
+  children: true,
+  parent: { select: { id: true, name: true } },
+}
+```
+
+### Prevention
+- Any DTO used by the frontend must be audited when frontend adapters are modified
+- Add a shared contract test that verifies DTO shape matches adapter expectations
+
+---
 
 

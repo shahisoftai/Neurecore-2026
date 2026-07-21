@@ -28,7 +28,7 @@ const p = new PrismaClient();
 
 const TENANT_SLUG = 'demo-retail';
 const TENANT_NAME = 'Demo Retail Co.';
-const TIER_SLUG = 'professional';
+const TIER_SLUG = 'pro';
 
 const OWNER_EMAIL = 'retail@neurecore.ai';
 const OWNER_PASS = 'Retail@123!';

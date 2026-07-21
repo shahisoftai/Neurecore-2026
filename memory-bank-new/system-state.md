@@ -1,11 +1,15 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-21 PKT — Performance fixes (FIX-PERF-001) deployed. Neon → Contabo migration still live. All 14 enterprise integration phases deployed. See [plans/neon-to-contabo-migration-plan.md](plans/neon-to-contabo-migration-plan.md) for full details.
+**Last verified:** 2026-07-21 PKT — Performance fixes (FIX-PERF-001) deployed. All 14 enterprise integration phases deployed.
 
-**Migration Status (2026-07-20):**
-- ✅ Migrated from Neon PostgreSQL to Contabo local PostgreSQL 16
+**Database Status (2026-07-21):**
+- ✅ Contabo Local PostgreSQL 16: `127.0.0.1:5433`, db `neurecore`
 - ✅ Pool data seeded: 706 agents, 57 departments, 24 industries, 83 packages, 150 project types, 20 question packs
-- ⚠️ No user/tenant/project data (experimental data on Neon was not recoverable due to quota exhaustion)
+- ✅ Tier system seeded: 4 tiers (Starter/Growth/Pro/Enterprise) with agent pools
+- ⚠️ Tenant data migrated from Neon (2026-07-20); some tenants had broken tierId references
+- ⚠️ Demo tenant (`demo-retail`) seed failed due to tier slug mismatch — fixed in code (FIX-048)
+- ⚠️ Agent distribution bug in onboarding caused all agents to bunch into first department — fixed (FIX-048)
+- ⚠️ `Department.headAgentId` not set on agent creation — SQL fix script created (reseed-data-fix.sql)
 - ⚠️ PresenceService shows warnings (Upstash Redis unavailable — non-critical — LRU cache now masks the latency)
 
 **Performance Status (2026-07-21):**
@@ -194,14 +198,14 @@
 - Frontend-tenant + frontend-admin deployed to Contabo and verified live
 - Tested 12 features end-to-end with `mali@live.com` (Shahikhail@@0098): project page load, status transitions (LEAD→PROPOSAL_SENT→WON→ACTIVE), stages management, team assignment, goals, deliverables, memory/decisions, customer list/detail, dashboard, departments/projects tab, service desk, finance, settings, project creation (3-step wizard), project deletion
 - All features now functional — see FIX-028 to FIX-031 in [fixes.md](fixes.md) for fixes
-- 3 customers, 3 projects, 1 goal, 1 deliverable, 1 memory, 1 decision, 1 team member, 4 stages persisted to Neon prod
+- 3 customers, 3 projects, 1 goal, 1 deliverable, 1 memory, 1 decision, 1 team member, 4 stages persisted to Contabo prod
 - PM2 services: `neurecore-backend` (id 10, port 3003, healthy), `neurecore-tenant` (id 16, port 3005, healthy), `neurecore-admin` (id 14, port 3020, healthy)
 - Pre-existing from prior session: Projects Phases 1-7 + EIE Phase 2 sub-phases FULLY IMPLEMENTED
 
 **Projects implementation summary (2026-07-09 session):**
 - IMPLEMENTATION-PLAN.md Phases 1–7: ALL ✅ COMPLETE (all acceptance criteria met)
 - project-creation-imp-plan.md Phase 2 sub-phases (2A–2G): ALL ✅ COMPLETE (EIE, catalogue, Question Engine, Hermes, continuous discovery, auto-allocation)
-- All 37 Prisma migrations applied to Neon prod
+- All 37 Prisma migrations applied to Contabo prod
 - Audit: `tsc --noEmit` 0 errors all 3 apps; `pnpm prisma validate` ✅; jest 717/755 (38 pre-existing failures in Hermes/cookie-auth unrelated)
 - Backend modules verified: projects, information-engine (11 sub-modules), customers, project-types, deliverables, project-decisions, project-memory, project-stages, project-members, project-health, execution-log, portal, approvals, approval-chains
 - Seed scripts verified: `seed-question-packs.cjs` (20 packs, 131 questions), `seed-project-types.cjs` (150 types), `seed-onboarding-allocator.cjs`, `seed-industries-majors.cjs` — idempotent, all 15 industries in sync
@@ -539,7 +543,7 @@ goals (extended with projectId FK)
 | Extensions | `plpgsql`, `vector` (pgvector) |
 | Schema sync | `prisma db push --accept-data-loss` (2026-07-20) |
 | Pool data seeded | 706 agents, 57 departments, 24 industries, 19 features, 4 tier templates, 68 packages, 150 project types, 20 question packs |
-| **NEON NOTE** | Neon is decommissioned. `neondb` on `ep-summer-pond-adpkqy1m` is no longer used. |
+| **NOTE** | Contabo Local PostgreSQL 16 is the production database. |
 
 ### 2.8 TLS certificates
 

@@ -170,7 +170,12 @@ export class OnboardingService implements IOnboardingService {
     }
 
     // ─── Expand template into Departments ─────────────────────────────────
-    const createdDepts: { id: string; name: string }[] = [];
+    interface CreatedDept {
+      id: string;
+      name: string;
+      headAgentType: string;
+    }
+    const createdDepts: CreatedDept[] = [];
     for (const item of structure) {
       const overrideName = overrides?.[item.name]?.name ?? item.name;
       const dept = await this.prisma.department.create({
@@ -179,19 +184,47 @@ export class OnboardingService implements IOnboardingService {
           name: overrideName,
         },
       });
-      createdDepts.push({ id: dept.id, name: dept.name });
+      createdDepts.push({
+        id: dept.id,
+        name: dept.name,
+        headAgentType: item.headAgentType ?? 'FUNCTIONAL',
+      });
     }
+
+    // Bucket departments by the agent type they expect to lead them.
+    // Multiple departments may share the same headAgentType, so we use
+    // an array and round-robin through it for agent assignment.
+    const deptsByHeadType = new Map<string, CreatedDept[]>();
+    for (const dept of createdDepts) {
+      const bucket = deptsByHeadType.get(dept.headAgentType) ?? [];
+      bucket.push(dept);
+      deptsByHeadType.set(dept.headAgentType, bucket);
+    }
+    // Round-robin cursors per type — indexed each time we assign an agent.
+    const rrCursor = new Map<string, number>();
+    const deptHeadIdAssigned = new Set<string>();
 
     // ─── Expand tier agent pool entries into Agents ────────────────────────
     let agentsCreated = 0;
     for (const pool of tenant.tier.tierAgentPools) {
       if (!pool.isDefaultSelected && !pool.isRequired) continue;
       const tmpl = pool.template;
-      const deptForAgent = createdDepts[0]?.id ?? null;
       const overrideName = overrides?.[tmpl.name]?.name;
       const isSelected = overrides?.[tmpl.name]?.isSelected ?? true;
 
-      await this.prisma.agent.create({
+      // Pick the next department in round-robin order for this agent type.
+      const typedBucket = deptsByHeadType.get(tmpl.type);
+      const fallbackBucket = createdDepts[0] ? [createdDepts[0]] : [];
+      const bucket = typedBucket ?? fallbackBucket;
+      const cursor = rrCursor.get(tmpl.type) ?? 0;
+      const matchingDept =
+        bucket.length > 0
+          ? (bucket[cursor % bucket.length] ?? createdDepts[0] ?? null)
+          : null;
+      rrCursor.set(tmpl.type, cursor + 1);
+      const deptForAgent = matchingDept?.id ?? null;
+
+      const created = await this.prisma.agent.create({
         data: {
           tenantId,
           name: overrideName ?? tmpl.name,
@@ -207,7 +240,23 @@ export class OnboardingService implements IOnboardingService {
           departmentId: deptForAgent,
           isSelected,
         },
+        select: { id: true, type: true, departmentId: true },
       });
+
+      // Pin the FIRST agent of each type to its matching department as head.
+      // Departments outside the matched bucket are never assigned a head here.
+      if (
+        matchingDept &&
+        !deptHeadIdAssigned.has(matchingDept.id) &&
+        deptsByHeadType.get(created.type)?.some((d) => d.id === matchingDept.id)
+      ) {
+        await this.prisma.department.update({
+          where: { id: matchingDept.id },
+          data: { headAgentId: created.id },
+        });
+        deptHeadIdAssigned.add(matchingDept.id);
+      }
+
       agentsCreated++;
     }
 
