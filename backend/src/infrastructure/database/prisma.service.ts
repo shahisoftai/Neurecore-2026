@@ -27,8 +27,11 @@ export class PrismaService
 
   async onModuleInit(): Promise<void> {
     // Attempt to connect to the database but do not block startup indefinitely.
+    // PERF-FIX: timeout raised from 5s → 20s. On Contabo (cold container)
+    // the first Prisma engine spin-up + Postgres handshake can exceed 5s,
+    // which used to log a warning AND fail the first incoming request.
     const connectPromise = this.$connect();
-    const timeoutMs = 5000;
+    const timeoutMs = 20000;
     const timeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Prisma connect timeout')), timeoutMs),
     );

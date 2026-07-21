@@ -1,6 +1,6 @@
 # Contabo Operations — DOs and DONTs
 
-**Last verified:** 2026-07-11 00:30 PKT (Phase 8 deployed — see `memory-bank-new/Projects/PHASE-8-COMPLETION.md`. Migration `20260711_phase8_memory_confidence` applied; goal pre-population now synchronous; CoS subscribers emit to humans via EventsGateway.)
+**Last verified:** 2026-07-21 15:00 PKT — FIX-PERF-001 deployed (login/lists/chat latency fixes). All 14 enterprise integration phases still live. Admin now on port 3002 (was 3020 in older docs).
 **Audience:** Anyone working on the Contabo box (`vmi2954830.contaboserver.net`, `109.123.248.253`).
 **Sibling docs:** [system-state.md](system-state.md) · [operations.md](operations.md) · [backend.md](backend.md) · [frontend-admin.md](frontend-admin.md) · [frontend-tenant.md](frontend-tenant.md)
 
@@ -16,7 +16,7 @@
 |---|---|---|---|
 | `neurecore-backend` | 10 | 3003 | NestJS API — **Projects Phases 1–7 + EIE deployed 2026-07-09** |
 | `neurecore-tenant` | 12 | 3001 | Next.js, `hq.neurecore.com` |
-| `neurecore-admin` | 9 | 3020 | Next.js, `cc.neurecore.com` — **PRE-PROJECTS code (not yet rebuilt)** |
+| `neurecore-admin` | 9 | 3002 | Next.js, `cc.neurecore.com` (port `3020` is **deprecated** — see §4.10) |
 | `neurecore-cors-proxy` | 7 | 3004 | dev CORS sidecar → 3003 |
 
 > ⚠️ **Frontend deploy pending:** `neurecore-tenant` (id 12) and `neurecore-admin` (id 9) have NOT been rebuilt with the Projects code. All new routes (`/projects`, `/projects/new`, `/customers`, `/portal`, `/project-types`, `/question-packs`, `/customers-pool`) will 404 until the frontends are rebuilt and restarted.
@@ -27,15 +27,20 @@
 |---|---|---|
 | `brain.neurecore.com` | 127.0.0.1:3003 | 200 on `/api/v1/health` — **Projects backend live** |
 | `hq.neurecore.com` | 127.0.0.1:3001 | 200 on `/` — **rebuilt 2026-07-16** |
-| `cc.neurecore.com` | 127.0.0.1:3020 | 200 on `/` — **PRE-PROJECTS (pending rebuild)** |
+| `cc.neurecore.com` | 127.0.0.1:3002 | 200 on `/admin` — **Projects code (rebuilt 2026-07-21 with FIX-PERF-001)** |
 
 **Other tenants** on the box (NOT neurecore): `app-frontend` (GUV, port 3001/3100), `gfcportal`, `shahisoft-nextjs`, `lifeosa-backend`, `ecoearthshop-backend` (cluster), `cookie-refresher`, `gfcportal`. Don't break these.
 
-**Database:** Contabo Local PostgreSQL 16 (`127.0.0.1:5433`, db `neurecore`, user `neurecore_app`). **Migrated from Neon on 2026-07-20.**
-**Cache:** Redis on `127.0.0.1:6379` (host-installed). **Note:** Upstash (`lasting-gobbler-72608.upstash.io`) returns `ENOTFOUND` — non-fatal, backend still healthy.
+**Database:** Contabo Local PostgreSQL 16 (`127.0.0.1:5432`, db `neurecore`, user `neurecore`). **Migrated from Neon on 2026-07-20.**
+
+> ⚠️ **PORT NOTE:** The repo's `backend/.env.production` template points to `127.0.0.1:5433` (which is the **`audit-test` Postgres instance** — only 5 users, used for testing). The actual production backend uses port **5432** (host-installed `postgres 16/main`). The live `.env` on Contabo already has the correct URL — do **NOT** copy the repo template without fixing the port.
+**Cache:** Redis on `127.0.0.1:6379` (host-installed). **Note:** Upstash (`lasting-gobbler-72608.upstash.io`) returns `ENOTFOUND` — non-fatal, backend still healthy. As of FIX-PERF-001 (2026-07-21), the JWT blacklist check is fronted by a 30s LRU cache so the Upstash round-trip happens at most once per JTI per minute per worker.
+
+**Postgres tuning:** `/etc/postgresql/16/main/conf.d/99-neurecore-tuning.conf` (applied 2026-07-21). `shared_buffers=2GB`, `work_mem=64MB`, `effective_cache_size=7GB`, `random_page_cost=1.1`, autovacuum aggressive, `log_min_duration_statement=1500`. Restart with `pg_ctlcluster 16 main restart` to apply changes after edits.
+
 **Observability:** Prometheus `:9090`, Alertmanager `:9093`, Grafana `:3200` (all containers under `/opt/neurecore/observability/`).
 
-**Most recent DR snapshot:** `/opt/neurecore/_archives/20260709-212750/` (pre-Projects-frontend-deploy).
+**Most recent DR snapshot:** `/opt/neurecore/_archives/20260721-100414-pre-perf-fixes/` (pre-FIX-PERF-001 perf-fixes deploy).
 
 ---
 

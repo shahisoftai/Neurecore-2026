@@ -1,13 +1,19 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-20 PKT — Neon → Contabo migration COMPLETE. All 14 enterprise integration phases deployed. Production running on Contabo local PostgreSQL (no Neon). See [plans/neon-to-contabo-migration-plan.md](plans/neon-to-contabo-migration-plan.md) for full details.
+**Last verified:** 2026-07-21 PKT — Performance fixes (FIX-PERF-001) deployed. Neon → Contabo migration still live. All 14 enterprise integration phases deployed. See [plans/neon-to-contabo-migration-plan.md](plans/neon-to-contabo-migration-plan.md) for full details.
 
 **Migration Status (2026-07-20):**
 - ✅ Migrated from Neon PostgreSQL to Contabo local PostgreSQL 16
 - ✅ Pool data seeded: 706 agents, 57 departments, 24 industries, 83 packages, 150 project types, 20 question packs
 - ⚠️ No user/tenant/project data (experimental data on Neon was not recoverable due to quota exhaustion)
-- ⚠️ PresenceService shows warnings (Upstash Redis unavailable — non-critical)
-- ⚠️ Backend has 217 restarts (from migration restarts; running stable since)
+- ⚠️ PresenceService shows warnings (Upstash Redis unavailable — non-critical — LRU cache now masks the latency)
+
+**Performance Status (2026-07-21):**
+- ✅ Backend compression enabled (gzip), JWT blacklist LRU cache, telemetry fire-and-forget, parallel login writes, chat snapshot cache, validated 5 NOT VALID FKs, 8 composite indexes added
+- ✅ Postgres tuned: shared_buffers=2GB, work_mem=64MB, random_page_cost=1.1
+- ✅ Frontend `NEXT_PUBLIC_API_URL=/api/v1` (bypasses Next.js rewrite proxy hop)
+- ✅ See [fixes.md §FIX-PERF-001](fixes.md#fix-perf-001--contabo-latency-login-1-2s-lists-multi-second-chat-3-6s-2026-07-21) for full details and measured timings
+- Backend uptime: stable since 2026-07-21 10:44 PKT (1 restart for the perf-fixes deploy)
 
 ---
 

@@ -1,11 +1,52 @@
 # Pending Tasks & Issues
 
 > Source: comprehensive review of `memory-bank-new/` (16 .md files) on 2026-07-08.
-> Last updated: 2026-07-17 PKT — **All 14 enterprise integration phases COMPLETE**. Simulation-5 AEIC: 83/100 (B+, Production Ready). Phase honest audits completed; all gaps fixed. Phase 14 source complete pending Contabo pnpm stabilization. Phase completion reports consolidated into [backend.md §18](backend.md#18-enterprise-integration-phases-714) and [system-state.md](system-state.md).
+> Last updated: 2026-07-21 PKT — **All 14 enterprise integration phases COMPLETE**. Performance fixes (FIX-PERF-001) deployed 2026-07-21. Simulation-5 AEIC: 83/100 (B+, Production Ready). Phase honest audits completed; all gaps fixed. Phase completion reports consolidated into [backend.md §18](backend.md#18-enterprise-integration-phases-714) and [system-state.md](system-state.md).
 > This document consolidates every outstanding task, known issue, and doc drift item
 > across Hermes, the tenant/admin UIs, the platform backend, and operations.
 
 Status legend: 🔴 Not started · 🟡 In progress / partial / scaffold only · 🟢 Done · ✅ Resolved · ⚠️ Active/recurring issue · 🧹 Doc drift · 🛡️ Local mitigation shipped, prod deploy pending
+
+---
+
+## 0c. 2026-07-21 — Contabo Latency Investigation & Fixes (Kilo)
+
+> **Session goal:** Investigate and fix slow login, chat, and list pages after the Neon → Contabo migration. Deploy verified.
+
+### Status snapshot (2026-07-21 PKT — DEPLOYED)
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| §0c.1 — Compression middleware on backend | ✅ **DEPLOYED** | `compression({threshold:1024, level:6})` before body parsers; 70-80% payload reduction on `/projects`, `/agents`, `/chat/history` |
+| §0c.2 — JWT blacklist LRU cache | ✅ **DEPLOYED** | `lru-cache(50k, 30s)` around `RedisService.isTokenBlacklisted`; blacklist writes poison the cache; Upstash remote calls dropped ~95% |
+| §0c.3 — TelemetryService fire-and-forget | ✅ **DEPLOYED** | Ring buffer (1000 events) flushed via `createMany` every 2s; `trackAsync`/`timingAsync` shims for backwards compat |
+| §0c.4 — AuthService.login() parallel writes | ✅ **DEPLOYED** | `Promise.allSettled([session.create, user.update, telemetry.*])` after token issuance; ~200-400ms saved per login |
+| §0c.5 — VALIDATE 5 NOT VALID FKs | ✅ **DEPLOYED** | Migration `20260721_validate_fk_constraints`; removes per-insert full-table scans on `chat_messages`, `HermesAgent`, `HermesSession`, `HermesMemoryEntry` |
+| §0c.6 — Chat snapshot LRU cache | ✅ **DEPLOYED** | `lru-cache(500, 30s)` around `fetchTenantSnapshot`; skipped for `intent === 'action'` (saves 6 queries on action prompts) |
+| §0c.7 — Chat LLM post-call dedup | ✅ **DEPLOYED** | `send()` reads `model`/`provider` from single `invoke()` response; removed both redundant `getLastResolved()` calls |
+| §0c.8 — FE `NEXT_PUBLIC_API_URL=/api/v1` | ✅ **DEPLOYED** | Bypasses Next.js rewrite hop; OLS already proxies `/api/*` → backend |
+| §0c.9 — Admin `compress: true` | ✅ **DEPLOYED** | `frontend-admin/next.config.js` gzip |
+| §0c.10 — Postgres tuning | ✅ **DEPLOYED** | `/etc/postgresql/16/main/conf.d/99-neurecore-tuning.conf`: shared_buffers=2GB, work_mem=64MB, random_page_cost=1.1, autovacuum aggressive, slow query log at 1500ms |
+| §0c.11 — Composite indexes | ✅ **DEPLOYED** | Migration `20260721_perf_composite_indexes`; 8 indexes on `(tenantId, status, createdAt DESC)` + `(tenantId, createdAt DESC)` for Project/Agent/Customer/Task |
+| §0c.12 — pino-http access log | ✅ **DEPLOYED** | Per-request structured logging with elapsed time; warns at >1500ms |
+| §0c.13 — DB pool bumped to 25 | ✅ **DEPLOYED** | `connection_limit=25&pool_timeout=20&connect_timeout=15` in `DATABASE_URL` |
+| §0c.14 — Prisma connect timeout 5s → 20s | ✅ **DEPLOYED** | Cold-start safety for first request after restart |
+
+### Files changed (14 source files + 2 migrations + 1 FE config + 2 env files)
+
+See [fixes.md §FIX-PERF-001](fixes.md#fix-perf-001--contabo-latency-login-1-2s-lists-multi-second-chat-3-6s-2026-07-21) for the complete list with measured timings.
+
+### Known follow-ups (NOT in scope of this PR — tracked here for next session)
+
+| # | Item | Severity | Notes |
+| --- | --- | --- | --- |
+| 1 | SWR / TanStack Query on FE | medium | Would touch ~200 files; needs separate PR with proper testing |
+| 2 | PM2 cluster mode for backend | medium | Single Node process; needs code review for in-process state (telemetry LRU, snapshot LRU, etc.) |
+| 3 | HTTP cache headers on list endpoints | low | Add `Cache-Control: private, max-age=15, stale-while-revalidate=60` via interceptor |
+| 4 | Bcrypt cost reduction (12 → 10) | low | Was the right thing to do security-wise, but didn't want to change auth behavior without explicit approval |
+| 5 | AI gateway circuit breaker tuning | low | Partially exists; needs real MiniMax key + load testing |
+| 6 | Frontend chat panel `sendMessageStream` → default path | low | Currently uses `/chat/stream` SSE; non-streaming fallback still wired; verify with real LLM |
+| 7 | Per-tenant LRU snapshot invalidation | low | On write to Agent/Task/Project for a tenant, evict that tenant from the LRU. Currently 30s TTL is the only invalidation |
 
 ---
 

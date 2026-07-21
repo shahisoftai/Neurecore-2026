@@ -12,6 +12,9 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // PERF-FIX: gzip admin pages and any response served via Next.js
+  // (notably the rewrite proxy path which still exists as a fallback).
+  compress: true,
   ...(isProd
     ? {
         // In production we serve the admin portal behind /admin.

@@ -196,7 +196,7 @@ export class AuthService implements IAuthService {
         userAgent: meta.userAgent,
         reason: 'invalid_credentials',
       });
-      await this.telemetry.track('auth.login.failure', {
+      this.telemetry.track('auth.login.failure', {
         labels: { reason: 'invalid_credentials', email: normalisedEmail },
       });
       throw new UnauthorizedException('Invalid credentials');
@@ -209,26 +209,35 @@ export class AuthService implements IAuthService {
 
     const tokens = await this.tokenService.issueTokenPair(validated);
 
-    await this.prisma.session.create({
-      data: {
-        userId: validated.id,
-        tenantId: validated.tenantId,
-        ipAddress: meta.ipAddress,
-        userAgent: meta.userAgent,
-        expiresAt: new Date(Date.now() + tokens.expiresIn * 1000),
-      },
-    });
-
-    await this.prisma.user.update({
-      where: { id: validated.id },
-      data: { lastLoginAt: new Date() },
-    });
-
-    await this.telemetry.timing('auth.login.duration_ms', Date.now() - start, {
-      tenantId: validated.tenantId ?? undefined,
-    });
-    await this.telemetry.track('auth.login.success', {
-      tenantId: validated.tenantId ?? undefined,
+    // PERF-FIX: persist session + update lastLoginAt + telemetry writes
+    // IN PARALLEL. Previously these were 4 sequential awaits (~150-500ms
+    // total on Contabo). They are bookkeeping, not part of the
+    // authenticated response — failing any one of them must NOT block
+    // the user from being signed in.
+    void Promise.allSettled([
+      this.prisma.session.create({
+        data: {
+          userId: validated.id,
+          tenantId: validated.tenantId,
+          ipAddress: meta.ipAddress,
+          userAgent: meta.userAgent,
+          expiresAt: new Date(Date.now() + tokens.expiresIn * 1000),
+        },
+      }),
+      this.prisma.user.update({
+        where: { id: validated.id },
+        data: { lastLoginAt: new Date() },
+      }),
+      this.telemetry.timing('auth.login.duration_ms', Date.now() - start, {
+        tenantId: validated.tenantId ?? undefined,
+      }),
+      this.telemetry.track('auth.login.success', {
+        tenantId: validated.tenantId ?? undefined,
+      }),
+    ]).catch((err) => {
+      this.logger.warn(
+        `Post-login bookkeeping failed: ${(err as Error).message}`,
+      );
     });
 
     this.logger.log(`User logged in: ${normalisedEmail}`);
@@ -293,7 +302,7 @@ export class AuthService implements IAuthService {
           `Google sign-in for ${data.email} blocked — account exists without Google link. ` +
             'Returning "existing_unlinked" to prompt user.',
         );
-        await this.telemetry.track('auth.google_signin.existing_unlinked');
+        this.telemetry.track('auth.google_signin.existing_unlinked');
         return {
           status: 'existing_unlinked',
           email: existingByEmail.email,
@@ -313,18 +322,18 @@ export class AuthService implements IAuthService {
           },
         });
         this.logger.log(`Google ID linked: ${data.email}`);
-        await this.telemetry.track('auth.google_signin.linked');
+        this.telemetry.track('auth.google_signin.linked');
       }
       const validated = this.toValidatedUser(existingByEmail);
       const tokens = await this.tokenService.issueTokenPair(validated);
-      await this.telemetry.timing(
+      this.telemetry.timing(
         'auth.google_signin.duration_ms',
         Date.now() - start,
         {
           tenantId: validated.tenantId ?? undefined,
         },
       );
-      await this.telemetry.track('auth.google_signin.success', {
+      this.telemetry.track('auth.google_signin.success', {
         tenantId: validated.tenantId ?? undefined,
       });
       this.logger.log(`User logged in via Google: ${data.email}`);
@@ -366,14 +375,14 @@ export class AuthService implements IAuthService {
 
     const validated = this.toValidatedUser(user);
     const tokens = await this.tokenService.issueTokenPair(validated);
-    await this.telemetry.timing(
+    this.telemetry.timing(
       'auth.google_signin.duration_ms',
       Date.now() - start,
       {
         tenantId: tenant.id,
       },
     );
-    await this.telemetry.track('auth.google_signin.new_user', {
+    this.telemetry.track('auth.google_signin.new_user', {
       tenantId: tenant.id,
     });
     this.logger.log(

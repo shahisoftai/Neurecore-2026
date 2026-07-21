@@ -484,6 +484,11 @@ model Tenant {
   crmConnectors              CrmConnector[]
   tenantLimit                TenantLimit?
   oauthTokens                OAuthToken[]
+
+  // Phase 1.3 back-relations (added 2026-07-20)
+  hermesAgents               HermesAgent[]
+  hermesSessions             HermesSession[]
+  hermesMemoryEntries        HermesMemoryEntry[]
   integrationCredentials     IntegrationCredential[]
   invoices                   Invoice[]
   expenses                   Expense[]
@@ -636,6 +641,9 @@ model User {
   capabilityConfigs       CapabilityConfig[]   @relation("CapabilityConfigUser")
   missionFeedItems        MissionFeedItem[]    @relation("MissionFeedUser")
   aiActionInvocations     AIActionInvocation[] @relation("AIActionInvokedBy")
+
+  // Phase 1.3 back-relations (added 2026-07-20)
+  hermesSessions           HermesSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -879,6 +887,8 @@ model Agent {
   @@index([departmentId])
   @@index([tierAgentPoolId])
   @@index([workspaceId])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([tenantId, createdAt(sort: Desc)])
   @@map("agents")
 }
 
@@ -955,6 +965,8 @@ model Task {
   @@index([stageId])
   @@index([projectId])
   @@index([simulationId])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([tenantId, agentId, status])
   @@map("tasks")
 }
 
@@ -1934,6 +1946,8 @@ model Customer {
 
   @@unique([tenantId, name])
   @@index([tenantId])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([tenantId, createdAt(sort: Desc)])
   @@map("customers")
 }
 
@@ -2200,6 +2214,8 @@ model Project {
   @@index([status])
   @@index([departmentId])
   @@index([customerId])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([tenantId, createdAt(sort: Desc)])
   @@index([parentProjectId])
   @@map("projects")
 }
@@ -3382,6 +3398,9 @@ model HermesAgent {
   // Back-relations
   agents Agent[]
 
+  // Phase 1.3: tenant referential integrity (added 2026-07-20).
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -3438,6 +3457,10 @@ model HermesSession {
   expiresAt DateTime?
 
   hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
+  // Phase 1.3: tenant + user referential integrity (added 2026-07-20).
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([hermesAgentId, tenantId])
   @@index([userId, tenantId])
@@ -3499,6 +3522,9 @@ model HermesMemoryEntry {
   updatedAt DateTime @updatedAt
 
   hermesAgent HermesAgent @relation(fields: [hermesAgentId], references: [id], onDelete: Cascade)
+
+  // Phase 1.3: tenant referential integrity (added 2026-07-20).
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([hermesAgentId, tenantId])
   @@index([hermesAgentId, type])

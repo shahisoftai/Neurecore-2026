@@ -7,6 +7,18 @@ import { ActivityService } from '../hermes/services/activity.service';
 import { FeatureFlagService } from '../../common/feature-flag/feature-flag.service';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
 import { ChatHistoryService } from './chat-history.service';
+import { LRUCache } from 'lru-cache';
+
+// PERF-FIX: in-process LRU cache for the tenant-data snapshot used to
+// ground chat replies. Six parallel Postgres queries per chat message
+// (~200-500ms on Contabo) collapse to ~0ms for repeated calls inside
+// the 30s window. Stale-by-at-most-30s is fine for the model's
+// "how many active projects do I have?" context.
+const TENANT_SNAPSHOT_TTL_MS = 30_000;
+const tenantSnapshotCache = new LRUCache<string, Record<string, unknown>>({
+  max: 500,
+  ttl: TENANT_SNAPSHOT_TTL_MS,
+});
 
 /**
  * Chat Service
@@ -64,6 +76,37 @@ export class ChatService {
     });
   }
 
+  /**
+   * Best-effort lookup of the model/provider that the gateway just resolved.
+   * Returns `undefined` on any failure (never throws) so the streaming
+   * terminal chunk can always be persisted.
+   */
+  private async tryGetLastResolved(tenantId: string | null): Promise<
+    | {
+        model?: { modelId: string };
+        provider?: { slug: string };
+      }
+    | undefined
+  > {
+    try {
+      const fn = (
+        this.aiGateway as unknown as {
+          getLastResolved?: (
+            tenantId: string | null,
+            capability: string,
+          ) => Promise<
+            | { model?: { modelId: string }; provider?: { slug: string } }
+            | undefined
+          >;
+        }
+      ).getLastResolved;
+      if (typeof fn !== 'function') return undefined;
+      return await fn(tenantId, 'conversation');
+    } catch {
+      return undefined;
+    }
+  }
+
   async send(
     dto: SendChatMessageDto,
     tenantIdFromJwt?: string,
@@ -109,23 +152,15 @@ export class ChatService {
       sourceEventId: `chat:${conversationId}:user`,
     });
 
-    if (!this.minimax.isConfigured()) {
-      const result = {
-        reply:
-          'MiniMax is not configured on the server. Set MINIMAX_API_KEY in backend .env to enable the Ask AI assistant.',
-        conversationId,
-        tokens: { input: 0, output: 0, total: 0 },
-        model: 'unconfigured',
-        provider: 'minimax',
-      };
-      this.saveReply(
-        conversationId,
-        tenantIdForHistory,
-        userIdForHistory,
-        result,
-      );
-      return result;
-    }
+    // REMOVED: MiniMax-not-configured short-circuit.
+// Previously this returned a fake "MiniMax is not configured" reply BEFORE
+// checking AI_GATEWAY_V2. That defeated multi-provider failover: even when
+// the gateway could resolve OpenAI/Anthropic/DeepSeek, this branch returned
+// a fake unconfigured reply. See Critical #8 in
+// memory-bank-new/plans/comprehensive-remediation-plan-2026-07-20.md.
+// The gateway's CapabilityResolver will throw a structured
+// AiGatewayUnconfiguredError if no provider is available — that is the
+// single source of truth and is handled below.
 
     // Resolve tenantId — prefer the JWT-supplied one (set by JwtAuthGuard)
     const tenantId =
@@ -136,10 +171,14 @@ export class ChatService {
     // Detect if this is an action request or a query
     const intent = this.detectIntent(dto.message);
 
-    // Fetch live tenant data so the model answers with real numbers
-    const liveData = tenantId
-      ? await this.fetchTenantSnapshot(tenantId)
-      : { note: 'no tenant context available' };
+    // PERF-FIX: skip the tenant-snapshot fan-out for action intents.
+    // The agent graph already gathers the context it needs from its
+    // own tool calls; pre-fetching a 6-query snapshot was wasted
+    // 200-500ms on every "create a project / invite a user" prompt.
+    const liveData =
+      tenantId && intent !== 'action'
+        ? await this.fetchTenantSnapshot(tenantId)
+        : { note: 'no tenant context required for this intent' };
 
     // PROJECT-CREATION INTENT: bypass the model entirely and drive a
     // human-style conversation ourselves. The MiniMax-M2.7-highspeed model
@@ -188,7 +227,10 @@ export class ChatService {
           goal: dto.message,
           agentId: 'ai-assistant',
           tenantId,
-          userId: 'user',
+          // Use the JWT subject (real user ID) — see Phase 1.4 of the
+          // remediation plan. The previous literal 'user' violated the
+          // users.id FK on Agent.createdById and broke audit attribution.
+          userId: userIdFromJwt ?? 'anonymous',
           sessionId: conversationId,
         });
 
@@ -268,7 +310,6 @@ export class ChatService {
 
     // QUERY: Use MiniMax for natural language response
     const systemPrompt =
-      dto.systemPrompt ??
       `You are a friendly, helpful AI assistant who talks like a real person texting a colleague. Plain sentences only. No markdown, no bullet points, no dashes for lists, no bold, no headers. No internal reasoning. No <think> tags.
 
 When the user wants to create a project, your reply must be EXACTLY in this conversational form:
@@ -302,41 +343,43 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
       // and cost attribution. When off, the legacy MiniMaxClient path is
       // preserved (with F2 fix: real model id, never 'MiniMax-Text-01').
       const useGateway = this.featureFlags.isEnabled('AI_GATEWAY_V2');
-      // Normalize the two response shapes into one local tuple. The
-      // gateway's `LLMResponse` carries `model` + `provider` at the top
-      // level; the legacy `MiniMaxClient.invoke` returns
-      // `LLMResponse` (legacy) which has neither (it lives on the
-      // client instance), so we read it from `this.minimax.model`.
-      const replyContent: string = useGateway
-        ? (
-            await this.aiGateway.invoke({
-              tenantId,
-              capability: 'conversation',
-              prompt,
-              sourceModule: 'chat',
-              ...(dto.temperature !== undefined
-                ? { temperature: dto.temperature }
-                : {}),
-              ...(dto.maxTokens !== undefined
-                ? { maxTokens: dto.maxTokens }
-                : {}),
-            })
-          ).content
-        : (
-            await this.minimax.invoke(
-              prompt,
-              dto.temperature ?? 0.3,
-              dto.maxTokens ?? 512,
-            )
-          ).content;
-      const replyModel: string = useGateway
-        ? ((await this.aiGateway.getLastResolved(tenantId, 'conversation'))
-            ?.model.modelId ?? 'gateway')
-        : this.minimax.model;
-      const replyProvider: string = useGateway
-        ? ((await this.aiGateway.getLastResolved(tenantId, 'conversation'))
-            ?.provider.slug ?? 'gateway')
-        : 'minimax';
+
+      // PERF-FIX: capture the full response (content + model + provider)
+      // from a SINGLE invoke() call. Previously the code called
+      // getLastResolved() twice after invoke() — that's 2 extra DB hits
+      // (resolver cache miss path) just to read model/provider that the
+      // gateway already returned. The legacy `MiniMaxClient.invoke`
+      // returns a 2-field shape, so we read model from the client
+      // instance for that path.
+      let replyContent: string;
+      let replyModel: string;
+      let replyProvider: string;
+      if (useGateway) {
+        const gwResp = await this.aiGateway.invoke({
+          tenantId,
+          capability: 'conversation',
+          prompt,
+          sourceModule: 'chat',
+          ...(dto.temperature !== undefined
+            ? { temperature: dto.temperature }
+            : {}),
+          ...(dto.maxTokens !== undefined
+            ? { maxTokens: dto.maxTokens }
+            : {}),
+        });
+        replyContent = gwResp.content;
+        replyModel = gwResp.model ?? 'gateway';
+        replyProvider = gwResp.provider ?? 'gateway';
+      } else {
+        const miniResp = await this.minimax.invoke(
+          prompt,
+          dto.temperature ?? 0.3,
+          dto.maxTokens ?? 512,
+        );
+        replyContent = miniResp.content;
+        replyModel = this.minimax.model;
+        replyProvider = 'minimax';
+      }
 
       const tokens = { input: 0, output: 0, total: 0 };
 
@@ -435,39 +478,175 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
     //    the opening tag to end of string.
     text = text.replace(/<think>[\s\S]*$/gi, '');
 
-    // 4. Collapse repeated blank lines.
+    // 4. Strip chain-of-thought reasoning that the MiniMax-M2.7-highspeed model
+    //    leaks as plain text (without using <think> tags). Patterns detected:
+    //    a) The model describes what the user is asking / saying / requesting
+    //    b) The model reasons about system instructions / context
+    //    c) Meta-transition phrases like "Thus answer:", "So final answer:", "Thus final."
+    //    The actual reply is typically a single conversational sentence.
+    text = this.stripChainOfThought(text);
+
+    // 5. Collapse repeated blank lines.
     text = text.replace(/\n{3,}/g, '\n\n');
 
-    // 5. Strip leading/trailing whitespace.
+    // 6. Strip leading/trailing whitespace.
     text = text.trim();
 
-    // 6. Remove `**bold**` markers — keep the inner text.
+    // 7. Remove `**bold**` markers — keep the inner text.
     text = text.replace(/\*\*(.+?)\*\*/g, '$1');
 
-    // 7. Strip markdown headers (## / ###).
+    // 8. Strip markdown headers (## / ###).
     text = text.replace(/^#{1,6}\s+/gm, '');
 
-    // 8. Strip horizontal rules.
+    // 9. Strip horizontal rules.
     text = text.replace(/^---+$/gm, '');
 
-    // 9. Strip leading bullet markers (`- `, `* `, `• `) from lines so the
-    //    model can't sneak in dash-list formatting. Replace with a blank so
-    //    the inner text runs together as prose.
+    // 10. Strip leading bullet markers (`- `, `* `, `• `) from lines so the
+    //     model can't sneak in dash-list formatting. Replace with a blank so
+    //     the inner text runs together as prose.
     text = text.replace(/^\s*[-*•]\s+/gm, '');
 
-    // 10. Strip leading numbered list markers (`1. `, `2) `, etc).
+    // 11. Strip leading numbered list markers (`1. `, `2) `, etc).
     text = text.replace(/^\s*\d+[.)]\s+/gm, '');
 
-    // 11. Collapse runs of blank lines we created by stripping bullets.
+    // 12. Collapse runs of blank lines we created by stripping bullets.
     text = text.replace(/\n{3,}/g, '\n\n');
 
-    // 12. Trim again after stripping.
+    // 13. Trim again after stripping.
     text = text.trim();
 
-    // 13. If the response became empty, provide a short fallback so the user
+    // 14. If the response became empty, provide a short fallback so the user
     //     sees something useful instead of a blank bubble.
     if (!text || text.length < 2) {
       return "I'm here. What's on your mind?";
+    }
+
+    return text;
+  }
+
+  /**
+   * Strip chain-of-thought reasoning that the MiniMax-M2.7-highspeed model emits
+   * as plain text (without `<think>` tags). The model often writes paragraphs
+   * like:
+   *   "The user says 'Hello'. That's a simple question. According to system
+   *    instruction: ... I should respond with ... Thus answer: Hey! ..."
+   *
+   * Detection strategy:
+   *   1. If the response starts with a meta-reasoning opener (e.g. "The user
+   *      says", "The user is asking"), strip everything up to the first
+   *      "Thus answer:", "Thus final.", "So final answer:", or natural reply
+   *      opener (e.g. "Hey!", "Sure,", "Got it,").
+   *   2. If the response contains a meta-transition phrase like "Thus answer:"
+   *      anywhere, take everything AFTER the LAST occurrence.
+   *   3. As a last resort, if the response is extremely long (> 500 chars) and
+   *      starts with reasoning, truncate to the first conversational sentence.
+   */
+  private stripChainOfThought(text: string): string {
+    if (!text) return text;
+
+    // Strategy 1: Look for explicit meta-transition markers and take what follows.
+    const transitionMarkers = [
+      /Thus\s+(?:final\s+)?answer:\s*/gi,
+      /So\s+final\s+answer:\s*/gi,
+      /Final\s+answer:\s*/gi,
+      /Thus\s+final\.\s*/gi,
+      /Thus\s+answer:\s*/gi,
+      /\bAnswer:\s*/g,
+    ];
+
+    let lastTransitionIdx = -1;
+    let lastTransitionLen = 0;
+    for (const marker of transitionMarkers) {
+      const matches = text.matchAll(marker);
+      for (const m of matches) {
+        if (m.index !== undefined && m.index > lastTransitionIdx) {
+          lastTransitionIdx = m.index;
+          lastTransitionLen = m[0].length;
+        }
+      }
+    }
+    if (lastTransitionIdx >= 0) {
+      const tail = text.slice(lastTransitionIdx + lastTransitionLen).trim();
+      if (tail.length >= 10) {
+        return tail;
+      }
+    }
+
+    // Strategy 2: Detect reasoning opener at the start. The MiniMax model often
+    // starts with "The user says", "The user is asking", etc. If found, strip
+    // until we hit a natural reply opener OR a blank-line break OR the end.
+    const reasoningOpeners = [
+      /^The\s+user\s+(?:says|saying|is\s+asking|asks|asked|requested|wants|wants\s+to)\s+/i,
+      /^According\s+to\s+(?:system|the)\s+(?:instruction|prompt|instructions)/i,
+      /^Looking\s+at\s+(?:the\s+)?(?:live|tenant|user)/i,
+      /^The\s+assistant\s+(?:is|should|must)/i,
+      /^I\s+(?:should|need\s+to|must|will)\s+/i,
+    ];
+
+    let startsWithReasoning = false;
+    for (const opener of reasoningOpeners) {
+      if (opener.test(text)) {
+        startsWithReasoning = true;
+        break;
+      }
+    }
+
+    if (startsWithReasoning) {
+      // Look for the start of the actual reply. Patterns:
+      //  - Natural opener at start of a line/paragraph: "Hey!", "Sure,", "Got it,", "Hi", "Hello", "OK", "Okay"
+      //  - Blank line break (paragraph break)
+      //  - End of string
+      const naturalOpeners = [
+        /^(?:Hey|Hi|Hello|OK|Okay|Got it|Sure|No problem|Of course|Thanks|Absolutely|Great|Alright|Yeah|Yes)[\s!,.]/im,
+        /^[A-Z][a-z]+,?\s+[a-z]/m, // "Sure, I can help"
+      ];
+
+      for (const opener of naturalOpeners) {
+        const m = text.match(opener);
+        if (m && m.index !== undefined && m.index > 20) {
+          // Only strip if the opener is far enough from start (otherwise we
+          // might be stripping legitimate content)
+          const tail = text.slice(m.index).trim();
+          if (tail.length >= 10) {
+            return tail;
+          }
+        }
+      }
+
+      // Fallback: if there's a blank-line break, take content after the first one
+      const blankLineIdx = text.indexOf('\n\n');
+      if (blankLineIdx > 50 && blankLineIdx < text.length - 50) {
+        const tail = text.slice(blankLineIdx + 2).trim();
+        if (tail.length >= 10) {
+          return tail;
+        }
+      }
+
+      // Last resort: if the response is very long and seems to be mostly reasoning,
+      // take the last sentence (often that's where the real answer lives)
+      if (text.length > 800) {
+        // Split by common sentence terminators and take the last 1-2 sentences
+        const sentences = text.match(/[^.!?]+[.!?]+/g);
+        if (sentences && sentences.length >= 3) {
+          // Find a good break point — take from the sentence that looks like a real reply
+          // (starts with capital letter, doesn't contain reasoning markers)
+          const reasoningWords = /the user|system instruction|should|must|need to|according to|looking at/i;
+          for (let i = sentences.length - 1; i >= 0; i--) {
+            const s = sentences[i].trim();
+            if (s.length >= 15 && s.length <= 300 && !reasoningWords.test(s)) {
+              // Concatenate this sentence and the previous one if it's also clean
+              let result = s;
+              if (i > 0) {
+                const prev = sentences[i - 1].trim();
+                if (prev.length <= 200 && !reasoningWords.test(prev)) {
+                  result = prev + ' ' + result;
+                }
+              }
+              return result.trim();
+            }
+          }
+        }
+      }
     }
 
     return text;
@@ -537,20 +716,87 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
    * deltas. Activated by `AI_GATEWAY_V2`. The legacy REST endpoint
    * is unchanged.
    *
-   * NOTE: This method streams the QUERY path only (natural language response).
-   * Action requests (create project, etc.) are routed through the non-streaming
-   * `send()` method which uses OfficialAgentGraph for tool execution.
+   * Phase 3.2: action-looking messages (e.g. "create project X")
+   * routed through the streaming endpoint are now sent to the agent
+   * graph (which executes tools) instead of the conversation LLM.
+   * Previously this only worked for the non-streaming `send()` path.
    */
   async *stream(
     dto: SendChatMessageDto,
     tenantIdFromJwt?: string,
+    userIdFromJwt?: string,
   ): AsyncGenerator<{ delta: string; done: boolean }> {
     const tenantId =
       tenantIdFromJwt ??
       (dto.context?.['tenantId'] as string | undefined) ??
       null;
+
+    // Generate / reuse conversationId and persist the user message BEFORE
+    // streaming begins. Without this, streaming responses never appear in
+    // /chat/history (see Phase 3.1 of the remediation plan).
+    const conversationId =
+      dto.conversationId ??
+      `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const userIdForHistory = (dto.context?.['userId'] as string | undefined) ?? 'anonymous';
+    const tenantIdForHistory = tenantId ?? 'unknown';
+
+    void this.chatHistory.saveMessage({
+      tenantId: tenantIdForHistory,
+      userId: userIdForHistory,
+      conversationId,
+      role: 'user',
+      content: dto.message,
+    });
+
+    // Accumulated assistant reply so we can persist after streaming completes.
+    let accumulatedAssistantReply = '';
+    let resolvedModel: string | undefined;
+    let resolvedProvider: string | undefined;
+
+    // Phase 3.2: action-looking messages streamed via /chat/stream are
+    // routed to the agent graph (which executes tools) instead of the
+    // plain conversation LLM. Previously only the non-streaming
+    // `send()` path did this — streaming was locked to capability
+    // 'conversation' regardless of intent, so streamed action
+    // messages silently produced a fake "I'm offline" reply.
+    const intent = this.detectIntent(dto.message);
+    if (intent === 'action' && tenantId) {
+      try {
+        this.logger.log(
+          `[chat.stream] Routing action request to agent graph: ${dto.message}`,
+        );
+        const result = await this.agentGraph.run({
+          goal: dto.message,
+          agentId: 'ai-assistant',
+          tenantId,
+          userId: userIdFromJwt ?? 'anonymous',
+          sessionId: conversationId,
+        });
+        const messages = result.messages ?? [];
+        const finalMessage = messages[messages.length - 1];
+        const reply =
+          finalMessage?.content ??
+          (result.toolResults?.length > 0
+            ? `Executed ${result.toolResults.length} tool(s).`
+            : 'Action completed.');
+        accumulatedAssistantReply = reply;
+        this.saveReply(conversationId, tenantIdForHistory, userIdForHistory, {
+          reply,
+        });
+        yield { delta: reply, done: false };
+        yield { delta: '', done: true };
+        return;
+      } catch (err) {
+        this.logger.error(
+          `[chat.stream] action graph failed: ${(err as Error).message}`,
+        );
+        // Fall through to the conversation LLM so the user still gets
+        // SOMETHING (better than a blank SSE end).
+      }
+    }
+
     const systemPrompt =
-      dto.systemPrompt ??
       `You are a friendly, helpful AI assistant who talks like a real person texting a colleague. Plain sentences only. No markdown, no bullet points, no dashes for lists, no bold, no headers. No internal reasoning. No <think> tags.
 
 When the user wants to create a project, your reply must be EXACTLY in this conversational form:
@@ -599,7 +845,29 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
         // Flush whatever remains in the buffer through the sanitizer. If we
         // never closed the think block, the sanitizer will strip it.
         const cleaned = this.sanitizeReply(buffer);
-        if (cleaned) yield { delta: cleaned, done: false };
+        if (cleaned) {
+          accumulatedAssistantReply += cleaned;
+          yield { delta: cleaned, done: false };
+        }
+        // Persist the assistant message. Fire-and-forget to avoid blocking
+        // the terminal yield (the SSE service needs to send 'done' ASAP).
+        // `tryGetLastResolved` always exists and returns `undefined` on
+        // any failure (no exception bubbles up).
+        const lastResolved = await this.tryGetLastResolved(tenantId);
+        if (lastResolved) {
+          resolvedModel = lastResolved.model?.modelId;
+          resolvedProvider = lastResolved.provider?.slug;
+        }
+        this.saveReply(
+          conversationId,
+          tenantIdForHistory,
+          userIdForHistory,
+          {
+            reply: accumulatedAssistantReply,
+            model: resolvedModel,
+            provider: resolvedProvider,
+          },
+        );
         yield { delta: '', done: true };
         return;
       }
@@ -611,29 +879,52 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
         const openMatch = buffer.match(/<think>/i);
         const closeMatch = buffer.match(/<\/think>/i);
         if (openMatch && closeMatch && closeMatch.index! >= openMatch.index!) {
-          // Think block is complete within the buffer. Flush everything AFTER
-          // the closing tag, sanitized.
+          // Think block opened and closed within this same buffer chunk.
+          // Flush everything AFTER the closing tag, sanitized.
           const tail = buffer.slice(closeMatch.index! + closeMatch[0].length);
           buffer = '';
           thinkClosed = true;
+          insideThink = false;
           const cleaned = this.sanitizeReply(tail);
-          if (cleaned) yield { delta: cleaned, done: false };
+          if (cleaned) {
+            accumulatedAssistantReply += cleaned;
+            yield { delta: cleaned, done: false };
+          }
+        } else if (insideThink && closeMatch && !openMatch) {
+          // We entered a think block in a prior chunk (already sliced off the
+          // opening tag), and now the closing tag has arrived. Flush the content
+          // before the closing tag (which is already in buffer).
+          const tail = buffer.slice(0, closeMatch.index!);
+          buffer = buffer.slice(closeMatch.index! + closeMatch[0].length);
+          thinkClosed = true;
+          insideThink = false;
+          const cleaned = this.sanitizeReply(tail);
+          if (cleaned) {
+            accumulatedAssistantReply += cleaned;
+            yield { delta: cleaned, done: false };
+          }
         } else if (openMatch && !closeMatch) {
-          // Inside the think block — drop everything up to (and including) the
-          // opening tag.
+          // Entering a think block; slice off the opening tag, content goes into
+          // buffer for later.
           buffer = buffer.slice(openMatch.index! + openMatch[0].length);
           insideThink = true;
         } else if (!openMatch && buffer.length > 2048) {
-          // No think tag detected and buffer is large — just flush it as-is
+          // No think tag detected anywhere and buffer is large — flush it as-is
           // through the sanitizer (handles no-think responses).
           const flushed = this.sanitizeReply(buffer);
           buffer = '';
           thinkClosed = true;
-          if (flushed) yield { delta: flushed, done: false };
+          insideThink = false;
+          if (flushed) {
+            accumulatedAssistantReply += flushed;
+            yield { delta: flushed, done: false };
+          }
         }
+        // else: insideThink && no closeMatch yet — keep buffering
       } else {
         // Past the think block — yield raw deltas so the user sees them
         // streaming. The sanitizer runs on the final flush in the done chunk.
+        accumulatedAssistantReply += chunk.delta;
         yield { delta: chunk.delta, done: false };
       }
     }
@@ -715,6 +1006,13 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
   private async fetchTenantSnapshot(
     tenantId: string,
   ): Promise<Record<string, unknown>> {
+    // PERF-FIX: short-circuit on the LRU before fanning out 6 parallel
+    // DB queries. Window is 30s — fresh enough that the LLM isn't
+    // quoting stale numbers, and large enough to collapse burst
+    // conversations (e.g. user fires 3 messages in 5 seconds).
+    const cached = tenantSnapshotCache.get(tenantId);
+    if (cached) return cached;
+
     const snap: Record<string, unknown> = {
       tenantId,
       generatedAt: new Date().toISOString(),
@@ -826,6 +1124,10 @@ When relevant, include a JSON block (no markdown fences) with keys: chartType, c
       );
       snap.error = (err as Error).message;
     }
+
+    // Cache the snapshot (success or partial-failure) so subsequent
+    // chat messages within the TTL window skip the 6 parallel queries.
+    tenantSnapshotCache.set(tenantId, snap);
 
     return snap;
   }

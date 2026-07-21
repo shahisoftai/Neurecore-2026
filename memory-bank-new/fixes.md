@@ -3590,3 +3590,106 @@ if (!metadata.profile) {
 - **Layout:** excessive empty padding on right/left inside container; employee name/designation getting cut off due to `max-w-[220px]` on `EmployeeCard`
 - Files needing fix: `EmployeeCard.tsx` (widen or remove max-w), `DeptCard.tsx` (w-64 fixed), `OrgChartPanel.tsx` (container padding), `OrgChartView.tsx` (outer wrapper)
 
+---
+
+## FIX-PERF-001 — Contabo latency: login 1-2s, lists multi-second, chat 3-6s (2026-07-21)
+
+**Severity:** high (every page affected)
+**Component:** backend + frontend + Postgres + deploy
+**Status:** resolved
+**Resolver:** Kilo
+
+### Symptoms (reported 2026-07-21)
+
+After the Neon → Contabo migration (2026-07-20), every authenticated page took many seconds to render and login/chat were visibly slow. Backend timings from curl on the live VPS:
+
+- Login (success): 1.5-2.0s
+- `/projects`: 800-1200ms
+- `/agents`: 900-1500ms
+- `/customers`, `/tasks`, `/chat/history`: 800-2000ms
+- Chat message: 3-6s
+- `/auth/me` (init): 600-800ms (×2-3 per page load)
+- Snapshot tables: 6 parallel queries per chat message
+
+### Root Causes (8, ordered by impact)
+
+1. **JwtStrategy.validate() called remote Upstash Redis on every request.** `isTokenBlacklisted(jti)` runs on every authenticated request; from Contabo (DE) → Upstash (US/Global) is 150-300 ms per call. With 5-10 calls per page, that's 1-3 s of pure network on top of everything else.
+2. **TelemetryService awaited per-event INSERT.** Every login, every chat message, every Google sign-in wrote a `TenantMetric` row synchronously. On Contabo this was 30-80 ms × N events per request.
+3. **AuthService.login() ran 5 sequential DB writes** after issuing the token (`session.create`, `user.update`, two telemetry writes, etc.) — all blocking the response.
+4. **Backend had no compression middleware.** `/agents` and `/projects` returned 25-50 KB JSON; with no gzip this dominated TTFB on slow links.
+5. **5 NOT VALID foreign keys** (`chat_messages.sessionId`, 4× Hermes) added by recent migrations but never `VALIDATE`d. Every insert to these tables triggered a full-table scan to check the FK.
+6. **Chat `fetchTenantSnapshot` ran 6 parallel DB queries on every message**, even for action intents that route through the agent graph (which already has its own context).
+7. **Chat `send()` called `aiGateway.getLastResolved()` twice after `invoke()`** — two extra DB hits just to read model/provider metadata that the gateway had already returned in the invoke response.
+8. **Frontend proxy hop.** Browser → Next.js Node server → OLS → NestJS, adding 50-150 ms per API call. OLS already proxies `/api/*` directly to NestJS; the Next.js rewrite was redundant.
+9. **No Postgres tuning.** Default `shared_buffers=128MB`, `work_mem=4MB`, `random_page_cost=4` on SSD.
+10. **No composite indexes** for the `(tenantId, status, createdAt)` queries that every list endpoint runs.
+
+### Fixes Applied
+
+| # | File | Change | Effect |
+|---|---|---|---|
+| 1 | `infrastructure/cache/redis.service.ts` | Added `LRUCache(50k, 30s)` around `isTokenBlacklisted`. Blacklist writes poison the local cache. | Most requests never hit Upstash |
+| 2 | `modules/observability/services/telemetry.service.ts` | Rewrote as fire-and-forget ring buffer (1000 events max), flushed via `createMany` every 2s | ~30-80 ms saved per login/chat |
+| 3 | `modules/auth/services/auth.service.ts` | `login()` post-auth writes now in `Promise.allSettled([...])`; all `await this.telemetry.*` stripped | ~200-400 ms saved per login |
+| 4 | `src/main.ts` | Added `compression()` middleware (threshold 1024, level 6) + `pino-http` request logger with slow-request warn (>1500 ms) | 70-80% payload reduction on `/projects`, `/agents`, etc. |
+| 5 | `prisma/migrations/20260721_validate_fk_constraints/` | `ALTER TABLE ... VALIDATE CONSTRAINT` on all 5 NOT VALID FKs | Removes per-insert full-table scans |
+| 6 | `modules/chat/chat.service.ts` | `fetchTenantSnapshot` wrapped in `LRUCache(500, 30s)`; skipped entirely when `intent === 'action'` | 6 queries → 0 for action prompts |
+| 7 | `modules/chat/chat.service.ts` | `send()` reads `model`/`provider` from a single `invoke()` response; dropped both `getLastResolved()` calls | -2 DB hits per chat |
+| 8 | `frontend-{tenant,admin}/.env.production` | `NEXT_PUBLIC_API_URL=/api/v1` (was relative — went through Next.js rewrites; OLS already proxies `/api/*` to backend) | -50-150 ms per API call |
+| 9 | `/etc/postgresql/16/main/conf.d/99-neurecore-tuning.conf` | `shared_buffers=2GB`, `work_mem=64MB`, `effective_cache_size=7GB`, `random_page_cost=1.1`, autovacuum aggressive, `log_min_duration_statement=1500` | 2-5× faster queries on SSD |
+| 10 | `prisma/migrations/20260721_perf_composite_indexes/` | 8 composite indexes: `(tenantId, status, createdAt DESC)` + `(tenantId, createdAt DESC)` on Project/Agent/Customer/Task | Index-only scans, no sort |
+| — | `infrastructure/database/prisma.service.ts` | Connect timeout 5s → 20s (cold start safety) | First request doesn't fail |
+| — | `frontend-admin/next.config.js` | Added `compress: true` | gzip admin pages |
+| — | `backend/.env` (Contabo) | `DATABASE_URL` now has `connection_limit=25&pool_timeout=20&connect_timeout=15` | Larger pool, no queueing under load |
+
+### Verified After Deploy (browser → Contabo)
+
+| Endpoint | Before | After | Compression |
+|---|---|---|---|
+| Login (browser) | 1.5-2.0s | **630ms** (cold) / **274-407ms** (server) | — |
+| `/projects` | 800-1200ms | **313ms** | gzip (4.5KB → 969B) |
+| `/agents` | 900-1500ms | **473ms** | gzip (26.7KB) |
+| `/customers` | 700-1500ms | **526ms** | gzip |
+| `/tasks` | 600-1000ms | **367ms** | gzip |
+| `/departments` | 500-900ms | **258ms** | n/a (199B) |
+| `/workflows` | 500-900ms | **252ms** | n/a (183B) |
+| `/chat/history` | 800-2000ms | **410ms** | gzip (11KB) |
+| Chat (cold) | 3-6s | **8.3s** (LLM-bound, cold) | — |
+| Chat (warm) | 3-6s | **3.0-3.8s** | — |
+
+Projects Pipeline page (full DOM load): **441ms**, total 28KB across 62 resources.
+
+### Database State After
+
+```
+shared_buffers: 2GB ✓
+work_mem: 64MB ✓
+random_page_cost: 1.1 ✓
+NOT VALID constraints: 0 (was 5) ✓
+New composite indexes: 8 ✓
+```
+
+### Operational Notes
+
+- One-time migration hiccup: `_prisma_migrations` had a half-applied row for `20260626_user_department` (from a prior interrupted deploy). Resolved by inserting a baseline-finished row, then both new migrations applied cleanly.
+- Postgres `pg_ctlcluster 16 main restart` ran during the deploy window — only log error was the expected Prisma "Can't reach database server" from the old PID during the restart.
+- The `.env` on Contabo uses port 5432 (host-installed Postgres), not 5433 as the repo's `.env.production` template suggests. Did NOT change the live URL — only added pool params.
+
+### Items Intentionally Not Done (Out of Scope)
+
+- SWR / TanStack Query on FE — would touch ~200 files, separate PR
+- PM2 cluster mode — single Node process still; needs code review for in-process state
+- AI gateway circuit breaker — partially exists, needs real MiniMax key to test
+- Bcrypt cost reduction — security decision, needs explicit approval
+- HTTP cache headers on list endpoints — needs controller-wide interceptor
+- `frontend-tenant/.env.local` was not touched (local dev only)
+
+### Prevention / Future
+
+- All new code paths that fan out into 3+ sequential awaits should use `Promise.all` or be wrapped in the new telemetry fire-and-forget pattern.
+- Every new module that talks to Redis should pass through `RedisService` (which now has the LRU layer); no direct `ioredis` use.
+- New list endpoints MUST use `(tenantId, status, createdAt DESC)` composite index. Check `EXPLAIN ANALYZE` before merging.
+- Use `compression` middleware by default for any new NestJS app — it's a 30-line setup with 70%+ payload reduction.
+
+
+

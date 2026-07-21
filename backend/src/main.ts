@@ -4,10 +4,13 @@ import { ValidationPipe, VersioningType, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import { json, urlencoded } from 'express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import pinoHttp from 'pino-http';
+import { randomUUID } from 'node:crypto';
 import { AppModule } from './app.module';
 import { initTracing } from './infrastructure/tracing/tracing';
 import { MetricsService } from './modules/metrics/metrics.service';
@@ -30,6 +33,54 @@ async function bootstrap() {
 
   // Security
   app.use(helmet());
+
+  // PERF-FIX: gzip/deflate compression for all JSON/HTML responses.
+  // List endpoints (projects/agents/customers/chat-history) can return
+  // 100KB-1MB payloads; compression cuts TTFB for first-paint of list
+  // pages by 50-80% on slow links.
+  app.use(
+    compression({
+      threshold: 1024, // skip very small payloads
+      level: 6,
+    }),
+  );
+
+  // PERF-FIX: per-request structured access log with elapsed time.
+  // Uses pino-http (already a dep). Slow-request alarm via customLogLevel.
+  const isProd =
+    config.get<string>('NODE_ENV') === 'production' ||
+    process.env.NODE_ENV === 'production';
+  app.use(
+    pinoHttp({
+      level: isProd ? 'info' : 'debug',
+      // Assign a correlation id if upstream didn't (X-Correlation-ID).
+      genReqId: (req, res) => {
+        const existing = req.headers['x-correlation-id'];
+        const id =
+          (Array.isArray(existing) ? existing[0] : existing) || randomUUID();
+        res.setHeader('X-Correlation-ID', String(id));
+        return id;
+      },
+      // Slow-request alarm — anything >1500ms gets a warn line.
+      customLogLevel: (req, res, err) => {
+        if (err || (res.statusCode ?? 0) >= 500) return 'error';
+        const responseTime = (req as { responseTime?: number }).responseTime;
+        if (typeof responseTime === 'number' && responseTime > 1500) {
+          return 'warn';
+        }
+        return 'info';
+      },
+      // Trim noisy fields
+      redact: {
+        paths: ['req.headers.authorization', 'req.headers.cookie'],
+        censor: '[REDACTED]',
+      },
+      serializers: {
+        req: (req) => ({ method: req.method, url: req.url }),
+        res: (res) => ({ statusCode: res.statusCode }),
+      },
+    }),
+  );
 
   // Phase 9: cookie-parser (parses Cookie header into req.cookies)
   // Required by CookieAuthService + JwtStrategy cookie-first extraction.
@@ -80,10 +131,6 @@ async function bootstrap() {
     adminFrontendUrl,
     ...defaultOrigins,
   ].filter((v): v is string => Boolean(v));
-
-  const isProd =
-    config.get<string>('NODE_ENV') === 'production' ||
-    process.env.NODE_ENV === 'production';
 
   // Cookie-only auth requires the Access-Control-Allow-Origin response
   // header to ECHO the calling Origin (it cannot be "*" when

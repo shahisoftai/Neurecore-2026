@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { LRUCache } from 'lru-cache';
 // @upstash/redis is an optional dependency. The class is loaded dynamically
 // so projects without the package can still build.
 type UpstashRedisClass = new (opts: { url: string; token: string }) => unknown;
@@ -27,6 +28,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   // use `any` to avoid complex typing for the dynamically-required client
   private upstashClient: any = null;
   private isConnected = false;
+
+  // PERF-FIX: in-process LRU cache for token-blacklist checks.
+  // On Contabo (DE) → Upstash (US) the network round-trip alone is
+  // ~150-300ms. JwtStrategy.validate() runs on EVERY authenticated
+  // request, so caching the "not blacklisted" verdict for 30s collapses
+  // dozens of round-trips per page load into one.
+  // Positive verdicts (blacklisted) are also cached, with a shorter TTL
+  // matching the remaining token lifetime so we don't accidentally
+  // resurrect a revoked token after the TTL.
+  private readonly blacklistCache = new LRUCache<string, boolean>({
+    max: 50_000,
+    ttl: 30_000, // 30s for the "not blacklisted" verdict
+  });
 
   constructor(private readonly config?: ConfigService) {}
 
@@ -254,25 +268,42 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
     try {
       await this.set(`bl:${jti}`, '1', ttlSeconds);
+      // PERF-FIX: also poison the local cache so in-flight requests for
+      // this same JTI get the blacklisted verdict immediately without
+      // racing the Redis write.
+      this.blacklistCache.set(`bl:${jti}`, true, { ttl: ttlSeconds * 1000 });
     } catch (err) {
       this.logger.warn(`Failed to blacklist token: ${String(err)}`);
     }
   }
 
   async isTokenBlacklisted(jti: string): Promise<boolean> {
+    const cacheKey = `bl:${jti}`;
+    // PERF-FIX: short-circuit on the local LRU before paying the remote
+    // round-trip. Cache entries auto-expire after 30s for "not
+    // blacklisted" verdicts, so a revoke that happens after a token has
+    // been seen will take effect within at most 30s — acceptable for
+    // logout-revocation (Next refresh will re-check).
+    const cached = this.blacklistCache.get(cacheKey);
+    if (cached !== undefined) return cached;
+
     if (!this.isConnected) {
       this.logger.warn('Redis not connected, failing open for token check');
-      // Fail-open: if Redis is down, treat tokens as not blacklisted
+      // Fail-open + cache the verdict so we don't keep warning.
+      this.blacklistCache.set(cacheKey, false);
       return false;
     }
     try {
-      return await this.exists(`bl:${jti}`);
+      const isBl = await this.exists(cacheKey);
+      this.blacklistCache.set(cacheKey, isBl);
+      return isBl;
     } catch (err) {
       this.logger.warn(
         `Redis unavailable when checking token blacklist: ${String(err)}`,
       );
-      // Fail-open: if Redis is down, treat tokens as not blacklisted to avoid
-      // turning authentication failures into 500 Internal Server Errors.
+      // Fail-open: cache the negative verdict for 30s so subsequent
+      // requests don't hammer a downed Redis.
+      this.blacklistCache.set(cacheKey, false);
       return false;
     }
   }
