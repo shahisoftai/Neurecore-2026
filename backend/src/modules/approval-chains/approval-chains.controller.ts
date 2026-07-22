@@ -95,6 +95,20 @@ export class ApprovalChainsController {
     const tenantId = requireTenantId(user);
     await this.chainService.advanceChain(tenantId, workflowId);
   }
+
+  /**
+   * GET /approval-chains/industry-routes?industry=<slug>
+   * Stage 2 Phase 2A: Resolve industry-specific approval routes.
+   */
+  @Get('industry-routes')
+  async getIndustryRoutes(
+    @CurrentUser() user: JwtPayload,
+    @Query('industry') industrySlug: string,
+  ) {
+    const tenantId = requireTenantId(user);
+    const routes = await this.chainService.getIndustryRoutes(tenantId, industrySlug);
+    return { industrySlug, count: routes.length, routes };
+  }
 }
 
 /**

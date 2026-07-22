@@ -812,7 +812,7 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                           <option key={pkg.id} value={pkg.id}>
                             [{pkg.status}] {pkg.name}
                             {pkg.industry ? ` · ${pkg.industry.name}` : ''}
-                            {pkg.tierTemplate ? ` · ${pkg.tierTemplate.name}` : ''}
+                            {pkg.tier ? ` · ${pkg.tier.name}` : ''}
                             {' '}({pkg.departments?.length ?? 0}D / {pkg.aiAgents?.length ?? 0}A)
                           </option>
                         ))}

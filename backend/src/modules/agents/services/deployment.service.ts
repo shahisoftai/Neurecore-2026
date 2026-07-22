@@ -12,6 +12,10 @@ import type {
   DeploySingleDepartmentDto,
 } from '../dto/deployment.dto';
 import type { DeployDeptTemplateDto } from '../dto/deployment.dto';
+import {
+  TenantTemplateRuntimeService,
+  type AgentRoleOverride,
+} from '../../tenant-templates/tenant-template-runtime.service';
 
 /**
  * DeploymentService
@@ -36,7 +40,50 @@ export class DeploymentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventsGateway,
+    private readonly templateRuntime: TenantTemplateRuntimeService,
   ) {}
+
+  /**
+   * Convert a template name into a slug suitable for matching tenant-scoped
+   * AGENT_ROLE templates. Example: "Compliance Officer" → "compliance-officer".
+   * Used by Stage 1 §4.7 to look up tenant role overrides by template.
+   */
+  private nameToSlug(name: string): string {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  /**
+   * Stage 1 §4.7 — apply tenant-scoped AGENT_ROLE override to a platform
+   * template. Returns the merged systemPrompt + KPI list if the tenant has
+   * a matching AGENT_ROLE template; otherwise null.
+   */
+  private async loadAgentRoleOverride(
+    tenantId: string,
+    templateName: string,
+    baseSystemPrompt: string | null,
+  ): Promise<{
+    systemPrompt: string;
+    kpis?: AgentRoleOverride['kpis'];
+    overrideSourceId?: string;
+  }> {
+    const slug = this.nameToSlug(templateName);
+    const override = await this.templateRuntime.resolveAgentRoleOverride(
+      tenantId,
+      slug,
+    );
+    if (!override) {
+      return { systemPrompt: baseSystemPrompt ?? '' };
+    }
+    return {
+      systemPrompt: override.systemPrompt ?? baseSystemPrompt ?? '',
+      kpis: override.kpis,
+      overrideSourceId: override.sourceTemplateId,
+    };
+  }
 
   /**
    * Normalise actorId for the `agents.createdById` FK column. The column is
@@ -113,13 +160,21 @@ export class DeploymentService {
     // violated for non-user-actor spawns (ProjectAutomationService,
     // backfills, etc).
     const createdById = actorId === 'SYSTEM' ? null : actorId;
+
+    // Stage 1 §4.7 — apply tenant AGENT_ROLE override (systemPrompt + KPIs)
+    const roleOverride = await this.loadAgentRoleOverride(
+      dto.tenantId,
+      template.name,
+      template.systemPrompt ?? null,
+    );
+
     const agent = await this.prisma.agent.create({
       data: {
         name: dto.name,
         description: template.description,
         type: template.type,
         model: template.model,
-        systemPrompt: template.systemPrompt,
+        systemPrompt: roleOverride.systemPrompt,
         instructions: template.instructions,
         permissions: (template.permissions ?? []) as never,
         config: (template.config ?? {}) as never,
@@ -137,7 +192,12 @@ export class DeploymentService {
           spawnedByAdmin: actorRole === 'SUPER_ADMIN',
           spawnedByOwner: actorRole === 'OWNER' || actorRole === 'ADMIN',
           authorityLevel: dto.authorityLevel ?? 'RECOMMENDATION',
-        } as never,
+          spawnedAt: new Date().toISOString(),
+          ...(roleOverride.kpis ? { kpis: roleOverride.kpis } : {}),
+          ...(roleOverride.overrideSourceId
+            ? { roleOverrideTemplateId: roleOverride.overrideSourceId }
+            : {}),
+        },
       },
     });
 

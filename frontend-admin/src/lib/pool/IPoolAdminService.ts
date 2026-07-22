@@ -43,6 +43,6 @@ export type PoolKey =
   | 'agents-pool'
   | 'departments-pool'
   | 'industries'
-  | 'tier-templates'
+  | 'tiers'
   | 'features'
   | 'packages';

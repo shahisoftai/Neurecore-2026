@@ -7,6 +7,10 @@
  * AND the /home page's decorative LeftPanel. The entire tenant portal uses
  * this rail as its primary navigation.
  *
+ * INDUSTRY-GROUPS-CONCEPT.md §7 — 80/20 navigation principle.
+ * The rail reads the tenant's industryGroup and injects industry-specific
+ * items into the Workspace section. Everything else stays identical.
+ *
  * Layout (expanded):
  *   ┌─ Brand ──────────┐
  *   │ NeureCore       │
@@ -17,6 +21,7 @@
  *   │  🌳 OrgChart  │
  *   │  ✓ Tasks     │
  *   │  …            │
+ *   │  …industry    │
  *   ├─ MARKETPLACE ─┬─┤
  *   │  …            │
  *   └─ Workspace tree drawer (collapsible) ─┘
@@ -32,7 +37,7 @@
  *   beneath them (label only; section still navigates if clicked too).
  */
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -63,10 +68,91 @@ import {
   PanelRightOpen,
   SlidersHorizontal,
   ChevronDown,
+  Briefcase as BriefcaseIcon,
+  Landmark,
+  PieChart,
+  ClipboardCheck,
+  Receipt,
+  Wallet,
+  ShieldCheck,
+  AlertTriangle,
+  Calendar,
+  FileText,
+  Pill,
+  TestTube,
+  FolderKanban,
+  DollarSign as DollarIcon,
+  MapPin,
+  FileBadge,
+  Ticket,
+  Rocket,
+  FileSignature,
+  BookOpen,
+  Factory,
+  Wrench,
+  Cog as CogIcon,
+  Package,
+  Truck,
+  Warehouse,
+  Box,
+  ShoppingCart,
+  Tag,
+  Megaphone,
+  FileEdit,
+  Map,
+  LayoutGrid,
+  Beef,
+  Activity as ActivityIcon,
+  PlusSquare,
+  Stethoscope,
 } from 'lucide-react';
 import { OrgTree } from '@/components/sidebar/OrgTree';
 import { RailCustomizeModal } from '@/components/layout/RailCustomizeModal';
 import { useRailPreferencesStore, type ItemId, type SectionId } from '@/stores/railPreferencesStore';
+import { getIndustryNavConfig } from '@/lib/industryNavigation';
+import { tenantsService, type TenantSelf } from '@/services/tenants.service';
+import { useTenantAuth } from '@/hooks/useTenantAuth';
+
+/** Icon name → component lookup for industry extras (icons referenced by string). */
+const INDUSTRY_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Briefcase: BriefcaseIcon,
+  Landmark,
+  PieChart,
+  ClipboardCheck,
+  Receipt,
+  Wallet,
+  ShieldCheck,
+  AlertTriangle,
+  Calendar,
+  FileText,
+  Pill,
+  TestTube,
+  FolderKanban,
+  DollarSign: DollarIcon,
+  MapPin,
+  FileBadge,
+  Ticket,
+  Rocket,
+  FileSignature,
+  BookOpen,
+  Factory,
+  Wrench,
+  Cog: CogIcon,
+  Package,
+  Truck,
+  Warehouse,
+  Box,
+  ShoppingCart,
+  Tag,
+  Megaphone,
+  FileEdit,
+  Map,
+  LayoutGrid,
+  Beef,
+  Activity: ActivityIcon,
+  PlusSquare,
+  Stethoscope,
+};
 
 interface RailItem {
   /** Stable id used by rail preferences for show/hide. */
@@ -89,8 +175,28 @@ interface RailSection {
  * Canonical rail definition. Re-exported so RailCustomizeModal can iterate
  * the same source. Hidden items / sections are filtered at render time based
  * on user preferences in railPreferencesStore.
+ *
+ * INDUSTRY-GROUPS-CONCEPT.md §7 — the Workspace section's items are
+ * augmented with industry-specific extras based on the tenant's industryGroup.
  */
-export const RAIL_SECTIONS: RailSection[] = [
+export function buildRailSections(industryGroup: string | null | undefined): RailSection[] {
+  const navConfig = getIndustryNavConfig(industryGroup);
+
+  // Resolve industry-specific Customer label/icon (defaults: "Customers" + UserCircle)
+  const customersLabel = navConfig.customersLabel ?? 'Customers';
+  const customersIcon = navConfig.customersIcon
+    ? INDUSTRY_ICON_MAP[navConfig.customersIcon] ?? UserCircle
+    : UserCircle;
+
+  // Industry-specific workspace extras
+  const industryExtras: RailItem[] = navConfig.workspaceExtras.map((item) => ({
+    id: item.id as ItemId,
+    label: item.label,
+    href: item.href,
+    icon: INDUSTRY_ICON_MAP[item.iconName] ?? BriefcaseIcon,
+  }));
+
+  return [
     {
       id: 'home',
       items: [{ id: 'home', label: 'Home', href: '/home', icon: Home }],
@@ -106,7 +212,8 @@ export const RAIL_SECTIONS: RailSection[] = [
         { id: 'routines',     label: 'Routines',    href: '/departments?tab=routines', icon: Repeat },
         { id: 'goals',        label: 'Goals',       href: '/departments?tab=goals', icon: Target },
         { id: 'projects',     label: 'Projects',    href: '/departments?tab=projects', icon: Briefcase },
-        { id: 'customers',    label: 'Customers',   href: '/customers',                icon: UserCircle },
+        ...industryExtras,
+        { id: 'customers',    label: customersLabel, href: '/customers', icon: customersIcon },
       ],
     },
     {
@@ -142,6 +249,10 @@ export const RAIL_SECTIONS: RailSection[] = [
       ],
     },
   ];
+}
+
+/** Backwards-compat: original static export (no industry injection). */
+export const RAIL_SECTIONS: RailSection[] = buildRailSections(null);
 
 interface IconRailProps {
   className?: string;
@@ -153,6 +264,8 @@ export function IconRail({ className = '' }: IconRailProps) {
   const [pinned, setPinned] = useState(false);
   const [orgTreeOpen, setOrgTreeOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [tenantIndustryGroup, setTenantIndustryGroup] = useState<string | null>(null);
+  const user = useTenantAuth();
 
   const expanded = hovered || pinned;
 
@@ -166,7 +279,31 @@ export function IconRail({ className = '' }: IconRailProps) {
   const collapsedSections = useRailPreferencesStore((s) => s.collapsedSections);
   const toggleSectionCollapsed = useRailPreferencesStore((s) => s.toggleSectionCollapsed);
 
-  const visibleSections = RAIL_SECTIONS
+  // INDUSTRY-GROUPS-CONCEPT.md §7 — load tenant's industryGroup once so the
+  // rail can inject industry-specific Workspace items + Customers label/icon.
+  useEffect(() => {
+    if (!user) {
+      setTenantIndustryGroup(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const t = (await tenantsService.getCurrent()) as TenantSelf | null;
+        if (cancelled) return;
+        setTenantIndustryGroup((t as unknown as { industryGroup?: string | null })?.industryGroup ?? null);
+      } catch {
+        if (!cancelled) setTenantIndustryGroup(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const railSections = useMemo(() => buildRailSections(tenantIndustryGroup), [tenantIndustryGroup]);
+
+  const visibleSections = railSections
     .filter((section) => !hiddenSections.includes(section.id))
     .map((section) => ({
       ...section,

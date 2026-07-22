@@ -346,7 +346,8 @@ export class GoogleDriveService implements IDriveService {
     const hasQuery = safe.trim().length > 0;
     let q = `trashed=false`;
     if (hasQuery) {
-      const operator = mode === 'fulltext' ? 'fullText contains' : 'name contains';
+      const operator =
+        mode === 'fulltext' ? 'fullText contains' : 'name contains';
       q += ` and ${operator} '${safe}'`;
     }
     if (mimeType) {
@@ -424,7 +425,10 @@ export class GoogleDriveService implements IDriveService {
       emailMessage?: string;
     },
   ): Promise<{ id: string; role: string; type: string }> {
-    if ((input.type === 'user' || input.type === 'group') && !input.emailAddress) {
+    if (
+      (input.type === 'user' || input.type === 'group') &&
+      !input.emailAddress
+    ) {
       throw new BadRequestException(
         'emailAddress is required for user/group permissions',
       );
@@ -474,7 +478,11 @@ export class GoogleDriveService implements IDriveService {
       throw new BadRequestException('Failed to share Drive file');
     }
 
-    const created = (await res.json()) as { id: string; role: string; type: string };
+    const created = (await res.json()) as {
+      id: string;
+      role: string;
+      type: string;
+    };
     this.logger.log(
       `Drive file ${fileId} shared (permission ${created.id}, role=${input.role}, type=${input.type}) for tenant ${tenantId}`,
     );

@@ -48,15 +48,17 @@ function buildService(
           return null;
         },
       ),
-      findMany: jest.fn(async (args: { where: { email?: { in: string[] }; OR?: unknown } }) => {
-        const emails = args.where.email?.in ?? [];
-        const out: SuppressionRow[] = [];
-        for (const e of emails) {
-          const tenantRow = allRows.get(`*::${e}`);
-          if (tenantRow) out.push({ ...tenantRow, email: e });
-        }
-        return out;
-      }),
+      findMany: jest.fn(
+        async (args: { where: { email?: { in: string[] }; OR?: unknown } }) => {
+          const emails = args.where.email?.in ?? [];
+          const out: SuppressionRow[] = [];
+          for (const e of emails) {
+            const tenantRow = allRows.get(`*::${e}`);
+            if (tenantRow) out.push({ ...tenantRow, email: e });
+          }
+          return out;
+        },
+      ),
       count: jest.fn(async () => allRows.size),
       create: jest.fn(
         async (args: {

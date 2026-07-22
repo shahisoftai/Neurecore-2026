@@ -1475,11 +1475,7 @@ main ← feat/a2a-messaging      ── merges Phase 4 behind COMM_AGENT_MESSAGI
 
 **Do not `pm2 stop` the backend or run `pg_dump` on Contabo.** `pg_dump` uses MVCC and produces a transactionally consistent snapshot without any application downtime.
 
-More importantly, the production database is on **Neon**, not on the Contabo server itself. Use Neon's native branching:
-
-1. **Development isolation:** Create a Neon branch `feat-enterprise-comm` off the production database. This is an instant, copy-on-write snapshot. All feature-branch development and testing runs against this branch. It does not affect production data.
-2. **Pre-migration safety snapshot:** Before applying any Prisma migration to production, create a Neon branch `pre-phase-1-migration` off production. If something goes wrong, promote this branch back to production. This replaces the `pg_dump` + service-stop approach.
-3. **CI/testing:** The Neon branch can also serve as the test database for CI pipelines, ensuring tests run against production-like data without contaminating it.
+Production database is Contabo Local PostgreSQL 16 on `127.0.0.1:5433`.
 
 ---
 

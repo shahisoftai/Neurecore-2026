@@ -1,5 +1,8 @@
 /**
- * Canonical 15-industry list.
+ * industries.ts
+ *
+ * Canonical 16-industry list (15 majors + accounting-audit-services).
+ * INDUSTRY-GROUPS-CONCEPT.md — Industry Group info now in `./industryGroups.ts`.
  */
 
 export const INDUSTRIES = [
@@ -18,4 +21,7 @@ export const INDUSTRIES = [
   'retail-commerce-consumer',
   'special-purpose-organizations',
   'technology-digital-services',
+  'accounting-audit-services', // Major #16 (added 2026-07-05)
 ] as const;
+
+export type IndustrySlug = (typeof INDUSTRIES)[number];

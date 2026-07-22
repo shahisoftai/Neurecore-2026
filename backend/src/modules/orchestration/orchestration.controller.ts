@@ -61,12 +61,15 @@ export class OrchestrationController {
     @Query('limit') limit = '20',
   ) {
     const tenantId = this.resolveTenantId(user);
-    return this.tasksService.findAll({
-      status,
-      agentId,
-      page: Number(page),
-      limit: Number(limit),
-    }, tenantId);
+    return this.tasksService.findAll(
+      {
+        status,
+        agentId,
+        page: Number(page),
+        limit: Number(limit),
+      },
+      tenantId,
+    );
   }
 
   @Get('tasks/:id')
@@ -82,10 +85,13 @@ export class OrchestrationController {
   @Post('tasks')
   createTask(@Body() dto: CreateTaskDto, @CurrentUser() user: JwtPayload) {
     const tenantId = this.resolveTenantId(user);
-    return this.tasksService.create({
-      ...dto,
-      createdById: user.sub,
-    }, tenantId);
+    return this.tasksService.create(
+      {
+        ...dto,
+        createdById: user.sub,
+      },
+      tenantId,
+    );
   }
 
   @Patch('tasks/:id')
@@ -118,22 +124,31 @@ export class OrchestrationController {
     @Query('limit') limit = '20',
   ) {
     const tenantId = this.resolveTenantId(user);
-    return this.workflowsService.findAll({
-      status,
-      page: Number(page),
-      limit: Number(limit),
-    }, tenantId);
+    return this.workflowsService.findAll(
+      {
+        status,
+        page: Number(page),
+        limit: Number(limit),
+      },
+      tenantId,
+    );
   }
 
   @Get('workflows/:id')
   @TenantIsolated()
-  findOneWorkflow(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+  findOneWorkflow(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     const tenantId = this.resolveTenantId(user);
     return this.workflowsService.findOne(id, tenantId);
   }
 
   @Post('workflows')
-  createWorkflow(@Body() dto: CreateWorkflowDto, @CurrentUser() user: JwtPayload) {
+  createWorkflow(
+    @Body() dto: CreateWorkflowDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
     const tenantId = this.resolveTenantId(user);
     return this.workflowsService.create(dto, tenantId);
   }
@@ -149,27 +164,39 @@ export class OrchestrationController {
   }
 
   @Post('workflows/:id/activate')
-  activate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+  activate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     const tenantId = this.resolveTenantId(user);
     return this.workflowsService.activate(id, tenantId);
   }
 
   @Post('workflows/:id/execute')
   @HttpCode(HttpStatus.ACCEPTED)
-  execute(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+  execute(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     const tenantId = this.resolveTenantId(user);
     return this.workflowsService.execute(id, tenantId);
   }
 
   @Get('workflows/:id/status')
-  getStatus(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+  getStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     const tenantId = this.resolveTenantId(user);
     return this.workflowsService.getStatus(id, tenantId);
   }
 
   @Delete('workflows/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  removeWorkflow(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+  removeWorkflow(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     const tenantId = this.resolveTenantId(user);
     return this.workflowsService.remove(id, tenantId);
   }

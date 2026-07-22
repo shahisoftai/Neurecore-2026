@@ -34,7 +34,9 @@ export class DriveCleanupService implements OnModuleInit, OnModuleDestroy {
   onModuleInit(): void {
     if (process.env.NODE_ENV === 'test') return;
     this.timer = setInterval(() => void this.runCleanup(), this.intervalMs);
-    this.logger.log(`Drive cleanup scheduler started — interval ${this.intervalMs}ms`);
+    this.logger.log(
+      `Drive cleanup scheduler started — interval ${this.intervalMs}ms`,
+    );
   }
 
   onModuleDestroy(): void {
@@ -49,7 +51,11 @@ export class DriveCleanupService implements OnModuleInit, OnModuleDestroy {
    * Phase 2 (deletion):     only deletes empty folders; non-empty folders are skipped
    *                          with a warning log so manual review is possible.
    */
-  async runCleanup(): Promise<{ notified: number; deleted: number; skipped: number }> {
+  async runCleanup(): Promise<{
+    notified: number;
+    deleted: number;
+    skipped: number;
+  }> {
     const result = { notified: 0, deleted: 0, skipped: 0 };
 
     const tenants = await this.prisma.tenant.findMany({
@@ -60,7 +66,9 @@ export class DriveCleanupService implements OnModuleInit, OnModuleDestroy {
     for (const tenant of tenants) {
       const retentionMs = (tenant.retentionDays ?? 90) * DAY_MS;
       const cutoff = new Date(Date.now() - retentionMs);
-      const deletionCutoff = new Date(Date.now() - (tenant.retentionDays - NOTIFICATION_LEAD_DAYS) * DAY_MS);
+      const deletionCutoff = new Date(
+        Date.now() - (tenant.retentionDays - NOTIFICATION_LEAD_DAYS) * DAY_MS,
+      );
 
       const candidates = await this.prisma.agent.findMany({
         where: {
@@ -86,7 +94,10 @@ export class DriveCleanupService implements OnModuleInit, OnModuleDestroy {
             where: {
               tenantId: tenant.id,
               type: NotificationType.WARNING,
-              payload: { path: ['driveCleanupAgentId'], equals: agent.id } as never,
+              payload: {
+                path: ['driveCleanupAgentId'],
+                equals: agent.id,
+              } as never,
             },
           });
           if (!alreadyNotified) {
@@ -128,7 +139,9 @@ export class DriveCleanupService implements OnModuleInit, OnModuleDestroy {
             where: { id: agent.id },
             data: { googleDriveFolderId: null },
           });
-          this.logger.log(`Deleted Drive folder for terminated agent ${agent.id}`);
+          this.logger.log(
+            `Deleted Drive folder for terminated agent ${agent.id}`,
+          );
           result.deleted++;
         } catch (err) {
           this.logger.error(

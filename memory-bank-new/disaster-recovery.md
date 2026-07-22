@@ -240,13 +240,13 @@ ssh contabo '
 
 ---
 
-## 7. Database (Neon) recovery
+## 7. Database recovery
 
-The database lives on Neon's managed PostgreSQL — we don't host it. Recovery options:
+The database is Contabo Local PostgreSQL 16. Recovery options:
 
-1. **Time-travel to a previous point** (Neon feature):
-   - Neon console → Project → "Restore" → pick timestamp.
-   - Note: this creates a new branch; you'd need to update `DATABASE_URL` in `/opt/neurecore/backend/backend/.env` and restart.
+1. **Point-in-time recovery** (if backup available):
+   - Check `/opt/neurecore/_archives/` for recent DB snapshots
+   - Restore via `pg_restore`
 
 2. **Reset to last migration**:
    ```bash

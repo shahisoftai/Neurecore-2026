@@ -44,7 +44,7 @@ export class DepartmentsController {
   constructor(
     private readonly departmentsService: DepartmentsService,
     private readonly contextProvider: ContextProvider,
-  ) { }
+  ) {}
 
   private resolveTenantId(user: JwtPayload): string {
     if (user.tenantId) return user.tenantId;
@@ -123,7 +123,8 @@ export class DepartmentsController {
     const PLATFORM_ROLES: readonly string[] = ['SUPER_ADMIN', 'PLATFORM_ADMIN'];
     if (!user.tenantId) {
       if (PLATFORM_ROLES.includes(user.role)) {
-        if (!dto.tenantId) throw new Error('Tenant ID is required for platform admins');
+        if (!dto.tenantId)
+          throw new Error('Tenant ID is required for platform admins');
         return this.departmentsService.update(id, dto, dto.tenantId);
       }
       throw new Error('Tenant ID is required to update a department');

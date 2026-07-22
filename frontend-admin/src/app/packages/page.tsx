@@ -149,7 +149,7 @@ export default function PackagesPage() {
                         {pkg.industry?.name ?? 'Industry?'}
                       </span>
                       <span className="rounded-full bg-zinc-800 text-zinc-300 px-2 py-0.5">
-                        {pkg.tierTemplate?.name ?? 'Tier?'}
+                        {pkg.tier?.name ?? 'Tier?'}
                       </span>
                       <span className="rounded-full bg-zinc-900 text-zinc-400 px-2 py-0.5">
                         {pkg.departments?.length ?? 0} departments

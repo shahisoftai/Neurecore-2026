@@ -12,6 +12,8 @@ export interface TenantSelf {
   logoUrl: string | null;
   website: string | null;
   industry: string | null;
+  // INDUSTRY-GROUPS-CONCEPT.md §5 — denormalised for fast icon-rail branching
+  industryGroup: string | null;
   // WS-2.1: PR-1 additive nullable fields
   locale: string | null;
   timezone: string | null;

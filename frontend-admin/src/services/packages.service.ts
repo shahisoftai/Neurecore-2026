@@ -3,13 +3,15 @@
  *
  * Implements the IPoolAdminService contract for standard CRUD PLUS exposes
  * the composition-specific endpoints that don't fit the generic interface.
+ *
+ * TIER-SYSTEM-CONCEPT.md Phase 3: `tierId` (canonical) replaces `tierTemplateId`.
  */
 
 import api from '@/services/api';
 import { unwrapItem, unwrapList } from '@/services/unwrap';
 import type { Feature } from '@/services/featuresPool.service';
 import type { Industry } from '@/services/industriesPool.service';
-import type { TierTemplate } from '@/services/tiersPool.service';
+import type { Tier } from '@/services/tiersPool.service';
 import type { DepartmentPoolEntry } from '@/services/departmentsPool.service';
 import type { AgentsPoolEntry } from '@/services/agentsPool.service';
 import type { IPoolAdminService, PoolListOptions, PoolPage } from '@/lib/pool/IPoolAdminService';
@@ -24,11 +26,11 @@ export interface Package {
   status: PackageStatus;
   sortOrder: number;
   industryId: string;
-  tierTemplateId: string;
+  tierId: string;
   suggestedAgentCount?: number | null;
   suggestedDepartmentCount?: number | null;
   industry?: Industry;
-  tierTemplate?: TierTemplate;
+  tier?: Tier;
   departments?: DepartmentPoolEntry[];
   aiAgents?: AgentsPoolEntry[];
   features?: Feature[];
@@ -43,7 +45,7 @@ export interface CreatePackagePayload {
   status?: PackageStatus;
   sortOrder?: number;
   industryId: string;
-  tierTemplateId: string;
+  tierId: string;
 }
 
 export interface UpdatePackagePayload {
@@ -162,12 +164,12 @@ export const packagesService = {
   /** Phase 10 — dry-run preview without writing. */
   async preview(
     industryId: string,
-    tierTemplateId: string,
+    tierId: string,
     composition: PackageComposition,
   ): Promise<PackagePreviewResult> {
     const res = await api.post('/packages/preview', {
       industryId,
-      tierTemplateId,
+      tierId,
       ...composition,
     });
     return unwrapItem(res) as PackagePreviewResult;
@@ -204,7 +206,7 @@ export const packagesService = {
   updateComposition(id: string, body: PackageComposition): Promise<Package>;
   preview(
     industryId: string,
-    tierTemplateId: string,
+    tierId: string,
     composition: PackageComposition,
   ): Promise<PackagePreviewResult>;
   deployPreview(

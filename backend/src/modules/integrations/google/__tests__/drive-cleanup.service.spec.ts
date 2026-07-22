@@ -67,7 +67,10 @@ describe('DriveCleanupService', () => {
     });
 
     it('sends notification for agents within 7-day window (not yet due for deletion)', async () => {
-      jest.spyOn(Date, 'now').mockReturnValueOnce(REF_TIME).mockReturnValueOnce(REF_TIME - 15 * DAY_MS);
+      jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(REF_TIME)
+        .mockReturnValueOnce(REF_TIME - 15 * DAY_MS);
 
       const agentDate = daysAgo(94);
       prisma.tenant.findMany.mockResolvedValue([
@@ -99,7 +102,10 @@ describe('DriveCleanupService', () => {
     });
 
     it('skips sending notification when one already exists for this agent', async () => {
-      jest.spyOn(Date, 'now').mockReturnValueOnce(REF_TIME).mockReturnValueOnce(REF_TIME - 15 * DAY_MS);
+      jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(REF_TIME)
+        .mockReturnValueOnce(REF_TIME - 15 * DAY_MS);
 
       const agentDate = daysAgo(94);
       prisma.tenant.findMany.mockResolvedValue([
@@ -141,7 +147,9 @@ describe('DriveCleanupService', () => {
       const result = await service.runCleanup();
 
       expect(result.deleted).toBe(1);
-      expect(drive.listFiles).toHaveBeenCalledWith('tenant-1', 'folder-1', { pageSize: 100 });
+      expect(drive.listFiles).toHaveBeenCalledWith('tenant-1', 'folder-1', {
+        pageSize: 100,
+      });
       expect(drive.deleteFile).toHaveBeenCalledWith('tenant-1', 'folder-1');
       expect(prisma.agent.update).toHaveBeenCalledWith({
         where: { id: 'agent-1' },

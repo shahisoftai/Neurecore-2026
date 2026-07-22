@@ -104,7 +104,7 @@ All endpoints verified end-to-end against `mnpiracha@gmail.com`:
 **Current state:** 41 agents RUNNING  
 
 ### Activation Method
-Direct DB update via `psql` to Neon PostgreSQL:
+Direct DB update via `psql` to Contabo PostgreSQL:
 ```sql
 UPDATE agents SET status = 'RUNNING' 
 WHERE "tenantId" = '726522f0-a9e4-4c13-b22f-a9a967b914dc' 

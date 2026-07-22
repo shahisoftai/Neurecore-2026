@@ -24,6 +24,8 @@ export class TenantsService {
     logoUrl: true,
     website: true,
     industry: true,
+    // INDUSTRY-GROUPS-CONCEPT.md — denormalised for fast icon-rail branching
+    industryGroup: true,
     settings: true,
     metadata: true,
     createdAt: true,

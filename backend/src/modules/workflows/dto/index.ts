@@ -7,6 +7,6 @@
 export { CreateWorkflowDto } from './create-workflow.dto';
 export { UpdateWorkflowDto } from './update-workflow.dto';
 export {
-    WorkflowResponseDto,
-    WorkflowExecutionSummaryDto,
+  WorkflowResponseDto,
+  WorkflowExecutionSummaryDto,
 } from './workflow-response.dto';

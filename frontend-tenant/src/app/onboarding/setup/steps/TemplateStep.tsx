@@ -17,12 +17,14 @@ import {
 
 export interface TemplateStepProps {
   initialSlug: string | null;
+  onNext: () => void;
   onSkip: () => void;
   onBack: () => void;
 }
 
 export function TemplateStep({
   initialSlug,
+  onNext,
   onSkip,
   onBack,
 }: TemplateStepProps) {
@@ -60,11 +62,9 @@ export function TemplateStep({
     try {
       setSelectedSlug(slug);
       await onboardingService.selectTemplate(slug);
-      // Onboarding complete happens at the final step; this step's success
-      // is captured by selectTemplate which transitions step to 'review'.
-      // We jump straight to 'complete' (skip review/team in Tier-1).
-      await onboardingService.complete();
-      onSkip(); // navigates to /home
+      // Onboarding complete happens at the final step (CompleteStep).
+      // This step advances the backend step to 'review'.
+      onNext(); // navigates to integrations step
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to deploy template.',

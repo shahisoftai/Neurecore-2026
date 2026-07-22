@@ -33,13 +33,13 @@ const INDUSTRIES = [
   { slug: 'government',    name: 'Government',    icon: 'Landmark' },
 ];
 
-// ─── Tier Templates ────────────────────────────────────────────────────────
+// ─── Tiers (canonical 4-tier taxonomy per TIER-SYSTEM-CONCEPT.md §4) ────────
 
-const TIER_TEMPLATES = [
-  { slug: 'starter',     name: 'Starter',     tagline: 'Get started fast with the essentials.', sortOrder: 10 },
-  { slug: 'professional', name: 'Professional', tagline: 'Scale up with advanced capabilities.', sortOrder: 20 },
-  { slug: 'enterprise',  name: 'Enterprise',  tagline: 'Mission-critical performance and support.', sortOrder: 30 },
-  { slug: 'government',  name: 'Government',  tagline: 'Compliance-first for public-sector deployments.', sortOrder: 40 },
+const TIERS = [
+  { slug: 'basic',        name: 'Basic',        tagline: 'Try NeureCore with no commitment',          sortOrder: 10, isDefault: true,  monthlyPrice: 0,    yearlyPrice: 0,     maxUsers: 2,    maxAgents: 3,    maxDepartments: 1,    maxStorageGB: 1,   maxApiCalls: 1000,   maxConversationMessages: 500,    maxFileSizeMB: 10,  maxApprovalStages: 1, allowCustomBranding: false, allowApiAccess: false, allowSso: false, allowAuditExport: false, allowWhiteLabel: false, allowPredictiveAnalytics: false, allowCustomDashboards: false, allowMultiOffice: false, icon: 'Sparkles' },
+  { slug: 'business',     name: 'Business',     tagline: 'For small teams getting started',           sortOrder: 20, isDefault: false, monthlyPrice: 29,   yearlyPrice: 290,   maxUsers: 10,   maxAgents: 10,   maxDepartments: 3,    maxStorageGB: 10,  maxApiCalls: 10000,  maxConversationMessages: 5000,   maxFileSizeMB: 50,  maxApprovalStages: 2, allowCustomBranding: false, allowApiAccess: true,  allowSso: false, allowAuditExport: true,  allowWhiteLabel: false, allowPredictiveAnalytics: false, allowCustomDashboards: false, allowMultiOffice: false, icon: 'Briefcase' },
+  { slug: 'professional', name: 'Professional', tagline: 'Scale up with advanced capabilities',      sortOrder: 30, isDefault: false, monthlyPrice: 99,   yearlyPrice: 990,   maxUsers: 50,   maxAgents: 50,   maxDepartments: 10,   maxStorageGB: 100, maxApiCalls: 100000, maxConversationMessages: 50000,  maxFileSizeMB: 200, maxApprovalStages: 3, allowCustomBranding: true,  allowApiAccess: true,  allowSso: true,  allowAuditExport: true,  allowWhiteLabel: false, allowPredictiveAnalytics: true,  allowCustomDashboards: true,  allowMultiOffice: false, icon: 'Rocket' },
+  { slug: 'enterprise',   name: 'Enterprise',   tagline: 'Mission-critical scale and support',       sortOrder: 40, isDefault: false, monthlyPrice: 499,  yearlyPrice: 4990,  maxUsers: 9999, maxAgents: 9999, maxDepartments: 9999, maxStorageGB: 1000,maxApiCalls: 1000000,maxConversationMessages: 999999,maxFileSizeMB: 1000,maxApprovalStages: 4, allowCustomBranding: true,  allowApiAccess: true,  allowSso: true,  allowAuditExport: true,  allowWhiteLabel: true,  allowPredictiveAnalytics: true,  allowCustomDashboards: true,  allowMultiOffice: true,  icon: 'Building' },
 ];
 
 // ─── Features ──────────────────────────────────────────────────────────────
@@ -81,80 +81,79 @@ const FEATURES = [
   { key: 'multi_tenant',        name: 'Multi-Tenant Support',        category: 'PLATFORM' },
 ];
 
-// ─── Tier migration ────────────────────────────────────────────────────────
+// ─── Tier seed (canonical 4-tier taxonomy) ────────────────────────────────
+// TIER-SYSTEM-CONCEPT.md Phase 3 — TierTemplate table removed.
+// Tier is now the single source of truth.
 
-async function migrateLegacyTierRows() {
-  const legacyDeptTemplates = await prisma.departmentTemplate.findMany({
-    where: {
-      OR: [
-        { slug: { startsWith: 'tier-' } },
-        { name: { startsWith: 'Tier:' } },
-      ],
-    },
-  });
-
+async function seedTiers() {
   let created = 0;
-  let linked = 0;
-  const unmatched = [];
+  let updated = 0;
 
-  for (const tpl of TIER_TEMPLATES) {
-    const legacy = legacyDeptTemplates.find((row) => {
-      const rowSlug = (row.slug || '').toLowerCase();
-      const rowName = (row.name || '').toLowerCase();
-      return (
-        rowSlug === `tier-${tpl.slug}` ||
-        rowName === `tier: ${tpl.name.toLowerCase()}` ||
-        rowName === `tier:${tpl.name.toLowerCase()}`
-      );
-    });
-
-    const tier = await prisma.tierTemplate.upsert({
-      where: { slug: tpl.slug },
-      create: {
-        slug: tpl.slug,
-        name: tpl.name,
-        tagline: tpl.tagline,
-        status: 'PUBLISHED',
-        sortOrder: tpl.sortOrder,
-      },
-      update: {
-        name: tpl.name,
-        tagline: tpl.tagline,
-        sortOrder: tpl.sortOrder,
-      },
-    });
-
-    // Try to find a matching billing Tier (case-insensitive name match).
-    const billingTier = await prisma.tier.findFirst({
-      where: {
-        name: { equals: tpl.name, mode: 'insensitive' },
-      },
-    });
-
-    if (billingTier && tier.defaultBillingTierId !== billingTier.id) {
-      await prisma.tierTemplate.update({
-        where: { id: tier.id },
-        data: { defaultBillingTierId: billingTier.id },
+  for (const t of TIERS) {
+    const existing = await prisma.tier.findUnique({ where: { slug: t.slug } });
+    if (existing) {
+      // Update name/icon/limits if drifted
+      await prisma.tier.update({
+        where: { slug: t.slug },
+        data: {
+          name: t.name,
+          tagline: t.tagline,
+          icon: t.icon,
+          monthlyPrice: t.monthlyPrice,
+          yearlyPrice: t.yearlyPrice,
+          maxUsers: t.maxUsers,
+          maxAgents: t.maxAgents,
+          maxDepartments: t.maxDepartments,
+          maxStorageGB: t.maxStorageGB,
+          maxApiCalls: t.maxApiCalls,
+          maxConversationMessages: t.maxConversationMessages,
+          maxFileSizeMB: t.maxFileSizeMB,
+          maxApprovalStages: t.maxApprovalStages,
+          allowCustomBranding: t.allowCustomBranding,
+          allowApiAccess: t.allowApiAccess,
+          allowSso: t.allowSso,
+          allowAuditExport: t.allowAuditExport,
+          allowWhiteLabel: t.allowWhiteLabel,
+          allowPredictiveAnalytics: t.allowPredictiveAnalytics,
+          allowCustomDashboards: t.allowCustomDashboards,
+          allowMultiOffice: t.allowMultiOffice,
+        },
       });
-      linked += 1;
-    } else if (!billingTier) {
-      unmatched.push(tpl.name);
-    }
-    created += 1;
-
-    if (legacy) {
-      // Mark the legacy row so it stops showing under tier-templates filters.
-      // Idempotent: only updates if category differs.
-      if (legacy.category !== 'legacy-tier') {
-        await prisma.departmentTemplate.update({
-          where: { id: legacy.id },
-          data: { category: 'legacy-tier' },
-        });
-      }
+      updated += 1;
+    } else {
+      await prisma.tier.create({
+        data: {
+          slug: t.slug,
+          name: t.name,
+          tagline: t.tagline,
+          icon: t.icon,
+          sortOrder: t.sortOrder,
+          isDefault: t.isDefault,
+          monthlyPrice: t.monthlyPrice,
+          yearlyPrice: t.yearlyPrice,
+          maxUsers: t.maxUsers,
+          maxAgents: t.maxAgents,
+          maxDepartments: t.maxDepartments,
+          maxStorageGB: t.maxStorageGB,
+          maxApiCalls: t.maxApiCalls,
+          maxConversationMessages: t.maxConversationMessages,
+          maxFileSizeMB: t.maxFileSizeMB,
+          maxApprovalStages: t.maxApprovalStages,
+          allowCustomBranding: t.allowCustomBranding,
+          allowApiAccess: t.allowApiAccess,
+          allowSso: t.allowSso,
+          allowAuditExport: t.allowAuditExport,
+          allowWhiteLabel: t.allowWhiteLabel,
+          allowPredictiveAnalytics: t.allowPredictiveAnalytics,
+          allowCustomDashboards: t.allowCustomDashboards,
+          allowMultiOffice: t.allowMultiOffice,
+        },
+      });
+      created += 1;
     }
   }
 
-  return { created, linked, unmatched };
+  return { created, updated };
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────
@@ -170,12 +169,9 @@ async function main() {
   }
   console.log(`   ${INDUSTRIES.length} industries upserted`);
 
-  console.log('── Seeding Tier Templates (and migrating legacy rows)');
-  const tierResult = await migrateLegacyTierRows();
-  console.log(`   ${tierResult.created} tier templates (${tierResult.linked} linked to billing Tier)`);
-  if (tierResult.unmatched.length) {
-    console.log(`   No billing Tier match for: ${tierResult.unmatched.join(', ')}`);
-  }
+  console.log('── Seeding Tiers (canonical 4-tier taxonomy per TIER-SYSTEM-CONCEPT.md)');
+  const tierResult = await seedTiers();
+  console.log(`   ${tierResult.created} created, ${tierResult.updated} updated`);
 
   console.log('── Seeding Features');
   for (let i = 0; i < FEATURES.length; i += 1) {

@@ -5,9 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IntegrationProvider, IntegrationStatus } from '@prisma/client';
+import { IntegrationProvider } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
-import { PrismaIntegrationCredentialStore, GoogleCredentials } from './services/integration-credential.store';
+import {
+  PrismaIntegrationCredentialStore,
+  GoogleCredentials,
+} from './services/integration-credential.store';
 import { GoogleAuthClient } from './google/google-auth.client';
 
 const GOOGLE_SCOPES = [
@@ -29,16 +32,20 @@ export class IntegrationsService {
     private readonly authClient: GoogleAuthClient,
   ) {}
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async initiateGoogleOAuth(
     tenantId: string,
     redirectUri?: string,
     audience: 'tenant' | 'admin' = 'tenant',
+    origin: 'settings' | 'onboarding' = 'settings',
   ): Promise<{ url: string; state: string }> {
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET');
 
     if (!clientId || !clientSecret) {
-      throw new BadRequestException('Google OAuth is not configured on this server');
+      throw new BadRequestException(
+        'Google OAuth is not configured on this server',
+      );
     }
 
     const finalRedirectUri =
@@ -52,6 +59,7 @@ export class IntegrationsService {
         provider: 'google',
         redirectUri: finalRedirectUri,
         audience,
+        origin,
       }),
     ).toString('base64');
 
@@ -71,7 +79,10 @@ export class IntegrationsService {
     };
   }
 
-  async handleGoogleCallback(code: string, state: string): Promise<{ connected: boolean; email?: string }> {
+  async handleGoogleCallback(
+    code: string,
+    state: string,
+  ): Promise<{ connected: boolean; email?: string }> {
     let parsed: { tenantId: string; provider: string; redirectUri: string };
     try {
       parsed = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
@@ -106,7 +117,9 @@ export class IntegrationsService {
 
     if (!tokenRes.ok) {
       const err = await tokenRes.text().catch(() => 'unknown');
-      this.logger.warn(`Google token exchange failed: ${tokenRes.status} ${err}`);
+      this.logger.warn(
+        `Google token exchange failed: ${tokenRes.status} ${err}`,
+      );
       throw new BadRequestException('Google token exchange failed');
     }
 
@@ -133,9 +146,12 @@ export class IntegrationsService {
 
     let email: string | undefined;
     try {
-      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
-      });
+      const userInfoRes = await fetch(
+        'https://www.googleapis.com/oauth2/v2/userinfo',
+        {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        },
+      );
       if (userInfoRes.ok) {
         const userInfo = (await userInfoRes.json()) as { email?: string };
         email = userInfo.email;
@@ -150,7 +166,10 @@ export class IntegrationsService {
     // /oauth2/v2/userinfo only returns email for the freshly-issued token).
     if (email) {
       await this.prisma.tenant
-        .update({ where: { id: tenantId }, data: { googleAccountEmail: email } })
+        .update({
+          where: { id: tenantId },
+          data: { googleAccountEmail: email },
+        })
         .catch(() => undefined);
     }
 
@@ -161,16 +180,18 @@ export class IntegrationsService {
   async disconnectGoogle(tenantId: string): Promise<void> {
     await this.credentialStore.delete(tenantId, IntegrationProvider.GOOGLE);
     // Clear cached Google identifiers on tenant
-    await this.prisma.tenant.update({
-      where: { id: tenantId },
-      data: {
-        googleDriveRootFolderId: null,
-        googleCalendarId: null,
-        googleAccountEmail: null,
-      },
-    }).catch(() => {
-      // Tenant update is best-effort cleanup
-    });
+    await this.prisma.tenant
+      .update({
+        where: { id: tenantId },
+        data: {
+          googleDriveRootFolderId: null,
+          googleCalendarId: null,
+          googleAccountEmail: null,
+        },
+      })
+      .catch(() => {
+        // Tenant update is best-effort cleanup
+      });
     this.logger.log(`Google OAuth disconnected for tenant ${tenantId}`);
   }
 
@@ -220,7 +241,10 @@ export class IntegrationsService {
     scopes?: string[];
     expiresAt?: Date;
   }> {
-    const creds = await this.credentialStore.get(tenantId, IntegrationProvider.GOOGLE);
+    const creds = await this.credentialStore.get(
+      tenantId,
+      IntegrationProvider.GOOGLE,
+    );
     if (!creds) return { connected: false };
 
     const googleCreds = creds as GoogleCredentials;
@@ -232,13 +256,18 @@ export class IntegrationsService {
     } = {
       connected: true,
       scopes: googleCreds.scopes,
-      expiresAt: googleCreds.expiryDate ? new Date(googleCreds.expiryDate) : undefined,
+      expiresAt: googleCreds.expiryDate
+        ? new Date(googleCreds.expiryDate)
+        : undefined,
     };
 
     // 1) Prefer the persisted email (saved at OAuth time) so we don't
     //    depend on userinfo scope after refresh.
     const tenant = await this.prisma.tenant
-      .findUnique({ where: { id: tenantId }, select: { googleAccountEmail: true } })
+      .findUnique({
+        where: { id: tenantId },
+        select: { googleAccountEmail: true },
+      })
       .catch(() => null);
     if (tenant?.googleAccountEmail) {
       status.email = tenant.googleAccountEmail;
@@ -249,9 +278,12 @@ export class IntegrationsService {
     try {
       const accessToken = await this.authClient.getAccessToken(tenantId);
       if (accessToken) {
-        const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        const res = await fetch(
+          'https://www.googleapis.com/oauth2/v2/userinfo',
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          },
+        );
         if (res.ok) {
           const data = (await res.json()) as { email?: string };
           if (data.email) {
@@ -273,7 +305,10 @@ export class IntegrationsService {
     return status;
   }
 
-  async connectBrevo(tenantId: string, apiKey: string): Promise<{ connected: boolean }> {
+  async connectBrevo(
+    tenantId: string,
+    apiKey: string,
+  ): Promise<{ connected: boolean }> {
     const validateRes = await fetch('https://api.brevo.com/v3/account', {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
@@ -298,8 +333,13 @@ export class IntegrationsService {
     this.logger.log(`Brevo disconnected for tenant ${tenantId}`);
   }
 
-  async getBrevoConnectionStatus(tenantId: string): Promise<{ connected: boolean }> {
-    const connected = await this.credentialStore.exists(tenantId, IntegrationProvider.BREVO);
+  async getBrevoConnectionStatus(
+    tenantId: string,
+  ): Promise<{ connected: boolean }> {
+    const connected = await this.credentialStore.exists(
+      tenantId,
+      IntegrationProvider.BREVO,
+    );
     return { connected };
   }
 

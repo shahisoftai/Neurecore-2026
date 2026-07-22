@@ -21,7 +21,11 @@ export class GoogleSlidesService {
 
   constructor(private readonly authClient: GoogleAuthClient) {}
 
-  private async authFetch(url: string, options: RequestInit = {}, tenantId: string): Promise<Response> {
+  private async authFetch(
+    url: string,
+    options: RequestInit = {},
+    tenantId: string,
+  ): Promise<Response> {
     const accessToken = await this.authClient.getAccessToken(tenantId);
     if (!accessToken) {
       throw new BadRequestException('Google is not connected for this tenant');
@@ -34,7 +38,10 @@ export class GoogleSlidesService {
     return fetch(url, { ...options, headers });
   }
 
-  async createPresentation(tenantId: string, input: CreatePresentationInput): Promise<GoogleSlide> {
+  async createPresentation(
+    tenantId: string,
+    input: CreatePresentationInput,
+  ): Promise<GoogleSlide> {
     const body: Record<string, unknown> = {
       name: input.title,
       mimeType: 'application/vnd.google-apps.presentation',
@@ -53,20 +60,31 @@ export class GoogleSlidesService {
     if (!res.ok) {
       const err = await res.text().catch(() => 'unknown');
       this.logger.error(`Slides create failed: ${res.status} ${err}`);
-      throw new BadRequestException('Failed to create Google Slides presentation');
+      throw new BadRequestException(
+        'Failed to create Google Slides presentation',
+      );
     }
 
-    const file = (await res.json()) as { id: string; name: string; mimeType: string; webViewLink?: string };
+    const file = (await res.json()) as {
+      id: string;
+      name: string;
+      mimeType: string;
+      webViewLink?: string;
+    };
 
     if (input.slides?.length) {
       await this.addSlides(tenantId, file.id, input.slides);
     }
 
-    this.logger.log(`Google Slides "${input.title}" created (id=${file.id}) for tenant ${tenantId}`);
+    this.logger.log(
+      `Google Slides "${input.title}" created (id=${file.id}) for tenant ${tenantId}`,
+    );
     return {
       presentationId: file.id,
       title: file.name,
-      url: file.webViewLink ?? `https://docs.google.com/presentation/d/${file.id}/edit`,
+      url:
+        file.webViewLink ??
+        `https://docs.google.com/presentation/d/${file.id}/edit`,
     };
   }
 
@@ -98,8 +116,17 @@ export class GoogleSlidesService {
             shapeType: 'TEXT_BOX',
             elementProperties: {
               pageObjectId: slideId,
-              size: { width: { magnitude: 7200, unit: 'EMU' }, height: { magnitude: 750, unit: 'EMU' } },
-              transform: { scaleX: 1, scaleY: 1, translateX: 450, translateY: 300, unit: 'EMU' },
+              size: {
+                width: { magnitude: 7200, unit: 'EMU' },
+                height: { magnitude: 750, unit: 'EMU' },
+              },
+              transform: {
+                scaleX: 1,
+                scaleY: 1,
+                translateX: 450,
+                translateY: 300,
+                unit: 'EMU',
+              },
             },
           },
         });
@@ -119,8 +146,17 @@ export class GoogleSlidesService {
             shapeType: 'TEXT_BOX',
             elementProperties: {
               pageObjectId: slideId,
-              size: { width: { magnitude: 7200, unit: 'EMU' }, height: { magnitude: 3750, unit: 'EMU' } },
-              transform: { scaleX: 1, scaleY: 1, translateX: 450, translateY: 1200, unit: 'EMU' },
+              size: {
+                width: { magnitude: 7200, unit: 'EMU' },
+                height: { magnitude: 3750, unit: 'EMU' },
+              },
+              transform: {
+                scaleX: 1,
+                scaleY: 1,
+                translateX: 450,
+                translateY: 1200,
+                unit: 'EMU',
+              },
             },
           },
         });
@@ -143,18 +179,25 @@ export class GoogleSlidesService {
 
     if (!res.ok) {
       const err = await res.text().catch(() => 'unknown');
-      this.logger.warn(`Slides addSlides failed for ${presentationId}: ${res.status} ${err}`);
+      this.logger.warn(
+        `Slides addSlides failed for ${presentationId}: ${res.status} ${err}`,
+      );
     }
   }
 
-  async getPresentation(tenantId: string, presentationId: string): Promise<Record<string, unknown>> {
+  async getPresentation(
+    tenantId: string,
+    presentationId: string,
+  ): Promise<Record<string, unknown>> {
     const res = await this.authFetch(
       `${this.SLIDES_API}/presentations/${presentationId}`,
       {},
       tenantId,
     );
     if (!res.ok) {
-      throw new BadRequestException('Failed to fetch Google Slides presentation');
+      throw new BadRequestException(
+        'Failed to fetch Google Slides presentation',
+      );
     }
     return res.json() as Promise<Record<string, unknown>>;
   }

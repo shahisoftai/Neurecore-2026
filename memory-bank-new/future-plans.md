@@ -314,9 +314,9 @@ Per-tenant logo, primary color, custom domain. Config-driven via `tenants.settin
 **Scope:**
 - Formal access control matrix
 - Audit log retention 1+ year (currently indefinite via DB)
-- Encryption at rest verification (Neon does this; document)
+- Encryption at rest verification (Contabo does this; document)
 - Incident response playbook
-- Vendor risk assessment (Contabo, Neon, OpenAI, Anthropic)
+- Vendor risk assessment (Contabo, OpenAI, Anthropic)
 
 ### 4.2 GDPR data export / deletion 🔴
 
@@ -344,10 +344,10 @@ Per-tenant logo, primary color, custom domain. Config-driven via `tenants.settin
 
 ### 5.1 Read replicas 🔴
 
-**Why:** Mission Feed (command center) and dashboards do heavy read queries; Neon supports read replicas.
+**Why:** Mission Feed (command center) and dashboards do heavy read queries.
 
 **Scope:**
-- Provision Neon read replica
+- Provision Contabo read replica
 - Backend reads via replica URL, writes via primary
 - Track in [backend.md §6](backend.md#6-database)
 

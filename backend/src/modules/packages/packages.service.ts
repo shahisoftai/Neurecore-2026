@@ -31,7 +31,7 @@ import type {
 
 const COMPOSITION_INCLUDE = {
   industry: true,
-  tierTemplate: true,
+  tier: true,
   departments: { orderBy: { name: 'asc' as const } },
   aiAgents: { orderBy: { name: 'asc' as const } },
   features: { orderBy: { name: 'asc' as const } },
@@ -92,7 +92,7 @@ export class PackagesService {
   // ─── MUTATIONS ─────────────────────────────────────────────────────────
 
   async create(payload: CreatePackageDto): Promise<Package> {
-    this.assertIndustryAndTierExist(payload.industryId, payload.tierTemplateId);
+    await this.assertIndustryAndTierExist(payload.industryId, payload.tierId);
     const created = await this.prisma.package.create({
       data: {
         slug: payload.slug,
@@ -101,7 +101,7 @@ export class PackagesService {
         status: payload.status ?? 'DRAFT',
         sortOrder: payload.sortOrder ?? 0,
         industryId: payload.industryId,
-        tierTemplateId: payload.tierTemplateId,
+        tierId: payload.tierId,
       },
     });
     this.logger.log(`Package created: ${created.slug} (${created.id})`);
@@ -210,7 +210,7 @@ export class PackagesService {
    * surface validation errors before the user submits.
    */
   async preview(body: PackagePreviewDto) {
-    this.assertIndustryAndTierExist(body.industryId, body.tierTemplateId);
+    await this.assertIndustryAndTierExist(body.industryId, body.tierId);
 
     const departmentIds = body.departmentIds ?? [];
     const aiAgentIds = body.aiAgentIds ?? [];
@@ -299,15 +299,14 @@ export class PackagesService {
 
   private async assertIndustryAndTierExist(
     industryId: string,
-    tierTemplateId: string,
+    tierId: string,
   ): Promise<void> {
     const [ind, tier] = await Promise.all([
       this.prisma.industry.findUnique({ where: { id: industryId } }),
-      this.prisma.tierTemplate.findUnique({ where: { id: tierTemplateId } }),
+      this.prisma.tier.findUnique({ where: { id: tierId } }),
     ]);
     if (!ind) throw new BadRequestException(`Industry ${industryId} not found`);
-    if (!tier)
-      throw new BadRequestException(`TierTemplate ${tierTemplateId} not found`);
+    if (!tier) throw new BadRequestException(`Tier ${tierId} not found`);
   }
 
   private async validateReferences(

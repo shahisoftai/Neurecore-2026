@@ -76,13 +76,17 @@ afterEach(() => {
   prismaStub.agent.findMany.mockReset();
   prismaStub.agent.update.mockReset();
   (authClient.getAccessToken as jest.Mock).mockReset();
-  (authClient.getAccessToken as jest.Mock).mockResolvedValue('fake-access-token');
+  (authClient.getAccessToken as jest.Mock).mockResolvedValue(
+    'fake-access-token',
+  );
 });
 
 describe('GoogleDriveService — G5 webViewLink on createFolder', () => {
   it('requests webViewLink in the fields parameter when creating a folder', async () => {
     const svc = makeService();
-    prismaStub.tenant.findUnique.mockResolvedValue({ googleDriveRootFolderId: 'root-id' });
+    prismaStub.tenant.findUnique.mockResolvedValue({
+      googleDriveRootFolderId: 'root-id',
+    });
     fetchSpy.mockImplementation((url: string | URL | Request) =>
       Promise.resolve({
         ok: true,
@@ -98,7 +102,10 @@ describe('GoogleDriveService — G5 webViewLink on createFolder', () => {
       } as Response),
     );
 
-    const result = await svc.createFolder('tenant-1', { name: 'Test', parentId: 'root-id' });
+    const result = await svc.createFolder('tenant-1', {
+      name: 'Test',
+      parentId: 'root-id',
+    });
 
     const { url } = lastCall();
     expect(url).toContain('/drive/v3/files');
@@ -106,7 +113,9 @@ describe('GoogleDriveService — G5 webViewLink on createFolder', () => {
     expect(decodeURIComponent(url)).toContain('webViewLink');
 
     expect(result.id).toBe('new-folder-id');
-    expect(result.webViewLink).toBe('https://drive.google.com/folders/new-folder-id');
+    expect(result.webViewLink).toBe(
+      'https://drive.google.com/folders/new-folder-id',
+    );
   });
 
   it('returns existing folder when one with the same name+parent is found, without calling POST', async () => {
@@ -126,7 +135,10 @@ describe('GoogleDriveService — G5 webViewLink on createFolder', () => {
       } as Response),
     );
 
-    const result = await svc.createFolder('tenant-1', { name: 'Test', parentId: 'root-id' });
+    const result = await svc.createFolder('tenant-1', {
+      name: 'Test',
+      parentId: 'root-id',
+    });
 
     expect(result).toEqual(existing);
     expect(fetchSpy).toHaveBeenCalledTimes(1);

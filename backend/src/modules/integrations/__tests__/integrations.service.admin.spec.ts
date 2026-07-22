@@ -48,12 +48,7 @@ const config = {
 } as unknown as ConfigService;
 
 function makeService(): IntegrationsService {
-  return new IntegrationsService(
-    credentialStore,
-    config,
-    prisma,
-    authClient,
-  );
+  return new IntegrationsService(credentialStore, config, prisma, authClient);
 }
 
 beforeEach(() => {
@@ -84,14 +79,21 @@ describe('IntegrationsService — G7 adminDisconnectGoogle', () => {
     tenant.findUnique.mockResolvedValue({ googleCalendarId: null, name: 't' });
 
     const result = await svc.adminDisconnectGoogle('tenant-x');
-    expect(result).toEqual({ tenantId: 'tenant-x', revoked: true, hadCalendar: false });
+    expect(result).toEqual({
+      tenantId: 'tenant-x',
+      revoked: true,
+      hadCalendar: false,
+    });
     expect(credentialStore.delete as jest.Mock).toHaveBeenCalledTimes(1);
   });
 
   it('returns hadCalendar=true when tenant had a calendarId', async () => {
     const svc = makeService();
     (credentialStore.exists as jest.Mock).mockResolvedValue(true);
-    tenant.findUnique.mockResolvedValue({ googleCalendarId: 'cal-123', name: 't' });
+    tenant.findUnique.mockResolvedValue({
+      googleCalendarId: 'cal-123',
+      name: 't',
+    });
 
     const result = await svc.adminDisconnectGoogle('tenant-y');
     expect(result.hadCalendar).toBe(true);
@@ -100,7 +102,11 @@ describe('IntegrationsService — G7 adminDisconnectGoogle', () => {
   it('invokes the credential store delete and tenant update', async () => {
     const svc = makeService();
     (credentialStore.exists as jest.Mock).mockResolvedValue(true);
-    tenant.update.mockResolvedValue({ id: 'tenant-z', googleDriveRootFolderId: null, googleCalendarId: null });
+    tenant.update.mockResolvedValue({
+      id: 'tenant-z',
+      googleDriveRootFolderId: null,
+      googleCalendarId: null,
+    });
 
     await svc.adminDisconnectGoogle('tenant-z');
 

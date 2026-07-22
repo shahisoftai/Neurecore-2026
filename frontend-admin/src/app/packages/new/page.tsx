@@ -19,7 +19,7 @@ import AdminShell from '@/components/AdminShell';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { packagesService, type CreatePackagePayload, type PackageComposition } from '@/services/packages.service';
 import { industriesPoolService, type Industry } from '@/services/industriesPool.service';
-import { tiersPoolService, type TierTemplate } from '@/services/tiersPool.service';
+import { tiersPoolService, type Tier } from '@/services/tiersPool.service';
 import { featuresPoolService, type Feature, type FeatureCategory } from '@/services/featuresPool.service';
 import { departmentsPoolService, type DepartmentPoolEntry } from '@/services/departmentsPool.service';
 import { agentsPoolService, type AgentsPoolEntry } from '@/services/agentsPool.service';
@@ -42,9 +42,9 @@ export default function NewPackagePage() {
 
   // Step 2
   const [industries, setIndustries] = useState<Industry[]>([]);
-  const [tiers, setTiers] = useState<TierTemplate[]>([]);
+  const [tiers, setTiers] = useState<Tier[]>([]);
   const [industryId, setIndustryId] = useState<string>('');
-  const [tierTemplateId, setTierTemplateId] = useState<string>('');
+  const [tierId, setTierId] = useState<string>('');
 
   // Step 3
   const [allDepartments, setAllDepartments] = useState<DepartmentPoolEntry[]>([]);
@@ -82,7 +82,7 @@ export default function NewPackagePage() {
 
   // Refresh preview whenever composition changes.
   useEffect(() => {
-    if (!industryId || !tierTemplateId) {
+    if (!industryId || !tierId) {
       setPreview({
         totals: { departments: 0, agents: 0, features: 0 },
         missing: { departments: [], agents: [], features: [] },
@@ -91,7 +91,7 @@ export default function NewPackagePage() {
       return;
     }
     void packagesService
-      .preview(industryId, tierTemplateId, {
+      .preview(industryId, tierId, {
         departmentIds,
         aiAgentIds,
         featureIds,
@@ -102,15 +102,15 @@ export default function NewPackagePage() {
       .catch((err: unknown) => {
         console.error('Package preview failed:', err);
       });
-  }, [industryId, tierTemplateId, departmentIds, aiAgentIds, featureIds]);
+  }, [industryId, tierId, departmentIds, aiAgentIds, featureIds]);
 
   const selectedIndustry = useMemo(
     () => industries.find((i) => i.id === industryId),
     [industries, industryId],
   );
   const selectedTier = useMemo(
-    () => tiers.find((t) => t.id === tierTemplateId),
-    [tiers, tierTemplateId],
+    () => tiers.find((t) => t.id === tierId),
+    [tiers, tierId],
   );
 
   const featuresByCategory = useMemo(() => {
@@ -141,7 +141,7 @@ export default function NewPackagePage() {
       setError(null);
       setStep('Categorize');
     } else if (step === 'Categorize') {
-      if (!industryId || !tierTemplateId) {
+      if (!industryId || !tierId) {
         setError('Industry and Tier are required');
         return;
       }
@@ -163,7 +163,7 @@ export default function NewPackagePage() {
         description: description.trim() || undefined,
         status: 'DRAFT',
         industryId,
-        tierTemplateId,
+        tierId,
       };
       const created = await packagesService.create(payload);
 
@@ -270,8 +270,8 @@ export default function NewPackagePage() {
                 </Field>
                 <Field label="Tier *">
                   <select
-                    value={tierTemplateId}
-                    onChange={(e) => setTierTemplateId(e.target.value)}
+                    value={tierId}
+                    onChange={(e) => setTierId(e.target.value)}
                     className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
                   >
                     <option value="">— choose tier —</option>

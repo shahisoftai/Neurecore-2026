@@ -43,6 +43,10 @@ export class CreatePackageDto {
   @IsString()
   industryId!: string;
 
+  /**
+   * TIER-SYSTEM-CONCEPT.md Phase 3 — single Tier table is canonical.
+   * (Previously `tierTemplateId` referencing the TierTemplate pool table.)
+   */
   @IsString()
-  tierTemplateId!: string;
+  tierId!: string;
 }

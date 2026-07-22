@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum,  } from 'class-validator';
+import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { DepartmentStatus } from '@prisma/client';
 
 export class CreateDepartmentDto {

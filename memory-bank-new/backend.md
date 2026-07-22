@@ -10,7 +10,7 @@
 
 ## TL;DR
 
-A NestJS 11 / Prisma 5 / PostgreSQL (Neon) / Redis / Socket.IO monolith that serves the public API for both frontends and an internal AI agent runtime. **Local count:** ~60 modules, 63 controllers, 141 services, 83 Prisma models. Listens on `:3003` and is reverse-proxied by OLS at `brain.neurecore.com`. Started via PM2 `neurecore-backend`.
+A NestJS 11 / Prisma 5 / PostgreSQL (Contabo) / Redis / Socket.IO monolith that serves the public API for both frontends and an internal AI agent runtime. **Local count:** ~60 modules, 63 controllers, 141 services, 83 Prisma models. Listens on `:3003` and is reverse-proxied by OLS at `brain.neurecore.com`. Started via PM2 `neurecore-backend`.
 
 > **Architecture:** 14-layer governed enterprise platform:
 > P1 (EIE) → P2 (Event Fabric) → P3 (Context Plane) → P4 (Runtime) → P5 (Cognition) → P6 (Autonomy) → P7 (Enterprise OS) → P8 (Platform Operations) → P9 (Enterprise Intelligence) → P10 (Platform SDK) → P11 (Cloud Platform) → P12 (Application Framework) → P13 (AI Governance) → P14 (Platform Evolution)
@@ -49,7 +49,7 @@ A NestJS 11 / Prisma 5 / PostgreSQL (Neon) / Redis / Socket.IO monolith that ser
 | Language | TypeScript | 5.x | `strict: true` |
 | Runtime | Node.js | 20.20.2 | installed at `/root/.nvm/versions/node/v20.20.2/` |
 | ORM | Prisma | 5.22.0 | PostgreSQL provider |
-| Database | PostgreSQL (Neon) | 16 | pooled + unpooled URLs |
+| Database | PostgreSQL (Contabo) | 16 | local |
 | Cache | Redis (host) | 7.x | `127.0.0.1:6379` (no auth) |
 | WebSocket | Socket.IO | 4.x | via `events.gateway` |
 | LLM | OpenAI / DeepSeek / Anthropic | — | selected via `LLM_PROVIDER` env |
@@ -350,7 +350,7 @@ Full list: `cat /opt/neurecore/backend/backend/.env | grep -oE "^[A-Z_]+=" | sor
 
 ## 8. Background work & queues
 
-- **Connectors sync scheduler** (`src/modules/connectors/services/sync-scheduler.service.ts`) — cron-style sync for HubSpot etc. Logs "0 succeeded, 0 failed" every 15 min when nothing to sync. Currently reports intermittent Neon pool timeouts.
+- **Connectors sync scheduler** (`src/modules/connectors/services/sync-scheduler.service.ts`) — cron-style sync for HubSpot etc. Logs "0 succeeded, 0 failed" every 15 min when nothing to sync.
 - **Routine triggers** — DB-backed cron; `RoutineTrigger` model defines schedules; `RoutineRun` records executions.
 - **Goals checkins** — periodic reminder worker.
 - **Quotas** — `QuotaGuard` runs synchronously in request path; no background reconciliation yet.

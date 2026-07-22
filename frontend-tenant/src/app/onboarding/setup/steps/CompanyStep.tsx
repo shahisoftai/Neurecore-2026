@@ -1,16 +1,21 @@
 'use client';
 
 // steps/CompanyStep.tsx — Tier-1 onboarding step 1.
-// Captures company name + industry. Persists via PATCH /tenants/me so the
-// fields land in the additive nullable columns added in PR-1.
+// Captures company name + industry via INDUSTRY-GROUPS-CONCEPT.md IndustryGroupPicker.
+// Persists via PATCH /tenants/me so the fields land in the additive nullable columns.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { onboardingService } from '@/services/onboarding.service';
+import api from '@/services/api';
+import {
+  IndustryGroupPicker,
+  type IndustryOption,
+} from '@/components/onboarding/IndustryGroupPicker';
 
 export interface CompanyStepProps {
   initialName: string;
@@ -25,15 +30,46 @@ export function CompanyStep({
 }: CompanyStepProps) {
   const [companyName, setCompanyName] = useState(initialName);
   const [industry, setIndustry] = useState(initialIndustry);
+  const [industries, setIndustries] = useState<IndustryOption[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch the canonical industry list (already grouped server-side).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        // /api/v1/industries/groups returns each group + its nested industries.
+        const res = await api.get('/industries/groups');
+        const groups = (res.data?.data ?? []) as Array<{
+          slug: string;
+          industries: IndustryOption[];
+        }>;
+        if (cancelled) return;
+        const all: IndustryOption[] = [];
+        for (const g of groups) {
+          for (const ind of g.industries ?? []) {
+            all.push({
+              ...ind,
+              industryGroup: g.slug,
+              groupSortOrder: 0,
+            });
+          }
+        }
+        setIndustries(all);
+      } catch {
+        // Non-fatal — picker will just be empty
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleContinue = async () => {
     setError(null);
     setSubmitting(true);
     try {
-      // Await persistence so the orchestrator's tenant state stays in sync
-      // when the user resumes mid-flow.
       await onboardingService.saveCompanyAndLocale({
         name: companyName,
         industry,
@@ -64,12 +100,11 @@ export function CompanyStep({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="industry">Industry (optional)</Label>
-        <Input
-          id="industry"
+        <Label>Industry</Label>
+        <IndustryGroupPicker
+          industries={industries}
           value={industry}
-          onChange={(e) => setIndustry(e.target.value)}
-          placeholder="SaaS, e-commerce, consulting..."
+          onChange={setIndustry}
         />
       </div>
       {error && (

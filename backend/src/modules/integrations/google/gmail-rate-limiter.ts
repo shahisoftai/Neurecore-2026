@@ -42,7 +42,10 @@ export async function withGoogleRetry<T>(
       res = await fetcher();
     } catch (networkErr) {
       if (attempt >= maxAttempts - 1) {
-        throw new GoogleApiError(0, networkErr instanceof Error ? networkErr.message : 'network');
+        throw new GoogleApiError(
+          0,
+          networkErr instanceof Error ? networkErr.message : 'network',
+        );
       }
       await sleep(jittered(backoffMs(attempt, baseMs, maxDelayMs)));
       attempt++;
@@ -59,16 +62,21 @@ export async function withGoogleRetry<T>(
     }
 
     const retryAfter = Number(res.headers.get('retry-after'));
-    const baseDelay = Number.isFinite(retryAfter) && retryAfter > 0
-      ? retryAfter * 1000
-      : backoffMs(attempt, baseMs, maxDelayMs);
+    const baseDelay =
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? retryAfter * 1000
+        : backoffMs(attempt, baseMs, maxDelayMs);
 
     await sleep(jittered(baseDelay));
     attempt++;
   }
 }
 
-function backoffMs(attempt: number, baseMs: number, maxDelayMs: number): number {
+function backoffMs(
+  attempt: number,
+  baseMs: number,
+  maxDelayMs: number,
+): number {
   return Math.min(maxDelayMs, baseMs * 2 ** attempt);
 }
 

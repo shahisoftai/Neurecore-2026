@@ -68,7 +68,7 @@ describe('DecisionEvaluationsService (Phase 1)', () => {
           return rec;
         }),
         findMany: jest.fn(async ({ where, orderBy }: any) => {
-          const results = [];
+          const results: any[] = [];
           for (const v of evaluationStore.values()) {
             if (v.decisionId === where.decisionId && v.tenantId === where.tenantId) {
               results.push(v);
@@ -272,8 +272,9 @@ describe('DecisionEvaluationsService (Phase 1)', () => {
       await service.create({ tenantId: 't1', decisionId: 'dec-1', evaluationKind: 'RETROSPECTIVE', scoringVersion: 'v1', scores: { score: 90 }, evaluatorKind: 'AI' });
 
       const latest = await service.getLatestForDecision('dec-1', 't1');
-      expect(latest.evaluationKind).toBe('RETROSPECTIVE');
-      expect(latest.scores).toEqual({ score: 90 });
+      expect(latest).not.toBeNull();
+      expect(latest!.evaluationKind).toBe('RETROSPECTIVE');
+      expect(latest!.scores).toEqual({ score: 90 });
     });
   });
 });

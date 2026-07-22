@@ -473,7 +473,7 @@ Recommended rollout order:
 
 ---
 
-## 12. Migration Plan (Neon Snapshots)
+## 12. Migration Plan
 
 Per spec §15.6, all migrations are additive and reversible by simply flipping flags off.
 
@@ -499,17 +499,15 @@ Suggested migration names:
 | 9e | `20260708_retention_policies` |
 | (enum + index updates) | `20260708_relationship_type_reports_delegates` |
 
-### 12.2 Pre-Migration Safety (Neon Branching)
+### 12.2 Pre-Migration Safety
 
-Before applying any migration to production Neon:
+Before applying any migration to production:
 
-1. Open Neon console → create branch `pre-<phase>-migration` off production.
-2. Apply migration against the branch first.
+1. Take a DB snapshot.
+2. Apply migration against the snapshot first.
 3. Smoke-test (`SELECT COUNT(*)` on each new table — should be 0).
 4. Apply to production.
-5. Keep the branch for 24 hours post-deploy; drop only after flags are validated.
-
-**Do NOT `pm2 stop` the backend or `pg_dump` on Contabo.** Use Neon branching.
+5. Monitor for 24 hours post-deploy.
 
 ---
 
@@ -800,15 +798,13 @@ Per spec §15.4 — additive migrations never require a schema rollback:
 3. (Optional) Generate manual down script: `npx prisma migrate diff --from-url $PROD_URL --to-schema-datamodel ./prisma/schema.prisma.reverted --script > down.sql` (custom — out of scope here).
 4. Restart PM2 process.
 
-### 16.4 Neon Snapshot Procedure
+### 16.4 Database Snapshot Procedure
 
 Before any new phase deploy:
 
 ```bash
-# Open Neon console → "Branches" → "Create Branch"
-# Name: pre-<phase>-<YYYYMMDD>
-# Parent: production (main)
-# Click "Create"
+# Take a snapshot of the production database
+ssh contabo "pg_dump -Fc neurecore > /tmp/pre-phase-$(date +%Y%m%d).dump"
 
 # Apply migration:
 cd /home/najeeb/Linux-Dev/neurecore/neurecore/backend
@@ -1028,7 +1024,7 @@ cat backend/prisma/migrations/20260708_thread_model/migration.sql
 # Apply to local dev:
 cd backend && npx prisma migrate dev
 
-# Apply to Neon (via Contabo):
+# Apply to Contabo:
 ssh contabo "cd /opt/neurecore/backend && npx prisma migrate deploy"
 
 # Verify TypeScript:

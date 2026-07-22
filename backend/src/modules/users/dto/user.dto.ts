@@ -4,7 +4,10 @@ import {
   IsOptional,
   IsEnum,
   IsBoolean,
-
+  IsInt,
+  IsObject,
+  Min,
+  Max,
   MinLength,
   MaxLength,
 } from 'class-validator';
@@ -41,10 +44,14 @@ export class CreateUserDto {
 export class UpdateUserDto {
   @IsOptional()
   @IsString()
+  @MinLength(1)
+  @MaxLength(64)
   firstName?: string;
 
   @IsOptional()
   @IsString()
+  @MinLength(1)
+  @MaxLength(64)
   lastName?: string;
 
   @IsOptional()
@@ -58,6 +65,53 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   departmentId?: string | null;
+
+  // ─── Personal profile fields ──────────────────────────────────────
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  jobTitle?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  timezone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(15)
+  locale?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  language?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  theme?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  defaultLanding?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  railCollapsedDefault?: boolean;
+
+  /**
+   * Stored under User.notificationPrefsJson. Typed at runtime by convention.
+   */
+  @IsOptional()
+  @IsObject()
+  notificationPrefs?: Record<string, unknown>;
 }
 
 export class ChangePasswordDto {
@@ -73,4 +127,25 @@ export class ChangePasswordDto {
 export class AssignUserToDepartmentDto {
   @IsString()
   departmentId!: string;
+}
+
+/**
+ * 2FA enable — frontend submits TOTP code to confirm QR scan succeeded.
+ * Backend stores hashed secret + boolean flag under User.metadata.twoFactor*.
+ */
+export class Enable2faDto {
+  @IsString()
+  @MinLength(6)
+  @MaxLength(8)
+  code!: string;
+}
+
+/**
+ * 2FA disable — requires re-authentication via password.
+ */
+export class Disable2faDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(72)
+  password!: string;
 }

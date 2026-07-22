@@ -1,9 +1,47 @@
 # NeureCore — System State (live inventory)
 
-**Last verified:** 2026-07-21 PKT — Performance fixes (FIX-PERF-001) deployed. All 14 enterprise integration phases deployed.
+**Last verified:** 2026-07-21 21:03 PKT — Tier System refactor (Phase 1+2+3) + Industry Groups (Phase 1+2+3+4+5) deployed. All 14 enterprise integration phases deployed.
 
 **Database Status (2026-07-21):**
-- ✅ Contabo Local PostgreSQL 16: `127.0.0.1:5433`, db `neurecore`
+- ✅ Contabo Local PostgreSQL 16: `127.0.0.1:5432`, db `neurecore`
+
+---
+
+**Tier System Refactor (2026-07-21):**
+- ✅ Phase 1 migration `20260721_tier_system_refactor` applied — 10 new columns on `tiers` + new tables `tier_audit_logs` + `tier_change_requests`
+- ✅ Phase 2 migration `20260721_tier_template_phase2` applied — added `Package.tierId` nullable FK + backfilled from `Package.tierTemplateId`
+- ✅ Phase 3 migration `20260721_tier_template_phase3_drop` applied — `tier_templates` table dropped, `Package.tierTemplateId` column dropped, `Package.tierId` made NOT NULL
+- ✅ Tier slugs renamed: `starter` → `basic`, `government` → `business`; `professional` + `enterprise` unchanged
+- ✅ `backend/src/modules/tier-templates/` deleted (controller, service, DTOs, spec)
+- ✅ TierTemplatesModule removed from app.module.ts; packages.module.ts now imports TiersModule
+- ✅ packages.service.ts + DTOs updated: `tierId` replaces `tierTemplateId`
+- ✅ Seed scripts updated: seed-business-composition.cjs seeds Tier directly; seed-package-catalogue.cjs + seed-accounting-packages.cjs write Package.tierId
+- ✅ `seed-business-composition.cjs` run — 4 tiers updated to match TIER-SYSTEM-CONCEPT.md §4 (Basic: 3 agents/2 users/1 GB, Business: 10/10/10, Professional: 50/50/100, Enterprise: 9999/9999/1000)
+- ✅ `test-corp` tenant verified — resolves to `enterprise` tier
+- ✅ Frontend migrated: `/admin/tiers` page rewritten to use Tier (canonical); `tiersPool.service.ts` points at `/api/v1/tiers`; all consumer pages (`packages/page.tsx`, `packages/[id]/page.tsx`, `packages/[id]/edit/page.tsx`, `packages/new/page.tsx`, `tenants/[id]/page.tsx`) updated to use `tierId` instead of `tierTemplateId`
+- ✅ `frontend-tenant/src/services/packages.service.ts` updated to use `tierId`
+- ✅ `/api/v1/tier-templates` returns 404 (endpoint removed)
+- ✅ `/api/v1/tiers` returns 200 with Tier rows
+- ✅ All PM2 services healthy: `brain` 200, `hq` 200, `cc` 200
+- ✅ DR snapshot: `/opt/neurecore/_archives/20260721-pre-tier-refactor/pre-tier-refactor.dump` (3.1 MB)
+- Docs: [memory-bank-new/industries/INDUSTRY-GROUPS-CONCEPT.md](../industries/INDUSTRY-GROUPS-CONCEPT.md), [TIER-SYSTEM-CONCEPT.md](../industries/TIER-SYSTEM-CONCEPT.md), [TIER-DEPLOYMENT-RUNBOOK.md](../industries/TIER-DEPLOYMENT-RUNBOOK.md)
+
+---
+
+**Industry Groups Implementation (2026-07-21):**
+- ✅ Migration `20260721_industry_groups` applied — Industry.industryGroup + groupSortOrder columns + index
+- ✅ Migration `20260721_tenant_industry_group` applied — Tenant.industryGroup column + backfilled from Industry
+- ✅ 16 industries seeded with correct `industryGroup` (8 groups per INDUSTRY-GROUPS-CONCEPT.md §3)
+- ✅ 8 legacy slugs (healthcare, ngo, etc) archived (status=ARCHIVED)
+- ✅ Public endpoints deployed: `GET /api/v1/industries/groups`, `/groups/:slug`, `/by-group/:slug`, `/:slug/capabilities?tier=<slug>`
+- ✅ Tenant onboarding (CompanyStep) replaced with new IndustryGroupPicker component (single expandable list, click group → expand → click industry)
+- ✅ Frontend IconRail now injects industry-specific Workspace extras per the 80/20 principle (only Workspace + Customers change)
+- ✅ Customer label/icon adapts per Industry Group (e.g. "Clients & Accounts" for Financial & Compliance, "Patients" for Healthcare)
+- ✅ 8 stub pages created for Financial & Compliance workspace extras (engagements/loans/portfolios/audits/tax/payroll/compliance/risk)
+- ✅ Onboarding backend auto-derives `industryGroup` from selected industry slug
+- ✅ All PM2 services healthy: `brain` 200, `hq` 200, `cc` 200
+- ✅ test-corp tenant manually assigned `industryGroup=financial-compliance`
+- Docs: [memory-bank-new/industries/INDUSTRY-GROUPS-CONCEPT.md](../industries/INDUSTRY-GROUPS-CONCEPT.md)
 - ✅ Pool data seeded: 706 agents, 57 departments, 24 industries, 83 packages, 150 project types, 20 question packs
 - ✅ Tier system seeded: 4 tiers (Starter/Growth/Pro/Enterprise) with agent pools
 - ⚠️ Tenant data migrated from Neon (2026-07-20); some tenants had broken tierId references

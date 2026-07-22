@@ -257,21 +257,21 @@ done
 # Every dir: lines > 0, "no destructive ops"
 ```
 
-### 3.2 Neon Pre-Migration Snapshot
+### 3.2 Pre-Migration Snapshot
 
 Before applying any migration to production:
 
-1. Open [Neon console](https://console.neon.tech) → **Branches** → **Create Branch**
-2. Name: `pre-comms-rollout-20260711`
-3. Parent: production main branch
-4. Get the branch connection string from Neon console
-5. Apply all 6 migrations against the branch:
+1. Take a database snapshot:
    ```bash
-   DATABASE_URL="<neon-branch-url>" npx prisma migrate deploy
+   ssh contabo "pg_dump -Fc neurecore > /tmp/pre-comms-rollout-$(date +%Y%m%d).dump"
    ```
-6. Smoke-test the branch:
+2. Apply all 6 migrations against the snapshot first:
    ```bash
-   DATABASE_URL="<neon-branch-url>" node -e "
+   DATABASE_URL="<snapshot-url>" npx prisma migrate deploy
+   ```
+3. Smoke-test the snapshot:
+   ```bash
+   DATABASE_URL="<snapshot-url>" node -e "
      const { PrismaClient } = require('@prisma/client');
      const p = new PrismaClient();
      (async () => {
@@ -304,7 +304,7 @@ Before applying any migration to production:
    # Expected: has threadId: true, has idempotencyKey: true, has mentions: true
    ```
 8. If smoke-test passes, proceed to production apply
-9. Keep the Neon branch alive for 72 hours post-deploy; delete only after all gates (G1–G10) pass
+9. Keep the DB snapshot for 72 hours post-deploy; delete only after all gates (G1–G10) pass
 
 ### 3.3 Apply Migrations to Production
 
@@ -1420,7 +1420,7 @@ These items are known to be incomplete. They do not block rollout but inform wha
 | **A2A** | Agent-to-agent messaging — `AgentMessagingService.send()` where one AI agent sends a message to another. |
 | **Canonical feed** | The unified `ActivityEvent` table that replaces `MissionFeedItem`, in-memory `ActivityStream`, and mock-data `LiveFeedWidget`. |
 | **Circuit breaker / Guard** | `AgentMessagingGuard.check()` — enforces hop count, message count, and cost ceilings on A2A paths, using authoritative server-side counters. |
-| **Neon branch** | A read-write copy of the production database used to test migrations before applying to production. |
+| **DB snapshot** | A copy of the production database used to test migrations before applying to production. |
 | **Write-through adapter** | A modification to `MissionFeedService.create()` that writes to `ActivityEvent` in addition to `MissionFeedItem` — no polling, no cursor. |
 | **Symbol alias / useExisting** | A NestJS DI pattern where an interface token (`THREAD_SERVICE`) resolves to the concrete implementation (`ThreadService`) via `{ provide: TOKEN, useExisting: Impl }`. |
 

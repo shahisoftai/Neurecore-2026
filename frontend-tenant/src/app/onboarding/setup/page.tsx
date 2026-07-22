@@ -1,7 +1,10 @@
 'use client';
 
-// /onboarding/setup — Tier-1 wizard orchestrator (PR-2).
-// 6 steps total: Company → Logo → Localization → Plan → Template → Complete.
+// /onboarding/setup — Initial onboarding wizard orchestrator.
+// 7 steps total: Company → Logo → Localization → Plan → Template
+// → Integrations → Complete.
+// Google Workspace and Brevo are first-class steps because they are vital
+// for company working (documentation, calendar, email, notifications).
 // Team invites + Review are demoted to sub-wizards (see /settings/wizard/team).
 //
 // This page is intentionally thin: it manages step state, hydrates from
@@ -20,8 +23,9 @@ import { LocalizationStep } from './steps/LocalizationStep';
 import { PlanStep } from './steps/PlanStep';
 import { TemplateStep } from './steps/TemplateStep';
 import { CompleteStep } from './steps/CompleteStep';
+import { IntegrationsStep } from './steps/IntegrationsStep';
 
-type Tier1Step = 'company' | 'logo' | 'localization' | 'plan' | 'template' | 'complete';
+type Tier1Step = 'company' | 'logo' | 'localization' | 'plan' | 'template' | 'integrations' | 'complete';
 
 const STEPS: { id: Tier1Step; label: string }[] = [
   { id: 'company', label: 'Company' },
@@ -29,6 +33,7 @@ const STEPS: { id: Tier1Step; label: string }[] = [
   { id: 'localization', label: 'Locale' },
   { id: 'plan', label: 'Plan' },
   { id: 'template', label: 'Template' },
+  { id: 'integrations', label: 'Integrations' },
   { id: 'complete', label: 'Done' },
 ];
 
@@ -66,10 +71,13 @@ export default function OnboardingSetupPage() {
         if (cancelled) return;
         setTenant(t);
         // Resume from the server-tracked step if any.
+        // After selectTemplate() the backend sets step='review'.
+        // We map that to 'integrations' so a refresh during Integrations
+        // returns the user to the Integrations step, not Complete.
         if (state?.step === 'plan') setStep('plan');
         else if (state?.step === 'template') setStep('template');
         else if (state?.step === 'review' || state?.step === 'team')
-          setStep('complete');
+          setStep('integrations');
       } catch (err) {
         if (!cancelled)
           setError(err instanceof Error ? err.message : 'Failed to load.');
@@ -201,8 +209,15 @@ export default function OnboardingSetupPage() {
           {step === 'template' && (
             <TemplateStep
               initialSlug={null}
-              onSkip={() => setStep('complete')}
+              onNext={() => setStep('integrations')}
+              onSkip={() => setStep('integrations')}
               onBack={() => setStep('plan')}
+            />
+          )}
+          {step === 'integrations' && (
+            <IntegrationsStep
+              onNext={() => setStep('complete')}
+              onBack={() => setStep('template')}
             />
           )}
           {step === 'complete' && <CompleteStep />}

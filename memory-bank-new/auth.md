@@ -57,7 +57,7 @@
        │
        ▼
 ┌──────────────────────────────────────────────────────────────┐
-│  Postgres (Neon)             Redis (host-installed)            │
+│  Postgres (Contabo)          Redis (host-installed)            │
 │  • User                      • login:fail:{email} sliding      │
 │  • RefreshToken (familyId)     window counter (10 min TTL)    │
 │  • Session                   • login:fail:ip:{ip} sliding      │

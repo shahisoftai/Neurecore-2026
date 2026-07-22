@@ -34,11 +34,13 @@ export class GoogleGmailService {
   private readonly logger = new Logger(GoogleGmailService.name);
   private readonly GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
-  constructor(
-    private readonly authClient: GoogleAuthClient,
-  ) {}
+  constructor(private readonly authClient: GoogleAuthClient) {}
 
-  private async authFetch(url: string, options: RequestInit = {}, tenantId: string): Promise<Response> {
+  private async authFetch(
+    url: string,
+    options: RequestInit = {},
+    tenantId: string,
+  ): Promise<Response> {
     const accessToken = await this.authClient.getAccessToken(tenantId);
     if (!accessToken) {
       throw new BadRequestException('Google is not connected for this tenant');
@@ -58,7 +60,12 @@ export class GoogleGmailService {
    */
   async listInbox(
     tenantId: string,
-    options: { maxResults?: number; labelIds?: string[]; pageToken?: string; q?: string } = {},
+    options: {
+      maxResults?: number;
+      labelIds?: string[];
+      pageToken?: string;
+      q?: string;
+    } = {},
   ): Promise<{ messages: GmailMessage[]; nextPageToken?: string }> {
     const { maxResults = 20, labelIds = ['INBOX'], pageToken, q } = options;
     const params = new URLSearchParams();
@@ -125,7 +132,9 @@ export class GoogleGmailService {
     };
 
     const getHeader = (name: string): string =>
-      data.payload.headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? '';
+      data.payload.headers.find(
+        (h) => h.name.toLowerCase() === name.toLowerCase(),
+      )?.value ?? '';
 
     return {
       id: data.id,
@@ -154,7 +163,9 @@ export class GoogleGmailService {
     );
 
     if (!res.ok) {
-      throw new BadRequestException(`Failed to fetch message body for ${messageId}`);
+      throw new BadRequestException(
+        `Failed to fetch message body for ${messageId}`,
+      );
     }
 
     const data = (await res.json()) as {
@@ -169,7 +180,9 @@ export class GoogleGmailService {
     let html = '';
 
     const decode = (b64: string): string =>
-      Buffer.from(b64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+      Buffer.from(b64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString(
+        'utf-8',
+      );
 
     if (data.payload.parts) {
       for (const part of data.payload.parts) {
@@ -191,7 +204,10 @@ export class GoogleGmailService {
   /**
    * Send an email via Gmail
    */
-  async sendEmail(tenantId: string, input: SendEmailInput): Promise<{ messageId: string; threadId: string }> {
+  async sendEmail(
+    tenantId: string,
+    input: SendEmailInput,
+  ): Promise<{ messageId: string; threadId: string }> {
     const headers = [
       `To: ${input.to}`,
       `Subject: ${input.subject}`,
@@ -227,7 +243,9 @@ export class GoogleGmailService {
   /**
    * List Gmail labels/folders
    */
-  async listLabels(tenantId: string): Promise<{ id: string; name: string; type: string }[]> {
+  async listLabels(
+    tenantId: string,
+  ): Promise<{ id: string; name: string; type: string }[]> {
     const res = await this.authFetch(`${this.GMAIL_API}/labels`, {}, tenantId);
     if (!res.ok) {
       throw new BadRequestException('Failed to fetch Gmail labels');

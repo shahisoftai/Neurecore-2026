@@ -35,7 +35,9 @@ beforeEach(() => {
 afterEach(() => {
   fetchSpy.mockRestore();
   (authClient.getAccessToken as jest.Mock).mockReset();
-  (authClient.getAccessToken as jest.Mock).mockResolvedValue('fake-access-token');
+  (authClient.getAccessToken as jest.Mock).mockResolvedValue(
+    'fake-access-token',
+  );
 });
 
 describe('GoogleCalendarService.listEvents', () => {
@@ -151,7 +153,9 @@ describe('GoogleCalendarService.listEvents', () => {
     const svc = makeService();
     (authClient.getAccessToken as jest.Mock).mockResolvedValueOnce(null);
 
-    await expect(svc.listEvents('tenant-1')).rejects.toThrow('Google is not connected');
+    await expect(svc.listEvents('tenant-1')).rejects.toThrow(
+      'Google is not connected',
+    );
   });
 });
 
@@ -192,8 +196,14 @@ describe('GoogleCalendarService.createEvent', () => {
     expect(body.summary).toBe('Meeting');
     expect(body.description).toBe('Discuss roadmap');
     expect(body.location).toBe('Conference Room');
-    expect(body.start).toEqual({ dateTime: '2026-07-08T14:00:00+05:00', timeZone: 'Asia/Karachi' });
-    expect(body.end).toEqual({ dateTime: '2026-07-08T15:00:00+05:00', timeZone: 'Asia/Karachi' });
+    expect(body.start).toEqual({
+      dateTime: '2026-07-08T14:00:00+05:00',
+      timeZone: 'Asia/Karachi',
+    });
+    expect(body.end).toEqual({
+      dateTime: '2026-07-08T15:00:00+05:00',
+      timeZone: 'Asia/Karachi',
+    });
     expect(body.attendees).toEqual([{ email: 'user@test.com' }]);
   });
 
@@ -268,14 +278,18 @@ describe('GoogleCalendarService.deleteEvent', () => {
       } as Response),
     );
 
-    await expect(svc.deleteEvent('evt-gone', 'tenant-1')).resolves.toBeUndefined();
+    await expect(
+      svc.deleteEvent('evt-gone', 'tenant-1'),
+    ).resolves.toBeUndefined();
   });
 
   it('throws BadRequestException when authClient returns null', async () => {
     const svc = makeService();
     (authClient.getAccessToken as jest.Mock).mockResolvedValueOnce(null);
 
-    await expect(svc.deleteEvent('evt-1', 'tenant-1')).rejects.toThrow('Google is not connected');
+    await expect(svc.deleteEvent('evt-1', 'tenant-1')).rejects.toThrow(
+      'Google is not connected',
+    );
   });
 });
 
@@ -311,6 +325,8 @@ describe('GoogleCalendarService.listCalendars', () => {
     const svc = makeService();
     (authClient.getAccessToken as jest.Mock).mockResolvedValueOnce(null);
 
-    await expect(svc.listCalendars('tenant-1')).rejects.toThrow('Google is not connected');
+    await expect(svc.listCalendars('tenant-1')).rejects.toThrow(
+      'Google is not connected',
+    );
   });
 });

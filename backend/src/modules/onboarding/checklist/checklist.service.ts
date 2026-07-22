@@ -34,7 +34,7 @@ export class ChecklistService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Seed all 11 checklist entries for a tenant. Idempotent.
+   * Seed all 13 checklist entries for a tenant. Idempotent.
    * Called from OnboardingService.complete() and from seed scripts.
    */
   async seed(tenantId: string): Promise<{ created: number; existing: number }> {
@@ -81,6 +81,9 @@ export class ChecklistService {
               estimatedMinutes: cfg.estimatedMinutes,
               estimatedValue: cfg.estimatedValue,
               skippable: cfg.skippable,
+              phase: cfg.phase,
+              weight: cfg.weight,
+              dependsOn: cfg.dependsOn,
             },
             sourceEventId,
             confidence: 0.9,
@@ -129,7 +132,12 @@ export class ChecklistService {
           completedAt: e.completedAt,
           dismissedAt: e.dismissedAt,
           skippedAt: e.skippedAt,
-          config: cfg,
+          config: {
+            ...cfg,
+            phase: cfg.phase,
+            weight: cfg.weight,
+            dependsOn: cfg.dependsOn,
+          },
           missionFeedItem: item
             ? {
                 id: item.id,

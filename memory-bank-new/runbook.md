@@ -322,7 +322,7 @@ for p in json.load(sys.stdin):
 | Bad deploy | Rollback to previous commit ([deployment.md §9](deployment.md#9-rollback)) | Restore from snapshot |
 | Disk full | Prune archives + logs ([disaster-recovery.md §5](disaster-recovery.md#5-disk-full-recovery)) | Provision new VPS |
 | Cert expired | `certbot renew --force-renewal` | Manual cert install + OLS reload |
-| Backend DB errors | Check Neon status; verify `DATABASE_URL` in `.env` | Restore DB from `pg_dump` (if available) |
+| Backend DB errors | Check PostgreSQL status; verify `DATABASE_URL` in `.env` | Restart PostgreSQL or restore from backup |
 | Box unreachable | Contabo support ticket | Provision new VPS + full restore |
 
 ---

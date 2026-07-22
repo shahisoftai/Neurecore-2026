@@ -44,7 +44,7 @@ export default function EditPackagePage() {
   const [featureIds, setFeatureIds] = useState<string[]>([]);
 
   const [industryId, setIndustryId] = useState('');
-  const [tierTemplateId, setTierTemplateId] = useState('');
+  const [tierId, setTierId] = useState('');
 
   const [preview, setPreview] = useState(EMPTY_PREVIEW);
 
@@ -63,7 +63,7 @@ export default function EditPackagePage() {
         if (cancelled) return;
         setPkg(pkgData);
         setIndustryId(pkgData.industryId ?? '');
-        setTierTemplateId(pkgData.tierTemplateId ?? '');
+        setTierId(pkgData.tierId ?? '');
         setAllDepartments(deptPage.items);
         setAllAgents(agPage.items);
         setAllFeatures(featPage.items);
@@ -84,12 +84,12 @@ export default function EditPackagePage() {
   }, [id]);
 
   useEffect(() => {
-    if (!industryId || !tierTemplateId) {
+    if (!industryId || !tierId) {
       setPreview(EMPTY_PREVIEW);
       return;
     }
     void packagesService
-      .preview(industryId, tierTemplateId, {
+      .preview(industryId, tierId, {
         departmentIds,
         aiAgentIds,
         featureIds,
@@ -100,7 +100,7 @@ export default function EditPackagePage() {
       .catch((err: unknown) => {
         console.error('Package preview failed:', err);
       });
-  }, [industryId, tierTemplateId, departmentIds, aiAgentIds, featureIds]);
+  }, [industryId, tierId, departmentIds, aiAgentIds, featureIds]);
 
   const featuresByCategory = useMemo(() => {
     const map: Record<FeatureCategory, Feature[]> = {
@@ -239,7 +239,7 @@ export default function EditPackagePage() {
 
           <PackagePreview
             industryName={pkg?.industry?.name}
-            tierName={pkg?.tierTemplate?.name}
+            tierName={pkg?.tier?.name}
             totals={preview.totals}
             missing={preview.missing}
             categories={preview.categories}

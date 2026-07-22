@@ -35,7 +35,9 @@ beforeEach(() => {
 afterEach(() => {
   fetchSpy.mockRestore();
   (authClient.getAccessToken as jest.Mock).mockReset();
-  (authClient.getAccessToken as jest.Mock).mockResolvedValue('fake-access-token');
+  (authClient.getAccessToken as jest.Mock).mockResolvedValue(
+    'fake-access-token',
+  );
 });
 
 describe('GoogleGmailService.listInbox', () => {
@@ -142,7 +144,9 @@ describe('GoogleGmailService.listInbox', () => {
     const svc = makeService();
     (authClient.getAccessToken as jest.Mock).mockResolvedValueOnce(null);
 
-    await expect(svc.listInbox('tenant-1')).rejects.toThrow('Google is not connected');
+    await expect(svc.listInbox('tenant-1')).rejects.toThrow(
+      'Google is not connected',
+    );
   });
 });
 
@@ -189,15 +193,20 @@ describe('GoogleGmailService.getMessage', () => {
     const svc = makeService();
     (authClient.getAccessToken as jest.Mock).mockResolvedValueOnce(null);
 
-    await expect(svc.getMessage('tenant-1', 'msg-1', 'thread-1')).rejects.toThrow('Google is not connected');
+    await expect(
+      svc.getMessage('tenant-1', 'msg-1', 'thread-1'),
+    ).rejects.toThrow('Google is not connected');
   });
 });
 
 describe('GoogleGmailService.getMessageBody', () => {
   it('decodes base64url plain text from multipart parts', async () => {
     const svc = makeService();
-    const plainB64 = Buffer.from('Hello plain text body').toString('base64')
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const plainB64 = Buffer.from('Hello plain text body')
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
 
     fetchSpy.mockImplementation(() =>
       Promise.resolve({
@@ -223,8 +232,11 @@ describe('GoogleGmailService.getMessageBody', () => {
 
   it('decodes base64url HTML from multipart parts', async () => {
     const svc = makeService();
-    const htmlB64 = Buffer.from('<h1>Hello HTML</h1>').toString('base64')
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const htmlB64 = Buffer.from('<h1>Hello HTML</h1>')
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
 
     fetchSpy.mockImplementation(() =>
       Promise.resolve({
@@ -253,7 +265,9 @@ describe('GoogleGmailService.getMessageBody', () => {
     const svc = makeService();
     (authClient.getAccessToken as jest.Mock).mockResolvedValueOnce(null);
 
-    await expect(svc.getMessageBody('msg-1', 'tenant-1')).rejects.toThrow('Google is not connected');
+    await expect(svc.getMessageBody('msg-1', 'tenant-1')).rejects.toThrow(
+      'Google is not connected',
+    );
   });
 });
 
@@ -265,8 +279,7 @@ describe('GoogleGmailService.sendEmail', () => {
         ok: true,
         status: 200,
         text: () => Promise.resolve(''),
-        json: () =>
-          Promise.resolve({ id: 'sent-1', threadId: 'thread-1' }),
+        json: () => Promise.resolve({ id: 'sent-1', threadId: 'thread-1' }),
       } as Response),
     );
 
@@ -299,8 +312,7 @@ describe('GoogleGmailService.sendEmail', () => {
         ok: true,
         status: 200,
         text: () => Promise.resolve(''),
-        json: () =>
-          Promise.resolve({ id: 'sent-2', threadId: 'thread-2' }),
+        json: () => Promise.resolve({ id: 'sent-2', threadId: 'thread-2' }),
       } as Response),
     );
 
@@ -353,6 +365,8 @@ describe('GoogleGmailService.listLabels', () => {
     const svc = makeService();
     (authClient.getAccessToken as jest.Mock).mockResolvedValueOnce(null);
 
-    await expect(svc.listLabels('tenant-1')).rejects.toThrow('Google is not connected');
+    await expect(svc.listLabels('tenant-1')).rejects.toThrow(
+      'Google is not connected',
+    );
   });
 });

@@ -1141,6 +1141,9 @@ function ConnectorsTab() {
   const [name, setName] = useState('');
   const [provider, setProvider] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [industryPresets, setIndustryPresets] = useState<Array<{ slug: string; name: string; type: string; description?: string; tier: string; category?: string }>>([]);
+  const [presetsLoading, setPresetsLoading] = useState(false);
+  const [tenantIndustry, setTenantIndustry] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -1157,7 +1160,27 @@ function ConnectorsTab() {
     }
   }, []);
 
+  const fetchIndustryPresets = useCallback(async () => {
+    setPresetsLoading(true);
+    try {
+      const tenantRes = await api.get('/tenants/me/current');
+      const tenant = (tenantRes.data as { data?: { industry?: string | null } })?.data ?? (tenantRes.data as { industry?: string | null } | null);
+      const industry = tenant?.industry;
+      if (industry) {
+        setTenantIndustry(industry);
+        const presetsRes = await api.get(`/industries/${encodeURIComponent(industry)}/integration-presets`);
+        const data = (presetsRes.data as { data?: { presets?: Array<{ slug: string; name: string; type: string; description?: string; tier: string; category?: string }> } })?.data;
+        setIndustryPresets(data?.presets ?? []);
+      }
+    } catch {
+      setIndustryPresets([]);
+    } finally {
+      setPresetsLoading(false);
+    }
+  }, []);
+
   useEffect(() => { void fetchAll(); }, [fetchAll]);
+  useEffect(() => { void fetchIndustryPresets(); }, [fetchIndustryPresets]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1173,84 +1196,127 @@ function ConnectorsTab() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      {/* Existing connectors */}
-      <div className="lg:col-span-2 space-y-3">
-        <h3 className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
-          <Plug className="w-4 h-4 text-status-ops" />
-          Configured connectors ({connectors.length})
-        </h3>
-        {loading ? (
-          <div className="card-surface p-8 text-center text-zinc-500 text-sm">Loading…</div>
-        ) : connectors.length === 0 ? (
-          <div className="card-surface p-12 text-center">
-            <Plug className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-            <p className="text-sm text-zinc-300 font-medium">No connectors configured</p>
-            <p className="text-xs text-zinc-500 mt-1 max-w-md mx-auto">
-              Register a connector to enable agent integration with external systems (CRM, calendars, etc.).
-            </p>
-          </div>
-        ) : (
-          <div className="card-surface divide-y divide-surface-border">
-            {connectors.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="w-9 h-9 rounded-lg bg-status-ops/15 text-status-ops flex items-center justify-center">
-                  <Plug className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-zinc-200 truncate">{c.name}</p>
-                  <p className="text-xs text-zinc-500 truncate">{c.provider}</p>
-                </div>
-                <StatusBadge status={c.isActive ? 'ACTIVE' : 'PAUSED'} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Register form */}
-      <div className="card-surface p-5 h-fit">
-        <h3 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
-          <Plus className="w-4 h-4 text-accent-500" />
-          Register new connector
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-zinc-400">Name</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Salesforce Production"
-              className="mt-1 w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-accent-500"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-zinc-400">Provider</label>
-            <select
-              required
-              value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              className="mt-1 w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-200 focus:outline-none focus:border-accent-500"
-            >
-              <option value="">Select provider…</option>
-              {providers.map((p) => (
-                <option key={p} value={p}>{p}</option>
+    <div className="space-y-4">
+      {industryPresets.length > 0 && (
+        <div className="card-surface p-5">
+          <h3 className="text-sm font-semibold text-zinc-300 flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-accent-500" />
+            Recommended for {tenantIndustry}
+          </h3>
+          <p className="text-xs text-zinc-500 mb-3">
+            Industry-specific integrations commonly used by {tenantIndustry}. Sorted by tier relevance.
+          </p>
+          {presetsLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-20 rounded-lg bg-surface-overlay border border-surface-border animate-pulse" />
               ))}
-            </select>
-          </div>
-          <ActionButton
-            type="submit"
-            variant="primary"
-            size="md"
-            loading={submitting}
-            icon={<Plus className="w-3.5 h-3.5" />}
-            className="w-full"
-          >
-            Register Connector
-          </ActionButton>
-        </form>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {industryPresets.map((preset) => (
+                <div
+                  key={preset.slug}
+                  className="p-3 rounded-lg border border-surface-border bg-surface-overlay hover:border-accent-500/30 transition-colors"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium text-zinc-200 truncate">{preset.name}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface text-zinc-400 shrink-0">
+                      {preset.tier}
+                    </span>
+                  </div>
+                  {preset.category && (
+                    <p className="text-[10px] text-zinc-500">{preset.category}</p>
+                  )}
+                  {preset.description && (
+                    <p className="text-[10px] text-zinc-500 mt-1 line-clamp-2">{preset.description}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Existing connectors */}
+        <div className="lg:col-span-2 space-y-3">
+          <h3 className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
+            <Plug className="w-4 h-4 text-status-ops" />
+            Configured connectors ({connectors.length})
+          </h3>
+          {loading ? (
+            <div className="card-surface p-8 text-center text-zinc-500 text-sm">Loading…</div>
+          ) : connectors.length === 0 ? (
+            <div className="card-surface p-12 text-center">
+              <Plug className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+              <p className="text-sm text-zinc-300 font-medium">No connectors configured</p>
+              <p className="text-xs text-zinc-500 mt-1 max-w-md mx-auto">
+                Register a connector to enable agent integration with external systems (CRM, calendars, etc.).
+              </p>
+            </div>
+          ) : (
+            <div className="card-surface divide-y divide-surface-border">
+              {connectors.map((c) => (
+                <div key={c.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-9 h-9 rounded-lg bg-status-ops/15 text-status-ops flex items-center justify-center">
+                    <Plug className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-zinc-200 truncate">{c.name}</p>
+                    <p className="text-xs text-zinc-500 truncate">{c.provider}</p>
+                  </div>
+                  <StatusBadge status={c.isActive ? 'ACTIVE' : 'PAUSED'} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Register form */}
+        <div className="card-surface p-5 h-fit">
+          <h3 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
+            <Plus className="w-4 h-4 text-accent-500" />
+            Register new connector
+          </h3>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-zinc-400">Name</label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Salesforce Production"
+                className="mt-1 w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-accent-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-zinc-400">Provider</label>
+              <select
+                required
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+                className="mt-1 w-full px-3 py-2 rounded-lg border border-surface-border bg-surface-overlay text-sm text-zinc-200 focus:outline-none focus:border-accent-500"
+              >
+                <option value="">Select provider…</option>
+                {providers.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <ActionButton
+              type="submit"
+              variant="primary"
+              size="md"
+              loading={submitting}
+              icon={<Plus className="w-3.5 h-3.5" />}
+              className="w-full"
+            >
+              Register Connector
+            </ActionButton>
+          </form>
+        </div>
       </div>
     </div>
   );

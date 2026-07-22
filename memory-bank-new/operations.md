@@ -183,9 +183,9 @@ pm2 restart neurecore-backend'
 
 Order matters: generate → build → migrate → restart.
 
-### 5.6 Neon DB pool timeouts
+### 5.6 PostgreSQL connection issues
 
-Intermittent `Can't reach database server` errors observed in `MissionFeedAiPrioritizer` and `SyncSchedulerService` (logged "0 succeeded, 0 failed" every 15 minutes). The `/api/v1/health` shallow check passes; deep queries sometimes fail. The pool retries automatically — if a deploy shows persistent errors, check Neon status page.
+Intermittent `Can't reach database server` errors observed in `MissionFeedAiPrioritizer` and `SyncSchedulerService` (logged "0 succeeded, 0 failed" every 15 minutes). The `/api/v1/health` shallow check passes; deep queries sometimes fail.
 
 ### 5.7 Backend Google OAuth env checklist
 

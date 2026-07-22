@@ -60,7 +60,9 @@ export class PrismaIntegrationCredentialStore implements ICredentialStore {
     });
     if (!row) return null;
     try {
-      return JSON.parse(this.crypto.decrypt(row.encryptedCredentials)) as IntegrationCredentials;
+      return JSON.parse(
+        this.crypto.decrypt(row.encryptedCredentials),
+      ) as IntegrationCredentials;
     } catch {
       return null;
     }
@@ -72,7 +74,10 @@ export class PrismaIntegrationCredentialStore implements ICredentialStore {
     });
   }
 
-  async exists(tenantId: string, provider: IntegrationProvider): Promise<boolean> {
+  async exists(
+    tenantId: string,
+    provider: IntegrationProvider,
+  ): Promise<boolean> {
     const row = await this.prisma.integrationCredential.findUnique({
       where: { tenantId_provider: { tenantId, provider } },
       select: { id: true },

@@ -37,6 +37,8 @@ const NEW_INDUSTRY = {
   name: 'Accounting & Audit Services',
   icon: 'Calculator',
   sortOrder: 35,
+  industryGroup: 'financial-compliance',
+  groupSortOrder: 50,
   subIndustries: [
     'Public Accounting Firms',
     'Audit & Assurance',
@@ -70,7 +72,9 @@ async function main() {
     const drift =
       existing.name !== NEW_INDUSTRY.name ||
       existing.icon !== NEW_INDUSTRY.icon ||
-      existing.sortOrder !== NEW_INDUSTRY.sortOrder;
+      existing.sortOrder !== NEW_INDUSTRY.sortOrder ||
+      existing.industryGroup !== NEW_INDUSTRY.industryGroup ||
+      existing.groupSortOrder !== NEW_INDUSTRY.groupSortOrder;
     if (drift) {
       console.log(`   ~  updating existing row ${existing.slug}: ${existing.name} → ${NEW_INDUSTRY.name}`);
       if (!DRY_RUN) {
@@ -80,6 +84,8 @@ async function main() {
             name: NEW_INDUSTRY.name,
             icon: NEW_INDUSTRY.icon,
             sortOrder: NEW_INDUSTRY.sortOrder,
+            industryGroup: NEW_INDUSTRY.industryGroup,
+            groupSortOrder: NEW_INDUSTRY.groupSortOrder,
             description: buildDescription(NEW_INDUSTRY),
           },
         });
@@ -98,6 +104,8 @@ async function main() {
           description: buildDescription(NEW_INDUSTRY),
           status: 'ACTIVE',
           sortOrder: NEW_INDUSTRY.sortOrder,
+          industryGroup: NEW_INDUSTRY.industryGroup,
+          groupSortOrder: NEW_INDUSTRY.groupSortOrder,
         },
       });
     }

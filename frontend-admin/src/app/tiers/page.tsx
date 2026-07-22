@@ -1,52 +1,40 @@
 "use client";
 
 /**
- * /tiers — Phase 10 Tier Templates Pool page.
+ * /tiers — Tier Management page (TIER-SYSTEM-CONCEPT.md Phase 3).
  *
- * Mirrors industries/page.tsx structure (single source of patterns).
- * The "commercial offering" tier — distinct from the billing `Tier`.
+ * Tier is the canonical billing tier (single source of truth).
+ * The legacy TierTemplate pool was removed in Phase 3.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import AdminShell from '@/components/AdminShell';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { usePoolList } from '@/hooks/usePoolList';
 import { PoolToolbar } from '@/components/pool/PoolToolbar';
 import { PoolPagination } from '@/components/pool/PoolPagination';
-import { PoolStatusBadge } from '@/components/pool/PoolStatusBadge';
 import { PoolEmptyState } from '@/components/pool/PoolEmptyState';
-import { PoolConfirmDeleteDialog } from '@/components/pool/PoolConfirmDeleteDialog';
 import {
   tiersPoolService,
-  type TierTemplate,
-  type CreateTierTemplatePayload,
+  type Tier,
+  type CreateTierPayload,
 } from '@/services/tiersPool.service';
-
-const STATUS_FILTERS = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Published', value: 'PUBLISHED' },
-  { label: 'Draft', value: 'DRAFT' },
-  { label: 'Archived', value: 'ARCHIVED' },
-];
 
 export default function TiersPage() {
   const user = useAdminAuth();
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<string>('ALL');
   const { items, total, page: currentPage, totalPages, loading, refresh, setOpts } = usePoolList<
-    TierTemplate,
-    CreateTierTemplatePayload
+    Tier,
+    CreateTierPayload
   >(tiersPoolService);
 
   useEffect(() => {
-    setOpts({ search, status: status === 'ALL' ? undefined : status, page: 1, limit: 20 });
+    setOpts({ search, sortBy: 'sortOrder', sortDir: 'asc', page: 1, limit: 20 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, status]);
+  }, [search]);
 
-  const [editing, setEditing] = useState<TierTemplate | null>(null);
+  const [editing, setEditing] = useState<Tier | null>(null);
   const [creating, setCreating] = useState(false);
-  const [deleting, setDeleting] = useState<TierTemplate | null>(null);
 
   const canEdit = user?.role === 'SUPER_ADMIN';
 
@@ -54,12 +42,12 @@ export default function TiersPage() {
     () =>
       items.filter((t) => {
         const matchesSearch =
+          !search ||
           t.name.toLowerCase().includes(search.toLowerCase()) ||
           t.slug.toLowerCase().includes(search.toLowerCase());
-        const matchesStatus = status === 'ALL' || t.status === status;
-        return matchesSearch && matchesStatus;
+        return matchesSearch;
       }),
-    [items, search, status],
+    [items, search],
   );
 
   if (!user) return null;
@@ -71,8 +59,8 @@ export default function TiersPage() {
           <div>
             <h1 className="text-xl font-semibold text-zinc-100">Tiers</h1>
             <p className="text-sm text-zinc-500 mt-0.5">
-              Commercial offering levels (Starter / Professional / Enterprise / Government).
-              Each tier groups one or more packages.
+              Canonical billing tiers (Basic / Business / Professional / Enterprise). Controls pricing,
+              limits, and feature flags for tenant subscriptions.
             </p>
           </div>
           {canEdit && (
@@ -89,256 +77,350 @@ export default function TiersPage() {
           search={search}
           onSearchChange={setSearch}
           searchPlaceholder="Search tiers…"
-          filters={STATUS_FILTERS}
-          activeFilter={status}
-          onFilterChange={setStatus}
           count={total}
           countLabel="tiers"
         />
 
         {loading ? (
+          <div className="text-center py-12 text-sm text-zinc-500">Loading…</div>
+        ) : filtered.length === 0 ? (
+          <PoolEmptyState label="tiers" />
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-40 rounded-xl bg-surface-raised border border-surface-border animate-pulse" />
+            {filtered.map((tier) => (
+              <TierCard
+                key={tier.id}
+                tier={tier}
+                canEdit={canEdit}
+                onEdit={() => setEditing(tier)}
+              />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
-          <PoolEmptyState
-            title="No tiers match your filters"
-            hint={canEdit ? 'Add the first one.' : undefined}
-            action={canEdit ? (
-              <button onClick={() => setCreating(true)} className="text-indigo-400 hover:underline">
-                + New Tier
-              </button>
-            ) : undefined}
-          />
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            <AnimatePresence>
-              {filtered.map((tier) => (
-                <motion.div
-                  key={tier.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="rounded-xl border border-surface-border bg-surface-raised p-4 flex flex-col gap-3 hover:border-indigo-700/50 transition"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-zinc-100 truncate">{tier.name}</div>
-                      <div className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{tier.tagline ?? tier.description ?? ''}</div>
-                      <div className="text-[11px] text-zinc-600 mt-1 font-mono">{tier.slug}</div>
-                    </div>
-                    <PoolStatusBadge status={tier.status} />
-                  </div>
+        )}
 
-                  {canEdit && (
-                    <div className="flex gap-2 mt-auto pt-2 border-t border-surface-border/50">
-                      <button
-                        onClick={() => setEditing(tier)}
-                        className="flex-1 py-1.5 rounded-lg text-xs border border-surface-border text-zinc-400 hover:text-zinc-200 hover:border-indigo-500 transition"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setDeleting(tier)}
-                        className="px-3 py-1.5 rounded-lg text-xs border border-surface-border text-zinc-600 hover:text-red-400 hover:border-red-700 transition"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-
+        {totalPages > 1 && (
           <PoolPagination
             page={currentPage}
             totalPages={totalPages}
             total={total}
-            limit={20}
-            onPageChange={(p) => setOpts((o) => ({ ...o, page: p }))}
+            onPageChange={(p) => setOpts({ page: p })}
           />
-        </>
+        )}
+
+        {(creating || editing) && (
+          <TierEditModal
+            tier={editing}
+            onClose={() => {
+              setEditing(null);
+              setCreating(false);
+            }}
+            onSaved={() => {
+              setEditing(null);
+              setCreating(false);
+              refresh();
+            }}
+          />
         )}
       </div>
-
-      {(creating || editing) && (
-        <TierFormModal
-          target={editing}
-          onClose={() => {
-            setCreating(false);
-            setEditing(null);
-          }}
-          onSaved={() => {
-            setCreating(false);
-            setEditing(null);
-            refresh();
-          }}
-        />
-      )}
-
-      <PoolConfirmDeleteDialog
-        open={Boolean(deleting)}
-        title="Delete tier?"
-        description={
-          deleting ? (
-            <>
-              "<span className="text-zinc-200 font-medium">{deleting.name}</span>" will be permanently removed.
-              Packages that reference this tier will block the deletion.
-            </>
-          ) : ''
-        }
-        onCancel={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (!deleting) return;
-          try {
-            await tiersPoolService.remove(deleting.id);
-          } catch {
-            /* noop */
-          }
-          setDeleting(null);
-          refresh();
-        }}
-      />
     </AdminShell>
   );
 }
 
-function TierFormModal({
-  target,
-  onClose,
-  onSaved,
-}: {
-  target: TierTemplate | null;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [slug, setSlug] = useState(target?.slug ?? '');
-  const [name, setName] = useState(target?.name ?? '');
-  const [tagline, setTagline] = useState(target?.tagline ?? '');
-  const [description, setDescription] = useState(target?.description ?? '');
-  const [status, setStatus] = useState<TierTemplate['status']>(target?.status ?? 'DRAFT');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function save() {
-    if (!slug.trim() || !name.trim()) {
-      setError('Slug and name are required');
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      if (target) {
-        await tiersPoolService.update(target.id, { slug, name, tagline, description, status });
-      } else {
-        await tiersPoolService.create({ slug, name, tagline, description, status });
-      }
-      onSaved();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Save failed');
-    } finally {
-      setBusy(false);
-    }
-  }
-
+function TierCard({ tier, canEdit, onEdit }: { tier: Tier; canEdit: boolean; onEdit: () => void }) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+    <div
+      onClick={canEdit ? onEdit : undefined}
+      className={`relative p-5 rounded-xl border border-surface-border bg-surface-raised ${
+        canEdit ? 'cursor-pointer hover:border-accent-500/40' : ''
+      } transition`}
     >
-      <motion.div
-        initial={{ scale: 0.96, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.96, opacity: 0 }}
-        className="w-full max-w-lg rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-2xl"
-      >
-        <h2 className="text-base font-semibold text-zinc-100 mb-5">
-          {target ? `Edit: ${target.name}` : 'Create Tier'}
-        </h2>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Slug *">
-              <input
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase())}
-                placeholder="professional"
-                className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500"
-              />
-            </Field>
-            <Field label="Name *">
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Professional"
-                className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-              />
-            </Field>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold text-zinc-100">{tier.name}</h3>
+            {tier.isDefault && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/15 text-emerald-400">
+                Default
+              </span>
+            )}
+            {!tier.isActive && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-zinc-700 text-zinc-400">
+                Inactive
+              </span>
+            )}
           </div>
-          <Field label="Tagline">
-            <input
-              value={tagline}
-              onChange={(e) => setTagline(e.target.value)}
-              placeholder="Scale up with advanced capabilities."
-              className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-            />
-          </Field>
-          <Field label="Description">
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm resize-none focus:outline-none focus:border-indigo-500"
-            />
-          </Field>
-          <Field label="Status">
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as TierTemplate['status'])}
-              className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-            >
-              <option value="DRAFT">Draft</option>
-              <option value="PUBLISHED">Published</option>
-              <option value="ARCHIVED">Archived</option>
-            </select>
-          </Field>
-          {error && (
-            <div className="rounded-lg bg-red-950 border border-red-800 px-3 py-2 text-sm text-red-300">
-              {error}
-            </div>
-          )}
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={onClose}
-              className="flex-1 py-2 rounded-lg border border-surface-border text-sm text-zinc-400 hover:text-zinc-200 transition"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={save}
-              disabled={busy}
-              className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition disabled:opacity-50"
-            >
-              {busy ? 'Saving…' : target ? 'Save Changes' : 'Create Tier'}
-            </button>
-          </div>
+          <p className="text-xs text-zinc-500 mt-0.5">{tier.slug}</p>
         </div>
-      </motion.div>
-    </motion.div>
+        <div className="text-right">
+          <div className="text-lg font-bold text-zinc-100">
+            ${typeof tier.monthlyPrice === 'string' ? parseFloat(tier.monthlyPrice).toFixed(0) : tier.monthlyPrice}
+            <span className="text-xs text-zinc-500 font-normal">/mo</span>
+          </div>
+          {tier.trialDays && (
+            <p className="text-[10px] text-emerald-400">{tier.trialDays}-day trial</p>
+          )}
+        </div>
+      </div>
+
+      {tier.tagline && (
+        <p className="text-sm text-zinc-400 mt-3">{tier.tagline}</p>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 mt-4 text-xs">
+        <LimitRow label="Users" value={tier.maxUsers >= 9999 ? '∞' : tier.maxUsers} />
+        <LimitRow label="Agents" value={tier.maxAgents >= 9999 ? '∞' : tier.maxAgents} />
+        <LimitRow label="Storage" value={`${tier.maxStorageGB >= 1000 ? '∞' : `${tier.maxStorageGB} GB`}`} />
+        <LimitRow label="API calls" value={tier.maxApiCalls >= 999999 ? '∞' : tier.maxApiCalls.toLocaleString()} />
+      </div>
+
+      <div className="flex flex-wrap gap-1 mt-4">
+        {tier.allowApiAccess && <FeatureChip>API</FeatureChip>}
+        {tier.allowSso && <FeatureChip>SSO</FeatureChip>}
+        {tier.allowAuditExport && <FeatureChip>Audit Export</FeatureChip>}
+        {tier.allowPredictiveAnalytics && <FeatureChip>Predictive</FeatureChip>}
+        {tier.allowWhiteLabel && <FeatureChip>White Label</FeatureChip>}
+        {tier.allowMultiOffice && <FeatureChip>Multi-Office</FeatureChip>}
+      </div>
+    </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function LimitRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div>
-      <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
+    <div className="flex items-center justify-between rounded-md bg-surface-overlay px-2.5 py-1.5">
+      <span className="text-zinc-500">{label}</span>
+      <span className="text-zinc-200 font-medium">{value}</span>
+    </div>
+  );
+}
+
+function FeatureChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-500/15 text-indigo-300">
+      {children}
+    </span>
+  );
+}
+
+function TierEditModal({
+  tier,
+  onClose,
+  onSaved,
+}: {
+  tier: Tier | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isNew = !tier;
+  const [form, setForm] = useState<Partial<CreateTierPayload>>(
+    tier ?? { slug: '', name: '', monthlyPrice: 0, yearlyPrice: 0 },
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      if (isNew) {
+        await tiersPoolService.create(form as CreateTierPayload);
+      } else if (tier) {
+        await tiersPoolService.update(tier.id, form);
+      }
+      onSaved();
+    } catch (e: any) {
+      setError(e?.response?.data?.message ?? e?.message ?? 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-surface-border bg-surface-raised p-6 space-y-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-100">
+              {isNew ? 'New Tier' : `Edit ${tier!.name}`}
+            </h2>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              All changes are logged to tier_audit_logs for traceability.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
+            ✕
+          </button>
+        </div>
+
+        {error && (
+          <div className="rounded-md bg-red-500/15 border border-red-500/30 text-red-300 text-sm px-3 py-2">
+            {error}
+          </div>
+        )}
+
+        <Section title="Identity">
+          <Grid2>
+            <Field label="Slug" value={form.slug ?? ''} onChange={(v) => setForm({ ...form, slug: v })} disabled={!isNew} />
+            <Field label="Name" value={form.name ?? ''} onChange={(v) => setForm({ ...form, name: v })} />
+            <Field label="Tagline" value={form.tagline ?? ''} onChange={(v) => setForm({ ...form, tagline: v })} wide />
+            <Field label="Icon (lucide name)" value={form.icon ?? ''} onChange={(v) => setForm({ ...form, icon: v })} />
+          </Grid2>
+        </Section>
+
+        <Section title="Pricing">
+          <Grid2>
+            <NumField label="Monthly Price ($)" value={form.monthlyPrice ?? 0} onChange={(v) => setForm({ ...form, monthlyPrice: v })} />
+            <NumField label="Yearly Price ($)" value={form.yearlyPrice ?? 0} onChange={(v) => setForm({ ...form, yearlyPrice: v })} />
+            <SelectField
+              label="Billing Cycle"
+              value={form.billingCycle ?? 'monthly'}
+              options={[{ label: 'Monthly', value: 'monthly' }, { label: 'Yearly', value: 'yearly' }]}
+              onChange={(v) => setForm({ ...form, billingCycle: v as 'monthly' | 'yearly' })}
+            />
+            <NumField label="Trial Days" value={form.trialDays ?? 0} onChange={(v) => setForm({ ...form, trialDays: v })} />
+          </Grid2>
+        </Section>
+
+        <Section title="Limits">
+          <Grid2>
+            <NumField label="Max Users" value={form.maxUsers ?? 0} onChange={(v) => setForm({ ...form, maxUsers: v })} />
+            <NumField label="Max Agents" value={form.maxAgents ?? 0} onChange={(v) => setForm({ ...form, maxAgents: v })} />
+            <NumField label="Max Departments" value={form.maxDepartments ?? 0} onChange={(v) => setForm({ ...form, maxDepartments: v })} />
+            <NumField label="Max Storage (GB)" value={form.maxStorageGB ?? 0} onChange={(v) => setForm({ ...form, maxStorageGB: v })} />
+            <NumField label="Max API Calls" value={form.maxApiCalls ?? 0} onChange={(v) => setForm({ ...form, maxApiCalls: v })} />
+            <NumField label="Max Approval Stages" value={form.maxApprovalStages ?? 1} onChange={(v) => setForm({ ...form, maxApprovalStages: v })} />
+          </Grid2>
+        </Section>
+
+        <Section title="Feature Flags">
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              ['allowCustomBranding', 'Custom Branding'],
+              ['allowApiAccess', 'API Access'],
+              ['allowSso', 'SSO'],
+              ['allowAuditExport', 'Audit Export'],
+              ['allowWhiteLabel', 'White Label'],
+              ['allowPredictiveAnalytics', 'Predictive Analytics'],
+              ['allowCustomDashboards', 'Custom Dashboards'],
+              ['allowMultiOffice', 'Multi-Office'],
+            ].map(([key, label]) => (
+              <label key={key} className="flex items-center gap-2 rounded-md bg-surface-overlay px-3 py-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean((form as Record<string, unknown>)[key])}
+                  onChange={(e) => setForm({ ...form, [key]: e.target.checked })}
+                  className="rounded border-surface-border"
+                />
+                <span className="text-zinc-200">{label}</span>
+              </label>
+            ))}
+          </div>
+        </Section>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-100">
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition"
+          >
+            {saving ? 'Saving…' : isNew ? 'Create' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">{title}</h3>
       {children}
     </div>
+  );
+}
+
+function Grid2({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-2 gap-3">{children}</div>;
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  disabled,
+  wide,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  wide?: boolean;
+}) {
+  return (
+    <label className={`space-y-1 ${wide ? 'col-span-2' : ''}`}>
+      <span className="text-xs text-zinc-400">{label}</span>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="w-full px-3 py-2 rounded-md bg-surface-overlay border border-surface-border text-zinc-100 text-sm focus:outline-none focus:border-accent-500 disabled:opacity-50"
+      />
+    </label>
+  );
+}
+
+function NumField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="space-y-1">
+      <span className="text-xs text-zinc-400">{label}</span>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full px-3 py-2 rounded-md bg-surface-overlay border border-surface-border text-zinc-100 text-sm focus:outline-none focus:border-accent-500"
+      />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { label: string; value: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="space-y-1">
+      <span className="text-xs text-zinc-400">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 rounded-md bg-surface-overlay border border-surface-border text-zinc-100 text-sm focus:outline-none focus:border-accent-500"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

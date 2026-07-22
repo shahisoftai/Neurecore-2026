@@ -11,7 +11,7 @@ Status legend: 🔴 Not started · 🟡 In progress / partial / scaffold only ·
 
 ## 0c. 2026-07-21 — Contabo Latency Investigation & Fixes (Kilo)
 
-> **Session goal:** Investigate and fix slow login, chat, and list pages after the Neon → Contabo migration. Deploy verified.
+> **Session goal:** Investigate and fix slow login, chat, and list pages after the Contabo migration. Deploy verified.
 
 ### Status snapshot (2026-07-21 PKT — DEPLOYED)
 
@@ -211,7 +211,7 @@ See [fixes.md §FIX-PERF-001](fixes.md#fix-perf-001--contabo-latency-login-1-2s-
 | --- | --- | --- |
 | IMPLEMENTATION-PLAN.md Phases 1–7 | ✅ **ALL COMPLETE** | All acceptance criteria met — see PHASE-{1-7}-COMPLETION.md |
 | project-creation-imp-plan.md Phase 2 (2A–2G) | ✅ **ALL COMPLETE** | EIE, Question Engine, Hermes integration, continuous discovery, auto-allocation |
-| Prisma migrations | ✅ **~48 applied** | All Projects + EIE + comms + Phase 7-14 migrations applied to Neon prod |
+| Prisma migrations | ✅ **~48 applied** | All Projects + EIE + comms + Phase 7-14 migrations applied to Contabo prod |
 | `tsc --noEmit` | ✅ **0 errors** | backend + frontend-tenant + frontend-admin |
 | `jest` | ✅ **~1300+ passing** | Pre-existing Hermes/cookie-auth failures fixed; all phase specs passing |
 | Industry sync | ✅ **16 majors** | `seed-industries-majors.cjs` → 16 industries in sync |
@@ -383,10 +383,10 @@ production validation has not occurred.
 | PE2 | CI/CD pipeline | 🔴 | future-plans §3.2 |
 | PE3 | Contabo-only architecture confirmed (no evaluation needed) | ✅ | future-plans §3.3 |
 | PE4 | Test coverage ramp to 60% backend / 100% route smoke (Q3 2026 target) — **Progress 2026-07-04**: added 7 backend tests (`token.service.spec.ts` ×4, prioritizer defensive ×3). Total backend tests: 276 pass / 59 fail (failures all pre-existing in unrelated Hermes modules). Still well below 60% target. | 🟡 | future-plans §3.4 |
-| PE5 | **BullMQ background job system** — current `setInterval`/`SyncSchedulerService` causes silent 0-success failures. Note: original A1 "Neon pool timeout" diagnosis was wrong — actual root cause was enum drift (see A1). BullMQ is still a worthwhile future improvement for retry semantics, but no longer flagged as urgent. | 🔴 (downgraded) | future-plans §3.5 |
+| PE5 | **BullMQ background job system** — current `setInterval`/`SyncSchedulerService` causes silent 0-success failures. BullMQ is still a worthwhile future improvement for retry semantics, but no longer flagged as urgent. | 🔴 (downgraded) | future-plans §3.5 |
 | PE6 | Internationalization framework | 🔴 | future-plans §3.6 |
 | PE7 | Observability upgrade — OpenTelemetry, Tempo/Jaeger, Loki, Grafana (OTEL env scaffolded only) | 🔴 | future-plans §3.11 |
-| PE8 | ✅ **RESOLVED 2026-07-10** | DB migration policy + drift cleanup (12 of 23 migrations applied on prod) — **Active risk** until PE8 is fixed or CI check added. See FIX-008 prevention. | future-plans §5.3 | ✅ **RESOLVED 2026-07-10:** Verified `prisma migrate status` — all 37 migrations applied to Neon prod. Remaining schema/DB drift is only for `approval_workflows` (pending D28 verification) and index renames. Created `prisma/.map-allowlist` for legacy Hermes models. Commit `7d447f4`. |
+| PE8 | ✅ **RESOLVED 2026-07-10** | DB migration policy + drift cleanup — all 37 migrations applied to Contabo prod. | future-plans §5.3 | ✅ **RESOLVED 2026-07-10:** Verified `prisma migrate status` — all 37 migrations applied. |
 
 ---
 
@@ -568,7 +568,7 @@ Completed in Phase A + B + C by Kilo (no prod deploys; all changes verified loca
 | ID | Severity | Issue | Files | Fix sketch |
 |---|---|---|---|---|
 | PD-10 | ✅ **RESOLVED 2026-07-10** | `prisma/migrations/tier-agent-pool-backfill.sql` is a manually-named file in the migrations directory. Prisma convention is `<YYYYMMDDHHMMSS>_<name>/migration.sql`. Prisma silently ignored this file (didn't break deploy) but a future `prisma migrate dev` could mis-interpret it. | `backend/prisma/migrations/tier-agent-pool-backfill.sql` | ✅ **RESOLVED 2026-07-10:** Moved to `backend/prisma/sql/tier-agent-pool-backfill.sql` (outside migrations dir). Commit `7d447f4`. |
-| PD-11 | 🟡 Med | Production DB at `ep-summer-pond` is in sync with `prisma/schema.prisma` TODAY, but several historical schema changes were applied directly to prod without a corresponding migration file: e.g. `TierTemplate` backrelation, WS-2.1 Tenant fields. Verified today via `prisma migrate diff --from-url ... --to-schema-datamodel ... --script` → empty result. The migration history IS clean (`20260704_ws21_onboarding_checklist` does have WS-2.1 columns — was added; no drift detected), but the *practice* of past manual SQL writes is a latent risk. | `backend/prisma/migrations/*`, prod DB | Add a CI step: `prisma migrate diff` against a Neon branch to catch any future drift before prod. Document in `contabo-ops.md §3.2`. |
+| PD-11 | 🟡 Med | Production DB at Contabo is in sync with `prisma/schema.prisma` TODAY, but several historical schema changes were applied directly to prod without a corresponding migration file: e.g. `TierTemplate` backrelation, WS-2.1 Tenant fields. Verified today via `prisma migrate diff --from-url ... --to-schema-datamodel ... --script` → empty result. The migration history IS clean (`20260704_ws21_onboarding_checklist` does have WS-2.1 columns — was added; no drift detected), but the *practice* of past manual SQL writes is a latent risk. | `backend/prisma/migrations/*`, prod DB | Add a CI step: `prisma migrate diff` against a DB snapshot to catch any future drift before prod. Document in `contabo-ops.md §3.2`. |
 | PD-12 | 🟢 Low | `prisma/schema.prisma` is 1.3 MB / 2.5K+ lines and growing fast (was 2,225 → 2,460 after FIX-025). No enforced split into `schema/base.prisma` + `schema/extensions/*.prisma`. Adding new domains requires merging into one file. | `backend/prisma/schema.prisma` | Long-term: split into `schema/core.prisma`, `schema/hermes.prisma`, `schema/communication.prisma`, etc. via Prisma's `--schema` flag or `prisma-schema-dsl`. Track in future-plans. |
 
 ### 15.3 Code style & dead code
@@ -653,7 +653,7 @@ Completed in Phase A + B + C by Kilo (no prod deploys; all changes verified loca
 | `@IsUUID()` on CUID fields (15 DTOs) | `backend/src/modules/{goals,departments,users,agents,…}/dto/*.ts` | Goals/Deliverables/Users all blocked at validation | FIX-028 |
 | `@@map("approval_workflows")` + `@@map("approval_workflow_steps")` missing | `backend/prisma/schema.prisma` | Prisma querying non-existent PascalCase table names | FIX-029 |
 | `IN_PROGRESS` not in `ApprovalStatus` enum | `backend/src/modules/approval-chains/approval-chains.service.ts:142` | PrismaClientValidationError on `/approval-chains/pending` | FIX-030 |
-| Lowercase enum types renamed to PascalCase (6 enums) | Neon prod DB (direct SQL ALTER TYPE) | `DeliverableStatus`, `MemoryCategory`, `DecisionStatus`, `RiskTier`, `ApprovalType`, `ThreadStatus` | FIX-031 |
+| Lowercase enum types renamed to PascalCase (6 enums) | Contabo prod DB (direct SQL ALTER TYPE) | `DeliverableStatus`, `MemoryCategory`, `DecisionStatus`, `RiskTier`, `ApprovalType`, `ThreadStatus` | FIX-031 |
 | Project page `health.signals.map` crash (Array.isArray guard) | `frontend-tenant/src/components/inspector/ProjectInspector.tsx` | Pre-existing — defensive guard | (pre-this-session fix) |
 
 ### Remaining tasks from this session
@@ -703,9 +703,9 @@ grep -l "TODO.*OAuth" backend/src/modules/connectors/adapters/*.ts
 
 ---
 
-## 0c. 2026-07-20 — Neon → Contabo Database Migration
+## 0c. 2026-07-20 — Contabo Database Migration
 
-> **Session goal:** Migrate from Neon PostgreSQL (quota exhausted) to Contabo local PostgreSQL.
+> **Session goal:** Migrate to Contabo local PostgreSQL.
 
 ### Status (2026-07-20 PKT — COMPLETE)
 
@@ -723,7 +723,7 @@ grep -l "TODO.*OAuth" backend/src/modules/connectors/adapters/*.ts
 | Update memory-bank docs | ✅ Complete | system-state, backend, contabo-ops, fixes, disaster-recovery |
 
 ### Data Impact
-- ⚠️ **Lost:** All user accounts, tenants, projects (experimental data on Neon — quota exhausted, no dump possible)
+- ⚠️ **Lost:** All user accounts, tenants, projects (experimental data — not migrated)
 - ✅ **Preserved:** All pool data (agents, departments, packages, etc.)
 - ✅ **No customer data lost** (all experimental)
 

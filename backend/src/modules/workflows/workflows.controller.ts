@@ -18,27 +18,28 @@
  */
 
 import {
-    Controller,
-    Get,
-    Post,
-    Patch,
-    Delete,
-    Body,
-    Param,
-    Query,
-    ParseUUIDPipe,
-    HttpCode,
-    HttpStatus,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiCommon } from '../../common/decorators/api-common.decorator';
 import { WorkflowsService } from './services/workflows.service';
+import { IndustryWorkflowTemplatesService } from './industry-workflow-templates.service';
 import { CreateWorkflowDto, UpdateWorkflowDto } from './dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { PaginatedResponse } from '../../common/responses/paginated.response';
 import { ActionResult } from '../../common/responses/action-result.response';
 import {
-    WorkflowResponseDto,
-    WorkflowExecutionSummaryDto,
+  WorkflowResponseDto,
+  WorkflowExecutionSummaryDto,
 } from './dto/workflow-response.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -48,144 +49,195 @@ import { UserRole, WorkflowStatus } from '@prisma/client';
 @Controller({ path: 'workflows', version: '1' })
 @ApiCommon('workflows')
 export class WorkflowsController {
-    constructor(private readonly workflowsService: WorkflowsService) { }
+  constructor(
+    private readonly workflowsService: WorkflowsService,
+    private readonly workflowTemplatesService: IndustryWorkflowTemplatesService,
+  ) {}
 
-    // ─── Read ────────────────────────────────────────────────────────────────
-
-    @Get()
-    async findAll(
-        @CurrentUser() user: JwtPayload,
-        @Query() pagination: PaginationDto,
-        @Query('status') status?: WorkflowStatus,
-        @Query('search') search?: string,
-    ): Promise<PaginatedResponse<WorkflowResponseDto>> {
-        if (!user.tenantId) throw new Error('Tenant ID required');
-        const { items, total, page, limit } = await this.workflowsService.findAll(
-            user.tenantId,
-            { page: pagination.page, limit: pagination.limit, status, search },
-        );
-        return {
-            items,
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.max(1, Math.ceil(total / limit)),
-            },
-        };
+  /**
+   * GET /api/v1/workflows/industry-templates?group=<industryGroup>&category=<category>
+   * Returns workflow automation templates for a given industry group.
+   * Stage 2 Phase 2D: Per-industry automated workflow definitions.
+   */
+  @Get('industry-templates')
+  async getIndustryTemplates(
+    @Query('group') group: string,
+    @Query('category') category?: string,
+  ) {
+    if (!group) {
+      const templates = this.workflowTemplatesService.getByCategory(
+        'other',
+        category ?? '',
+      );
+      return { industryGroup: 'other', count: templates.length, templates };
     }
+    const templates = category
+      ? this.workflowTemplatesService.getByCategory(group, category)
+      : this.workflowTemplatesService.getTemplateList(group);
+    return { industryGroup: group, count: templates.length, templates };
+  }
 
-    @Get(':id')
-    async findOne(
-        @Param('id', ParseUUIDPipe) id: string,
-        @CurrentUser() user: JwtPayload,
-    ): Promise<WorkflowResponseDto> {
-        if (!user.tenantId) throw new Error('Tenant ID required');
-        return this.workflowsService.findOne(id, user.tenantId);
-    }
+  // ─── Read ────────────────────────────────────────────────────────────────
 
-    @Get(':id/status')
-    async getStatus(
-        @Param('id', ParseUUIDPipe) id: string,
-        @CurrentUser() user: JwtPayload,
-    ): Promise<WorkflowExecutionSummaryDto> {
-        if (!user.tenantId) throw new Error('Tenant ID required');
-        return this.workflowsService.getStatus(id, user.tenantId);
-    }
+  @Get()
+  async findAll(
+    @CurrentUser() user: JwtPayload,
+    @Query() pagination: PaginationDto,
+    @Query('status') status?: WorkflowStatus,
+    @Query('search') search?: string,
+  ): Promise<PaginatedResponse<WorkflowResponseDto>> {
+    if (!user.tenantId) throw new Error('Tenant ID required');
+    const { items, total, page, limit } = await this.workflowsService.findAll(
+      user.tenantId,
+      { page: pagination.page, limit: pagination.limit, status, search },
+    );
+    return {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
 
-    // ─── Write ───────────────────────────────────────────────────────────────
+  @Get(':id')
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<WorkflowResponseDto> {
+    if (!user.tenantId) throw new Error('Tenant ID required');
+    return this.workflowsService.findOne(id, user.tenantId);
+  }
 
-    @Post()
-    @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.ADMIN)
-    async create(
-        @Body() dto: CreateWorkflowDto,
-        @CurrentUser() user: JwtPayload,
-    ): Promise<WorkflowResponseDto> {
-        if (!user.tenantId) throw new Error('Tenant ID required');
-        return this.workflowsService.create(dto, user.tenantId);
-    }
+  @Get(':id/status')
+  async getStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<WorkflowExecutionSummaryDto> {
+    if (!user.tenantId) throw new Error('Tenant ID required');
+    return this.workflowsService.getStatus(id, user.tenantId);
+  }
 
-    @Patch(':id')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.ADMIN)
-    async update(
-        @Param('id', ParseUUIDPipe) id: string,
-        @Body() dto: UpdateWorkflowDto,
-        @CurrentUser() user: JwtPayload,
-    ): Promise<WorkflowResponseDto> {
-        if (!user.tenantId) throw new Error('Tenant ID required');
-        return this.workflowsService.update(id, dto, user.tenantId);
-    }
+  // ─── Write ───────────────────────────────────────────────────────────────
 
-    @Delete(':id')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.ADMIN)
-    @HttpCode(HttpStatus.NO_CONTENT)
-    async remove(
-        @Param('id', ParseUUIDPipe) id: string,
-        @CurrentUser() user: JwtPayload,
-    ): Promise<void> {
-        if (!user.tenantId) throw new Error('Tenant ID required');
-        await this.workflowsService.remove(id, user.tenantId);
-    }
+  @Post()
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
+  async create(
+    @Body() dto: CreateWorkflowDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<WorkflowResponseDto> {
+    if (!user.tenantId) throw new Error('Tenant ID required');
+    return this.workflowsService.create(dto, user.tenantId);
+  }
 
-    // ─── Status transitions ─────────────────────────────────────────────────
+  @Patch(':id')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateWorkflowDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<WorkflowResponseDto> {
+    if (!user.tenantId) throw new Error('Tenant ID required');
+    return this.workflowsService.update(id, dto, user.tenantId);
+  }
 
-    @Patch(':id/activate')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.ADMIN)
-    @HttpCode(HttpStatus.OK)
-    async activate(
-        @Param('id', ParseUUIDPipe) id: string,
-        @CurrentUser() user: JwtPayload,
-    ): Promise<ActionResult<WorkflowResponseDto>> {
-        if (!user.tenantId) throw new Error('Tenant ID required');
-        const workflow = await this.workflowsService.activate(id, user.tenantId);
-        return {
-            success: true,
-            message: 'Workflow activated',
-            data: workflow,
-        };
-    }
+  @Delete(':id')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<void> {
+    if (!user.tenantId) throw new Error('Tenant ID required');
+    await this.workflowsService.remove(id, user.tenantId);
+  }
 
-    @Patch(':id/pause')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.ADMIN)
-    @HttpCode(HttpStatus.OK)
-    async pause(
-        @Param('id', ParseUUIDPipe) id: string,
-        @CurrentUser() user: JwtPayload,
-    ): Promise<ActionResult<WorkflowResponseDto>> {
-        if (!user.tenantId) throw new Error('Tenant ID required');
-        const workflow = await this.workflowsService.pause(id, user.tenantId);
-        return {
-            success: true,
-            message: 'Workflow paused',
-            data: workflow,
-        };
-    }
+  // ─── Status transitions ─────────────────────────────────────────────────
 
-    // ─── Execute ─────────────────────────────────────────────────────────────
+  @Patch(':id/activate')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
+  @HttpCode(HttpStatus.OK)
+  async activate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ActionResult<WorkflowResponseDto>> {
+    if (!user.tenantId) throw new Error('Tenant ID required');
+    const workflow = await this.workflowsService.activate(id, user.tenantId);
+    return {
+      success: true,
+      message: 'Workflow activated',
+      data: workflow,
+    };
+  }
 
-    @Post(':id/execute')
-    @Roles(
-        UserRole.SUPER_ADMIN,
-        UserRole.PLATFORM_ADMIN,
-        UserRole.OWNER,
-        UserRole.ADMIN,
-    )
-    @HttpCode(HttpStatus.ACCEPTED)
-    async execute(
-        @Param('id', ParseUUIDPipe) id: string,
-        @CurrentUser() user: JwtPayload,
-        @Body() body: { input?: Record<string, unknown> },
-    ): Promise<ActionResult<{ executionId: string }>> {
-        if (!user.tenantId) throw new Error('Tenant ID required');
-        const { executionId } = await this.workflowsService.execute(
-            id,
-            user.tenantId,
-            body.input,
-        );
-        return {
-            success: true,
-            message: 'Workflow execution started',
-            data: { executionId },
-        };
-    }
+  @Patch(':id/pause')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
+  @HttpCode(HttpStatus.OK)
+  async pause(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ActionResult<WorkflowResponseDto>> {
+    if (!user.tenantId) throw new Error('Tenant ID required');
+    const workflow = await this.workflowsService.pause(id, user.tenantId);
+    return {
+      success: true,
+      message: 'Workflow paused',
+      data: workflow,
+    };
+  }
+
+  // ─── Execute ─────────────────────────────────────────────────────────────
+
+  @Post(':id/execute')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+  )
+  @HttpCode(HttpStatus.ACCEPTED)
+  async execute(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { input?: Record<string, unknown> },
+  ): Promise<ActionResult<{ executionId: string }>> {
+    if (!user.tenantId) throw new Error('Tenant ID required');
+    const { executionId } = await this.workflowsService.execute(
+      id,
+      user.tenantId,
+      body.input,
+    );
+    return {
+      success: true,
+      message: 'Workflow execution started',
+      data: { executionId },
+    };
+  }
 }

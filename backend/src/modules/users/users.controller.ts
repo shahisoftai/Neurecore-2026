@@ -20,6 +20,8 @@ import {
   UpdateUserDto,
   ChangePasswordDto,
   AssignUserToDepartmentDto,
+  Enable2faDto,
+  Disable2faDto,
 } from './dto/user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';

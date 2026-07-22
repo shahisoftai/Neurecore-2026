@@ -31,7 +31,7 @@
 
 **Other tenants** on the box (NOT neurecore): `app-frontend` (GUV, port 3001/3100), `gfcportal`, `shahisoft-nextjs`, `lifeosa-backend`, `ecoearthshop-backend` (cluster), `cookie-refresher`, `gfcportal`. Don't break these.
 
-**Database:** Contabo Local PostgreSQL 16 (`127.0.0.1:5432`, db `neurecore`, user `neurecore`). **Migrated from Neon on 2026-07-20.**
+**Database:** Contabo Local PostgreSQL 16 (`127.0.0.1:5432`, db `neurecore`, user `neurecore`).
 
 > ⚠️ **PORT NOTE:** The repo's `backend/.env.production` template points to `127.0.0.1:5433` (which is the **`audit-test` Postgres instance** — only 5 users, used for testing). The actual production backend uses port **5432** (host-installed `postgres 16/main`). The live `.env` on Contabo already has the correct URL — do **NOT** copy the repo template without fixing the port.
 **Cache:** Redis on `127.0.0.1:6379` (host-installed). **Note:** Upstash (`lasting-gobbler-72608.upstash.io`) returns `ENOTFOUND` — non-fatal, backend still healthy. As of FIX-PERF-001 (2026-07-21), the JWT blacklist check is fronted by a 30s LRU cache so the Upstash round-trip happens at most once per JTI per minute per worker.
@@ -368,7 +368,7 @@ These were retired on purpose. Reversing the decision requires an explicit go-ah
 | Server unreachable (physical/network) | Contabo support ticket |
 | TLS cert won't renew | Check `/var/log/letsencrypt/`; manual: `certbot renew --force-renewal` |
 | Backend code broken | Rollback via [disaster-recovery.md §3.1](disaster-recovery.md#31-restore-backend) |
-| Database corruption | Neon support; check [disaster-recovery.md §7](disaster-recovery.md#7-database-neon-recovery) |
+| Database corruption | Check PostgreSQL status; check [disaster-recovery.md §7](disaster-recovery.md#7-database-recovery) |
 | Disk full | [disaster-recovery.md §5](disaster-recovery.md#5-disk-full-recovery) |
 
 ---

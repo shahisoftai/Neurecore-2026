@@ -6,15 +6,19 @@ import type { WorkflowStatus } from '@prisma/client';
 export class WorkflowsService {
   private readonly logger = new Logger(WorkflowsService.name);
 
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(options?: { status?: WorkflowStatus; page?: number; limit?: number }, tenantId?: string) {
+  async findAll(
+    options?: { status?: WorkflowStatus; page?: number; limit?: number },
+    tenantId?: string,
+  ) {
     const { status, page = 1, limit = 20 } = options ?? {};
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = { ...(tenantId && tenantId !== '*' ? { tenantId } : {}), ...(status && { status }) };
+    const where: Record<string, unknown> = {
+      ...(tenantId && tenantId !== '*' ? { tenantId } : {}),
+      ...(status && { status }),
+    };
     const [data, total] = await this.prisma.$transaction([
       this.prisma.workflow.findMany({
         where,
@@ -62,13 +66,16 @@ export class WorkflowsService {
     return wf;
   }
 
-  async create(input: {
-    name: string;
-    description?: string;
-    definition?: Record<string, unknown>;
-    config?: Record<string, unknown>;
-    isTemplate?: boolean;
-  }, tenantId: string) {
+  async create(
+    input: {
+      name: string;
+      description?: string;
+      definition?: Record<string, unknown>;
+      config?: Record<string, unknown>;
+      isTemplate?: boolean;
+    },
+    tenantId: string,
+  ) {
     return this.prisma.workflow.create({
       data: {
         name: input.name,
@@ -116,7 +123,10 @@ export class WorkflowsService {
     });
   }
 
-  async execute(id: string, tenantId: string): Promise<{ workflowId: string; taskIds: string[]; status: string }> {
+  async execute(
+    id: string,
+    tenantId: string,
+  ): Promise<{ workflowId: string; taskIds: string[]; status: string }> {
     const wf = await this.findOne(id, tenantId);
 
     if (wf.status === 'DRAFT') {
@@ -155,7 +165,9 @@ export class WorkflowsService {
         this.prisma.task.count({
           where: { workflowId: id, tenantId, status: 'COMPLETED' },
         }),
-        this.prisma.task.count({ where: { workflowId: id, tenantId, status: 'FAILED' } }),
+        this.prisma.task.count({
+          where: { workflowId: id, tenantId, status: 'FAILED' },
+        }),
       ]);
 
     return {

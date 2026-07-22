@@ -330,13 +330,28 @@ enum BillingEventType {
   TAX_APPLIED
 }
 
+// ─── Stage 1: Tenant-Scoped Templates ───────────────────────────────────────
+
+enum TemplateType {
+  CUSTOMER_LIFECYCLE
+  AGENT_ROLE
+  ROUTINE
+  REPORT
+  TASK_TEMPLATE
+  DEPARTMENT_DEFAULT
+
+  @@map("template_type")
+}
+
 // ─── Tier (Phase 6: Unified Tier-Agent Architecture) ───────────────────────
 
 model Tier {
   id          String  @id @default(uuid())
-  name        String // "Free", "Starter", "Pro", "Enterprise"
-  slug        String  @unique // "free", "starter", "pro", "enterprise"
+  name        String // "Basic", "Business", "Professional", "Enterprise"
+  slug        String  @unique // "basic", "business", "professional", "enterprise"
   description String?
+  tagline     String?
+  icon        String?
   isActive    Boolean @default(true)
   isDefault   Boolean @default(false)
   sortOrder   Int     @default(0)
@@ -345,6 +360,13 @@ model Tier {
   monthlyPrice Decimal @default(0) @db.Decimal(10, 2)
   yearlyPrice  Decimal @default(0) @db.Decimal(10, 2)
   currency     String  @default("USD")
+  billingCycle String  @default("monthly") // 'monthly' | 'yearly'
+
+  // Trial / billing
+  trialDays           Int?     // null for paid tiers; 14 for Basic
+  autoDowngradeTierId String?  // if trial expires, downgrade to this tier
+  autoDowngradeTier   Tier?    @relation("TierAutoDowngrade", fields: [autoDowngradeTierId], references: [id], onDelete: SetNull)
+  downgradeTargets    Tier[]   @relation("TierAutoDowngrade")
 
   // Limits
   maxUsers                Int @default(2)
@@ -354,22 +376,78 @@ model Tier {
   maxApiCalls             Int @default(1000)
   maxConversationMessages Int @default(500)
   maxFileSizeMB           Int @default(10)
+  maxApprovalStages       Int @default(1)
 
   // Feature flags
   allowCustomBranding Boolean @default(false)
   allowApiAccess      Boolean @default(false)
   allowSso            Boolean @default(false)
   allowAuditExport    Boolean @default(false)
+  allowWhiteLabel     Boolean @default(false)
+  allowPredictiveAnalytics Boolean @default(false)
+  allowCustomDashboards Boolean @default(false)
+  allowMultiOffice    Boolean @default(false)
 
   // Relations
-  tierAgentPools TierAgentPool[]
-  tenants        Tenant[]
-  tierTemplates  TierTemplate[]
+  tierAgentPools  TierAgentPool[]
+  tenants         Tenant[]
+  packages        Package[]
+  auditLogs       TierAuditLog[]
+  changeRequestsFrom TierChangeRequest[] @relation("TierChangeFrom")
+  changeRequestsTo   TierChangeRequest[] @relation("TierChangeTo")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isDefault])
+  @@index([isActive, sortOrder])
   @@map("tiers")
+}
+
+// ─── Tier Audit Log (TIER-SYSTEM-CONCEPT.md §6.3) ─────────────────────────
+// Every change to a Tier row is recorded here for traceability and rollback.
+
+model TierAuditLog {
+  id        String   @id @default(uuid())
+  tierId    String
+  tier      Tier     @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  changedBy String   // userId of super admin (or 'system')
+  action    String   // 'create' | 'update' | 'activate' | 'deactivate' | 'set_default' | 'soft_delete'
+  beforeJson Json?
+  afterJson  Json?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([tierId, createdAt])
+  @@index([changedBy])
+  @@map("tier_audit_logs")
+}
+
+// ─── Tier Change Request (TIER-SYSTEM-CONCEPT.md §6.3) ────────────────────
+// Tracks pending tier upgrades/downgrades for approval workflow.
+// Upgrades are immediate; downgrades require admin approval and schedule.
+
+model TierChangeRequest {
+  id          String    @id @default(uuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fromTierId  String
+  fromTier    Tier      @relation("TierChangeFrom", fields: [fromTierId], references: [id])
+  toTierId    String
+  toTier      Tier      @relation("TierChangeTo", fields: [toTierId], references: [id])
+  requestedBy String    // userId
+  approvedBy  String?
+  status      String    @default("PENDING") // PENDING | APPROVED | REJECTED | COMPLETED | CANCELLED
+  direction   String    // 'UPGRADE' | 'DOWNGRADE' | 'SAME_TIER'
+  effectiveAt DateTime?
+  reason      String?
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId, status])
+  @@index([status, effectiveAt])
+  @@map("tier_change_requests")
 }
 
 // ─── TierAgentPool (Phase 6: Agent allocation per tier) ─────────────────────
@@ -412,6 +490,10 @@ model Tenant {
   logoUrl  String?
   website  String?
   industry String?
+  // INDUSTRY-GROUPS-CONCEPT.md — denormalised industryGroup for fast filtering.
+  // Backfilled from Industry.industryGroup when Industry is set. Not a hard FK
+  // because Industry is a pool row (Phase 10), not a tenant-runtime concept.
+  industryGroup String?
   settings Json         @default("{}")
   metadata Json         @default("{}")
 
@@ -559,6 +641,12 @@ model Tenant {
   decisionEvaluations  DecisionEvaluation[]
   serviceIdentities    ServiceIdentity[]
   serviceTokens        ServiceToken[]
+
+  // Tier change requests
+  tierChangeRequests   TierChangeRequest[]
+
+  // Stage 1: Tenant-scoped templates
+  tenantTemplates TenantTemplate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -3825,13 +3913,8 @@ enum IndustryStatus {
   @@map("industry_status")
 }
 
-enum TierTemplateStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
-
-  @@map("tier_template_status")
-}
+// TierTemplateStatus enum + tier_templates table removed in Phase 3 of
+// TIER-SYSTEM-CONCEPT.md (single Tier table is now the source of truth).
 
 enum FeatureCategory {
   INTEGRATION
@@ -3873,40 +3956,25 @@ model Industry {
   status      IndustryStatus @default(ACTIVE)
   sortOrder   Int            @default(0)
 
+  // INDUSTRY-GROUPS-CONCEPT.md — Industry Group (8 groups, slug-based)
+  // Nullable during Phase 1 backfill transition; required after verify.
+  industryGroup  String?
+  groupSortOrder Int     @default(0)
+
   packages Package[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([industryGroup, groupSortOrder])
   @@index([status, sortOrder])
   @@map("industries")
 }
 
-// ─── Pool #4: Tier Templates (commercial offering) ───────────────────────
-// Distinct from the billing `Tier` model. A TierTemplate represents a
-// commercial offering (Starter / Professional / Enterprise / Government)
-// and may map to one or more billing `Tier` rows.
-
-model TierTemplate {
-  id          String             @id @default(uuid())
-  slug        String             @unique
-  name        String
-  tagline     String?
-  description String?            @db.Text
-  status      TierTemplateStatus @default(DRAFT)
-  sortOrder   Int                @default(0)
-
-  defaultBillingTierId String?
-  defaultBillingTier   Tier?   @relation(fields: [defaultBillingTierId], references: [id], onDelete: SetNull)
-
-  packages Package[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status, sortOrder])
-  @@map("tier_templates")
-}
+// ─── Pool #4: Tiers (commercial offering) — single source of truth ───────
+// TierTemplate removed in Phase 3 of TIER-SYSTEM-CONCEPT.md.
+// The Tier model above (defined at line ~335) is now the sole anchor for
+// both Package composition and tenant billing.
 
 // ─── Pool #5: Features ───────────────────────────────────────────────────
 
@@ -3946,8 +4014,10 @@ model Package {
   industryId String
   industry   Industry @relation(fields: [industryId], references: [id], onDelete: Restrict)
 
-  tierTemplateId String
-  tierTemplate   TierTemplate @relation(fields: [tierTemplateId], references: [id], onDelete: Restrict)
+  // TIER-SYSTEM-CONCEPT.md — single Tier table is source of truth.
+  // Required after Phase 3 (was nullable during Phase 2 backfill).
+  tierId String
+  tier   Tier   @relation(fields: [tierId], references: [id], onDelete: Restrict)
 
   // M2M composition — pool entities only (no tenant-runtime rows)
   departments DepartmentTemplate[] @relation("PackageDepartments")
@@ -3960,8 +4030,8 @@ model Package {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([industryId, tierTemplateId, slug])
-  @@index([industryId, tierTemplateId])
+  @@unique([industryId, tierId, slug])
+  @@index([industryId, tierId])
   @@index([status])
   @@map("packages")
 }
@@ -5134,4 +5204,31 @@ model ChatMessage {
   @@index([conversationId, createdAt])
   @@index([tenantId, userId, createdAt])
   @@map("chat_messages")
+}
+
+// ─── Stage 1: Tenant-Scoped Templates ─────────────────────────────────────
+// TenantTemplate follows the same cloneable pattern as ProjectType:
+// tenantId IS NULL = system seed; non-NULL = tenant-owned copy.
+
+model TenantTemplate {
+  id           String       @id @default(uuid())
+  tenantId     String?
+  tenant       Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slug         String
+  name         String
+  description  String?
+  templateType TemplateType
+  industrySlug String?
+  config       Json
+  isActive     Boolean      @default(true)
+  sourceSeedId String?
+  version      Int          @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, slug, templateType])
+  @@index([tenantId, templateType, industrySlug])
+  @@index([templateType, industrySlug])
+  @@map("tenant_templates")
 }

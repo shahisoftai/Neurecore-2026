@@ -1,9 +1,17 @@
-import { Injectable, Logger, NotFoundException, Inject, BadRequestException, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  Inject,
+  BadRequestException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { Prisma } from '@prisma/client';
 import type { TaskPriority, TaskStatus } from '@prisma/client';
 import { EVENT_TRANSPORT } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
 import type { IEnterpriseEventTransport } from '../../enterprise-events/contracts/enterprise-event-transport.interface';
+import { TenantTemplateRuntimeService } from '../../tenant-templates/tenant-template-runtime.service';
 
 export const GOALS_SERVICE = 'GOALS_SERVICE';
 
@@ -20,15 +28,20 @@ export class TasksService {
     @Optional()
     @Inject(EVENT_TRANSPORT)
     private readonly transport?: IEnterpriseEventTransport,
+    @Optional()
+    private readonly templateRuntime?: TenantTemplateRuntimeService,
   ) {}
 
-  async findAll(options?: {
-    status?: TaskStatus;
-    agentId?: string;
-    goalId?: string;
-    page?: number;
-    limit?: number;
-  }, tenantId?: string) {
+  async findAll(
+    options?: {
+      status?: TaskStatus;
+      agentId?: string;
+      goalId?: string;
+      page?: number;
+      limit?: number;
+    },
+    tenantId?: string,
+  ) {
     const { status, agentId, goalId, page = 1, limit = 20 } = options ?? {};
     const skip = (page - 1) * limit;
 
@@ -65,19 +78,23 @@ export class TasksService {
     return task;
   }
 
-  async create(input: {
-    title: string;
-    description?: string;
-    priority?: TaskPriority;
-    input?: Record<string, unknown>;
-    agentId?: string | null;
-    workflowId?: string;
-    scheduledAt?: string;
-    createdById?: string | null;
-    goalId?: string | null;
-    acceptanceCriteria?: string;
-    expectedOutput?: Record<string, unknown>;
-  }, tenantId: string) {
+  async create(
+    input: {
+      title: string;
+      description?: string;
+      priority?: TaskPriority;
+      input?: Record<string, unknown>;
+      agentId?: string | null;
+      workflowId?: string;
+      scheduledAt?: string;
+      createdById?: string | null;
+      goalId?: string | null;
+      acceptanceCriteria?: string;
+      expectedOutput?: Record<string, unknown>;
+      projectId?: string;
+    },
+    tenantId: string,
+  ) {
     return this.prisma.task.create({
       data: {
         title: input.title,
@@ -96,6 +113,7 @@ export class TasksService {
         expectedOutput: input.expectedOutput
           ? (input.expectedOutput as Prisma.InputJsonValue)
           : Prisma.JsonNull,
+        projectId: input.projectId,
       },
     });
   }
@@ -134,11 +152,7 @@ export class TasksService {
    * Update task status. When a task is completed, this triggers
    * goal progress recalculation if the task has a goalId.
    */
-  async updateStatus(
-    id: string,
-    status: TaskStatus,
-    tenantId: string,
-  ) {
+  async updateStatus(id: string, status: TaskStatus, tenantId: string) {
     await this.assertOwnership(id, tenantId);
 
     const existing = await this.prisma.task.findFirst({
@@ -160,7 +174,9 @@ export class TasksService {
     });
 
     if (status === 'COMPLETED' && updated.goalId) {
-      this.logger.debug(`Task ${id} completed — goal ${updated.goalId} progress recalculation queued`);
+      this.logger.debug(
+        `Task ${id} completed — goal ${updated.goalId} progress recalculation queued`,
+      );
     }
 
     if (status === 'COMPLETED' && this.eventBus) {
@@ -249,7 +265,10 @@ export class TasksService {
    * either has no completedAt timestamp, or was completed after the due date.
    * For now (no dueDate column), returns non-completed tasks as a proxy.
    */
-  async findOverdue(tenantId: string, options?: { departmentId?: string; limit?: number }) {
+  async findOverdue(
+    tenantId: string,
+    options?: { departmentId?: string; limit?: number },
+  ) {
     const { departmentId, limit = 50 } = options ?? {};
     return this.prisma.task.findMany({
       where: {
@@ -266,7 +285,11 @@ export class TasksService {
    * Bulk update status for multiple tasks. Each transition may emit events.
    */
   async bulkUpdateStatus(ids: string[], status: TaskStatus, tenantId: string) {
-    const results: Array<{ id: string; status: 'updated' | 'failed'; error?: string }> = [];
+    const results: Array<{
+      id: string;
+      status: 'updated' | 'failed';
+      error?: string;
+    }> = [];
     for (const id of ids) {
       try {
         await this.updateStatus(id, status, tenantId);
@@ -286,14 +309,21 @@ export class TasksService {
    * Clone a task to create a new task with the same properties (minus status,
    * timestamps, and IDs). Useful for templating.
    */
-  async clone(sourceId: string, tenantId: string, overrides?: { assigneeId?: string; title?: string }) {
+  async clone(
+    sourceId: string,
+    tenantId: string,
+    overrides?: { assigneeId?: string; title?: string },
+  ) {
     const source = await this.findOne(sourceId, tenantId);
     return this.create(
       {
         title: overrides?.title ?? `${source.title} (Copy)`,
         description: source.description ?? undefined,
         priority: source.priority,
-        agentId: overrides?.assigneeId !== undefined ? overrides.assigneeId : source.agentId,
+        agentId:
+          overrides?.assigneeId !== undefined
+            ? overrides.assigneeId
+            : source.agentId,
         input: (source.input as Record<string, unknown> | null) ?? {},
         goalId: source.goalId ?? undefined,
       },
@@ -304,7 +334,11 @@ export class TasksService {
   /**
    * Find tasks assigned to a specific agent (used by getMyTasks).
    */
-  async findByAgent(agentId: string, tenantId: string, options?: { status?: TaskStatus; limit?: number }) {
+  async findByAgent(
+    agentId: string,
+    tenantId: string,
+    options?: { status?: TaskStatus; limit?: number },
+  ) {
     return this.prisma.task.findMany({
       where: {
         tenantId,
@@ -314,6 +348,92 @@ export class TasksService {
       take: options?.limit ?? 50,
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /**
+   * Stage 1 §4.7 — Create a single Task from a TASK_TEMPLATE definition.
+   * If the tenant has a matching template, its description + subtasks seed
+   * the task. Otherwise falls back to the supplied defaults.
+   */
+  async createFromTemplate(
+    tenantId: string,
+    templateSlug: string,
+    overrides?: {
+      agentId?: string | null;
+      projectId?: string;
+      stageId?: string;
+      createdById?: string | null;
+    },
+  ) {
+    if (!this.templateRuntime) {
+      throw new BadRequestException('Tenant template runtime not available');
+    }
+    const tpls =
+      await this.templateRuntime.listTaskTemplatesForIndustry(tenantId);
+    const tpl = tpls.find((t) => t.slug === templateSlug);
+    if (!tpl) {
+      throw new NotFoundException(
+        `Task template '${templateSlug}' not found for tenant ${tenantId}`,
+      );
+    }
+    return this.create(
+      {
+        title: tpl.name,
+        description: tpl.description,
+        agentId: overrides?.agentId ?? null,
+        workflowId: undefined,
+        createdById: overrides?.createdById ?? null,
+        goalId: null,
+        input: {
+          subtasks: tpl.subtasks,
+          assignToRole: tpl.assignToRole,
+          estimatedDuration: tpl.estimatedDuration,
+          sourceTemplateId: tpl.sourceTemplateId,
+        },
+      },
+      tenantId,
+    );
+  }
+
+  /**
+   * Stage 1 §4.7 — Seed a project's initial task list from all active
+   * TASK_TEMPLATE templates matching the tenant's industry. Called by the
+   * project creation flow when `seedTasksFromTemplates=true`.
+   */
+  async seedProjectTasksFromTemplates(
+    tenantId: string,
+    projectId: string,
+    options?: { industrySlug?: string | null; createdById?: string | null },
+  ) {
+    if (!this.templateRuntime) return [];
+    const tpls = await this.templateRuntime.listTaskTemplatesForIndustry(
+      tenantId,
+      options?.industrySlug,
+    );
+    if (tpls.length === 0) return [];
+    const created: unknown[] = [];
+    for (const tpl of tpls) {
+      const task = await this.create(
+        {
+          title: tpl.name,
+          description: tpl.description,
+          projectId,
+          createdById: options?.createdById ?? null,
+          input: {
+            subtasks: tpl.subtasks,
+            assignToRole: tpl.assignToRole,
+            estimatedDuration: tpl.estimatedDuration,
+            sourceTemplateId: tpl.sourceTemplateId,
+          },
+        },
+        tenantId,
+      );
+      created.push(task);
+    }
+    this.logger.log(
+      `Seeded ${created.length} tasks from templates for project ${projectId}`,
+    );
+    return created;
   }
 
   private async assertOwnership(id: string, tenantId: string) {

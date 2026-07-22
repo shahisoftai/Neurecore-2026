@@ -17,6 +17,8 @@ import type {
 } from './interfaces/onboarding.interface';
 import { ChecklistService } from './checklist/checklist.service';
 import { ProjectTypeAllocatorService } from '../project-types/allocators/project-type-allocator.service';
+import { TenantTemplateSeederService } from '../tenant-templates/tenant-template-seeder.service';
+import { DepartmentsService } from '../departments/services/departments.service';
 
 interface DeptTemplateStructureItem {
   name: string;
@@ -36,6 +38,10 @@ export class OnboardingService implements IOnboardingService {
     private readonly checklist: ChecklistService,
     @Optional()
     private readonly allocator?: ProjectTypeAllocatorService,
+    @Optional()
+    private readonly templateSeeder?: TenantTemplateSeederService,
+    @Optional()
+    private readonly departmentsService?: DepartmentsService,
   ) {}
 
   async getState(tenantId: string): Promise<OnboardingStatePayload> {
@@ -93,6 +99,20 @@ export class OnboardingService implements IOnboardingService {
         updateData.logoUrl = partial.company.logoUrl;
       if (partial.company.industry !== undefined)
         updateData.industry = partial.company.industry;
+    }
+
+    // INDUSTRY-GROUPS-CONCEPT.md §5 — auto-derive industryGroup from the
+    // selected Industry. Keeps Tenant.industryGroup in sync for fast rail
+    // branching without forcing the frontend to send both fields.
+    if (
+      updateData.industry !== undefined &&
+      typeof updateData.industry === 'string'
+    ) {
+      const industry = await this.prisma.industry.findUnique({
+        where: { slug: updateData.industry },
+        select: { industryGroup: true },
+      });
+      updateData.industryGroup = industry?.industryGroup ?? null;
     }
     // WS-2.1: persist timezone + currency (was silently dropped pre-PR-2).
     if (partial.timezone !== undefined) updateData.timezone = partial.timezone;
@@ -398,6 +418,46 @@ export class OnboardingService implements IOnboardingService {
       } catch (err) {
         this.logger.error(
           `ProjectType allocation failed for tenant ${tenantId}: ` +
+            `${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    // Stage 1: Seed tenant-scoped templates from industry system seeds.
+    // Idempotent — on re-run, existing clones are skipped.
+    // Failure here does NOT abort onboarding (wrapped in try/catch).
+    if (this.templateSeeder && tenant.industry) {
+      try {
+        const templateCount = await this.templateSeeder.seedForTenant(
+          tenantId,
+          tenant.industry,
+        );
+        this.logger.log(
+          `Seeded ${templateCount} templates for tenant ${tenantId} (industry: ${tenant.industry})`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `Template seeding failed for tenant ${tenantId}: ` +
+            `${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    // Stage 1 §4.7: Auto-create departments from DEPARTMENT_DEFAULT template
+    // (Stage 1 tenant-owned template path — runs after the legacy
+    // DepartmentTemplate path above so the existing behaviour is preserved).
+    if (this.departmentsService) {
+      try {
+        const result =
+          await this.departmentsService.autoCreateFromTemplate(tenantId);
+        if (result.created > 0 || result.skipped > 0) {
+          this.logger.log(
+            `Department auto-create from template for tenant ${tenantId}: created=${result.created} skipped=${result.skipped}`,
+          );
+        }
+      } catch (err) {
+        this.logger.error(
+          `Department auto-create from template failed for tenant ${tenantId}: ` +
             `${err instanceof Error ? err.message : String(err)}`,
         );
       }

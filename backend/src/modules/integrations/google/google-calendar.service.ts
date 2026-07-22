@@ -28,11 +28,13 @@ export class GoogleCalendarService {
   private readonly logger = new Logger(GoogleCalendarService.name);
   private readonly CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
-  constructor(
-    private readonly authClient: GoogleAuthClient,
-  ) {}
+  constructor(private readonly authClient: GoogleAuthClient) {}
 
-  private async authFetch(url: string, options: RequestInit = {}, tenantId: string): Promise<Response> {
+  private async authFetch(
+    url: string,
+    options: RequestInit = {},
+    tenantId: string,
+  ): Promise<Response> {
     const accessToken = await this.authClient.getAccessToken(tenantId);
     if (!accessToken) {
       throw new BadRequestException('Google is not connected for this tenant');
@@ -60,7 +62,13 @@ export class GoogleCalendarService {
       q?: string;
     } = {},
   ): Promise<CalendarEvent[]> {
-    const { calendarId = 'primary', maxResults = 25, timeMin, timeMax, q } = options;
+    const {
+      calendarId = 'primary',
+      maxResults = 25,
+      timeMin,
+      timeMax,
+      q,
+    } = options;
     const params = new URLSearchParams();
     params.set('maxResults', String(maxResults));
     params.set('singleEvents', 'true');
@@ -130,7 +138,11 @@ export class GoogleCalendarService {
   /**
    * Delete a calendar event
    */
-  async deleteEvent(eventId: string, tenantId: string, calendarId = 'primary'): Promise<void> {
+  async deleteEvent(
+    eventId: string,
+    tenantId: string,
+    calendarId = 'primary',
+  ): Promise<void> {
     const res = await this.authFetch(
       `${this.CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
       { method: 'DELETE' },
@@ -145,7 +157,9 @@ export class GoogleCalendarService {
   /**
    * List available calendars
    */
-  async listCalendars(tenantId: string): Promise<{ id: string; summary: string; primary: boolean }[]> {
+  async listCalendars(
+    tenantId: string,
+  ): Promise<{ id: string; summary: string; primary: boolean }[]> {
     const res = await this.authFetch(
       `${this.CALENDAR_API}/users/me/calendarList`,
       {},

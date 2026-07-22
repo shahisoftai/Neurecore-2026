@@ -21,7 +21,11 @@ export class GoogleDocsService {
 
   constructor(private readonly authClient: GoogleAuthClient) {}
 
-  private async authFetch(url: string, options: RequestInit = {}, tenantId: string): Promise<Response> {
+  private async authFetch(
+    url: string,
+    options: RequestInit = {},
+    tenantId: string,
+  ): Promise<Response> {
     const accessToken = await this.authClient.getAccessToken(tenantId);
     if (!accessToken) {
       throw new BadRequestException('Google is not connected for this tenant');
@@ -34,7 +38,10 @@ export class GoogleDocsService {
     return fetch(url, { ...options, headers });
   }
 
-  async createDocument(tenantId: string, input: CreateDocInput): Promise<GoogleDoc> {
+  async createDocument(
+    tenantId: string,
+    input: CreateDocInput,
+  ): Promise<GoogleDoc> {
     const body: Record<string, unknown> = {
       name: input.title,
       mimeType: 'application/vnd.google-apps.document',
@@ -56,21 +63,34 @@ export class GoogleDocsService {
       throw new BadRequestException('Failed to create Google Doc');
     }
 
-    const file = (await res.json()) as { id: string; name: string; mimeType: string; webViewLink?: string };
+    const file = (await res.json()) as {
+      id: string;
+      name: string;
+      mimeType: string;
+      webViewLink?: string;
+    };
 
     if (input.content) {
       await this.appendContent(tenantId, file.id, input.content);
     }
 
-    this.logger.log(`Google Doc "${input.title}" created (id=${file.id}) for tenant ${tenantId}`);
+    this.logger.log(
+      `Google Doc "${input.title}" created (id=${file.id}) for tenant ${tenantId}`,
+    );
     return {
       documentId: file.id,
       title: file.name,
-      url: file.webViewLink ?? `https://docs.google.com/document/d/${file.id}/edit`,
+      url:
+        file.webViewLink ??
+        `https://docs.google.com/document/d/${file.id}/edit`,
     };
   }
 
-  private async appendContent(tenantId: string, documentId: string, text: string): Promise<void> {
+  private async appendContent(
+    tenantId: string,
+    documentId: string,
+    text: string,
+  ): Promise<void> {
     const requests = [
       {
         insertText: {
@@ -88,11 +108,16 @@ export class GoogleDocsService {
 
     if (!res.ok) {
       const err = await res.text().catch(() => 'unknown');
-      this.logger.warn(`Docs appendContent failed for ${documentId}: ${res.status} ${err}`);
+      this.logger.warn(
+        `Docs appendContent failed for ${documentId}: ${res.status} ${err}`,
+      );
     }
   }
 
-  async getDocument(tenantId: string, documentId: string): Promise<Record<string, unknown>> {
+  async getDocument(
+    tenantId: string,
+    documentId: string,
+  ): Promise<Record<string, unknown>> {
     const res = await this.authFetch(
       `${this.DOCS_API}/documents/${documentId}`,
       {},

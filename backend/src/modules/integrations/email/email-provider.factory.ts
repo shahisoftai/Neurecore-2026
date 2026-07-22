@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaIntegrationCredentialStore } from '../services/integration-credential.store';
 import { IntegrationProvider } from '@prisma/client';
-import type { IEmailProvider, EmailProviderName } from './email-provider.interface';
+import type {
+  IEmailProvider,
+  EmailProviderName,
+} from './email-provider.interface';
 import { GmailEmailProvider } from './gmail-email.provider';
 import { BrevoEmailProvider } from './brevo-email.provider';
 

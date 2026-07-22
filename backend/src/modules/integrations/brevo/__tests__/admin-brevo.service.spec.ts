@@ -7,23 +7,25 @@ import type { ConfigService } from '@nestjs/config';
 import { BadRequestException } from '@nestjs/common';
 import { IntegrationProvider } from '@prisma/client';
 
-function buildService(opts: {
-  masterKey?: string;
-  webhookSecret?: string;
-  tenants?: Array<{
-    id: string;
-    name: string;
-    brevoSenderEmail?: string | null;
-    brevoSenderName?: string | null;
-    brevoReplyToEmail?: string | null;
-  }>;
-  credentials?: Array<{
-    tenantId: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-  }>;
-  usage?: Array<{ tenantId: string; date: Date; sentCount: number }>;
-} = {}) {
+function buildService(
+  opts: {
+    masterKey?: string;
+    webhookSecret?: string;
+    tenants?: Array<{
+      id: string;
+      name: string;
+      brevoSenderEmail?: string | null;
+      brevoSenderName?: string | null;
+      brevoReplyToEmail?: string | null;
+    }>;
+    credentials?: Array<{
+      tenantId: string;
+      createdAt?: Date;
+      updatedAt?: Date;
+    }>;
+    usage?: Array<{ tenantId: string; date: Date; sentCount: number }>;
+  } = {},
+) {
   const tenantsList = opts.tenants ?? [
     { id: 't1', name: 'Acme' },
     { id: 't2', name: 'Bravo' },
@@ -35,8 +37,8 @@ function buildService(opts: {
   const usageList = opts.usage ?? [];
 
   const tenantRow = (id: string) => tenantsList.find((t) => t.id === id);
-  const tenantFindUnique = jest.fn(async (args: { where: { id: string } }) =>
-    tenantRow(args.where.id) ?? null,
+  const tenantFindUnique = jest.fn(
+    async (args: { where: { id: string } }) => tenantRow(args.where.id) ?? null,
   );
   const tenantFindMany = jest.fn(async () => tenantsList);
   const tenantUpdate = jest.fn(async () => ({}));
@@ -98,10 +100,7 @@ function buildService(opts: {
   const config = {
     get: jest.fn((k: string) => {
       if (k === 'BREVO_MASTER_API_KEY') return opts.masterKey ?? 'xkeysib';
-      if (
-        k === 'BREVO_WEBHOOK_SECRET' ||
-        k === 'BREVO_WEBHOOK_SIGNING_SECRET'
-      )
+      if (k === 'BREVO_WEBHOOK_SECRET' || k === 'BREVO_WEBHOOK_SIGNING_SECRET')
         return opts.webhookSecret ?? 'shh';
       if (k === 'BREVO_DAILY_LIMIT') return 300;
       if (k === 'EMAIL_FROM_ADDRESS') return 'hello@platform.test';
@@ -113,7 +112,13 @@ function buildService(opts: {
   } as unknown as ConfigService;
 
   return {
-    svc: new AdminBrevoService(prisma, credentials, emailService, config, suppressions),
+    svc: new AdminBrevoService(
+      prisma,
+      credentials,
+      emailService,
+      config,
+      suppressions,
+    ),
     prisma,
     credentials,
     emailService,
@@ -291,9 +296,8 @@ describe('AdminBrevoService', () => {
           count: jest.Mock;
         }
       ).findMany = findMany;
-      (
-        prisma.brevoWebhookEvent as unknown as { count: jest.Mock }
-      ).count = count;
+      (prisma.brevoWebhookEvent as unknown as { count: jest.Mock }).count =
+        count;
       await svc.listEvents({
         tenantId: 't1',
         eventType: 'DELIVERED',
@@ -324,9 +328,8 @@ describe('AdminBrevoService', () => {
       (
         prisma.brevoWebhookEvent as unknown as { findMany: jest.Mock }
       ).findMany = findMany;
-      (
-        prisma.brevoWebhookEvent as unknown as { count: jest.Mock }
-      ).count = jest.fn(async () => 0);
+      (prisma.brevoWebhookEvent as unknown as { count: jest.Mock }).count =
+        jest.fn(async () => 0);
       await svc.listEvents({ limit: 9999, offset: -10 });
       const args = (findMany.mock.calls as unknown[][])[0]?.[0] as {
         take: number;
@@ -351,7 +354,9 @@ describe('AdminBrevoService', () => {
       jest
         .spyOn(global, 'fetch')
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({ email: 'platform@x' }), { status: 200 }),
+          new Response(JSON.stringify({ email: 'platform@x' }), {
+            status: 200,
+          }),
         );
       const h = await svc.healthCheck();
       expect(h.ok).toBe(true);

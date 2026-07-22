@@ -46,7 +46,15 @@ export type ItemId =
     | 'activity'
     | 'finance'
     | 'intelligence'
-    | 'settings';
+    | 'settings'
+    | 'engagements' | 'loans' | 'portfolios' | 'audits' | 'tax' | 'payroll' | 'compliance' | 'risk'
+    | 'appointments' | 'medical-records' | 'pharmacy' | 'laboratory'
+    | 'programs' | 'grants' | 'field-operations' | 'cases' | 'licenses' | 'inspections'
+    | 'tickets' | 'releases' | 'contracts' | 'knowledge'
+    | 'sites' | 'production' | 'work-orders' | 'equipment' | 'shipments' | 'fleet' | 'warehouses'
+    | 'products' | 'orders' | 'inventory' | 'stores' | 'promotions' | 'campaigns' | 'content'
+    | 'farms' | 'fields' | 'livestock'
+    | 'operations' | 'assets' | 'documents' | 'custom';
 
 interface RailPreferencesState {
     hiddenSections: SectionId[];
@@ -108,9 +116,17 @@ export const useRailPreferencesStore = create<RailPreferencesState>()(
                     : currentState.hiddenSections;
                 const validItems: ItemId[] = [
                     'home', 'departments', 'org-chart', 'tasks', 'workflows', 'routines', 'goals', 'projects',
-                    'marketplace', 'agents', 'connectors', 'ai-skills',
+                    'customers', 'marketplace', 'agents', 'connectors', 'ai-skills',
                     'service-desk', 'inbox', 'approvals', 'activity',
                     'finance', 'intelligence', 'settings',
+                    'engagements', 'loans', 'portfolios', 'audits', 'tax', 'payroll', 'compliance', 'risk',
+                    'appointments', 'medical-records', 'pharmacy', 'laboratory',
+                    'programs', 'grants', 'field-operations', 'cases', 'licenses', 'inspections',
+                    'tickets', 'releases', 'contracts', 'knowledge',
+                    'sites', 'production', 'work-orders', 'equipment', 'shipments', 'fleet', 'warehouses',
+                    'products', 'orders', 'inventory', 'stores', 'promotions', 'campaigns', 'content',
+                    'farms', 'fields', 'livestock',
+                    'operations', 'assets', 'documents', 'custom',
                 ];
                 const sanitisedItems = Array.isArray(ps.hiddenItems)
                     ? ps.hiddenItems.filter((x): x is ItemId => typeof x === 'string' && validItems.includes(x as ItemId))

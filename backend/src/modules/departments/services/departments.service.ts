@@ -1,6 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Optional,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import type { DepartmentStatus } from '@prisma/client';
+import { TenantTemplateRuntimeService } from '../../tenant-templates/tenant-template-runtime.service';
 
 export interface CreateDeptInput {
   name: string;
@@ -10,10 +16,20 @@ export interface CreateDeptInput {
   parentId?: string;
 }
 
+export interface AutoCreateFromTemplateResult {
+  created: number;
+  skipped: number;
+  departments: Array<{ id: string; name: string; skipped?: boolean }>;
+}
+
 @Injectable()
 export class DepartmentsService {
+  private readonly logger = new Logger(DepartmentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
+    @Optional()
+    private readonly templateRuntime?: TenantTemplateRuntimeService,
   ) {}
 
   async findAll(tenantId: string) {
@@ -61,5 +77,66 @@ export class DepartmentsService {
   async remove(id: string, tenantId: string) {
     await this.findOne(id, tenantId);
     await this.prisma.department.delete({ where: { id } });
+  }
+
+  /**
+   * Stage 1 §4.7 — Create the full department structure described by a
+   * tenant's DEPARTMENT_DEFAULT template. Idempotent — skips departments
+   * whose name already exists for the tenant.
+   */
+  async autoCreateFromTemplate(
+    tenantId: string,
+    templateSlug?: string,
+  ): Promise<AutoCreateFromTemplateResult> {
+    if (!this.templateRuntime) {
+      return { created: 0, skipped: 0, departments: [] };
+    }
+    const tpl = await this.templateRuntime.resolveDepartmentTemplate(
+      tenantId,
+      templateSlug,
+    );
+    if (!tpl || tpl.departments.length === 0) {
+      return { created: 0, skipped: 0, departments: [] };
+    }
+
+    const existing = await this.prisma.department.findMany({
+      where: { tenantId },
+      select: { id: true, name: true },
+    });
+    const existingByName = new Set(existing.map((d) => d.name));
+
+    const result: AutoCreateFromTemplateResult = {
+      created: 0,
+      skipped: 0,
+      departments: [],
+    };
+
+    for (const spec of tpl.departments) {
+      if (existingByName.has(spec.name)) {
+        const found = existing.find((d) => d.name === spec.name)!;
+        result.skipped += 1;
+        result.departments.push({
+          id: found.id,
+          name: spec.name,
+          skipped: true,
+        });
+        continue;
+      }
+      const created = await this.prisma.department.create({
+        data: {
+          tenantId,
+          name: spec.name,
+          description: `Industry department structure (template ${tpl.sourceTemplateId})`,
+          status: 'ACTIVE',
+        },
+      });
+      result.created += 1;
+      result.departments.push({ id: created.id, name: spec.name });
+    }
+
+    this.logger.log(
+      `autoCreateFromTemplate tenant=${tenantId} template=${templateSlug ?? 'default'}: created=${result.created} skipped=${result.skipped}`,
+    );
+    return result;
   }
 }

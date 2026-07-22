@@ -1,8 +1,9 @@
 // types/wizard.types.ts — Shared types for the progressive onboarding wizard
 // system. Mirrors `backend/src/modules/onboarding/checklist/checklist.config.ts`.
-// PR-1 only includes the skeleton — wizard-specific step definitions land in PR-3.
 
 export type WizardPriority = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export type WizardPhase = 0 | 1 | 2 | 3 | 4;
 
 export type WizardSlug =
   | 'company'
@@ -15,7 +16,9 @@ export type WizardSlug =
   | 'org'
   | 'integrations'
   | 'compliance'
-  | 'team';
+  | 'team'
+  | 'google-workspace'
+  | 'brevo';
 
 export type WizardState =
   | 'PENDING'
@@ -33,6 +36,9 @@ export interface WizardConfig {
   estimatedMinutes: number;
   priority: WizardPriority;
   skippable: boolean;
+  phase: WizardPhase;
+  weight: 1 | 2 | 3;
+  dependsOn: string[];
 }
 
 export interface ChecklistEntryView {
@@ -53,7 +59,7 @@ export interface ChecklistListResponse {
   entries: ChecklistEntryView[];
 }
 
-/** A single step inside a wizard. Defined per-wizard in PR-3. */
+/** A single step inside a wizard. Defined per-wizard. */
 export interface WizardStepDefinition<TValues = Record<string, unknown>> {
   id: string;
   title: string;
@@ -64,12 +70,6 @@ export interface WizardStepDefinition<TValues = Record<string, unknown>> {
   }>;
 }
 
-/**
- * WizardDefinition is the contract for a single wizard. Adding a new wizard =
- * adding one entry to wizardRegistry — nothing else changes.
- *
- * Fields filled in by PR-3: `steps`, `endpoint`, `schema`.
- */
 export interface WizardDefinition<TValues = Record<string, unknown>> {
   config: WizardConfig;
   endpoint: {
@@ -92,4 +92,24 @@ export const WIZARD_SLUGS: readonly WizardSlug[] = [
   'integrations',
   'compliance',
   'team',
+  'google-workspace',
+  'brevo',
 ] as const;
+
+export const WIZARD_PHASES: readonly WizardPhase[] = [0, 1, 2, 3, 4];
+
+export const PHASE_LABELS: Record<WizardPhase, string> = {
+  0: 'Foundation',
+  1: 'Communication & Documents',
+  2: 'Operations',
+  3: 'Team & Admin',
+  4: 'Polish',
+};
+
+export const PHASE_DESCRIPTIONS: Record<WizardPhase, string> = {
+  0: 'Essential company settings to get started',
+  1: 'Connect the tools your company relies on daily',
+  2: 'Configure AI behavior and third-party integrations',
+  3: 'Set up billing, your team, and personal profiles',
+  4: 'Fine-tune preferences and compliance',
+};

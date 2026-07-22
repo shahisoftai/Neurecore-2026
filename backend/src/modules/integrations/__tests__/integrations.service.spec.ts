@@ -47,7 +47,8 @@ beforeEach(() => {
   mockConfig.get = jest.fn((key: string) => {
     if (key === 'GOOGLE_CLIENT_ID') return 'client-id-test';
     if (key === 'GOOGLE_CLIENT_SECRET') return 'client-secret-test';
-    if (key === 'GOOGLE_REDIRECT_URI') return 'https://hq.neurecore.com/settings/integrations/callback/google';
+    if (key === 'GOOGLE_REDIRECT_URI')
+      return 'https://hq.neurecore.com/settings/integrations/callback/google';
     return undefined;
   });
 
@@ -70,18 +71,28 @@ describe('IntegrationsService', () => {
       expect(url).toContain('response_type=code');
       expect(url).toContain('access_type=offline');
       expect(url).toContain('prompt=consent');
-      expect(url).toContain('redirect_uri=https%3A%2F%2Fhq.neurecore.com%2Fsettings%2Fintegrations%2Fcallback%2Fgoogle');
+      expect(url).toContain(
+        'redirect_uri=https%3A%2F%2Fhq.neurecore.com%2Fsettings%2Fintegrations%2Fcallback%2Fgoogle',
+      );
       expect(url).toContain('scope=');
 
-      const stateObj = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
+      const stateObj = JSON.parse(
+        Buffer.from(state, 'base64').toString('utf-8'),
+      );
       expect(stateObj.tenantId).toBe('tenant-1');
       expect(stateObj.provider).toBe('google');
     });
 
     it('encodes audience in state (base64 JSON)', async () => {
       const svc = makeService();
-      const { state } = await svc.initiateGoogleOAuth('tenant-1', undefined, 'admin');
-      const decoded = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
+      const { state } = await svc.initiateGoogleOAuth(
+        'tenant-1',
+        undefined,
+        'admin',
+      );
+      const decoded = JSON.parse(
+        Buffer.from(state, 'base64').toString('utf-8'),
+      );
       expect(decoded.audience).toBe('admin');
       expect(decoded.tenantId).toBe('tenant-1');
     });
@@ -89,13 +100,20 @@ describe('IntegrationsService', () => {
     it('throws BadRequestException when GOOGLE_CLIENT_ID/SECRET not configured', async () => {
       mockConfig.get = jest.fn(() => undefined);
       const svc = makeService();
-      await expect(svc.initiateGoogleOAuth('tenant-1')).rejects.toBeInstanceOf(BadRequestException);
+      await expect(svc.initiateGoogleOAuth('tenant-1')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
 
     it('uses provided redirectUri over default', async () => {
       const svc = makeService();
-      const { url } = await svc.initiateGoogleOAuth('tenant-1', 'https://custom.example.com/callback');
-      expect(url).toContain('redirect_uri=https%3A%2F%2Fcustom.example.com%2Fcallback');
+      const { url } = await svc.initiateGoogleOAuth(
+        'tenant-1',
+        'https://custom.example.com/callback',
+      );
+      expect(url).toContain(
+        'redirect_uri=https%3A%2F%2Fcustom.example.com%2Fcallback',
+      );
     });
   });
 
@@ -113,15 +131,22 @@ describe('IntegrationsService', () => {
       global.fetch = fetchMock as unknown as typeof fetch;
 
       const state = Buffer.from(
-        JSON.stringify({ tenantId: 't1', provider: 'google', redirectUri: 'https://example.com/cb' }),
+        JSON.stringify({
+          tenantId: 't1',
+          provider: 'google',
+          redirectUri: 'https://example.com/cb',
+        }),
       ).toString('base64');
 
       const svc = makeService();
       const result = await svc.handleGoogleCallback('auth-code', state);
 
-      expect(fetchMock).toHaveBeenCalledWith('https://oauth2.googleapis.com/token', expect.objectContaining({
-        method: 'POST',
-      }));
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://oauth2.googleapis.com/token',
+        expect.objectContaining({
+          method: 'POST',
+        }),
+      );
 
       const body = fetchMock.mock.calls[0][1].body as URLSearchParams;
       expect(body.get('code')).toBe('auth-code');
@@ -142,20 +167,29 @@ describe('IntegrationsService', () => {
 
     it('throws BadRequestException on invalid state (not valid base64 JSON)', async () => {
       const svc = makeService();
-      await expect(svc.handleGoogleCallback('code', 'not-valid-state')).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        svc.handleGoogleCallback('code', 'not-valid-state'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('throws BadRequestException on state provider mismatch', async () => {
       const state = Buffer.from(
-        JSON.stringify({ tenantId: 't1', provider: 'microsoft', redirectUri: 'https://x.com' }),
+        JSON.stringify({
+          tenantId: 't1',
+          provider: 'microsoft',
+          redirectUri: 'https://x.com',
+        }),
       ).toString('base64');
 
       const svc = makeService();
-      await expect(svc.handleGoogleCallback('code', state)).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        svc.handleGoogleCallback('code', state),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('fetches userinfo to get email (optional, non-fatal)', async () => {
-      const fetchMock = jest.fn()
+      const fetchMock = jest
+        .fn()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
@@ -171,7 +205,11 @@ describe('IntegrationsService', () => {
       global.fetch = fetchMock as unknown as typeof fetch;
 
       const state = Buffer.from(
-        JSON.stringify({ tenantId: 't1', provider: 'google', redirectUri: 'https://example.com/cb' }),
+        JSON.stringify({
+          tenantId: 't1',
+          provider: 'google',
+          redirectUri: 'https://example.com/cb',
+        }),
       ).toString('base64');
 
       const svc = makeService();
@@ -192,7 +230,11 @@ describe('IntegrationsService', () => {
       global.fetch = fetchMock as unknown as typeof fetch;
 
       const state = Buffer.from(
-        JSON.stringify({ tenantId: 'final-t', provider: 'google', redirectUri: 'https://example.com/cb' }),
+        JSON.stringify({
+          tenantId: 'final-t',
+          provider: 'google',
+          redirectUri: 'https://example.com/cb',
+        }),
       ).toString('base64');
 
       const svc = makeService();
@@ -212,7 +254,10 @@ describe('IntegrationsService', () => {
       const svc = makeService();
       await svc.disconnectGoogle('t-disconnect');
 
-      expect(mockCredentialStore.delete).toHaveBeenCalledWith('t-disconnect', 'GOOGLE');
+      expect(mockCredentialStore.delete).toHaveBeenCalledWith(
+        't-disconnect',
+        'GOOGLE',
+      );
       expect(mockTenant.update).toHaveBeenCalledWith({
         where: { id: 't-disconnect' },
         data: {

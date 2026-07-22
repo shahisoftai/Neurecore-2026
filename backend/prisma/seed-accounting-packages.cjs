@@ -283,16 +283,18 @@ async function main() {
     process.exit(2);
   }
 
-  // 2. Resolve all tier templates we'll use
+  // 2. Resolve all tiers we'll use (TIER-SYSTEM-CONCEPT.md Phase 3: Tier is canonical)
   const tierSlugs = [...new Set(PACKAGES.map(p => p.tierSlug))];
-  const tiers = await prisma.tierTemplate.findMany({ where: { slug: { in: tierSlugs } } });
+  const tiers = await prisma.tier.findMany({ where: { slug: { in: tierSlugs } } });
   const tierMap = Object.fromEntries(tiers.map(t => [t.slug, t]));
 
   const missingTiers = tierSlugs.filter(s => !tierMap[s]);
   if (missingTiers.length) {
-    notFound('tier templates', missingTiers);
+    notFound('tiers', missingTiers);
     process.exit(2);
   }
+
+  // 2b. (Removed) Billing tier aliasing — Tier is now the single source of truth.
 
   // 3. Resolve all referenced departments
   const allDeptNames = [...new Set(PACKAGES.flatMap(p => p.departments))];
@@ -334,12 +336,12 @@ async function main() {
   console.log('   diff (planned):');
   for (const p of PACKAGES) {
     const tierId = tierMap[p.tierSlug].id;
-    const pkgsForSlug = existing.filter(e => e.slug === p.slug && e.tierTemplateId === tierId);
+    const pkgsForSlug = existing.filter(e => e.slug === p.slug && e.tierId === tierId);
     let pkg = pkgsForSlug[0];
 
     if (!pkg) {
       // Compute sortOrder: this is the Nth package in (tier) for accounting
-      const tierExisting = existing.filter(e => e.tierTemplateId === tierId);
+      const tierExisting = existing.filter(e => e.tierId === tierId);
       const sortOrder = (tierExisting.length + 1) * 10;
       if (!DRY_RUN) {
         pkg = await prisma.package.create({
@@ -351,7 +353,7 @@ async function main() {
             scope: p.scope,
             version: 1,
             industryId: industry.id,
-            tierTemplateId: tierId,
+            tierId: tierId,
             sortOrder,
           },
         });
@@ -425,7 +427,7 @@ async function main() {
     // Final counts scoped to this major
     const finalCount = await prisma.package.count({ where: { industryId: industry.id } });
     const byTier = await prisma.package.groupBy({
-      by: ['tierTemplateId'],
+      by: ['tierId'],
       where: { industryId: industry.id },
       _count: { _all: true },
     });
@@ -433,7 +435,7 @@ async function main() {
     console.log(`   total packages anchored to ${industry.slug}: ${finalCount}`);
     console.log(`   by tier:`);
     for (const t of Object.values(tierMap)) {
-      const r = byTier.find(b => b.tierTemplateId === t.id);
+      const r = byTier.find(b => b.tierId === t.id);
       console.log(`     ${t.slug.padEnd(13)} ${r ? r._count._all : 0}`);
     }
     console.log('');

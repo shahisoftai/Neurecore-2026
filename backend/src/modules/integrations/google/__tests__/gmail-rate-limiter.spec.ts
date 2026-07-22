@@ -1,16 +1,24 @@
-import { withGoogleRetry, GoogleApiError, RetryOptions } from '../gmail-rate-limiter';
+import {
+  withGoogleRetry,
+  GoogleApiError,
+  RetryOptions,
+} from '../gmail-rate-limiter';
 
-function mockResponse(overrides: {
-  ok?: boolean;
-  status?: number;
-  headers?: { get: jest.Mock };
-  text?: jest.Mock;
-  json?: jest.Mock;
-} = {}): Response {
+function mockResponse(
+  overrides: {
+    ok?: boolean;
+    status?: number;
+    headers?: { get: jest.Mock };
+    text?: jest.Mock;
+    json?: jest.Mock;
+  } = {},
+): Response {
   return {
     ok: overrides.ok ?? true,
     status: overrides.status ?? 200,
-    headers: overrides.headers ?? { get: jest.fn().mockReturnValue(null) as never },
+    headers: overrides.headers ?? {
+      get: jest.fn().mockReturnValue(null) as never,
+    },
     text: overrides.text ?? jest.fn().mockResolvedValue(''),
     json: overrides.json ?? jest.fn().mockResolvedValue({}),
   } as unknown as Response;
@@ -53,7 +61,8 @@ describe('withGoogleRetry', () => {
   });
 
   it('retries on HTTP 429 (Too Many Requests) — 2 attempts then success', async () => {
-    const fetcher = jest.fn()
+    const fetcher = jest
+      .fn()
       .mockResolvedValueOnce(mockResponse({ ok: false, status: 429 }))
       .mockResolvedValueOnce(mockResponse({ ok: true }));
     const parser = jest.fn().mockResolvedValue('parsed-data');
@@ -67,7 +76,8 @@ describe('withGoogleRetry', () => {
   });
 
   it('retries on HTTP 5xx — 2 attempts then success', async () => {
-    const fetcher = jest.fn()
+    const fetcher = jest
+      .fn()
       .mockResolvedValueOnce(mockResponse({ ok: false, status: 503 }))
       .mockResolvedValueOnce(mockResponse({ ok: true }));
     const parser = jest.fn().mockResolvedValue('parsed-data');
@@ -82,16 +92,18 @@ describe('withGoogleRetry', () => {
 
   it('throws GoogleApiError after exhausting maxAttempts (4) on 429s', async () => {
     const errorText = jest.fn().mockResolvedValue('quota exceeded');
-    const fetcher = jest.fn().mockResolvedValue(
-      mockResponse({ ok: false, status: 429, text: errorText }),
-    );
+    const fetcher = jest
+      .fn()
+      .mockResolvedValue(
+        mockResponse({ ok: false, status: 429, text: errorText }),
+      );
     const parser = jest.fn();
 
     const promise = withGoogleRetry(fetcher, parser);
     const catcher = promise.catch((e: any) => e);
     await jest.runAllTimersAsync();
 
-    const err = await catcher as GoogleApiError;
+    const err = (await catcher) as GoogleApiError;
     expect(err).toBeInstanceOf(GoogleApiError);
     expect(err.status).toBe(429);
     expect(err.body).toBe('quota exceeded');
@@ -100,9 +112,11 @@ describe('withGoogleRetry', () => {
 
   it('throws GoogleApiError immediately on non-retryable 4xx (e.g. 400)', async () => {
     const errorText = jest.fn().mockResolvedValue('bad request');
-    const fetcher = jest.fn().mockResolvedValue(
-      mockResponse({ ok: false, status: 400, text: errorText }),
-    );
+    const fetcher = jest
+      .fn()
+      .mockResolvedValue(
+        mockResponse({ ok: false, status: 400, text: errorText }),
+      );
     const parser = jest.fn();
 
     const err: any = await withGoogleRetry(fetcher, parser).catch(
@@ -116,7 +130,8 @@ describe('withGoogleRetry', () => {
   });
 
   it('retries on network errors (fetch throws)', async () => {
-    const fetcher = jest.fn()
+    const fetcher = jest
+      .fn()
       .mockRejectedValueOnce(new Error('ECONNRESET'))
       .mockResolvedValueOnce(mockResponse({ ok: true }));
     const parser = jest.fn().mockResolvedValue('recovered');
@@ -133,7 +148,8 @@ describe('withGoogleRetry', () => {
     const retryHeaders = {
       get: jest.fn((name: string) => (name === 'retry-after' ? '2' : null)),
     };
-    const fetcher = jest.fn()
+    const fetcher = jest
+      .fn()
       .mockResolvedValueOnce(
         mockResponse({
           ok: false,
@@ -154,7 +170,8 @@ describe('withGoogleRetry', () => {
 
   it('respects custom RetryOptions (maxAttempts=2, baseMs=10)', async () => {
     const opts: RetryOptions = { maxAttempts: 2, baseMs: 10 };
-    const fetcher = jest.fn()
+    const fetcher = jest
+      .fn()
       .mockResolvedValueOnce(mockResponse({ ok: false, status: 429 }))
       .mockResolvedValueOnce(mockResponse({ ok: true }));
     const parser = jest.fn().mockResolvedValue('parsed-data');

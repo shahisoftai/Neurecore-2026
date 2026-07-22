@@ -36,7 +36,12 @@ export interface SendBatchResult {
   failed: number;
   suppressed: number;
   messageIds: string[];
-  errors: { to: string; status: number; message: string; suppressed?: boolean }[];
+  errors: {
+    to: string;
+    status: number;
+    message: string;
+    suppressed?: boolean;
+  }[];
 }
 
 export interface TenantBrevoIdentity {
@@ -240,10 +245,7 @@ export class BrevoEmailService {
     // Suppression check — silently no-op if the recipient is in the
     // platform-wide or per-tenant suppression list. We return a fake
     // messageId so the caller can log success without retrying.
-    const suppressed = await this.suppressions.isSuppressed(
-      tenantId,
-      dto.to,
-    );
+    const suppressed = await this.suppressions.isSuppressed(tenantId, dto.to);
     if (suppressed) {
       this.logger.warn(
         `Refusing to send to ${dto.to} (tenant=${tenantId}) — address is on the suppression list.`,
@@ -443,7 +445,10 @@ export class BrevoEmailService {
       recipients.map((r) => r.to),
     );
 
-    await this.usage.checkLimitFor(tenantId, recipients.length - suppressed.size);
+    await this.usage.checkLimitFor(
+      tenantId,
+      recipients.length - suppressed.size,
+    );
 
     const identity = await this.getTenantIdentity(tenantId);
     const fromAddress = dto.from || identity?.senderEmail || '';

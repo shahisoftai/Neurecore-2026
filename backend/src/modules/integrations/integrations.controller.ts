@@ -41,6 +41,7 @@ import { PrismaService } from '../../infrastructure/database/prisma.service';
 import {
   readAudienceFromState,
   buildCallbackRedirectUrl,
+  readOriginFromState,
 } from './google/oauth-callback.util';
 import { AuditService } from '../audit/audit.service';
 
@@ -99,6 +100,7 @@ export class IntegrationsController {
       user.tenantId!,
       dto.redirectUri,
       dto.audience ?? 'tenant',
+      dto.origin ?? 'settings',
     );
   }
 
@@ -111,7 +113,8 @@ export class IntegrationsController {
     @Res() res?: Response,
   ): Promise<void> {
     const audience = readAudienceFromState(state);
-    const targetUrl = this.buildCallbackRedirectUrl(audience);
+    const origin = readOriginFromState(state);
+    const targetUrl = this.buildCallbackRedirectUrl(audience, origin);
 
     if (error) {
       const encoded = Buffer.from(`Google OAuth error: ${error}`).toString(
@@ -144,7 +147,10 @@ export class IntegrationsController {
     }
   }
 
-  private buildCallbackRedirectUrl(audience: 'tenant' | 'admin'): string {
+  private buildCallbackRedirectUrl(
+    audience: 'tenant' | 'admin',
+    origin: 'settings' | 'onboarding' = 'settings',
+  ): string {
     const tenantBase =
       this.config.get<string>('TENANT_FRONTEND_BASE_URL') ??
       this.config.get<string>('FRONTEND_BASE_URL') ??
@@ -159,6 +165,7 @@ export class IntegrationsController {
       tenantBase,
       adminBase,
       audience,
+      origin,
       query: {},
     });
   }
@@ -912,12 +919,7 @@ export class IntegrationsController {
     return this.brevoSuppressions.list({
       email,
       reason: (reason ?? undefined) as never,
-      tenantId:
-        tt === 'null'
-          ? null
-          : tt === undefined
-            ? undefined
-            : tt,
+      tenantId: tt === 'null' ? null : tt === undefined ? undefined : tt,
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
     });

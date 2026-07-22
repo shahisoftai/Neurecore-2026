@@ -100,7 +100,6 @@ import { WidgetsModule } from './modules/widgets/widgets.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TiersModule } from './modules/tiers/tiers.module';
 import { IndustriesModule } from './modules/industry/industries.module';
-import { TierTemplatesModule } from './modules/tier-templates/tier-templates.module';
 import { FeaturesModule } from './modules/features/features.module';
 import { DepartmentsPoolModule } from './modules/departments-pool/departments-pool.module';
 import { AgentsPoolModule } from './modules/agents-pool/agents-pool.module';
@@ -114,12 +113,14 @@ import { SolutionPacksModule } from './modules/solution-packs/solution-packs.mod
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 // Phase 8 — EAOS-6 First Vertical Pack (Retail)
 import { RetailModule } from './modules/retail/retail.module';
+import { TenantTemplatesModule } from './modules/tenant-templates/tenant-templates.module';
 // Phase 2 — Dashboard aggregation (Command Center)
 import { CommandCenterModule } from './modules/command-center/command-center.module';
 // Phase 3 — Cross-Department Context
 import { ContextModule } from './modules/context/context.module';
 // Phase 5 — Batch Approvals & Learning Loop
 import { ApprovalsModule } from './modules/approvals/approvals.module';
+import { ComplianceModule } from './modules/compliance/compliance.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -275,6 +276,9 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     // Phase 8 — EAOS-6 First Vertical Pack (Retail)
     RetailModule,
 
+    // Stage 1: Tenant-scoped templates (tenant-editable per industry)
+    TenantTemplatesModule,
+
     // Phase 2 — Dashboard Command Center aggregation
     CommandCenterModule,
     // Phase 3 — Cross-Department Context
@@ -282,11 +286,13 @@ import { CsrfProtectionMiddleware } from './common/auth/csrf.middleware';
     // Phase 5 — Batch Approvals & Learning Loop
     ApprovalsModule,
 
+    // Stage 2 Phase 2A — Compliance Checklist Engine
+    ComplianceModule,
+
     // Phase 10 — Admin Business Composition (six pools)
     AgentsPoolModule,       // Pool #1 — AI Employees
     DepartmentsPoolModule,  // Pool #2 — Departments
     IndustriesModule,       // Pool #3 — Industries
-    TierTemplatesModule,    // Pool #4 — Tier Templates (commercial offering)
     FeaturesModule,         // Pool #5 — Features
     PackagesModule,         // Pool #6 — Packages (composite root)
 

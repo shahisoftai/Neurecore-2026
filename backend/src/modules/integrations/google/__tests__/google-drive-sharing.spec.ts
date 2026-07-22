@@ -166,7 +166,12 @@ describe('GoogleDriveService — G8 listFilePermissions + revokeFilePermission',
         json: () =>
           Promise.resolve({
             permissions: [
-              { id: 'p1', role: 'reader', type: 'user', emailAddress: 'a@b.com' },
+              {
+                id: 'p1',
+                role: 'reader',
+                type: 'user',
+                emailAddress: 'a@b.com',
+              },
               { id: 'p2', role: 'writer', type: 'anyone' },
             ],
           }),

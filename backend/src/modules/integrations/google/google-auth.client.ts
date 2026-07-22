@@ -1,7 +1,10 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IntegrationProvider } from '@prisma/client';
-import { PrismaIntegrationCredentialStore, GoogleCredentials } from '../services/integration-credential.store';
+import {
+  PrismaIntegrationCredentialStore,
+  GoogleCredentials,
+} from '../services/integration-credential.store';
 
 /**
  * GoogleAuthClient — provides authenticated Google API client per tenant
@@ -41,7 +44,9 @@ export class GoogleAuthClient {
     const googleCreds = creds as GoogleCredentials;
 
     if (!googleCreds.accessToken) {
-      throw new BadRequestException('Google credentials invalid: missing access token');
+      throw new BadRequestException(
+        'Google credentials invalid: missing access token',
+      );
     }
 
     if (!googleCreds.expiryDate) {

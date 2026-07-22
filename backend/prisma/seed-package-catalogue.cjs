@@ -187,17 +187,37 @@ async function main() {
     seenSlugs.add(slug);
   }
 
-  // Resolve industryIds + tierTemplateIds by slug.
+  // Resolve industryIds + tierIds by slug.
+  // TIER-SYSTEM-CONCEPT.md Phase 3: catalogue uses NEW Tier slugs directly
+  // (basic/business/professional/enterprise). The catalogue data may still
+  // reference legacy TierTemplate slugs (starter/professional/enterprise/government)
+  // — translate them via TIER_TEMPLATE_TO_TIER.
   const industries = await prisma.industry.findMany({ select: { id: true, slug: true } });
-  const tiers = await prisma.tierTemplate.findMany({ select: { id: true, slug: true } });
+  const tiers = await prisma.tier.findMany({ select: { id: true, slug: true } });
   const industryMap = Object.fromEntries(industries.map((i) => [i.slug, i.id]));
   const tierMap = Object.fromEntries(tiers.map((t) => [t.slug, t.id]));
+
+  // Legacy slug → new Tier slug mapping (kept for catalogue data compatibility)
+  const TIER_TEMPLATE_TO_TIER = {
+    starter: 'business',
+    professional: 'professional',
+    enterprise: 'enterprise',
+    government: 'professional',
+    basic: 'basic',
+    business: 'business',
+  };
+
+  // Translate catalogue tierSlug → effective Tier slug
+  function resolveTierSlug(rawSlug) {
+    return TIER_TEMPLATE_TO_TIER[rawSlug] || rawSlug;
+  }
 
   // Resolve missing-industry / missing-tier refs.
   const missing = [];
   for (const c of CATALOGUE) {
     if (!industryMap[c.industrySlug]) missing.push(`industry ${c.industrySlug} (for ${c.name})`);
-    if (!tierMap[c.tierSlug])         missing.push(`tier ${c.tierSlug} (for ${c.name})`);
+    const resolvedTierSlug = resolveTierSlug(c.tierSlug);
+    if (!tierMap[resolvedTierSlug])    missing.push(`tier ${resolvedTierSlug} (for ${c.name})`);
   }
   if (missing.length) {
     console.error('Missing references in DB:');
@@ -207,10 +227,10 @@ async function main() {
 
   // Compute diff.
   const existing = await prisma.package.findMany({
-    select: { id: true, slug: true, industryId: true, tierTemplateId: true, name: true, scope: true },
+    select: { id: true, slug: true, industryId: true, tierId: true, name: true, scope: true },
   });
 
-  const existingKey = (e) => `${e.industryId}|${e.tierTemplateId}|${e.slug}`;
+  const existingKey = (e) => `${e.industryId}|${e.tierId}|${e.slug}`;
 
   let createdCount = 0;
   let updatedCount = 0;
@@ -220,7 +240,8 @@ async function main() {
   for (const c of CATALOGUE) {
     const slug = slugify(c.name);
     const industryId = industryMap[c.industrySlug];
-    const tierId = tierMap[c.tierSlug];
+    const tierSlug = resolveTierSlug(c.tierSlug);
+    const tierId = tierMap[tierSlug];
     const key = `${industryId}|${tierId}|${slug}`;
 
     const prior = existing.find((e) => existingKey(e) === key);
@@ -247,11 +268,11 @@ async function main() {
     if (!DRY_RUN) {
       // Find max sortOrder for this (industry, tier).
       const max = await prisma.package.findFirst({
-        where: { industryId, tierTemplateId: tierId },
+        where: { industryId, tierId },
         orderBy: { sortOrder: 'desc' },
         select: { sortOrder: true },
       });
-      const baseSort = (TIER_RANK[c.tierSlug] || 0) * 100;
+      const baseSort = (TIER_RANK[tierSlug] || 0) * 100;
       const nextSort = (max ? Math.floor((max.sortOrder + 10) / 100) * 100 + 10 : baseSort);
       // If baseSort hasn't been used yet, use it; otherwise append.
       const sortOrder = (max && max.sortOrder >= baseSort)
@@ -267,13 +288,13 @@ async function main() {
           scope: c.scope,
           version: 1,
           industryId,
-          tierTemplateId: tierId,
+          tierId,
           sortOrder,
         },
       });
     }
     createdCount += 1;
-    console.log(`   +  [${c.category.padEnd(22)}] ${slug.padEnd(40)}  +  ${c.name}  (${TIER_LABEL[c.tierSlug]} / ${c.industrySlug})`);
+    console.log(`   +  [${c.category.padEnd(22)}] ${slug.padEnd(40)}  +  ${c.name}  (${TIER_LABEL[tierSlug]} / ${c.industrySlug})`);
   }
 
   const totalNow = await prisma.package.count();
@@ -282,7 +303,7 @@ async function main() {
     _count: { _all: true },
   });
   const byTier = await prisma.package.groupBy({
-    by: ['tierTemplateId'],
+    by: ['tierId'],
     _count: { _all: true },
   });
   const tierNameMap = Object.fromEntries(tiers.map((t) => [t.id, TIER_LABEL[t.slug] || t.slug]));
@@ -293,7 +314,7 @@ async function main() {
   console.log('');
   console.log('   by tier:');
   for (const row of byTier) {
-    console.log(`     ${(tierNameMap[row.tierTemplateId] || '?').padEnd(14)}  ${row._count._all}`);
+    console.log(`     ${(tierNameMap[row.tierId] || '?').padEnd(14)}  ${row._count._all}`);
   }
   console.log('   by scope:');
   for (const row of byScope) {

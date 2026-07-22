@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
-import type {
-  BrevoSuppressionReason,
-} from '@prisma/client';
+import type { BrevoSuppressionReason } from '@prisma/client';
 
 export interface SuppressionAggregate {
   total: number;
@@ -159,17 +157,20 @@ export class BrevoSuppressionService {
     tenantId?: string | null;
     limit?: number;
     offset?: number;
-  }): Promise<{ rows: Array<{
-    id: string;
-    tenantId: string | null;
-    email: string;
-    reason: BrevoSuppressionReason;
-    details: Record<string, unknown>;
-    addedBy: string | null;
-    expiresAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }>; total: number }> {
+  }): Promise<{
+    rows: Array<{
+      id: string;
+      tenantId: string | null;
+      email: string;
+      reason: BrevoSuppressionReason;
+      details: Record<string, unknown>;
+      addedBy: string | null;
+      expiresAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
+    }>;
+    total: number;
+  }> {
     const where: Record<string, unknown> = {};
     if (opts.email) where['email'] = { contains: opts.email.toLowerCase() };
     if (opts.reason) where['reason'] = opts.reason;

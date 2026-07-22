@@ -151,10 +151,12 @@ class IntegrationsService {
   async initiateGoogleOAuth(
     redirectUri?: string,
     audience: 'tenant' | 'admin' = 'tenant',
+    origin: 'settings' | 'onboarding' = 'settings',
   ): Promise<{ url: string }> {
     const res = await api.post('/integrations/google/authorize', {
       redirectUri,
       audience,
+      origin,
     });
     return unwrapItem(res) as { url: string };
   }
@@ -170,6 +172,36 @@ class IntegrationsService {
 
   async disconnectBrevo(): Promise<void> {
     await api.post('/integrations/brevo/disconnect');
+  }
+
+  /**
+   * Persist per-tenant sender identity (email + display name + reply-to).
+   * Used by BrevoWizard after a successful connect.
+   */
+  async setBrevoSender(payload: {
+    brevoSenderEmail: string;
+    brevoSenderName?: string;
+    brevoReplyToEmail?: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    const res = await api.put('/integrations/brevo/sender', payload);
+    return unwrapItem(res) as { success: boolean; error?: string };
+  }
+
+  async getBrevoSender(): Promise<{
+    tenant: {
+      brevoSenderEmail: string | null;
+      brevoSenderName: string | null;
+      brevoReplyToEmail: string | null;
+    };
+  }> {
+    const res = await api.get('/integrations/brevo/sender');
+    return unwrapItem(res) as {
+      tenant: {
+        brevoSenderEmail: string | null;
+        brevoSenderName: string | null;
+        brevoReplyToEmail: string | null;
+      };
+    };
   }
 
   async getBrevoUsage(): Promise<{

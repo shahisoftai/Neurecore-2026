@@ -124,7 +124,7 @@ export default function PackageDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Section title="Industry & Tier">
                 <Row label="Industry" value={pkg.industry?.name ?? '—'} />
-                <Row label="Tier" value={pkg.tierTemplate?.name ?? '—'} />
+                <Row label="Tier" value={pkg.tier?.name ?? '—'} />
               </Section>
 
               <Section title={`Departments (${pkg.departments?.length ?? 0})`}>

@@ -32,7 +32,10 @@ import type { ProjectsAdapter } from '../information-engine/clients/projects.ada
 import { ProjectAutomationService } from '../project-automation/project-automation.service';
 import { GoalTemplateService } from '../project-automation/services/goal-template.service';
 import { DerivedShapeApplier } from './services/derived-shape-applier.service';
-import { ProjectShapeSchema, type ProjectShape } from '../project-shape/project-shape.types';
+import {
+  ProjectShapeSchema,
+  type ProjectShape,
+} from '../project-shape/project-shape.types';
 
 @Injectable()
 export class ProjectsService implements OnModuleInit {
@@ -52,7 +55,9 @@ export class ProjectsService implements OnModuleInit {
     @Optional()
     @Inject('PROJECTS_ADAPTER')
     private readonly projectsAdapter?: ProjectsAdapter,
+    @Optional()
     private readonly moduleRef?: ModuleRef,
+    @Optional()
     private readonly derivedShapeApplier?: DerivedShapeApplier,
   ) {}
 
@@ -60,9 +65,11 @@ export class ProjectsService implements OnModuleInit {
     // Resolve @Global()-exported services via ModuleRef after all modules are loaded.
     try {
       this.projectAutomation =
-        this.moduleRef?.get(ProjectAutomationService, { strict: false }) ?? undefined;
+        this.moduleRef?.get(ProjectAutomationService, { strict: false }) ??
+        undefined;
       this.goalTemplateService =
-        this.moduleRef?.get(GoalTemplateService, { strict: false }) ?? undefined;
+        this.moduleRef?.get(GoalTemplateService, { strict: false }) ??
+        undefined;
       this.logger.log(
         `ProjectsService resolved: projectAutomation=${this.projectAutomation ? 'yes' : 'no'}, goalTemplateService=${this.goalTemplateService ? 'yes' : 'no'}`,
       );
@@ -122,7 +129,9 @@ export class ProjectsService implements OnModuleInit {
       );
     }
 
-    this.logger.debug(`[DEBUG-SVC-CREATE] entering create(): name=${input.name}, hasProjectTypeId=${!!input.projectTypeId}, hasDerivedShape=${!!input.derivedShape}, hasValidatedShape=${!!validatedShape}`);
+    this.logger.debug(
+      `[DEBUG-SVC-CREATE] entering create(): name=${input.name}, hasProjectTypeId=${!!input.projectTypeId}, hasDerivedShape=${!!input.derivedShape}, hasValidatedShape=${!!validatedShape}`,
+    );
     // The adapter delegates this to ProjectTypesService.validateCustomFields
     // for the fieldSchema path; this call is kept here so the 16 existing
     // unit tests on validateCustomFields continue to fire from create().
@@ -141,7 +150,9 @@ export class ProjectsService implements OnModuleInit {
 
     this.logger.debug(`[DEBUG-SVC-CREATE] calling repository.create()`);
     const project = await this.repository.create(input, tenantId);
-    this.logger.debug(`[DEBUG-SVC-CREATE] repository.create returned: project.id=${project.id}, status=${project.status}, hasProjectTypeId=${!!project.projectTypeId}, hasDerivedShape=${!!(project as any).derivedShape}`);
+    this.logger.debug(
+      `[DEBUG-SVC-CREATE] repository.create returned: project.id=${project.id}, status=${project.status}, hasProjectTypeId=${!!project.projectTypeId}, hasDerivedShape=${!!(project as any).derivedShape}`,
+    );
 
     // Phase 2: Auto-generate stages from stageTemplate (unchanged behaviour).
     if (input.projectTypeId) {
@@ -179,7 +190,9 @@ export class ProjectsService implements OnModuleInit {
       await this.projectsAdapter.onProjectCreated(project, tenantId, input);
     }
 
-    this.logger.debug(`[DEBUG-SVC-CREATE] Phase 2-HERMES check: validatedShape=${!!validatedShape}, derivedShapeApplier=${this.derivedShapeApplier ? 'injected' : 'NOT_INJECTED'}`);
+    this.logger.debug(
+      `[DEBUG-SVC-CREATE] Phase 2-HERMES check: validatedShape=${!!validatedShape}, derivedShapeApplier=${this.derivedShapeApplier ? 'injected' : 'NOT_INJECTED'}`,
+    );
     // Applies stages/goals/members/CoS inline from the synthesized ProjectShape.
     // This is the Hermes-driven path — by default, CreateProjectTool synthesizes
     // a shape via ProjectShapeSynthesisService before calling create().
@@ -207,7 +220,7 @@ export class ProjectsService implements OnModuleInit {
       }
     }
 
-// Phase 8: Synchronously create goals from goalTemplate so the project is
+    // Phase 8: Synchronously create goals from goalTemplate so the project is
     // guaranteed to have its goals by the time create() returns. The rest of
     // automation (agent spawning, task planning, memory seeding, CoS) remains
     // fire-and-forget via ProjectAutomationService — those are longer-running
@@ -222,11 +235,12 @@ export class ProjectsService implements OnModuleInit {
         `Phase 8: seeding goals from goalTemplate for ${project.id}`,
       );
       try {
-        const goalResult = await this.goalTemplateService.createGoalsFromTemplate(
-          project.id,
-          input.projectTypeId,
-          tenantId,
-        );
+        const goalResult =
+          await this.goalTemplateService.createGoalsFromTemplate(
+            project.id,
+            input.projectTypeId,
+            tenantId,
+          );
         if (goalResult.errors.length > 0) {
           this.logger.warn(
             `Phase 8: ${goalResult.errors.length} goal(s) failed to seed for project ${project.id}: ${goalResult.errors.join('; ')}`,

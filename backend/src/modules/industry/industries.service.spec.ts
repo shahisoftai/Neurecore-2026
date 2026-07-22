@@ -15,11 +15,15 @@ describe('IndustriesService — Phase 10 Industry Pool', () => {
 
   it('is an instance of PoolService (Liskov)', () => {
     expect(service).toBeDefined();
-    expect(typeof (service as unknown as { list: unknown }).list).toBe('function');
+    expect(typeof (service as unknown as { list: unknown }).list).toBe(
+      'function',
+    );
   });
 
   it('exposes uniqueKey = slug', () => {
-    expect((service as unknown as { uniqueKey: string }).uniqueKey).toBe('slug');
+    expect((service as unknown as { uniqueKey: string }).uniqueKey).toBe(
+      'slug',
+    );
   });
 
   describe('config.buildWhere', () => {
@@ -52,7 +56,9 @@ describe('IndustriesService — Phase 10 Industry Pool', () => {
     });
 
     it('honors custom sortBy and sortDir', () => {
-      expect(service['config'].buildOrderBy({ sortBy: 'name', sortDir: 'desc' })).toEqual({
+      expect(
+        service['config'].buildOrderBy({ sortBy: 'name', sortDir: 'desc' }),
+      ).toEqual({
         name: 'desc',
       });
     });

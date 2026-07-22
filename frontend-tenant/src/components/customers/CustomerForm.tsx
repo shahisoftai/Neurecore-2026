@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { TextField, TextAreaField } from '@/components/creatio/FormField';
 import { ActionButton } from '@/components/creatio/ActionToolbar';
+import { IndustryCustomerFields } from '@/components/customers/IndustryCustomerFields';
 import { customersService } from '@/services/customers.service';
 import type { Customer } from '@/types/customers.types';
 
@@ -13,14 +14,36 @@ interface CustomerFormProps {
   onUpdated?: (c: Customer) => void;
 }
 
+function extractIndustryFields(billingInfo?: Record<string, unknown> | null): Record<string, string | boolean> {
+  if (!billingInfo) return {};
+  const fields = billingInfo['industryFields'];
+  if (fields && typeof fields === 'object' && !Array.isArray(fields)) {
+    const result: Record<string, string | boolean> = {};
+    for (const [key, value] of Object.entries(fields as Record<string, unknown>)) {
+      if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') {
+        result[key] = typeof value === 'number' ? String(value) : value;
+      }
+    }
+    return result;
+  }
+  return {};
+}
+
 export function CustomerForm({ customer, onClose, onCreated, onUpdated }: CustomerFormProps) {
   const [name, setName] = useState(customer?.name ?? '');
   const [industry, setIndustry] = useState(customer?.industry ?? '');
   const [primaryEmail, setPrimaryEmail] = useState(customer?.primaryEmail ?? '');
   const [primaryPhone, setPrimaryPhone] = useState(customer?.primaryPhone ?? '');
   const [tagsInput, setTagsInput] = useState(customer?.tags?.join(', ') ?? '');
+  const [industryFieldValues, setIndustryFieldValues] = useState<Record<string, string | boolean>>(
+    extractIndustryFields(customer?.billingInfo),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleIndustryFieldChange = (key: string, value: string | boolean) => {
+    setIndustryFieldValues((prev) => ({ ...prev, [key]: value }));
+  };
 
   const submit = async () => {
     if (!name.trim()) {
@@ -35,6 +58,11 @@ export function CustomerForm({ customer, onClose, onCreated, onUpdated }: Custom
         .map((t) => t.trim())
         .filter(Boolean);
 
+      const hasIndustryFields = Object.keys(industryFieldValues).length > 0;
+      const billingInfo = hasIndustryFields
+        ? { industryFields: industryFieldValues }
+        : undefined;
+
       if (customer) {
         const updated = await customersService.update(customer.id, {
           name: name.trim(),
@@ -42,6 +70,7 @@ export function CustomerForm({ customer, onClose, onCreated, onUpdated }: Custom
           primaryEmail: primaryEmail.trim() || undefined,
           primaryPhone: primaryPhone.trim() || undefined,
           tags,
+          billingInfo,
         });
         onUpdated?.(updated);
       } else {
@@ -51,6 +80,7 @@ export function CustomerForm({ customer, onClose, onCreated, onUpdated }: Custom
           primaryEmail: primaryEmail.trim() || undefined,
           primaryPhone: primaryPhone.trim() || undefined,
           tags,
+          billingInfo,
         });
         onCreated?.(created);
       }
@@ -98,6 +128,13 @@ export function CustomerForm({ customer, onClose, onCreated, onUpdated }: Custom
         onChange={(e) => setTagsInput(e.target.value)}
         rows={1}
       />
+
+      <IndustryCustomerFields
+        industrySlug={industry || null}
+        fieldValues={industryFieldValues}
+        onFieldChange={handleIndustryFieldChange}
+      />
+
       {error && <p className="text-xs text-state-danger">{error}</p>}
       <div className="flex justify-end gap-2 pt-3 border-t border-surface-border">
         <ActionButton variant="ghost" size="md" onClick={onClose} disabled={submitting}>

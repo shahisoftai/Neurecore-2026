@@ -193,13 +193,11 @@ export class AdminBrevoService {
       tenantsNotRouted,
       totalSentToday,
       totalSentLast30Days,
-      globalDailyLimit:
-        this.config.get<number>('BREVO_DAILY_LIMIT') || 300,
+      globalDailyLimit: this.config.get<number>('BREVO_DAILY_LIMIT') || 300,
       masterKeyConfigured,
       webhookSecretConfigured,
       globalFromAddress: this.config.get<string>('EMAIL_FROM_ADDRESS') || '',
-      globalFromName:
-        this.config.get<string>('EMAIL_FROM_NAME') || 'NeureCore',
+      globalFromName: this.config.get<string>('EMAIL_FROM_NAME') || 'NeureCore',
       globalReplyTo: this.config.get<string>('EMAIL_REPLY_TO') || null,
       tenantLimits,
       suppressions: {

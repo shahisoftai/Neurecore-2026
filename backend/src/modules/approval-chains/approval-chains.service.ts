@@ -14,7 +14,14 @@
  * module never touches prisma directly.
  */
 
-import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  Inject,
+  Optional,
+} from '@nestjs/common';
 import type {
   ApprovalStepTemplate,
   ApprovalChainResolution,
@@ -26,6 +33,8 @@ import {
   DELIVERABLE_REPOSITORY,
   type IDeliverableRepository,
 } from '../deliverables/interfaces/deliverable.interface';
+import { ApprovalAddonRegistry } from './addons/approval-addon.registry';
+import type { ApprovalRoute } from './addons/approval-addon.interface';
 
 @Injectable()
 export class ApprovalChainsService {
@@ -36,6 +45,8 @@ export class ApprovalChainsService {
     private readonly repository: IApprovalChainRepository,
     @Inject(DELIVERABLE_REPOSITORY)
     private readonly deliverableRepository: IDeliverableRepository,
+    @Optional()
+    private readonly addonRegistry?: ApprovalAddonRegistry,
   ) {}
 
   /**
@@ -195,5 +206,14 @@ export class ApprovalChainsService {
 
     if (!workflow) return null;
     return workflow.steps[workflow.currentStep] ?? null;
+  }
+
+  /**
+   * Stage 2 Phase 2A: Resolve industry-specific approval routes for a tenant.
+   * Uses the addon registry to find the matching addon by tenant's industry.
+   */
+  async getIndustryRoutes(tenantId: string, industrySlug: string): Promise<ApprovalRoute[]> {
+    if (!this.addonRegistry) return [];
+    return this.addonRegistry.getRoutesForIndustry(tenantId, industrySlug);
   }
 }

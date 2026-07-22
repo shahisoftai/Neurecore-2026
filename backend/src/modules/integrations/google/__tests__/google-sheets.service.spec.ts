@@ -35,7 +35,9 @@ beforeEach(() => {
 afterEach(() => {
   fetchSpy.mockRestore();
   (authClient.getAccessToken as jest.Mock).mockReset();
-  (authClient.getAccessToken as jest.Mock).mockResolvedValue('fake-access-token');
+  (authClient.getAccessToken as jest.Mock).mockResolvedValue(
+    'fake-access-token',
+  );
 });
 
 describe('GoogleSheetsService.createSpreadsheet', () => {
@@ -56,7 +58,9 @@ describe('GoogleSheetsService.createSpreadsheet', () => {
       } as Response),
     );
 
-    const result = await svc.createSpreadsheet('tenant-1', { title: 'My Sheet' });
+    const result = await svc.createSpreadsheet('tenant-1', {
+      title: 'My Sheet',
+    });
 
     const { init } = lastCall();
     expect(init.method).toBe('POST');
@@ -65,7 +69,9 @@ describe('GoogleSheetsService.createSpreadsheet', () => {
 
     expect(result.spreadsheetId).toBe('sp-1');
     expect(result.title).toBe('My Sheet');
-    expect(result.webViewLink).toBe('https://docs.google.com/spreadsheets/d/sp-1');
+    expect(result.webViewLink).toBe(
+      'https://docs.google.com/spreadsheets/d/sp-1',
+    );
   });
 
   it('creates with named sheets (grid properties)', async () => {
@@ -80,7 +86,14 @@ describe('GoogleSheetsService.createSpreadsheet', () => {
             spreadsheetId: 'sp-2',
             properties: { title: 'Multi-Sheet' },
             sheets: [
-              { properties: { sheetId: 0, title: 'Data', index: 0, gridProperties: { rowCount: 500, columnCount: 10 } } },
+              {
+                properties: {
+                  sheetId: 0,
+                  title: 'Data',
+                  index: 0,
+                  gridProperties: { rowCount: 500, columnCount: 10 },
+                },
+              },
             ],
           }),
       } as Response),
@@ -116,7 +129,10 @@ describe('GoogleSheetsService.readRange', () => {
           Promise.resolve({
             range: 'Sheet1!A1:B2',
             majorDimension: 'ROWS',
-            values: [['Name', 'Age'], ['Alice', '30']],
+            values: [
+              ['Name', 'Age'],
+              ['Alice', '30'],
+            ],
           }),
       } as Response),
     );
@@ -126,7 +142,10 @@ describe('GoogleSheetsService.readRange', () => {
     expect(result).toEqual({
       range: 'Sheet1!A1:B2',
       majorDimension: 'ROWS',
-      values: [['Name', 'Age'], ['Alice', '30']],
+      values: [
+        ['Name', 'Age'],
+        ['Alice', '30'],
+      ],
     });
   });
 
@@ -225,7 +244,14 @@ describe('GoogleSheetsService.getMetadata', () => {
             spreadsheetId: 'sp-1',
             properties: { title: 'My Sheet' },
             sheets: [
-              { properties: { sheetId: 0, title: 'Sheet1', index: 0, gridProperties: { rowCount: 1000, columnCount: 26 } } },
+              {
+                properties: {
+                  sheetId: 0,
+                  title: 'Sheet1',
+                  index: 0,
+                  gridProperties: { rowCount: 1000, columnCount: 26 },
+                },
+              },
             ],
             spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/sp-1',
           }),
@@ -265,7 +291,9 @@ describe('GoogleSheetsService.getMetadata', () => {
 
     const result = await svc.getMetadata('tenant-1', 'sp-2');
 
-    expect(result.webViewLink).toBe('https://docs.google.com/spreadsheets/d/sp-2/edit');
+    expect(result.webViewLink).toBe(
+      'https://docs.google.com/spreadsheets/d/sp-2/edit',
+    );
   });
 });
 
@@ -298,7 +326,11 @@ describe('GoogleSheetsService.batchUpdate', () => {
         status: 200,
         text: () => Promise.resolve(''),
         json: () =>
-          Promise.resolve({ replies: [{ addSheet: { properties: { sheetId: 1, title: 'NewSheet' } } }] }),
+          Promise.resolve({
+            replies: [
+              { addSheet: { properties: { sheetId: 1, title: 'NewSheet' } } },
+            ],
+          }),
       } as Response),
     );
 
@@ -310,7 +342,9 @@ describe('GoogleSheetsService.batchUpdate', () => {
     expect(init.method).toBe('POST');
     expect(url).toContain(':batchUpdate');
     const body = JSON.parse(init.body as string);
-    expect(body.requests).toEqual([{ addSheet: { properties: { title: 'NewSheet' } } }]);
+    expect(body.requests).toEqual([
+      { addSheet: { properties: { title: 'NewSheet' } } },
+    ]);
     expect(result.replies).toBeDefined();
   });
 });
@@ -359,7 +393,9 @@ describe('GoogleSheetsService — auth failure / non-OK', () => {
     const svc = makeService();
     (authClient.getAccessToken as jest.Mock).mockResolvedValueOnce(null);
 
-    await expect(svc.createSpreadsheet('tenant-1', { title: 'X' })).rejects.toThrow('Google is not connected');
+    await expect(
+      svc.createSpreadsheet('tenant-1', { title: 'X' }),
+    ).rejects.toThrow('Google is not connected');
   });
 
   it('throws BadRequestException on non-OK response for createSpreadsheet', async () => {
@@ -373,7 +409,9 @@ describe('GoogleSheetsService — auth failure / non-OK', () => {
       } as Response),
     );
 
-    await expect(svc.createSpreadsheet('tenant-1', { title: 'X' })).rejects.toThrow('Failed to create spreadsheet');
+    await expect(
+      svc.createSpreadsheet('tenant-1', { title: 'X' }),
+    ).rejects.toThrow('Failed to create spreadsheet');
   });
 
   it('throws BadRequestException on non-OK response for readRange', async () => {
@@ -387,6 +425,8 @@ describe('GoogleSheetsService — auth failure / non-OK', () => {
       } as Response),
     );
 
-    await expect(svc.readRange('tenant-1', 'sp-1', 'Sheet1!A1')).rejects.toThrow('Failed to read spreadsheet range');
+    await expect(
+      svc.readRange('tenant-1', 'sp-1', 'Sheet1!A1'),
+    ).rejects.toThrow('Failed to read spreadsheet range');
   });
 });

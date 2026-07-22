@@ -1,5 +1,7 @@
 // services/packages.service.ts — Tenant-facing package browser + deploy
 // Tenants can list PUBLISHED packages matching their industry/tier and deploy them.
+//
+// TIER-SYSTEM-CONCEPT.md Phase 3: `tierId` (canonical) replaces `tierTemplateId`.
 
 import api from './api';
 import { unwrapItem, unwrapList } from './unwrap';
@@ -13,9 +15,9 @@ export interface TenantPackage {
   scope: string;
   version: number;
   industryId: string;
-  tierTemplateId: string;
+  tierId: string;
   industry?: { name: string; slug: string };
-  tierTemplate?: { name: string; slug: string };
+  tier?: { name: string; slug: string };
   departments?: Array<{ id: string; name: string }>;
   agents?: Array<{ id: string; name: string }>;
   features?: Array<{ id: string; name: string; key: string }>;

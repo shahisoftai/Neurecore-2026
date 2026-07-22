@@ -1,4 +1,8 @@
-import type { DriveFile, CreateFolderInput, CreateFileInput } from './google-drive.service';
+import type {
+  DriveFile,
+  CreateFolderInput,
+  CreateFileInput,
+} from './google-drive.service';
 
 export interface ShareFileInput {
   role: 'reader' | 'writer' | 'commenter';
@@ -34,26 +38,61 @@ export interface IDriveService {
   deleteFile(tenantId: string, fileId: string): Promise<void>;
   listAgentFolders(tenantId: string): Promise<{
     rootFolderId: string;
-    agents: { agentId: string; agentName: string; folderId: string; folderLink?: string }[];
+    agents: {
+      agentId: string;
+      agentName: string;
+      folderId: string;
+      folderLink?: string;
+    }[];
   }>;
   listRootTree(tenantId: string): Promise<{
     rootFolderId: string | null;
-    children: { id: string; name: string; mimeType: string; webViewLink?: string; children: DriveFile[] }[];
+    children: {
+      id: string;
+      name: string;
+      mimeType: string;
+      webViewLink?: string;
+      children: DriveFile[];
+    }[];
   }>;
-  findFolderByName(tenantId: string, name: string, parentId?: string): Promise<DriveFile | null>;
+  findFolderByName(
+    tenantId: string,
+    name: string,
+    parentId?: string,
+  ): Promise<DriveFile | null>;
   ensureRootFolder(tenantId: string): Promise<DriveFile>;
-  setupAgentFolders(tenantId: string, agentId: string, agentName: string): Promise<{
+  setupAgentFolders(
+    tenantId: string,
+    agentId: string,
+    agentName: string,
+  ): Promise<{
     folderId: string;
     subfolders: Record<string, string>;
   }>;
   searchFiles(
     tenantId: string,
     query: string,
-    options?: { pageSize?: number; mimeType?: string; mode?: 'name' | 'fulltext'; folderId?: string },
+    options?: {
+      pageSize?: number;
+      mimeType?: string;
+      mode?: 'name' | 'fulltext';
+      folderId?: string;
+    },
   ): Promise<DriveFile[]>;
-  shareFile(tenantId: string, fileId: string, input: ShareFileInput): Promise<DrivePermission>;
-  listFilePermissions(tenantId: string, fileId: string): Promise<DrivePermission[]>;
-  revokeFilePermission(tenantId: string, fileId: string, permissionId: string): Promise<void>;
+  shareFile(
+    tenantId: string,
+    fileId: string,
+    input: ShareFileInput,
+  ): Promise<DrivePermission>;
+  listFilePermissions(
+    tenantId: string,
+    fileId: string,
+  ): Promise<DrivePermission[]>;
+  revokeFilePermission(
+    tenantId: string,
+    fileId: string,
+    permissionId: string,
+  ): Promise<void>;
   getAccessToken(tenantId: string): Promise<string | null>;
 }
 

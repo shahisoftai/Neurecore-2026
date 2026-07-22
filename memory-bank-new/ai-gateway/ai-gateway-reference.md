@@ -83,7 +83,7 @@ Client (chat / agent / hermes / RAG / tools / COS)
 | Component | Status |
 |---|---|
 | Backend (NestJS) | ✅ Running on Contabo, port 3003, `AI_GATEWAY_V2=true` |
-| DB catalog | ✅ 5 providers + 12 models seeded on Neon PostgreSQL |
+| DB catalog | ✅ 5 providers + 12 models seeded on Contabo PostgreSQL |
 | MiniMax boot probe | ✅ 6/8 capabilities green (conversation, planning, execution, evaluation, tools, embedding) — 3175ms avg |
 | Admin APIs | ✅ All 10 gateway endpoints live + Settings compatibility endpoints (`/settings/ai/providers`, `/settings/ai/routing`) |
 | Admin UI — `/admin/models` | ✅ 4 tabs deployed; basePath routing issue (sidebar) noted |

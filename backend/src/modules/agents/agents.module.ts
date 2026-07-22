@@ -20,6 +20,7 @@ import { AgentCheckpointService } from './langgraph/checkpoint.service';
 import { SecurityModule } from './security/security.module';
 import { AIGatewayModule } from '../ai-gateway/ai-gateway.module';
 import { MetricsModule } from '../metrics/metrics.module';
+import { TenantTemplatesModule } from '../tenant-templates/tenant-templates.module';
 
 /**
  * AgentsModule
@@ -37,6 +38,7 @@ import { MetricsModule } from '../metrics/metrics.module';
     SecurityModule,
     AIGatewayModule,
     MetricsModule,
+    TenantTemplatesModule,
   ],
   controllers: [
     AgentsController,

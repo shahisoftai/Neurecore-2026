@@ -12,13 +12,8 @@
 import { Injectable } from '@nestjs/common';
 import { Industry, IndustryStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
-import {
-  PoolListOptions,
-} from '../../common/pool/pool.types';
-import {
-  PoolModelConfig,
-  PoolService,
-} from '../../common/pool/pool.service';
+import { PoolListOptions } from '../../common/pool/pool.types';
+import { PoolModelConfig, PoolService } from '../../common/pool/pool.service';
 import type { CreateIndustryDto } from './dto/create-industry.dto';
 import type { UpdateIndustryDto } from './dto/update-industry.dto';
 
@@ -34,7 +29,11 @@ export class IndustriesService extends PoolService<
     super();
   }
 
-  protected get config(): PoolModelConfig<Industry, CreateIndustryDto, UpdateIndustryDto> {
+  protected get config(): PoolModelConfig<
+    Industry,
+    CreateIndustryDto,
+    UpdateIndustryDto
+  > {
     return {
       delegate: this.prismaService.industry as unknown as PoolModelConfig<
         Industry,
@@ -45,7 +44,10 @@ export class IndustriesService extends PoolService<
       useSoftDelete: true,
       buildWhere: (opts: PoolListOptions): Prisma.IndustryWhereInput => {
         const where: Prisma.IndustryWhereInput = {};
-        if (opts.status && (opts.status === 'ACTIVE' || opts.status === 'ARCHIVED')) {
+        if (
+          opts.status &&
+          (opts.status === 'ACTIVE' || opts.status === 'ARCHIVED')
+        ) {
           where.status = opts.status as IndustryStatus;
         }
         if (opts.search) {

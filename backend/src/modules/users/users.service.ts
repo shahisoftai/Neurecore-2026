@@ -140,12 +140,17 @@ export class UsersService {
     // First verify the user exists with proper tenant isolation
     await this.findOne(id, tenantId);
 
-    // Build unique where clause with tenant filter for security
-    const where: Prisma.UserWhereUniqueInput = { id };
+    // Persist JSON fields as separate columns — DTO uses .notificationPrefs
+    // but the underlying schema has notificationPrefsJson.
+    const { notificationPrefs, ...rest } = dto;
+    const data: Record<string, unknown> = { ...rest };
+    if (notificationPrefs !== undefined) {
+      data.notificationPrefsJson = notificationPrefs as never;
+    }
 
     return this.prisma.user.update({
-      where,
-      data: dto,
+      where: { id },
+      data,
       select: {
         id: true,
         email: true,
@@ -154,6 +159,15 @@ export class UsersService {
         role: true,
         tenantId: true,
         isActive: true,
+        phone: true,
+        jobTitle: true,
+        timezone: true,
+        locale: true,
+        language: true,
+        theme: true,
+        defaultLanding: true,
+        railCollapsedDefault: true,
+        notificationPrefsJson: true,
       },
     });
   }
@@ -176,7 +190,10 @@ const valid = await this.passwordService.compare(
       throw new UnauthorizedException('Current password is incorrect');
 
     const passwordHash = await this.passwordService.hash(dto.newPassword);
-    await this.prisma.user.update({ where: { id }, data: { passwordHash } });
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash, passwordChangedAt: new Date() },
+    });
     this.logger.log(`Password changed for user: ${id}`);
     return { message: 'Password updated successfully' };
   }
