@@ -17,6 +17,6 @@ import { CUSTOMER_REPOSITORY } from './interfaces/customer.interface';
       useClass: PrismaCustomerRepository,
     },
   ],
-  exports: [CustomersService],
+  exports: [CustomersService, CUSTOMER_REPOSITORY],
 })
 export class CustomersModule {}

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -12,7 +13,7 @@ import {
 } from '@prisma/client';
 import { CreateTenantTemplateDto } from './dto/create-tenant-template.dto';
 import { UpdateTenantTemplateDto } from './dto/update-tenant-template.dto';
-import { TemplateValidator } from './validators/template-validator.interface';
+import { TemplateValidator, VALIDATORS_TOKEN } from './validators/template-validator.interface';
 
 @Injectable()
 export class TenantTemplateService {
@@ -20,7 +21,7 @@ export class TenantTemplateService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly validators: TemplateValidator[],
+    @Inject(VALIDATORS_TOKEN) private readonly validators: TemplateValidator[],
   ) {}
 
   private getValidator(type: TemplateType): TemplateValidator | undefined {

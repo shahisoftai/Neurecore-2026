@@ -9,6 +9,7 @@ import { RoutineValidator } from './validators/routine.validator';
 import { ReportValidator } from './validators/report.validator';
 import { TaskValidator } from './validators/task.validator';
 import { DepartmentValidator } from './validators/department.validator';
+import { VALIDATORS_TOKEN } from './validators/template-validator.interface';
 
 const VALIDATORS = [
   AgentRoleValidator,
@@ -26,6 +27,11 @@ const VALIDATORS = [
     TenantTemplateSeederService,
     TenantTemplateRuntimeService,
     ...VALIDATORS,
+    {
+      provide: VALIDATORS_TOKEN,
+      useFactory: (...validators: unknown[]) => validators,
+      inject: VALIDATORS,
+    },
   ],
   exports: [
     TenantTemplateService,
