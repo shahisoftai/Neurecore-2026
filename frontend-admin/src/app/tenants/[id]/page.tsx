@@ -426,7 +426,17 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
               <Section title="Branding &amp; Contact">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <InfoCard label="Website" value={tenant.website ?? '—'} href={tenant.website ?? undefined} />
-                  <InfoCard label="Industry" value={tenant.industry ?? '—'} />
+                  {/* Phase 1 G9 — Industry is Super-Admin-only (INDUSTRY-GROUPS-CONCEPT.md §1.2 D7).
+                      Wrap in a flex row so the InfoCard sits next to a dedicated Change link. */}
+                  <div className="relative">
+                    <InfoCard label="Industry" value={tenant.industry ?? '—'} />
+                    <a
+                      href={`/tenants/${tenant.id}/industry`}
+                      className="absolute top-3 right-3 text-[10px] uppercase tracking-wider text-indigo-400 hover:text-indigo-300"
+                    >
+                      Change
+                    </a>
+                  </div>
                   <InfoCard label="Phone" value={tenant.phone ?? '—'} />
                   <InfoCard label="Support Email" value={tenant.supportEmail ?? '—'} href={tenant.supportEmail ? `mailto:${tenant.supportEmail}` : undefined} />
                 </div>

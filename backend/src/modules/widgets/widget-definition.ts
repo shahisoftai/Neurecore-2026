@@ -129,4 +129,10 @@ export interface WidgetDefinition {
   // EAOS binding
   entityTypes: EaosEntityTypeForWidget[];
   category: 'CORE' | 'CONTEXTUAL' | 'INDUSTRY_SPECIFIC';
+
+  // Phase 7 G2 — when set, this widget is only registered for tenants in
+  // the named industry group (e.g. 'financial-compliance'). When omitted,
+  // the widget is available to every tenant regardless of industry.
+  // The runtime filter lives in WidgetRegistry.listForIndustryGroup().
+  industryGroup?: 'financial-compliance' | 'business-technology' | 'consumer-commerce' | 'industrial-infrastructure' | 'healthcare' | 'public-social' | 'agriculture-food' | 'other';
 }

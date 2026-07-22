@@ -23,6 +23,16 @@ export interface OnboardingState {
   timezone?: string;
   currency?: string;
   templateSlug?: string;
+  /**
+   * INDUSTRY-SETUP-CONCEPT.md §3.1 G8 (Phase 1 G8) — true when the tenant
+   * has already completed onboarding. The wizard uses this to render the
+   * company step as read-only because industry is Super-Admin-only.
+   */
+  isReRun?: boolean;
+  /** Current Tenant.industry snapshot. */
+  industry?: string | null;
+  /** Current Tenant.industryGroup snapshot. */
+  industryGroup?: string | null;
 }
 
 export interface SelectTemplateResult {

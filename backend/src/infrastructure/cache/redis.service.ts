@@ -42,6 +42,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     ttl: 30_000, // 30s for the "not blacklisted" verdict
   });
 
+  // Part 9 N11 — log dedupe: when Redis is down, the methods below would
+  // log a warning on every request (hundreds per second under load).
+  // We track which messages we've already fired in this Redis-down
+  // window so the operator gets one clean notice instead of a flood.
+  // Set is cleared whenever isConnected flips back to true.
+  private readonly warnedKeys = new Set<string>();
+
+  private warnOnce(key: string, message: string): void {
+    if (this.warnedKeys.has(key)) return;
+    this.warnedKeys.add(key);
+    this.logger.warn(message);
+  }
+
   constructor(private readonly config?: ConfigService) {}
 
   onModuleInit(): void {
@@ -100,11 +113,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
     this.client.on('connect', () => {
       this.isConnected = true;
+      // N11 — re-emit warnings on the next disconnect.
+      this.warnedKeys.clear();
       this.logger.log('Redis connected');
     });
 
     this.client.on('ready', () => {
       this.isConnected = true;
+      this.warnedKeys.clear();
       this.logger.log('Redis ready');
     });
 
@@ -263,7 +279,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   // Blacklist a JWT token (for logout/revocation)
   async blacklistToken(jti: string, ttlSeconds: number): Promise<void> {
     if (!this.isConnected) {
-      this.logger.warn('Redis not connected, skipping token blacklist');
+      // N11 — single warning per Redis-down window, not per call.
+      this.warnOnce(
+        'redis.blacklistToken.down',
+        'Redis not connected, skipping token blacklist (further warnings suppressed until Redis reconnects)',
+      );
       return;
     }
     try {
@@ -288,7 +308,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     if (cached !== undefined) return cached;
 
     if (!this.isConnected) {
-      this.logger.warn('Redis not connected, failing open for token check');
+      this.warnOnce(
+        'redis.isBlacklisted.down',
+        'Redis not connected, failing open for token check (further warnings suppressed until Redis reconnects)',
+      );
       // Fail-open + cache the verdict so we don't keep warning.
       this.blacklistCache.set(cacheKey, false);
       return false;
@@ -298,8 +321,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       this.blacklistCache.set(cacheKey, isBl);
       return isBl;
     } catch (err) {
-      this.logger.warn(
-        `Redis unavailable when checking token blacklist: ${String(err)}`,
+      this.warnOnce(
+        `redis.isBlacklisted.error.${(err as Error).message.slice(0, 80)}`,
+        `Redis unavailable when checking token blacklist: ${String(err)} (further warnings of this type suppressed)`,
       );
       // Fail-open: cache the negative verdict for 30s so subsequent
       // requests don't hammer a downed Redis.

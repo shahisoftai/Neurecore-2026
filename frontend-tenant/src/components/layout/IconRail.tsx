@@ -105,13 +105,22 @@ import {
   Activity as ActivityIcon,
   PlusSquare,
   Stethoscope,
+  // Phase 9 N4 — previously missing customer-section icons. The
+  // INDUSTRY_ICON_MAP below now references these by name; the renderer's
+  // ??-fallback that silently swapped unknown icons for `UserCircle` has
+  // been replaced with a dev-only assertion so missing-icon regressions
+  // surface at first render.
+  Heart,
+  Tractor,
 } from 'lucide-react';
 import { OrgTree } from '@/components/sidebar/OrgTree';
 import { RailCustomizeModal } from '@/components/layout/RailCustomizeModal';
 import { useRailPreferencesStore, type ItemId, type SectionId } from '@/stores/railPreferencesStore';
 import { getIndustryNavConfig } from '@/lib/industryNavigation';
-import { tenantsService, type TenantSelf } from '@/services/tenants.service';
 import { useTenantAuth } from '@/hooks/useTenantAuth';
+// Part 9 N3 — TenantStore replaces the per-component `tenantsService.getCurrent()`
+// call + local `tenantIndustryGroup` state. Single source of truth, single fetch.
+import { useTenantIndustryGroup } from '@/stores/tenantStore';
 
 /** Icon name → component lookup for industry extras (icons referenced by string). */
 const INDUSTRY_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -182,18 +191,42 @@ interface RailSection {
 export function buildRailSections(industryGroup: string | null | undefined): RailSection[] {
   const navConfig = getIndustryNavConfig(industryGroup);
 
-  // Resolve industry-specific Customer label/icon (defaults: "Customers" + UserCircle)
+  // Resolve industry-specific Customer label/icon (defaults: "Customers" + UserCircle).
+  // Phase 9 N4 — the previous `?? UserCircle` fallback silently swallowed
+  // missing-icon regressions; we now assert in dev so an unknown icon
+  // surfaces immediately. Production keeps the fallback so a typo in
+  // industryNavigation.ts never white-screens the rail.
   const customersLabel = navConfig.customersLabel ?? 'Customers';
-  const customersIcon = navConfig.customersIcon
-    ? INDUSTRY_ICON_MAP[navConfig.customersIcon] ?? UserCircle
-    : UserCircle;
+  const customersIcon = (() => {
+    if (!navConfig.customersIcon) return UserCircle;
+    const resolved = INDUSTRY_ICON_MAP[navConfig.customersIcon];
+    if (!resolved && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[IconRail] unknown customersIcon "${navConfig.customersIcon}" — falling back to UserCircle. ` +
+          `Add it to INDUSTRY_ICON_MAP.`,
+      );
+    }
+    return resolved ?? UserCircle;
+  })();
 
   // Industry-specific workspace extras
   const industryExtras: RailItem[] = navConfig.workspaceExtras.map((item) => ({
     id: item.id as ItemId,
     label: item.label,
     href: item.href,
-    icon: INDUSTRY_ICON_MAP[item.iconName] ?? BriefcaseIcon,
+      // Phase 9 N4 — same dev-only assertion pattern as customersIcon above.
+      icon: (() => {
+        const resolved = INDUSTRY_ICON_MAP[item.iconName];
+        if (!resolved && process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.error(
+            `[IconRail] unknown iconName "${item.iconName}" — falling back to BriefcaseIcon. ` +
+              `Add it to INDUSTRY_ICON_MAP.`,
+          );
+        }
+        return resolved ?? BriefcaseIcon;
+      })(),
   }));
 
   return [
@@ -264,7 +297,10 @@ export function IconRail({ className = '' }: IconRailProps) {
   const [pinned, setPinned] = useState(false);
   const [orgTreeOpen, setOrgTreeOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [tenantIndustryGroup, setTenantIndustryGroup] = useState<string | null>(null);
+  // Part 9 N3 — single fetch via TenantStore. Hook fires once on mount
+  // regardless of how many components call it (store is idempotent +
+  // TTL-guarded). Multiple consumers share the cached value.
+  const { industryGroup: tenantIndustryGroup } = useTenantIndustryGroup();
   const user = useTenantAuth();
 
   const expanded = hovered || pinned;
@@ -278,28 +314,6 @@ export function IconRail({ className = '' }: IconRailProps) {
   const hiddenItems = useRailPreferencesStore((s) => s.hiddenItems);
   const collapsedSections = useRailPreferencesStore((s) => s.collapsedSections);
   const toggleSectionCollapsed = useRailPreferencesStore((s) => s.toggleSectionCollapsed);
-
-  // INDUSTRY-GROUPS-CONCEPT.md §7 — load tenant's industryGroup once so the
-  // rail can inject industry-specific Workspace items + Customers label/icon.
-  useEffect(() => {
-    if (!user) {
-      setTenantIndustryGroup(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const t = (await tenantsService.getCurrent()) as TenantSelf | null;
-        if (cancelled) return;
-        setTenantIndustryGroup((t as unknown as { industryGroup?: string | null })?.industryGroup ?? null);
-      } catch {
-        if (!cancelled) setTenantIndustryGroup(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
 
   const railSections = useMemo(() => buildRailSections(tenantIndustryGroup), [tenantIndustryGroup]);
 
@@ -544,7 +558,11 @@ export function IconRail({ className = '' }: IconRailProps) {
       </div>
 
       {/* Customize modal — portals its own overlay */}
-      <RailCustomizeModal open={customizeOpen} onClose={() => setCustomizeOpen(false)} />
+      <RailCustomizeModal
+        open={customizeOpen}
+        onClose={() => setCustomizeOpen(false)}
+        industryGroup={tenantIndustryGroup}
+      />
     </aside>
   );
 }

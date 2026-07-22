@@ -15,6 +15,7 @@ import { EmbeddingsService } from './services/embeddings.service';
 import { PgVectorStore } from './services/vector-store.service';
 import { HybridSearchService } from './services/hybrid-search.service';
 import { RAGPipeline } from './services/rag-pipeline.service';
+import { IndustryKnowledgeSeeder } from './services/industry-knowledge-seeder.service';
 import {
   CHUNKING_SERVICE,
   EMBEDDINGS_SERVICE,
@@ -29,6 +30,8 @@ export const knowledgeProviders: Provider[] = [
   HybridSearchService,
   RAGPipeline,
   PgVectorStore,
+  // Phase 7 G1 — industry knowledge corpus seeder (tenant-scoped cloning).
+  IndustryKnowledgeSeeder,
 
   // Interface → concrete class bindings
   { provide: CHUNKING_SERVICE, useExisting: ChunkingService },

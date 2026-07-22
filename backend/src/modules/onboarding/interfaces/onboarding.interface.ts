@@ -39,6 +39,18 @@ export interface OnboardingStatePayload {
   templateSlug?: string;
   departmentOverrides?: Record<string, { name?: string }>;
   agentOverrides?: Record<string, { name?: string; isSelected?: boolean }>;
+  /**
+   * INDUSTRY-SETUP-CONCEPT.md §3.1 G8 (Phase 1 G8) — true when the tenant
+   * has previously completed onboarding (onboardingCompletedAt set).
+   * Used by the wizard to render the company step as read-only on re-run.
+   * Industry is a Super-Admin-only field per INDUSTRY-GROUPS-CONCEPT.md
+   * §1.2 D7, so a re-running tenant must not be allowed to re-pick it.
+   */
+  isReRun?: boolean;
+  /** Tenant.industry snapshot, so the wizard can render the current choice. */
+  industry?: string | null;
+  /** Tenant.industryGroup snapshot, for stub page routing. */
+  industryGroup?: string | null;
 }
 
 export interface IOnboardingService {

@@ -86,6 +86,27 @@ export class WidgetRegistry {
   }
 
   /**
+   * Phase 7 G2 — filter widgets by tenant industry group.
+   *
+   * Returns:
+   *   - Every CORE / CONTEXTUAL widget (industryGroup is undefined).
+   *   - Every INDUSTRY_SPECIFIC widget whose `industryGroup` matches the
+   *     argument.
+   *
+   * Tenants outside the target group never see INDUSTRY_SPECIFIC widgets
+   * (so a tenant in 'agriculture-food' does not get the F&C
+   * audit-completion-rate widget). The runtime command-center service
+   * calls this when assembling the dashboard for a tenant.
+   */
+  listForIndustryGroup(
+    industryGroup: WidgetDefinition['industryGroup'],
+  ): WidgetDefinition[] {
+    return this.list().filter(
+      (w) => !w.industryGroup || w.industryGroup === industryGroup,
+    );
+  }
+
+  /**
    * Total count of registered Widgets.
    */
   count(): number {

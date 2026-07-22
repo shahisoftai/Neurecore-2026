@@ -41,6 +41,9 @@ import { ModelsModule } from '../models/models.module';
     RagAskSseService,
     KnowledgeRagAskGuard,
     ...knowledgeProviders,
+    // Phase 7 G1 — IndustryKnowledgeSeeder is exported so OnboardingModule
+    // (which already imports KnowledgeModule for the RAG pipeline) can
+    // consume it via the standard provider DI binding.
   ],
 })
 export class KnowledgeModule {}

@@ -6,11 +6,25 @@
  *
  * These stubs exist so the IconRail links don't 404. Real implementations
  * land in later phases.
+ *
+ * Two render paths:
+ *   - <IndustryStubPage /> — direct prop API for callers that already have
+ *     resolved metadata.
+ *   - <IndustryStubFromNav featureId=... industryGroup=... /> — convenience
+ *     wrapper that resolves title/description/group/plannedPhase from
+ *     `industryNavigation.ts` (the single source of truth). Used by the
+ *     8 explicit Financial & Compliance stub pages and the dynamic
+ *     /workspace/[feature] route so they cannot drift from the runtime
+ *     IconRail metadata.
  */
 
 import { motion } from 'framer-motion';
 import { Construction, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import {
+  getIndustryNavConfig,
+  type IndustryNavConfig,
+} from '@/lib/industryNavigation';
 
 export interface IndustryStubPageProps {
   title: string;
@@ -40,7 +54,7 @@ export function IndustryStubPage({
         className="rounded-xl border border-dashed border-surface-border bg-surface-raised/50 p-8 text-center space-y-4"
       >
         <div className="flex justify-center">
-          <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
             <Construction className="w-6 h-6 text-accent" />
           </div>
         </div>
@@ -54,4 +68,48 @@ export function IndustryStubPage({
       </motion.div>
     </div>
   );
+}
+
+export interface IndustryStubFromNavProps {
+  /**
+   * The rail item id to look up (e.g. "compliance", "loans"). Must exist
+   * in the resolved `IndustryNavConfig.workspaceExtras`; otherwise the
+   * wrapper falls back to a generic stub with the tenant's group label.
+   */
+  featureId: string;
+  /** The tenant's industry-group slug (e.g. "financial-compliance"). */
+  industryGroup: string;
+}
+
+/**
+ * Convenience wrapper — looks up the rail item by id in the tenant's nav
+ * config and renders the corresponding IndustryStubPage.
+ *
+ * SRP: this wrapper exists so explicit per-route stub pages don't each
+ * carry their own copy of the metadata. Adding a new rail item to
+ * `industryNavigation.ts` automatically lights up both the IconRail link
+ * AND the stub page content.
+ */
+export function IndustryStubFromNav({
+  featureId,
+  industryGroup,
+}: IndustryStubFromNavProps) {
+  const navConfig: IndustryNavConfig = getIndustryNavConfig(industryGroup);
+  const extra = navConfig.workspaceExtras.find((e) => e.id === featureId);
+  return (
+    <IndustryStubPage
+      title={extra?.label ?? humanize(featureId)}
+      description={
+        extra?.description ??
+        `${extra?.label ?? humanize(featureId)} workspace module for ${navConfig.groupLabel} industry group.`
+      }
+      industryGroup={navConfig.groupLabel}
+      plannedPhase={extra?.plannedPhase ?? 'Future Phase'}
+    />
+  );
+}
+
+/** humanize('audit-engagements') → 'Audit Engagements' */
+function humanize(slug: string): string {
+  return slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }

@@ -104,10 +104,43 @@ const BUSINESS_TECHNOLOGY_PACKAGES = [
   { slug: 'professional-recruiting', name: 'Recruiting & Talent', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'professional-business-services', description: 'Recruiting assignments, candidate tracking, and placement management.' },
 ];
 
+// Phase 5 P3 — Healthcare & Life Sciences. Pre-existing `seed-platform-templates.cjs`
+// has no healthcare-specific agent or department names, so packages are
+// descriptive-only (composition stays in the description string) — same
+// honest pattern as the other groups in this seeder.
+const HEALTHCARE_PACKAGES = [
+  { slug: 'hc-patient-scheduling', name: 'Patient Scheduling & Intake', scope: 'INDUSTRY', tierSlug: 'starter', industrySlug: 'healthcare-life-sciences', description: 'Appointment scheduling, patient intake forms, and visit prep.' },
+  { slug: 'hc-clinical-records', name: 'Clinical Records Management', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'healthcare-life-sciences', description: 'Electronic health records, lab results, and clinical documentation.' },
+  { slug: 'hc-billing-claims', name: 'Healthcare Billing & Claims', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'healthcare-life-sciences', description: 'Insurance coding, claim submission, denial management, and payment posting.' },
+  { slug: 'hc-care-coordination', name: 'Care Coordination', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'healthcare-life-sciences', description: 'Multi-disciplinary care plans, referral management, and follow-up tracking.' },
+];
+
+// Phase 5 P3 — Public & Social. Three sub-industries: government-public-sector,
+// education-research, nonprofit-international. Descriptive only.
+const PUBLIC_SOCIAL_PACKAGES = [
+  { slug: 'ps-program-management', name: 'Program Management', scope: 'INDUSTRY', tierSlug: 'starter', industrySlug: 'government-public-sector', description: 'Government program planning, milestone tracking, and stakeholder reporting.' },
+  { slug: 'ps-case-management', name: 'Case & Eligibility Management', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'government-public-sector', description: 'Citizen intake, eligibility verification, case lifecycle, and referral workflow.' },
+  { slug: 'ps-permits-licensing', name: 'Permits & Licensing', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'government-public-sector', description: 'Permit applications, document collection, renewal reminders, and inspection scheduling.' },
+  { slug: 'ps-grant-management', name: 'Grant Lifecycle Management', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'nonprofit-international', description: 'Grant applications, award tracking, compliance reporting, and disbursement.' },
+  { slug: 'ps-admissions-enrollment', name: 'Admissions & Enrollment', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'education-research', description: 'Application processing, eligibility checks, yield optimization, and enrollment tracking.' },
+  { slug: 'ps-academic-advising', name: 'Academic Advising & Retention', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'education-research', description: 'Course planning, degree audits, at-risk student alerts, and intervention tracking.' },
+];
+
+// Phase 5 P4 — Agriculture & Food. Descriptive only; no ag-specific agents
+// exist in the platform template pool yet.
+const AGRICULTURE_PACKAGES = [
+  { slug: 'ag-farm-operations', name: 'Farm Operations', scope: 'INDUSTRY', tierSlug: 'starter', industrySlug: 'agriculture-food-systems', description: 'Crop planning, field operations, livestock management, and harvest coordination.' },
+  { slug: 'ag-supply-chain', name: 'Agri Supply Chain & Traceability', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'agriculture-food-systems', description: 'Procurement, cold chain, traceability records, and buyer coordination.' },
+  { slug: 'ag-sustainability', name: 'Sustainability & Compliance', scope: 'INDUSTRY', tierSlug: 'professional', industrySlug: 'agriculture-food-systems', description: 'Environmental compliance, sustainability reporting, and certification tracking.' },
+];
+
 const ALL_PACKAGES = [
   ...CONSUMER_COMMERCE_PACKAGES,
   ...INDUSTRIAL_INFRA_PACKAGES,
   ...BUSINESS_TECHNOLOGY_PACKAGES,
+  ...HEALTHCARE_PACKAGES,
+  ...PUBLIC_SOCIAL_PACKAGES,
+  ...AGRICULTURE_PACKAGES,
 ];
 
 const TIER_RANK = {

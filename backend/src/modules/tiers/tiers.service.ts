@@ -4,6 +4,17 @@
  * SRP: Only handles tier CRUD operations
  * OCP: Extends via interface, not modification
  * DIP: Depends on Prisma abstraction
+ *
+ * Phase 2 G14 + G15 (INDUSTRY-SETUP-CONCEPT.md §3.3): the create/update
+ * methods now use the `TIER_INPUT_FIELDS` constant from tier.dto.ts as
+ * the canonical column list, so:
+ *   - G14 (tagline): now persisted.
+ *   - G15 (9 new fields: icon, billingCycle, trialDays, maxDepartments,
+ *     maxApprovalStages, allowWhiteLabel, allowPredictiveAnalytics,
+ *     allowCustomDashboards, allowMultiOffice): all persisted.
+ *
+ * The previous hardcoded column lists are removed to eliminate the silent
+ * drop bug where the FE admin UI sent fields the BE quietly ignored.
  */
 
 import {
@@ -13,6 +24,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { TIER_INPUT_FIELDS } from './dto/tier.dto';
 import type {
   ITierService,
   CreateTierInput,
@@ -22,6 +34,49 @@ import type { Tier, Prisma } from '@prisma/client';
 
 const PACK_TIER_ORDER = ['COMMUNITY', 'STARTER', 'PRO', 'ENTERPRISE'] as const;
 type PackTierRequired = (typeof PACK_TIER_ORDER)[number];
+
+/**
+ * SRP: centralise the input → Prisma column mapping here so create and
+ * update share identical semantics. The mapper picks every field present
+ * in the shared TIER_INPUT_FIELDS list (single source of truth — adding
+ * a schema column requires updating tier.dto.ts only).
+ */
+function buildCreateData(input: CreateTierInput): Prisma.TierCreateInput {
+  // Defaults mirror schema.prisma defaults. Anything not supplied by the
+  // caller falls back to the DB default.
+  const data: Record<string, unknown> = {
+    name: input.name,
+    slug: input.slug,
+    description: input.description ?? null,
+    tagline: input.tagline ?? null,
+    icon: input.icon ?? null,
+    isActive: input.isActive ?? true,
+    isDefault: input.isDefault ?? false,
+    sortOrder: input.sortOrder ?? 0,
+    monthlyPrice: input.monthlyPrice ?? 0,
+    yearlyPrice: input.yearlyPrice ?? 0,
+    currency: input.currency ?? 'USD',
+    billingCycle: input.billingCycle ?? 'monthly',
+    trialDays: input.trialDays ?? null,
+    maxUsers: input.maxUsers ?? 2,
+    maxAgents: input.maxAgents ?? 3,
+    maxDepartments: input.maxDepartments ?? 1,
+    maxStorageGB: input.maxStorageGB ?? 1,
+    maxApiCalls: input.maxApiCalls ?? 1000,
+    maxConversationMessages: input.maxConversationMessages ?? 500,
+    maxFileSizeMB: input.maxFileSizeMB ?? 10,
+    maxApprovalStages: input.maxApprovalStages ?? 1,
+    allowCustomBranding: input.allowCustomBranding ?? false,
+    allowApiAccess: input.allowApiAccess ?? false,
+    allowSso: input.allowSso ?? false,
+    allowAuditExport: input.allowAuditExport ?? false,
+    allowWhiteLabel: input.allowWhiteLabel ?? false,
+    allowPredictiveAnalytics: input.allowPredictiveAnalytics ?? false,
+    allowCustomDashboards: input.allowCustomDashboards ?? false,
+    allowMultiOffice: input.allowMultiOffice ?? false,
+  };
+  return data as Prisma.TierCreateInput;
+}
 
 @Injectable()
 export class TiersService implements ITierService {
@@ -86,28 +141,7 @@ export class TiersService implements ITierService {
       );
     }
 
-    const data: Prisma.TierCreateInput = {
-      name: input.name,
-      slug: input.slug,
-      description: input.description,
-      isActive: input.isActive ?? true,
-      isDefault: input.isDefault ?? false,
-      sortOrder: input.sortOrder ?? 0,
-      monthlyPrice: input.monthlyPrice ?? 0,
-      yearlyPrice: input.yearlyPrice ?? 0,
-      currency: input.currency ?? 'USD',
-      maxUsers: input.maxUsers ?? 2,
-      maxAgents: input.maxAgents ?? 3,
-      maxStorageGB: input.maxStorageGB ?? 1,
-      maxApiCalls: input.maxApiCalls ?? 1000,
-      maxConversationMessages: input.maxConversationMessages ?? 500,
-      maxFileSizeMB: input.maxFileSizeMB ?? 10,
-      allowCustomBranding: input.allowCustomBranding ?? false,
-      allowApiAccess: input.allowApiAccess ?? false,
-      allowSso: input.allowSso ?? false,
-      allowAuditExport: input.allowAuditExport ?? false,
-    };
-
+    const data = buildCreateData(input);
     const tier = await this.prisma.tier.create({ data });
     this.logger.log(`Created tier: ${tier.name} (${tier.id})`);
     return tier;
@@ -128,49 +162,23 @@ export class TiersService implements ITierService {
       }
     }
 
-    const data: Prisma.TierUpdateInput = {
-      ...(input.name !== undefined && { name: input.name }),
-      ...(input.slug !== undefined && { slug: input.slug }),
-      ...(input.description !== undefined && {
-        description: input.description,
-      }),
-      ...(input.isActive !== undefined && { isActive: input.isActive }),
-      ...(input.isDefault !== undefined && { isDefault: input.isDefault }),
-      ...(input.sortOrder !== undefined && { sortOrder: input.sortOrder }),
-      ...(input.monthlyPrice !== undefined && {
-        monthlyPrice: input.monthlyPrice,
-      }),
-      ...(input.yearlyPrice !== undefined && {
-        yearlyPrice: input.yearlyPrice,
-      }),
-      ...(input.currency !== undefined && { currency: input.currency }),
-      ...(input.maxUsers !== undefined && { maxUsers: input.maxUsers }),
-      ...(input.maxAgents !== undefined && { maxAgents: input.maxAgents }),
-      ...(input.maxStorageGB !== undefined && {
-        maxStorageGB: input.maxStorageGB,
-      }),
-      ...(input.maxApiCalls !== undefined && {
-        maxApiCalls: input.maxApiCalls,
-      }),
-      ...(input.maxConversationMessages !== undefined && {
-        maxConversationMessages: input.maxConversationMessages,
-      }),
-      ...(input.maxFileSizeMB !== undefined && {
-        maxFileSizeMB: input.maxFileSizeMB,
-      }),
-      ...(input.allowCustomBranding !== undefined && {
-        allowCustomBranding: input.allowCustomBranding,
-      }),
-      ...(input.allowApiAccess !== undefined && {
-        allowApiAccess: input.allowApiAccess,
-      }),
-      ...(input.allowSso !== undefined && { allowSso: input.allowSso }),
-      ...(input.allowAuditExport !== undefined && {
-        allowAuditExport: input.allowAuditExport,
-      }),
-    };
+    // SRP: spread every field that's defined on TIER_INPUT_FIELDS AND
+    // present on the input (Partial<CreateTierInput> means each may be
+    // undefined). The shared constant is the single source of truth —
+    // adding a column to schema.prisma + tier.dto.ts is the only place
+    // that needs editing; this spread picks it up automatically.
+    const data: Record<string, unknown> = {};
+    for (const field of TIER_INPUT_FIELDS) {
+      const value = (input as Record<string, unknown>)[field];
+      if (value !== undefined) {
+        data[field] = value;
+      }
+    }
 
-    const tier = await this.prisma.tier.update({ where: { id }, data });
+    const tier = await this.prisma.tier.update({
+      where: { id },
+      data: data as Prisma.TierUpdateInput,
+    });
     this.logger.log(`Updated tier: ${tier.name} (${tier.id})`);
     return tier;
   }

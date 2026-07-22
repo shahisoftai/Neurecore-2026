@@ -8,9 +8,15 @@
  * railPreferencesStore and are reflected immediately in the IconRail.
  *
  * "Reset to defaults" restores the canonical 19-link rail.
+ *
+ * INDUSTRY-SETUP-CONCEPT.md §3.1 G5: previously this modal imported the
+ * static `RAIL_SECTIONS` (= `buildRailSections(null)`) and therefore could
+ * not toggle industry-specific extras. The modal now accepts the tenant's
+ * `industryGroup` as a prop and rebuilds the rail via `buildRailSections`
+ * so users see the same items the runtime IconRail renders.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -20,15 +26,22 @@ import {
   Check,
   Minus,
 } from 'lucide-react';
-import { RAIL_SECTIONS } from '@/components/layout/IconRail';
+import { buildRailSections } from '@/components/layout/IconRail';
 import { useRailPreferencesStore } from '@/stores/railPreferencesStore';
 
 interface RailCustomizeModalProps {
   open: boolean;
   onClose: () => void;
+  /**
+   * The tenant's industry-group slug (e.g. "financial-compliance"). When
+   * provided, the modal rebuilds the rail with the industry-specific
+   * Workspace extras + Customers label/icon. When null/undefined, falls
+   * back to the generic 19-link rail.
+   */
+  industryGroup?: string | null;
 }
 
-export function RailCustomizeModal({ open, onClose }: RailCustomizeModalProps) {
+export function RailCustomizeModal({ open, onClose, industryGroup }: RailCustomizeModalProps) {
   // Read raw state (arrays) so the modal re-renders when toggles change.
 // Calling s.isSectionVisible / s.isItemVisible returns a stable function ref
 // each time, so Zustand wouldn't notify this component on state change.
@@ -41,6 +54,13 @@ export function RailCustomizeModal({ open, onClose }: RailCustomizeModalProps) {
   const isSectionVisible = (id: string) => !hiddenSections.includes(id as never);
   const isItemVisible = (id: string) => !hiddenItems.includes(id as never);
 
+  // Industry-aware rail — same builder IconRail uses at runtime, so the
+  // toggles the user picks here line up 1:1 with what they actually see.
+  const railSections = useMemo(
+    () => buildRailSections(industryGroup ?? null),
+    [industryGroup],
+  );
+
   // Close on Escape.
   useEffect(() => {
     if (!open) return;
@@ -51,11 +71,11 @@ export function RailCustomizeModal({ open, onClose }: RailCustomizeModalProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  const totalVisibleItems = RAIL_SECTIONS.reduce(
+  const totalVisibleItems = railSections.reduce(
     (acc, s) => acc + (isSectionVisible(s.id) ? s.items.filter((i) => isItemVisible(i.id)).length : 0),
     0,
   );
-  const totalItems = RAIL_SECTIONS.reduce((acc, s) => acc + s.items.length, 0);
+  const totalItems = railSections.reduce((acc, s) => acc + s.items.length, 0);
 
   return (
     <AnimatePresence>
@@ -99,7 +119,7 @@ export function RailCustomizeModal({ open, onClose }: RailCustomizeModalProps) {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-              {RAIL_SECTIONS.map((section) => {
+              {railSections.map((section) => {
                 const sectionVisible = isSectionVisible(section.id);
                 const visibleItemCount = section.items.filter((i) => isItemVisible(i.id)).length;
                 const sectionHiddenBecauseAllItems =

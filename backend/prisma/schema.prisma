@@ -2002,6 +2002,44 @@ enum CustomerStatus {
   ARCHIVED
 }
 
+// Phase 4 G1+G2 (INDUSTRY-SETUP-CONCEPT.md §3.4): industry-aware KYC/AML
+// fields. Kept as first-class columns (not JSONB) so the customer list
+// page can filter and report on them without parsing customer.billingInfo.
+enum CustomerKycStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  REJECTED
+}
+
+enum CustomerRiskRating {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// INDUSTRY-REQUIREMENTS-STAGED.md §1.2 — Financial & Compliance lifecycle.
+enum CustomerLifecycleStage {
+  PROSPECT
+  KYC_VERIFIED
+  ACTIVE
+  DORMANT
+  CLOSED
+}
+
+// INDUSTRY-REQUIREMENTS-STAGED.md §1.3 — financialSubType discriminator
+// on Customer. Only meaningful when Customer.industry is in the
+// 'financial-compliance' group; for non-F&C tenants the column stays null.
+enum CustomerFinancialSubType {
+  BANKING
+  INSURANCE
+  WEALTH_MANAGEMENT
+  INVESTMENT
+  FINTECH
+  ACCOUNTING_AUDIT
+}
+
 enum DeliverableStatus {
   DRAFT
   IN_REVIEW
@@ -2026,6 +2064,21 @@ model Customer {
   billingInfo  Json?
   status       CustomerStatus @default(ACTIVE)
   tags         String[]       @default([])
+
+  // Phase 4 (INDUSTRY-SETUP-CONCEPT.md §3.4 / INDUSTRY-REQUIREMENTS-STAGED.md §1.2-§1.3)
+  // First-class columns for the most-queried Financial & Compliance fields.
+  // Supplementary per-industry fields stay in Customer.billingInfo via
+  // the IndustryCustomerFields service so we don't pay the schema-migration
+  // cost for one-off fields.
+  kycStatus          CustomerKycStatus?         // null when not applicable
+  kycVerifiedAt      DateTime?                  // last successful verification timestamp
+  kycExpiresAt       DateTime?                  // triggers kycStatus='EXPIRED' on pass
+  riskRating         CustomerRiskRating?        // AML / credit risk
+  taxId              String?                    // encrypted at the application layer
+  financialSubType   CustomerFinancialSubType?  // discriminator within F&C group
+  lifecycleStage     CustomerLifecycleStage?    // mirrors CustomerLifecycleTemplate
+  lifecycleUpdatedAt DateTime?                  // last stage transition timestamp
+
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
@@ -2036,6 +2089,11 @@ model Customer {
   @@index([tenantId])
   @@index([tenantId, status, createdAt(sort: Desc)])
   @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, industry])
+  @@index([tenantId, financialSubType])
+  @@index([tenantId, lifecycleStage])
+  @@index([tenantId, kycStatus])
+  @@index([tenantId, riskRating])
   @@map("customers")
 }
 
@@ -2230,6 +2288,13 @@ model Project {
   projectType        ProjectType?  @relation(fields: [projectTypeId], references: [id], onDelete: SetNull)
   projectTypeVersion Int?          // which version of the type was used
 
+  // INDUSTRY-GROUPS-CONCEPT.md §5 — industry slug (e.g. "financial-services").
+  // Mirrors Tenant.industry so dashboards / filters can group projects by
+  // industry without parsing derivedShape JSONB. Populated by ProjectsService
+  // on create: from the synthesised ProjectShape.industry when present,
+  // otherwise from Tenant.industry as a fallback.
+  industry String?
+
   // Financials
   budgetType     BudgetType?
   budgetAmount   Decimal?    @db.Decimal(14, 2)
@@ -2305,6 +2370,7 @@ model Project {
   @@index([tenantId, status, createdAt(sort: Desc)])
   @@index([tenantId, createdAt(sort: Desc)])
   @@index([parentProjectId])
+  @@index([tenantId, industry])
   @@map("projects")
 }
 

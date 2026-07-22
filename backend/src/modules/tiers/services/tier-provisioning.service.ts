@@ -4,6 +4,13 @@
  * SRP: ONLY handles automatic agent provisioning on tenant creation
  * OCP: New provisioning strategies extend without modifying core logic
  * DIP: Depends on abstractions (PrismaService), not concretions
+ *
+ * Phase 3 G14: adds `selectIndustryDefaultAgents()` which uses
+ * `resolveDefaultAgentsForIndustry()` from tier-industry-matrix.ts to
+ * mark industry-specific agents as selected after onboarding. This
+ * complements `provisionAgents()` (which runs at tenant creation when
+ * the industry isn't known yet) and lets the matrix drive the final
+ * selection.
  */
 
 import {
@@ -14,6 +21,36 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { Prisma } from '@prisma/client';
+import { resolveDefaultAgentsForIndustry } from '../../industry/tier-industry-matrix';
+
+/**
+ * Slug ↔ template.name matcher.
+ *
+ * The matrix keys (e.g. "bookkeeper") are abstract agent slugs. The
+ * AgentTemplate table stores names like "Bookkeeper & Controller".
+ * This helper does a substring + boundary match so the matrix list
+ * drives selection without a separate name table.
+ *
+ *   matchesTemplateSlug('bookkeeper', 'Bookkeeper & Controller') → true
+ *   matchesTemplateSlug('bookkeeper', 'Tax Strategist')           → false
+ *   matchesTemplateSlug('ap-specialist', 'AP Specialist')         → true
+ *
+ * SRP: single pure function. Pure functions are trivial to test and
+ * keep the matching rules out of the provisioning loop.
+ */
+export function matchesTemplateSlug(slug: string, templateName: string): boolean {
+  if (!slug || !templateName) return false;
+  const normalised = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const normalisedSlug = normalised(slug);
+  const normalisedName = normalised(templateName);
+  return (
+    normalisedName === normalisedSlug ||
+    normalisedName.startsWith(`${normalisedSlug}-`) ||
+    normalisedName.startsWith(`${normalisedSlug} `) ||
+    normalisedName.startsWith(`${normalisedSlug}&`)
+  );
+}
 
 export interface ProvisioningResult {
   tenantId: string;
@@ -276,6 +313,127 @@ export class TierProvisioningService implements ITierProvisioningService {
 
     this.logger.log(`Tenant ${tenantId} selected agent ${agent.id} from pool`);
     return agent.id;
+  }
+
+  /**
+   * Industry-aware default-agent selection. Idempotent.
+   *
+   * Called from OnboardingService.complete() after the tenant's industry
+   * is known (provisionAgents() runs earlier, at tenant creation, when
+   * the industry isn't yet set). The algorithm:
+   *
+   *   1. Resolve the priority-sorted industry default list from the matrix.
+   *   2. Walk the tenant's tier pool entries; for each entry whose
+   *      template.name matches a matrix slug, set isSelected: true on
+   *      the agent row (or create one if it doesn't exist yet).
+   *   3. Honour the tier's maxAgents cap — stop once we hit it.
+   *   4. Deselect agents whose template does NOT match any priority slug
+   *      (keeps the surface area clean for the tenant's vertical).
+   *
+   * Returns the set of agent IDs that were activated.
+   *
+   * SRP: single responsibility = "apply industry defaults to the
+   *      existing pool". Does NOT mutate tier/tenant state, does NOT
+   *      create agents outside the pool.
+   */
+  async selectIndustryDefaultAgents(
+    tenantId: string,
+    industrySlug: string,
+    actorId?: string,
+  ): Promise<string[]> {
+    if (!industrySlug) return [];
+
+    const prioritySlugs = resolveDefaultAgentsForIndustry(industrySlug);
+    if (prioritySlugs.length === 0) {
+      this.logger.warn(
+        `selectIndustryDefaultAgents: industry "${industrySlug}" has no default agents in the matrix — no changes`,
+      );
+      return [];
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { tierId: true, tier: { select: { maxAgents: true, slug: true } } },
+    });
+    if (!tenant?.tierId || !tenant.tier) {
+      this.logger.warn(
+        `selectIndustryDefaultAgents: tenant ${tenantId} has no tier — skipping`,
+      );
+      return [];
+    }
+
+    const currentSelected = await this.prisma.agent.count({
+      where: { tenantId, isSelected: true },
+    });
+    const cap = tenant.tier.maxAgents;
+    const unlimited = cap >= 9999;
+    const remaining = unlimited ? Number.POSITIVE_INFINITY : cap - currentSelected;
+    if (remaining <= 0) {
+      this.logger.warn(
+        `selectIndustryDefaultAgents: tenant ${tenantId} at agent cap (${currentSelected}/${cap})`,
+      );
+      return [];
+    }
+
+    // Pull the tenant's pool entries for the current tier, with template
+    // details so we can match by name.
+    const poolEntries = await this.prisma.tierAgentPool.findMany({
+      where: { tierId: tenant.tierId },
+      include: { template: { select: { id: true, name: true, version: true } } },
+      orderBy: { slot: 'asc' },
+    });
+
+    // Match pool entries to priority slugs. Walk priority slugs in order so
+    // the matching order respects sub-industry priority.
+    const matchedEntries: Array<{ entry: typeof poolEntries[number]; slug: string }> = [];
+    for (const slug of prioritySlugs) {
+      const entry = poolEntries.find((p) =>
+        matchesTemplateSlug(slug, p.template.name),
+      );
+      if (entry) matchedEntries.push({ entry, slug });
+    }
+
+    const activated: string[] = [];
+    let budget = remaining;
+
+    for (const { entry } of matchedEntries) {
+      if (budget <= 0) break;
+
+      // Find or create the Agent row for this pool entry on the tenant.
+      let agent = await this.prisma.agent.findFirst({
+        where: { tenantId, tierAgentPoolId: entry.id },
+      });
+      if (!agent) {
+        agent = await this.prisma.agent.create({
+          data: {
+            name: entry.template.name,
+            type: 'FUNCTIONAL',
+            model: entry.defaultModel ?? 'gpt-4o-mini',
+            permissions: [] as unknown as Prisma.InputJsonValue,
+            config: {} as Prisma.InputJsonValue,
+            isActive: true,
+            isSelected: true,
+            tenantId,
+            tierAgentPoolId: entry.id,
+            templateId: entry.template.id,
+            templateVersion: entry.template.version,
+            createdById: actorId ?? null,
+          },
+        });
+      } else if (!agent.isSelected) {
+        await this.prisma.agent.update({
+          where: { id: agent.id },
+          data: { isSelected: true, isActive: true },
+        });
+      }
+      activated.push(agent.id);
+      budget--;
+    }
+
+    this.logger.log(
+      `selectIndustryDefaultAgents: tenant ${tenantId} (industry=${industrySlug}, tier=${tenant.tier.slug}): activated ${activated.length}/${matchedEntries.length} priority agents`,
+    );
+    return activated;
   }
 
   /**

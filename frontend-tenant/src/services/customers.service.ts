@@ -5,18 +5,12 @@ import type {
   CreateCustomerPayload,
   UpdateCustomerPayload,
   CustomerContact,
+  ListCustomersOptions,
 } from '@/types/customers.types';
 
 export const customersService = {
   list: async (
-    opts?: {
-      search?: string;
-      status?: string;
-      page?: number;
-      limit?: number;
-      sortKey?: 'name' | 'industry' | 'status' | 'createdAt' | 'updatedAt';
-      sortDir?: 'asc' | 'desc';
-    },
+    opts?: Omit<ListCustomersOptions, 'status'> & { status?: string | Customer['status'] },
   ) => {
     const res = await api.get('/customers', { params: opts });
     const { items, total } = unwrapList(res);
@@ -59,7 +53,6 @@ export const customersService = {
       email: string;
       phone?: string;
       role?: string;
-      isPrimary?: boolean;
     },
   ): Promise<CustomerContact> => {
     const res = await api.post(`/customers/${customerId}/contacts`, dto);

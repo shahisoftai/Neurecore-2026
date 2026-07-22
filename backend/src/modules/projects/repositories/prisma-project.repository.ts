@@ -47,6 +47,9 @@ export class PrismaProjectRepository implements IProjectRepository {
       customerId: data.customerId ?? null,
       projectTypeId: data.projectTypeId ?? null,
       projectTypeVersion: data.projectTypeVersion ?? null,
+      // INDUSTRY-SETUP-CONCEPT.md §3.1 G2 — callers (ProjectsService.create)
+      // resolve this from synthesised shape or Tenant.industry and pass it in.
+      industry: data.industry ?? null,
       budgetType: data.budgetType ?? null,
       budgetAmount:
         data.budgetAmount != null
@@ -192,6 +195,7 @@ export class PrismaProjectRepository implements IProjectRepository {
       updateData.projectTypeId = data.projectTypeId;
     if (data.projectTypeVersion !== undefined)
       updateData.projectTypeVersion = data.projectTypeVersion;
+    if (data.industry !== undefined) updateData.industry = data.industry;
     if (data.budgetType !== undefined) updateData.budgetType = data.budgetType;
     if (data.budgetAmount !== undefined)
       updateData.budgetAmount =
@@ -554,6 +558,8 @@ export class PrismaProjectRepository implements IProjectRepository {
       projectTypeId: (prismaProject.projectTypeId as string | null) ?? null,
       projectTypeVersion:
         (prismaProject.projectTypeVersion as number | null) ?? null,
+      // INDUSTRY-SETUP-CONCEPT.md §3.1 G2 — surface the schema column.
+      industry: (prismaProject.industry as string | null) ?? null,
       budgetType: (prismaProject.budgetType as Project['budgetType']) ?? null,
       budgetAmount: this.toNumber(prismaProject.budgetAmount),
       budgetCurrency: (prismaProject.budgetCurrency as string | null) ?? null,

@@ -36,6 +36,7 @@ import {
   ProjectShapeSchema,
   type ProjectShape,
 } from '../project-shape/project-shape.types';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 @Injectable()
 export class ProjectsService implements OnModuleInit {
@@ -59,6 +60,8 @@ export class ProjectsService implements OnModuleInit {
     private readonly moduleRef?: ModuleRef,
     @Optional()
     private readonly derivedShapeApplier?: DerivedShapeApplier,
+    @Optional()
+    private readonly prisma?: PrismaService,
   ) {}
 
   onModuleInit(): void {
@@ -149,9 +152,22 @@ export class ProjectsService implements OnModuleInit {
     }
 
     this.logger.debug(`[DEBUG-SVC-CREATE] calling repository.create()`);
-    const project = await this.repository.create(input, tenantId);
+    // INDUSTRY-SETUP-CONCEPT.md §3.1 G2 — resolve the project-level industry
+    // tag once here so the repo writes a single, deterministic value. Prefer
+    // the synthesised shape (Hermes is authoritative); fall back to the
+    // tenant's industry; explicit input.industry wins over both when the
+    // caller is the admin "change project industry" flow.
+    const resolvedIndustry = await this.resolveProjectIndustry(
+      validatedShape,
+      input,
+      tenantId,
+    );
+    const project = await this.repository.create(
+      { ...input, industry: resolvedIndustry },
+      tenantId,
+    );
     this.logger.debug(
-      `[DEBUG-SVC-CREATE] repository.create returned: project.id=${project.id}, status=${project.status}, hasProjectTypeId=${!!project.projectTypeId}, hasDerivedShape=${!!(project as any).derivedShape}`,
+      `[DEBUG-SVC-CREATE] repository.create returned: project.id=${project.id}, status=${project.status}, hasProjectTypeId=${!!project.projectTypeId}, hasDerivedShape=${!!(project as any).derivedShape}, industry=${project.industry ?? 'null'}`,
     );
 
     // Phase 2: Auto-generate stages from stageTemplate (unchanged behaviour).
@@ -287,6 +303,41 @@ export class ProjectsService implements OnModuleInit {
     }
 
     return project;
+  }
+
+  /**
+   * INDUSTRY-SETUP-CONCEPT.md §3.1 G2 — pick the deterministic industry tag
+   * to stamp onto a new Project row.
+   *
+   * Resolution order:
+   *   1. Explicit `input.industry` (admin override path).
+   *   2. `validatedShape.industry` (Hermes-synthesised — the canonical
+   *      source for AI-created projects).
+   *   3. `Tenant.industry` (fallback so template-driven projects still get
+   *      a tag even when synthesis isn't involved).
+   *   4. `null` (tenant has no industry yet; the column is nullable on
+   *      purpose so we never block creation on missing metadata).
+   *
+   * Synchronous except for step 3, which is cached on the input to avoid
+   * an extra round-trip on every create().
+   */
+  private async resolveProjectIndustry(
+    validatedShape: ProjectShape | undefined,
+    input: CreateProjectInput,
+    tenantId: string,
+  ): Promise<string | null> {
+    if (typeof input.industry === 'string' && input.industry.trim().length > 0) {
+      return input.industry;
+    }
+    if (validatedShape?.industry) {
+      return validatedShape.industry;
+    }
+    if (!this.prisma) return null;
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { industry: true },
+    });
+    return tenant?.industry ?? null;
   }
 
   async findById(id: string, tenantId: string): Promise<Project> {

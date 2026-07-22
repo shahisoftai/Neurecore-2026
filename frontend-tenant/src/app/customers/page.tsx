@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/creatio/StatusBadge';
 import { EntityTable, type ColumnDef } from '@/components/creatio/EntityTable';
 import { CustomerForm } from '@/components/customers/CustomerForm';
 import { customersService } from '@/services/customers.service';
+import { tenantsService } from '@/services/tenants.service';
 import type { Customer } from '@/types/customers.types';
 import { useTenantAuth } from '@/hooks/useTenantAuth';
 
@@ -21,12 +22,34 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ACTIVE');
+  // Phase 4 — F&C discriminator filter. When the tenant's industry is
+  // not in the 'financial-compliance' group, we hide the filter entirely.
+  const [financialSubTypeFilter, setFinancialSubTypeFilter] = useState<string>('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortKey, setSortKey] = useState<'name' | 'industry' | 'status' | 'createdAt' | 'updatedAt'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [createOpen, setCreateOpen] = useState(false);
   const [active, setActive] = useState<Customer | null>(null);
+  const [tenantGroup, setTenantGroup] = useState<string | null>(null);
+
+  // Determine if we should show the F&C filter (only meaningful for
+  // tenants in the 'financial-compliance' group).
+  useEffect(() => {
+    let cancelled = false;
+    tenantsService
+      .getCurrent()
+      .then((t) => {
+        if (!cancelled) setTenantGroup(t.industryGroup ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setTenantGroup(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const isFinancialTenant = tenantGroup === 'financial-compliance';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,6 +57,12 @@ export default function CustomersPage() {
       const { items, total } = await customersService.list({
         search: search || undefined,
         status: statusFilter || undefined,
+        // Phase 4 G4 — pass financialSubType only when set + when tenant
+        // is in the F&C group (defence-in-depth: BE would ignore the
+        // value for non-F&C tenants anyway, but FE should not send it).
+        ...(isFinancialTenant && financialSubTypeFilter
+          ? { financialSubType: financialSubTypeFilter as 'BANKING' }
+          : {}),
         page,
         limit: pageSize,
         sortKey,
@@ -47,7 +76,16 @@ export default function CustomersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, page, pageSize, sortKey, sortDir]);
+  }, [
+    search,
+    statusFilter,
+    isFinancialTenant,
+    financialSubTypeFilter,
+    page,
+    pageSize,
+    sortKey,
+    sortDir,
+  ]);
 
   useEffect(() => {
     void load();
@@ -217,6 +255,25 @@ export default function CustomersPage() {
               <option value="INACTIVE">Inactive</option>
               <option value="ARCHIVED">Archived</option>
             </select>
+            {isFinancialTenant && (
+              <select
+                className="px-3 py-2 bg-surface text-sm text-zinc-200 rounded-lg border border-surface-border focus:outline-none focus:border-primary"
+                value={financialSubTypeFilter}
+                aria-label="Financial sub-type"
+                onChange={(e) => {
+                  setFinancialSubTypeFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">All sub-types</option>
+                <option value="BANKING">Banking</option>
+                <option value="INSURANCE">Insurance</option>
+                <option value="WEALTH_MANAGEMENT">Wealth Management</option>
+                <option value="INVESTMENT">Investment</option>
+                <option value="FINTECH">FinTech</option>
+                <option value="ACCOUNTING_AUDIT">Accounting & Audit</option>
+              </select>
+            )}
             <select
               className="px-3 py-2 bg-surface text-sm text-zinc-200 rounded-lg border border-surface-border focus:outline-none focus:border-primary"
               value={pageSize}

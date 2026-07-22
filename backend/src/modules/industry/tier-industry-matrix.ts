@@ -151,6 +151,93 @@ const INDUSTRY_DEFAULT_AGENTS: Record<string, string[]> = {
   'special-purpose-organizations': ['operations-manager'],
 };
 
+/**
+ * Sub-industry priority overrides.
+ *
+ * INDUSTRY-SETUP-CONCEPT.md §3.3 Phase 3: when a tenant's industry slug
+ * is one of the parent entries in INDUSTRY_GROUP_INDUSTRIES (e.g.
+ * 'government-public-sector' is a sub of 'public-social'), the
+ * parent's default agent list is too generic. This map lifts the
+ * specialised agents to the top of the provisioning queue so the
+ * right agents are activated first.
+ *
+ * Schema: array of slug prefixes. Agents in INDUSTRY_DEFAULT_AGENTS
+ * that start with one of these prefixes are sorted ahead of others
+ * (alphabetical by slug within the priority bucket).
+ *
+ * SRP: this map is the ONLY place where sub-industry priority lives.
+ * Consumers (OnboardingService.complete, Plan Impact FE panel) read
+ * it via `resolveDefaultAgentsForIndustry()` which falls back to the
+ * generic list when no override matches.
+ */
+export const SUB_INDUSTRY_AGENT_PRIORITIES: Record<string, readonly string[]> = {
+  // Healthcare: clinical roles prioritise triage + records specialists
+  'healthcare-life-sciences': ['triage', 'records', 'patient', 'pharm'],
+  // Government: compliance + records + permits first
+  'government-public-sector': ['permit', 'records', 'case-', 'compliance'],
+  // Education: registrar + advisor first
+  'education-research': ['registrar', 'advisor', 'admissions'],
+  // Nonprofit: grant + program first
+  'nonprofit-international': ['grant', 'program', 'volunteer'],
+  // Manufacturing: production planner first
+  'manufacturing-industrial': ['production', 'maintenance', 'quality'],
+  // Construction: estimator + site first
+  'construction-engineering-infrastructure': ['estimator', 'site', 'procurement'],
+  // Energy: compliance + incident first
+  'energy-utilities-natural-resources': ['compliance', 'incident', 'plant'],
+  // Logistics: dispatcher + fleet first
+  'logistics-transportation-supply-chain': ['dispatcher', 'fleet', 'warehouse'],
+  // Retail: loyalty + store first
+  'retail-commerce-consumer': ['loyalty', 'store', 'merchandis'],
+  // Media: editor + content first
+  'media-communications-creative': ['editor', 'content', 'campaign'],
+  // Accounting & audit: senior staff before juniors
+  'accounting-audit-services': [
+    'tax-strategist',
+    'audit-coordinator',
+    'compliance-auditor',
+    'risk-manager',
+    'forensic',
+    'quality-reviewer',
+  ],
+};
+
+/**
+ * Resolve the default agents for a tenant's industry, applying sub-industry
+ * priority overrides when present.
+ *
+ * @param industrySlug  The tenant's `Tenant.industry` value (a sub-industry
+ *                      slug like 'accounting-audit-services').
+ * @returns Ordered array of agent slugs; sub-industry priority bucket first,
+ *          then the remaining agents from INDUSTRY_DEFAULT_AGENTS in their
+ *          original order.
+ *
+ * SRP: single purpose (sub-industry priority sort). Pure function — no
+ * I/O, no state. DRY: this is the only place the priority map is consumed.
+ */
+export function resolveDefaultAgentsForIndustry(industrySlug: string): string[] {
+  const base = INDUSTRY_DEFAULT_AGENTS[industrySlug] ?? [];
+  if (base.length === 0) return [];
+
+  const priorities = SUB_INDUSTRY_AGENT_PRIORITIES[industrySlug];
+  if (!priorities || priorities.length === 0) {
+    return [...base];
+  }
+
+  const bucket: string[] = [];
+  const rest: string[] = [];
+  for (const slug of base) {
+    if (priorities.some((prefix) => slug.startsWith(prefix))) {
+      bucket.push(slug);
+    } else {
+      rest.push(slug);
+    }
+  }
+  // Stable, alphabetical within bucket so the output is deterministic.
+  bucket.sort();
+  return [...bucket, ...rest];
+}
+
 // ─── Tier × Industry-Group capability matrix ─────────────────────────────
 const BASE_FEATURES = ['core-platform'];
 const TIER_FEATURES: Record<TierSlug, string[]> = {
@@ -381,13 +468,21 @@ export function getCapabilityMatrix(
   const groupSpecific = GROUP_SPECIFIC[group]?.[tier] ?? {};
   const features = TIER_FEATURES[tier];
 
+  // Phase 3: surface the priority-sorted agents so the Plan Impact
+  // panel shows the actual provisioning order, not just the
+  // group's flat list. Falls back to the original array if no
+  // sub-industry priority map exists.
+  const primaryIndustry = INDUSTRY_GROUP_INDUSTRIES[group][0];
+  const activeAgents = primaryIndustry
+    ? resolveDefaultAgentsForIndustry(primaryIndustry)
+    : [];
+
   return {
     maxAgents: base.agents,
     maxDepartments: base.depts,
     maxStorageGB: base.storage,
     maxApprovalStages: base.stages,
-    activeAgentSlugs:
-      INDUSTRY_DEFAULT_AGENTS[INDUSTRY_GROUP_INDUSTRIES[group][0]] ?? [],
+    activeAgentSlugs: activeAgents,
     packageTiersAvailable: TIER_PACKAGES[tier],
     projectTypesVisible: TIER_PROJECT_TYPES[tier],
     integrationsAvailable: groupSpecific.integrations ?? [],

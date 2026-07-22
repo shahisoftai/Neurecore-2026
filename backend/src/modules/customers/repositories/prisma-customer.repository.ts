@@ -4,6 +4,7 @@
 
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import type { Customer as PrismaCustomer } from '@prisma/client';
 import type {
   ICustomerRepository,
   Customer,
@@ -32,6 +33,19 @@ export class PrismaCustomerRepository implements ICustomerRepository {
           ? (data.billingInfo as object)
           : undefined,
         tags: data.tags ?? [],
+        // Phase 4 — KYC/AML + lifecycle + financialSubType. All
+        // optional; pass through verbatim (interface type-checks the
+        // enum unions against the Prisma generated types).
+        kycStatus: data.kycStatus ?? null,
+        kycExpiresAt: data.kycExpiresAt
+          ? data.kycExpiresAt instanceof Date
+            ? data.kycExpiresAt
+            : new Date(data.kycExpiresAt)
+          : null,
+        riskRating: data.riskRating ?? null,
+        taxId: data.taxId ?? null,
+        financialSubType: data.financialSubType ?? null,
+        lifecycleStage: data.lifecycleStage ?? null,
       },
     });
     return this.mapToCustomer(created);
@@ -50,6 +64,11 @@ export class PrismaCustomerRepository implements ICustomerRepository {
   ): Promise<{ data: Customer[]; total: number }> {
     const where: Record<string, unknown> = tenantId !== '*' ? { tenantId } : {};
     if (options.status) where.status = options.status;
+    // Phase 4 G4 — F&C discriminator filter. Combines with the AND
+    // semantics above (status AND financialSubType AND search).
+    if (options.financialSubType) {
+      where.financialSubType = options.financialSubType;
+    }
     if (options.search) {
       where.OR = [
         { name: { contains: options.search, mode: 'insensitive' } },
@@ -123,6 +142,26 @@ export class PrismaCustomerRepository implements ICustomerRepository {
     }
     if (data.status !== undefined) updateData.status = data.status;
     if (data.tags !== undefined) updateData.tags = data.tags;
+    // Phase 4 — KYC/AML + lifecycle + financialSubType updates.
+    // When lifecycleStage transitions, also bump lifecycleUpdatedAt
+    // so the list page can show "last touched" without a separate query.
+    if (data.kycStatus !== undefined) updateData.kycStatus = data.kycStatus;
+    if (data.riskRating !== undefined) updateData.riskRating = data.riskRating;
+    if (data.taxId !== undefined) updateData.taxId = data.taxId;
+    if (data.financialSubType !== undefined)
+      updateData.financialSubType = data.financialSubType;
+    if (data.lifecycleStage !== undefined &&
+        data.lifecycleStage !== existing.lifecycleStage) {
+      updateData.lifecycleStage = data.lifecycleStage;
+      updateData.lifecycleUpdatedAt = new Date();
+    }
+    if (data.kycExpiresAt !== undefined) {
+      updateData.kycExpiresAt = data.kycExpiresAt
+        ? data.kycExpiresAt instanceof Date
+          ? data.kycExpiresAt
+          : new Date(data.kycExpiresAt)
+        : null;
+    }
 
     const updated = await this.prisma.customer.update({
       where: { id: existing.id },
@@ -182,19 +221,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
     return rows.map((r) => this.mapToContact(r));
   }
 
-  private mapToCustomer(row: {
-    id: string;
-    tenantId: string;
-    name: string;
-    industry: string | null;
-    primaryEmail: string | null;
-    primaryPhone: string | null;
-    billingInfo: unknown;
-    status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
-    tags: string[];
-    createdAt: Date;
-    updatedAt: Date;
-  }): Customer {
+  private mapToCustomer(row: PrismaCustomer): Customer {
     return {
       id: row.id,
       tenantId: row.tenantId,
@@ -205,6 +232,19 @@ export class PrismaCustomerRepository implements ICustomerRepository {
       billingInfo: (row.billingInfo as Record<string, unknown> | null) ?? null,
       status: row.status,
       tags: row.tags || [],
+      // Phase 4 fields — Prisma returns null for un-set columns. We
+      // cast the generated enums to the interface's string-literal
+      // unions (the two are structurally identical but TypeScript
+      // doesn't know that because the import comes from the generated
+      // client's enum types).
+      kycStatus: row.kycStatus as Customer['kycStatus'],
+      kycVerifiedAt: row.kycVerifiedAt,
+      kycExpiresAt: row.kycExpiresAt,
+      riskRating: row.riskRating as Customer['riskRating'],
+      taxId: row.taxId,
+      financialSubType: row.financialSubType as Customer['financialSubType'],
+      lifecycleStage: row.lifecycleStage as Customer['lifecycleStage'],
+      lifecycleUpdatedAt: row.lifecycleUpdatedAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

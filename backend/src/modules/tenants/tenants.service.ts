@@ -11,6 +11,8 @@ import { CreateTenantDto, UpdateTenantDto } from './dto/tenant.dto';
 import { UpdateMyTenantDto } from './dto/update-my-tenant.dto';
 import { TenantStatus } from '@prisma/client';
 import { TierProvisioningService } from '../tiers/services/tier-provisioning.service';
+import { TierChangeService } from '../tiers/services/tier-change.service';
+import { IndustryGroupsService } from '../industry/industry-groups.service';
 
 @Injectable()
 export class TenantsService {
@@ -34,9 +36,17 @@ export class TenantsService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly industryGroups: IndustryGroupsService,
     @Optional()
     @Inject('TIER_PROVISIONING')
     private readonly provisioningService?: TierProvisioningService,
+    // Part 9 N5 — TenantsService.changeTier now delegates to
+    // TierChangeService.changeTier so we share pre-flight + TierAuditLog
+    // + TierChangeRequest writes + dormant-agent activation. Optional
+    // injection so the controller can still be used in tests that don't
+    // import the TiersModule.
+    @Optional()
+    private readonly tierChangeService?: TierChangeService,
   ) {}
 
   async findAll(page = 1, limit = 20, search?: string) {
@@ -150,6 +160,13 @@ export class TenantsService {
       throw new NotFoundException(`Tier ${tierId} not found`);
     }
 
+    // INDUSTRY-GROUPS-CONCEPT.md §5 — auto-derive industryGroup from the
+    // industry slug via the shared IndustryGroupsService resolver so
+    // IconRail/filter queries never read a stale denormalised column.
+    const industryGroup = await this.industryGroups.resolveIndustryGroup(
+      dto.industry,
+    );
+
     // Create tenant with tier
     const tenant = await this.prisma.tenant.create({
       data: {
@@ -160,6 +177,7 @@ export class TenantsService {
         logoUrl: dto.logoUrl,
         website: dto.website,
         industry: dto.industry,
+        industryGroup,
       },
       include: { tier: true },
     });
@@ -196,9 +214,20 @@ export class TenantsService {
     // current DTO shape but defends against future field additions that
     // should never reach Prisma.tenant.update directly.
 
+    // INDUSTRY-GROUPS-CONCEPT.md §5 — keep the denormalised industryGroup
+    // in sync whenever the admin updates Tenant.industry. We only re-query
+    // the Industry table when the field actually changed; clearing industry
+    // (undefined → null) clears the group too.
+    const data: Record<string, unknown> = { ...dto };
+    if ('industry' in dto) {
+      data.industryGroup = await this.industryGroups.resolveIndustryGroup(
+        dto.industry,
+      );
+    }
+
     return this.prisma.tenant.update({
       where: { id },
-      data: dto,
+      data,
       include: { tier: true },
     });
   }
@@ -219,6 +248,16 @@ export class TenantsService {
     const updateData: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(dto)) {
       if (v !== undefined) updateData[k] = v;
+    }
+
+    // INDUSTRY-GROUPS-CONCEPT.md §5 — derive industryGroup whenever the
+    // owner updates Tenant.industry through their self-service settings.
+    // Industry is a Super-Admin-only field per D7, but we still want the
+    // denormalised column to track correctly for any future call path.
+    if ('industry' in dto) {
+      updateData.industryGroup = await this.industryGroups.resolveIndustryGroup(
+        dto.industry,
+      );
     }
 
     const tenant = await this.prisma.tenant.update({
@@ -243,40 +282,46 @@ export class TenantsService {
     return tenant;
   }
 
+  /**
+   * Part 9 N5 — `changeTier` now delegates to TierChangeService.
+   *
+   * `TenantsService` used to inline pre-flight + update + log; that
+   * duplicated the policy in TierChangeService and skipped the audit
+   * log + dormant-agent activation paths. The single source of truth
+   * for the change flow is now TierChangeService.changeTier().
+   *
+   * This method is the admin-facing immediate-change path (controller
+   * route PATCH /tenants/:id/change-tier). The tenant-self-service path
+   * (POST /tenants/me/tier-change-requests, Phase 6) goes directly to
+   * TierChangeService.changeTier() without going through this method.
+   *
+   * Backward-compatible: callers receive the same Tenant & tier shape
+   * as before (delegated method returns the updated tenant via
+   * TierChangeResult.tenant).
+   */
   async changeTier(tenantId: string, newTierId: string) {
-    const tenant = await this.findOne(tenantId);
-
-    const newTier = await this.prisma.tier.findUnique({
-      where: { id: newTierId },
-    });
-    if (!newTier) {
-      throw new NotFoundException(`Tier ${newTierId} not found`);
-    }
-
-    // Get current selected agent count
-    const currentAgentCount = await this.prisma.agent.count({
-      where: { tenantId, isSelected: true },
-    });
-
-    // Check if new tier allows current agent count
-    if (currentAgentCount > newTier.maxAgents) {
+    if (!this.tierChangeService) {
+      // Defensive guard — should not happen in production because
+      // TenantsModule imports TiersModule (see N5 wiring). Tests that
+      // build TenantsService without TiersModule trigger this branch.
       throw new ConflictException(
-        `Cannot change to tier "${newTier.name}" - it allows only ${newTier.maxAgents} agents, ` +
-          `but tenant has ${currentAgentCount} agents selected`,
+        'TierChangeService is not available — TenantsModule must import TiersModule.',
       );
     }
 
-    const updated = await this.prisma.tenant.update({
-      where: { id: tenantId },
-      data: { tierId: newTierId },
-      include: { tier: true },
+    const result = await this.tierChangeService.changeTier({
+      tenantId,
+      toTierId: newTierId,
+      // The admin route is immediate; same-tier requests still rejected.
+      requestedBy: 'admin',
+      immediateDowngrade: true,
     });
 
-    const oldTierName = this.extractOldTierName(tenant);
-    this.logger.log(
-      `Tenant ${tenant.slug} changed from tier ${oldTierName} to ${newTier.name}`,
-    );
-    return updated;
+    // Re-shape the response to match the previous TenantsService contract:
+    // return the tenant row with `tier` included. TierChangeResult.tenant
+    // already has `tier` populated because TierChangeService.includes
+    // it in the update query.
+    return result.tenant;
   }
 
   async suspend(id: string) {

@@ -19,6 +19,9 @@ import { ChecklistService } from './checklist/checklist.service';
 import { ProjectTypeAllocatorService } from '../project-types/allocators/project-type-allocator.service';
 import { TenantTemplateSeederService } from '../tenant-templates/tenant-template-seeder.service';
 import { DepartmentsService } from '../departments/services/departments.service';
+import { IndustryGroupsService } from '../industry/industry-groups.service';
+import { TierProvisioningService } from '../tiers/services/tier-provisioning.service';
+import { IndustryKnowledgeSeeder } from '../knowledge/services/industry-knowledge-seeder.service';
 
 interface DeptTemplateStructureItem {
   name: string;
@@ -36,12 +39,17 @@ export class OnboardingService implements IOnboardingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly checklist: ChecklistService,
+    private readonly industryGroups: IndustryGroupsService,
     @Optional()
     private readonly allocator?: ProjectTypeAllocatorService,
     @Optional()
     private readonly templateSeeder?: TenantTemplateSeederService,
     @Optional()
     private readonly departmentsService?: DepartmentsService,
+    @Optional()
+    private readonly tierProvisioning?: TierProvisioningService,
+    @Optional()
+    private readonly industryKnowledgeSeeder?: IndustryKnowledgeSeeder,
   ) {}
 
   async getState(tenantId: string): Promise<OnboardingStatePayload> {
@@ -58,6 +66,12 @@ export class OnboardingService implements IOnboardingService {
       }),
     ]);
     if (!tenant) throw new NotFoundException('Tenant not found');
+
+    // INDUSTRY-SETUP-CONCEPT.md §3.1 G8 — a tenant that has already
+    // completed onboarding is treated as a "re-run". The wizard must
+    // render the company step as read-only because Industry is a
+    // Super-Admin-only field per INDUSTRY-GROUPS-CONCEPT.md §1.2 D7.
+    const isReRun = tenant.onboardingCompletedAt !== null;
 
     return {
       // WS-2.1: default to 'company' when onboarding hasn't started so the
@@ -78,6 +92,13 @@ export class OnboardingService implements IOnboardingService {
       templateSlug: undefined,
       departmentOverrides: {},
       agentOverrides: {},
+      // Phase 1 G8 — see INDUSTRY-SETUP-CONCEPT.md §3.1 G8. `agentCount`
+      // + `deptCount` are fetched above (existing behaviour, consumed
+      // downstream by the wizard's progress UI) but not exposed here
+      // since they're not part of the state payload contract.
+      isReRun,
+      industry: tenant.industry,
+      industryGroup: tenant.industryGroup,
     };
   }
 
@@ -104,15 +125,11 @@ export class OnboardingService implements IOnboardingService {
     // INDUSTRY-GROUPS-CONCEPT.md §5 — auto-derive industryGroup from the
     // selected Industry. Keeps Tenant.industryGroup in sync for fast rail
     // branching without forcing the frontend to send both fields.
-    if (
-      updateData.industry !== undefined &&
-      typeof updateData.industry === 'string'
-    ) {
-      const industry = await this.prisma.industry.findUnique({
-        where: { slug: updateData.industry },
-        select: { industryGroup: true },
-      });
-      updateData.industryGroup = industry?.industryGroup ?? null;
+    // Single source of truth: IndustryGroupsService.resolveIndustryGroup().
+    if (updateData.industry !== undefined) {
+      updateData.industryGroup = await this.industryGroups.resolveIndustryGroup(
+        updateData.industry as string | null | undefined,
+      );
     }
     // WS-2.1: persist timezone + currency (was silently dropped pre-PR-2).
     if (partial.timezone !== undefined) updateData.timezone = partial.timezone;
@@ -458,6 +475,50 @@ export class OnboardingService implements IOnboardingService {
       } catch (err) {
         this.logger.error(
           `Department auto-create from template failed for tenant ${tenantId}: ` +
+            `${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    // Phase 3 G14: apply industry-aware default agent selection now that
+    // the tenant's industry is known. TierProvisioningService was already
+    // called at tenant creation (with no industry), so this is the second
+    // pass that flips agents based on INDUSTRY_DEFAULT_AGENTS + the
+    // sub-industry priority map. Failure here is non-fatal — log + move on.
+    if (this.tierProvisioning && tenant.industry) {
+      try {
+        const activated = await this.tierProvisioning.selectIndustryDefaultAgents(
+          tenantId,
+          tenant.industry,
+        );
+        this.logger.log(
+          `Industry default agents for tenant ${tenantId} (industry=${tenant.industry}): activated=${activated.length}`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `Industry default agent selection failed for tenant ${tenantId}: ` +
+            `${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    // Phase 7 G1 — seed the tenant's industry knowledge corpus. Each
+    // KnowledgeEntry is tenant-scoped (per the schema's tenantId FK), so
+    // industry content must be cloned per tenant at onboarding time.
+    // Non-fatal: failure here logs + continues, the RAG pipeline still
+    // works with BM25 fallback even when the corpus is empty.
+    if (this.industryKnowledgeSeeder && tenant.industry) {
+      try {
+        const seeded = await this.industryKnowledgeSeeder.seedForTenant(
+          tenantId,
+          tenant.industry,
+        );
+        this.logger.log(
+          `Industry knowledge corpus for tenant ${tenantId} (industry=${tenant.industry}): created=${seeded}`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `Industry knowledge corpus seeding failed for tenant ${tenantId}: ` +
             `${err instanceof Error ? err.message : String(err)}`,
         );
       }

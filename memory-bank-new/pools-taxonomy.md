@@ -111,11 +111,11 @@ Every Package row was verified at 0 before the 2026-07-05 migration. Industry ID
 
 ## 4. Tiers Pool
 
-- **Model**: `TierTemplate`.
-- **Scope**: 4 canonical tiers — `starter`, `professional`, `enterprise`, `government` — seeded by `seed-business-composition.cjs` (function `migrateLegacyTierRows`). Linked to billing `Tier` rows by case-insensitive name match via `defaultBillingTierId`.
-- **Admin page**: `/tier-templates`.
+- **Model**: `Tier` (single canonical table per TIER-SYSTEM-CONCEPT.md §6.1 — `TierTemplate` was dropped in the 2026-07-21 tier-system refactor).
+- **Scope**: 4 canonical tiers — `basic`, `business`, `professional`, `enterprise` — seeded by `seed-business-composition.cjs` (renamed from `starter/professional/enterprise/government` via the `20260721_tier_system_refactor` migration + `backfill-tier-system.cjs`). Tenants reference the tier via `Tenant.tierId`; packages reference via `Package.tierId`.
+- **Admin page**: `/tiers`.
 
-(Stable, no recent changes. Original Phase 10 seed.)
+(Stable post-refactor; original `tier-templates` routes return 404. See `TIER-DEPLOYMENT-RUNBOOK.md` for the migration history.)
 
 ---
 

@@ -41,6 +41,7 @@ export default function OnboardingSetupPage() {
   const user = useTenantAuth();
   const [step, setStep] = useState<Tier1Step>('company');
   const [tenant, setTenant] = useState<TenantSelf | null>(null);
+  const [isReRun, setIsReRun] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,11 +71,18 @@ export default function OnboardingSetupPage() {
         ]);
         if (cancelled) return;
         setTenant(t);
-        // Resume from the server-tracked step if any.
-        // After selectTemplate() the backend sets step='review'.
-        // We map that to 'integrations' so a refresh during Integrations
-        // returns the user to the Integrations step, not Complete.
-        if (state?.step === 'plan') setStep('plan');
+        // INDUSTRY-SETUP-CONCEPT.md §3.1 G8 (Phase 1 G8): capture isReRun
+        // so CompanyStep renders the industry as a locked badge on
+        // re-running tenants (industry is Super-Admin-only per D7).
+        const reRun = Boolean(state?.isReRun);
+        setIsReRun(reRun);
+        // Resume from the server-tracked step if any. Per INDUSTRY-SETUP-CONCEPT.md
+        // §1.2 D7: on re-run, jump straight to Plan — Company/Logo/Localization
+        // are skipped because industry (company step) is Super-Admin-only and
+        // logo/locale rarely change post-launch.
+        if (reRun) {
+          setStep('plan');
+        } else if (state?.step === 'plan') setStep('plan');
         else if (state?.step === 'template') setStep('template');
         else if (state?.step === 'review' || state?.step === 'team')
           setStep('integrations');
@@ -169,6 +177,7 @@ export default function OnboardingSetupPage() {
             <CompanyStep
               initialName={tenant?.name ?? ''}
               initialIndustry={tenant?.industry ?? ''}
+              isReRun={isReRun}
               onNext={() => {
                 void refreshTenant();
                 setStep('logo');

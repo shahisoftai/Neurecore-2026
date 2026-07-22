@@ -689,11 +689,40 @@ export class CreateProjectTool extends BaseStructuredTool implements OnModuleIni
     if (!input.projectTypeId && input.useAiSynthesis !== false) {
       const userGoal = (context.metadata?.goal as string | undefined) ?? input.name;
       if (this.synthesisService) {
+        // INDUSTRY-SETUP-CONCEPT.md §3.1 G3 — auto-populate industryHint from
+        // Tenant.industry when the caller didn't supply one explicitly.
+        // This keeps Hermes anchored to the tenant's vertical so the
+        // synthesised shape's industry/customFields match what the rest of
+        // the platform already knows about this tenant.
+        let resolvedHint: string | undefined = input.industryHint;
+        if (!resolvedHint) {
+          try {
+            const tenant = await this.prisma.tenant.findUnique({
+              where: { id: context.tenantId as string },
+              select: { industry: true, industryGroup: true },
+            });
+            // Prefer the precise industry slug; fall back to the group slug
+            // (still meaningful as a Hermes hint even when no specific
+            // Industry row is set on the tenant).
+            resolvedHint = tenant?.industry ?? tenant?.industryGroup ?? undefined;
+            if (resolvedHint) {
+              this.logger.debug(
+                `[DEBUG-TOOL-CREATE] auto-populated industryHint=${resolvedHint} from tenant`,
+              );
+            }
+          } catch (err) {
+            // Don't block project creation on a failed tenant lookup —
+            // Hermes will still synthesise from the goal alone.
+            this.logger.warn(
+              `CreateProjectTool: tenant lookup for industryHint failed (${err instanceof Error ? err.message : String(err)}); proceeding without hint`,
+            );
+          }
+        }
         try {
           const synthResult = await this.synthesisService.synthesizeShape({
             goal: userGoal,
             tenantId: context.tenantId as string,
-            ...(input.industryHint ? { industryHint: input.industryHint } : {}),
+            ...(resolvedHint ? { industryHint: resolvedHint } : {}),
             ...(context.userId ? { userId: context.userId } : {}),
           });
           derivedShape = synthResult.shape;

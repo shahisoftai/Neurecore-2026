@@ -1,0 +1,226 @@
+{
+  "industry": "accounting-audit-services",
+  "industryName": "Accounting & Audit Services",
+  "types": [
+    {
+      "name": "Audit Engagement",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "compliance", "risk", "data"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Planning",      "order": 0, "defaultDurationDays": 14 },
+        { "name": "Fieldwork",     "order": 1, "defaultDurationDays": 45 },
+        { "name": "Review",        "order": 2, "defaultDurationDays": 14 },
+        { "name": "Reporting",     "order": 3, "defaultDurationDays": 10 },
+        { "name": "Issuance",      "order": 4, "defaultDurationDays": 5  }
+      ],
+      "approvalTemplate": [
+        {
+          "chainName": "audit-signoff",
+          "stepOrder": 0,
+          "approverRole": "AUDIT_JUNIOR",
+          "approvalType": "PREPARER",
+          "riskTier": ["LOW"]
+        },
+        {
+          "chainName": "audit-signoff",
+          "stepOrder": 1,
+          "approverRole": "AUDIT_SENIOR",
+          "approvalType": "REVIEW",
+          "riskTier": ["LOW", "MEDIUM"],
+          "chainStepOrder": 1,
+          "chainStepTotal": 4,
+          "blockedByPriorStep": true
+        },
+        {
+          "chainName": "audit-signoff",
+          "stepOrder": 2,
+          "approverRole": "AUDIT_MANAGER",
+          "approvalType": "MANAGER",
+          "riskTier": ["MEDIUM", "HIGH"],
+          "chainStepOrder": 2,
+          "chainStepTotal": 4,
+          "blockedByPriorStep": true
+        },
+        {
+          "chainName": "audit-signoff",
+          "stepOrder": 3,
+          "approverRole": "PARTNER",
+          "approvalType": "PARTNER",
+          "riskTier": ["HIGH", "CRITICAL"],
+          "chainStepOrder": 3,
+          "chainStepTotal": 4,
+          "blockedByPriorStep": true
+        }
+      ]
+    },
+    {
+      "name": "Tax Filing",
+      "classification": "CLIENT_ENGAGEMENT",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "compliance", "data"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Data Collection", "order": 0, "defaultDurationDays": 7 },
+        { "name": "Preparation",     "order": 1, "defaultDurationDays": 14 },
+        { "name": "Review",          "order": 2, "defaultDurationDays": 7 },
+        { "name": "Filing",          "order": 3, "defaultDurationDays": 3 },
+        { "name": "Client Review",   "order": 4, "defaultDurationDays": 5 }
+      ],
+      "approvalTemplate": [
+        {
+          "chainName": "audit-signoff",
+          "stepOrder": 0,
+          "approverRole": "TAX_JUNIOR",
+          "approvalType": "PREPARER",
+          "riskTier": ["LOW"]
+        },
+        {
+          "chainName": "audit-signoff",
+          "stepOrder": 1,
+          "approverRole": "TAX_STRATEGIST",
+          "approvalType": "REVIEW",
+          "riskTier": ["LOW", "MEDIUM"],
+          "chainStepOrder": 1,
+          "chainStepTotal": 3,
+          "blockedByPriorStep": true
+        },
+        {
+          "chainName": "audit-signoff",
+          "stepOrder": 2,
+          "approverRole": "PARTNER",
+          "approvalType": "PARTNER",
+          "riskTier": ["MEDIUM", "HIGH"],
+          "chainStepOrder": 2,
+          "chainStepTotal": 3,
+          "blockedByPriorStep": true
+        }
+      ]
+    },
+    {
+      "name": "Compliance Review",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "compliance", "risk"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Scoping",       "order": 0, "defaultDurationDays": 5 },
+        { "name": "Evidence",      "order": 1, "defaultDurationDays": 14 },
+        { "name": "Assessment",    "order": 2, "defaultDurationDays": 14 },
+        { "name": "Remediation",   "order": 3, "defaultDurationDays": 21 },
+        { "name": "Closure",       "order": 4, "defaultDurationDays": 7 }
+      ],
+      "approvalTemplate": [
+        {
+          "chainName": "compliance-exception",
+          "stepOrder": 0,
+          "approverRole": "COMPLIANCE_OFFICER",
+          "approvalType": "REVIEW",
+          "riskTier": ["LOW", "MEDIUM"]
+        },
+        {
+          "chainName": "compliance-exception",
+          "stepOrder": 1,
+          "approverRole": "RISK_MANAGER",
+          "approvalType": "ESCALATION",
+          "riskTier": ["MEDIUM", "HIGH"],
+          "chainStepOrder": 1,
+          "chainStepTotal": 3,
+          "blockedByPriorStep": true
+        },
+        {
+          "chainName": "compliance-exception",
+          "stepOrder": 2,
+          "approverRole": "TENANT_OWNER",
+          "approvalType": "EXCEPTION_APPROVAL",
+          "riskTier": ["HIGH", "CRITICAL"],
+          "chainStepOrder": 2,
+          "chainStepTotal": 3,
+          "blockedByPriorStep": true
+        }
+      ]
+    },
+    {
+      "name": "Bookkeeping Cycle",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "data"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Bank Reconciliation", "order": 0, "defaultDurationDays": 3 },
+        { "name": "Journal Entries",     "order": 1, "defaultDurationDays": 7 },
+        { "name": "Reconciliation",      "order": 2, "defaultDurationDays": 5 },
+        { "name": "Review & Adjustments","order": 3, "defaultDurationDays": 5 },
+        { "name": "Close Period",        "order": 4, "defaultDurationDays": 3 }
+      ],
+      "approvalTemplate": [
+        {
+          "chainName": "expense-approval-5k",
+          "stepOrder": 0,
+          "approverRole": "BOOKKEEPER",
+          "approvalType": "PREPARER",
+          "riskTier": ["LOW"]
+        },
+        {
+          "chainName": "expense-approval-5k",
+          "stepOrder": 1,
+          "approverRole": "BOOKKEEPER_SENIOR",
+          "approvalType": "REVIEW",
+          "riskTier": ["LOW", "MEDIUM"],
+          "chainStepOrder": 1,
+          "chainStepTotal": 2,
+          "blockedByPriorStep": true
+        },
+        {
+          "chainName": "expense-approval-5k",
+          "stepOrder": 2,
+          "approverRole": "PARTNER",
+          "approvalType": "FINAL_APPROVAL",
+          "riskTier": ["MEDIUM", "HIGH"],
+          "chainStepOrder": 2,
+          "chainStepTotal": 2,
+          "blockedByPriorStep": true
+        }
+      ]
+    },
+    {
+      "name": "Payroll Cycle",
+      "classification": "OPERATIONAL_PROGRAM",
+      "packs": ["core", "stakeholders", "budget", "timeline", "deliverables", "compliance", "hr"],
+      "fieldSchema": [],
+      "stageTemplate": [
+        { "name": "Time Collection", "order": 0, "defaultDurationDays": 5 },
+        { "name": "Calculations",    "order": 1, "defaultDurationDays": 2 },
+        { "name": "Review",          "order": 2, "defaultDurationDays": 2 },
+        { "name": "Approval",        "order": 3, "defaultDurationDays": 1 },
+        { "name": "Disbursement",    "order": 4, "defaultDurationDays": 1 }
+      ],
+      "approvalTemplate": [
+        {
+          "chainName": "expense-approval-5k",
+          "stepOrder": 0,
+          "approverRole": "PAYROLL",
+          "approvalType": "PREPARER",
+          "riskTier": ["LOW"]
+        },
+        {
+          "chainName": "expense-approval-5k",
+          "stepOrder": 1,
+          "approverRole": "PAYROLL_MANAGER",
+          "approvalType": "REVIEW",
+          "riskTier": ["LOW", "MEDIUM"],
+          "chainStepOrder": 1,
+          "chainStepTotal": 2,
+          "blockedByPriorStep": true
+        },
+        {
+          "chainName": "expense-approval-5k",
+          "stepOrder": 2,
+          "approverRole": "PARTNER",
+          "approvalType": "FINAL_APPROVAL",
+          "riskTier": ["MEDIUM", "HIGH"],
+          "chainStepOrder": 2,
+          "chainStepTotal": 2,
+          "blockedByPriorStep": true
+        }
+      ]
+    }
+  ]
+}

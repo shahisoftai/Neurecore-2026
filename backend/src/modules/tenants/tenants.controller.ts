@@ -11,6 +11,7 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiCommon } from '../../common/decorators/api-common.decorator';
 import { TenantsService } from './tenants.service';
@@ -20,6 +21,7 @@ import {
   ChangeTierDto,
 } from './dto/tenant.dto';
 import { UpdateMyTenantDto } from './dto/update-my-tenant.dto';
+import { RequestTierChangeDto } from './dto/request-tier-change.dto';
 import { PaginatedResponse } from '../../common/responses/paginated.response';
 import { ActionResult } from '../../common/responses/action-result.response';
 import type { TenantResponseDto } from './dto/tenant-response.dto';
@@ -28,12 +30,17 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { TierResolver } from '../tiers/services/tier-resolver.service';
 
 @Controller({ path: 'tenants', version: '1' })
 @ApiCommon('tenants')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class TenantsController {
-  constructor(private readonly tenantsService: TenantsService) {}
+  constructor(
+    private readonly tenantsService: TenantsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Get()
   @Roles(
@@ -172,6 +179,88 @@ export class TenantsController {
       success: true,
       message: 'Tier changed',
       data: tenant as unknown as TenantResponseDto | null,
+    };
+  }
+
+  /**
+   * Phase 6 (IMPLEMENTATION-PLAN.md) — tenant-self-service tier change
+   * REQUEST. Creates a PENDING TierChangeRequest row that SuperAdmin
+   * must approve. The tenant does NOT mutate Tenant.tierId directly;
+   * the audit trail lives in TierChangeRequest.
+   *
+   * Returns the created request id + direction so the FE modal can
+   * confirm what was filed without a follow-up GET.
+   */
+  @Post('me/tier-change-requests')
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  async requestTierChange(
+    @CurrentUser() user: { tenantId?: string | null; sub: string },
+    @Body() dto: RequestTierChangeDto,
+  ): Promise<
+    ActionResult<{
+      requestId: string;
+      direction: 'UPGRADE' | 'DOWNGRADE' | 'SAME_TIER';
+      status: 'PENDING';
+      toTier: { id: string; slug: string; name: string };
+    } | null>
+  > {
+    if (!user?.tenantId) {
+      throw new ForbiddenException('No tenant context for current user');
+    }
+
+    const [tenant, newTier] = await Promise.all([
+      this.prisma.tenant.findUnique({
+        where: { id: user.tenantId },
+        include: { tier: true },
+      }),
+      this.prisma.tier.findUnique({ where: { id: dto.toTierId } }),
+    ]);
+    if (!tenant) {
+      throw new ForbiddenException('Tenant not found');
+    }
+    if (!newTier) {
+      throw new BadRequestException(`Target tier ${dto.toTierId} not found`);
+    }
+
+    // SRP — single source of truth for the UPGRADE/DOWNGRADE classification.
+    // TierResolver.compareTierDirection is a static method so we don't need
+    // to instantiate the resolver (which requires DI for its DB-backed
+    // capabilities) — just the classification logic.
+    const direction = tenant.tier
+      ? TierResolver.compareTierDirection(tenant.tier.slug, newTier.slug)
+      : 'SAME_TIER';
+
+    if (direction === 'SAME_TIER') {
+      throw new BadRequestException(
+        `Target tier ${newTier.slug} is already the tenant's current tier`,
+      );
+    }
+
+    const created = await this.prisma.tierChangeRequest.create({
+      data: {
+        tenantId: tenant.id,
+        fromTierId: tenant.tierId ?? newTier.id,
+        toTierId: newTier.id,
+        requestedBy: user.sub,
+        status: 'PENDING',
+        direction,
+        reason: dto.reason ?? null,
+      },
+    });
+
+    return {
+      success: true,
+      message: `Tier change ${direction.toLowerCase()} request filed (id=${created.id}). Platform admin will review.`,
+      data: {
+        requestId: created.id,
+        direction,
+        status: 'PENDING',
+        toTier: {
+          id: newTier.id,
+          slug: newTier.slug,
+          name: newTier.name,
+        },
+      },
     };
   }
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminShell from '@/components/AdminShell';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import api from '@/services/api';
+import { INDUSTRIES, INDUSTRY_LABELS } from '@/lib/industries';
 
 export default function NewTenantPage() {
   const user = useAdminAuth();
@@ -14,7 +15,10 @@ export default function NewTenantPage() {
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
-  const [industry, setIndustry] = useState('financial-services');
+  // Phase 1 G11 — default to the same constant the tenant lib uses so
+  // the admin's "Create New Tenant" matches the canonical 16-industry
+  // taxonomy. Previously this defaulted to a stale hardcoded value.
+  const [industry, setIndustry] = useState<string>(INDUSTRIES[0]);
   const [website, setWebsite] = useState('');
   const [tierId, setTierId] = useState('tier_enterprise');
 
@@ -110,16 +114,16 @@ export default function NewTenantPage() {
                 onChange={(e) => setIndustry(e.target.value)}
                 className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="financial-services">Financial Services</option>
-                <option value="accounting">Accounting</option>
-                <option value="technology">Technology</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="retail">Retail</option>
-                <option value="manufacturing">Manufacturing</option>
-                <option value="education">Education</option>
-                <option value="legal">Legal</option>
-                <option value="real-estate">Real Estate</option>
-                <option value="other">Other</option>
+                {/* Phase 1 G11 — options derive from the canonical
+                    INDUSTRIES list in src/lib/industries.ts. The previous
+                    hardcoded 10-entry list was missing
+                    accounting-audit-services and several other valid
+                    slugs. */}
+                {INDUSTRIES.map((slug) => (
+                  <option key={slug} value={slug}>
+                    {INDUSTRY_LABELS[slug]}
+                  </option>
+                ))}
               </select>
             </div>
 

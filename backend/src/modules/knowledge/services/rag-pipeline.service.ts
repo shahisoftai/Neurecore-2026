@@ -65,6 +65,36 @@ export class RAGPipeline {
 
   // ─── Public sync API ────────────────────────────────────────────────
 
+  /**
+   * Chunk-only retrieval — no LLM synthesis.
+   *
+   * INDUSTRY-SETUP-CONCEPT.md §3.1 G4 (Phase 0 G4): exposes the hybrid
+   * vector + BM25 retrieval path so callers (currently
+   * `ProjectShapeSynthesisService`) can use RAG-curated chunks as
+   * in-prompt few-shot context WITHOUT paying for an extra LLM call to
+   * re-summarise them. Same retrieval semantics as `ask()`, just stops
+   * short of the answer-generation step.
+   *
+   * Returns an empty array on retrieval failure — callers should treat
+   * an empty result as "no corpus context available, fall back to your
+   * default few-shot" rather than an error.
+   */
+  async retrieveChunks(
+    tenantId: string,
+    question: string,
+    options?: RAGPipelineOptions,
+  ): Promise<RAGContextChunk[]> {
+    try {
+      const { chunks } = await this.retrieve(tenantId, question, options);
+      return chunks;
+    } catch (err) {
+      this.logger.warn(
+        `RAG retrieveChunks failed: ${(err as Error).message}`,
+      );
+      return [];
+    }
+  }
+
   async ask(
     tenantId: string,
     question: string,

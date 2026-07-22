@@ -3,9 +3,14 @@
 // steps/CompanyStep.tsx — Tier-1 onboarding step 1.
 // Captures company name + industry via INDUSTRY-GROUPS-CONCEPT.md IndustryGroupPicker.
 // Persists via PATCH /tenants/me so the fields land in the additive nullable columns.
+//
+// INDUSTRY-SETUP-CONCEPT.md §3.1 G8 (Phase 1 G8): when `isReRun` is true,
+// the industry picker is replaced with a read-only badge — Industry is
+// a Super-Admin-only field per INDUSTRY-GROUPS-CONCEPT.md §1.2 D7 and
+// must not be changed by the tenant.
 
 import { useEffect, useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Lock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,16 +21,25 @@ import {
   IndustryGroupPicker,
   type IndustryOption,
 } from '@/components/onboarding/IndustryGroupPicker';
+import { INDUSTRY_GROUPS, INDUSTRY_GROUP_INDUSTRIES } from '@/lib/industryGroups';
 
 export interface CompanyStepProps {
   initialName: string;
   initialIndustry: string;
+  /**
+   * INDUSTRY-SETUP-CONCEPT.md §3.1 G8 (Phase 1 G8) — when true the industry
+   * picker is locked and the tenant can only progress to the next step.
+   * The company name input stays editable so the tenant can still correct
+   * spelling without re-running onboarding.
+   */
+  isReRun?: boolean;
   onNext: () => void;
 }
 
 export function CompanyStep({
   initialName,
   initialIndustry,
+  isReRun = false,
   onNext,
 }: CompanyStepProps) {
   const [companyName, setCompanyName] = useState(initialName);
@@ -70,9 +84,12 @@ export function CompanyStep({
     setError(null);
     setSubmitting(true);
     try {
+      // On re-run, omit `industry` so we never overwrite the Super-Admin
+      // value. We still persist name + locale so the wizard can update
+      // any incidental corrections the tenant makes.
       await onboardingService.saveCompanyAndLocale({
         name: companyName,
-        industry,
+        ...(isReRun ? {} : { industry }),
       });
       onNext();
     } catch (err) {
@@ -82,12 +99,26 @@ export function CompanyStep({
     }
   };
 
+  // Derive a human label for the locked industry badge from the local
+  // industryGroups map (single source of truth — DRY with the picker).
+  const lockedIndustryLabel = (() => {
+    if (!industry) return 'Not set';
+    for (const group of INDUSTRY_GROUPS) {
+      if (INDUSTRY_GROUP_INDUSTRIES[group.slug].includes(industry)) {
+        return `${industry} · ${group.label}`;
+      }
+    }
+    return industry;
+  })();
+
   return (
     <Card className="p-6 space-y-4">
       <div>
         <h2 className="text-lg font-semibold">Tell us about your company</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          We will personalize your portal with these details.
+          {isReRun
+            ? 'Your industry is locked. You can still update the company name.'
+            : 'We will personalize your portal with these details.'}
         </p>
       </div>
       <div className="space-y-2">
@@ -99,14 +130,30 @@ export function CompanyStep({
           placeholder="Acme Inc."
         />
       </div>
-      <div className="space-y-2">
-        <Label>Industry</Label>
-        <IndustryGroupPicker
-          industries={industries}
-          value={industry}
-          onChange={setIndustry}
-        />
-      </div>
+      {isReRun ? (
+        <div className="space-y-2">
+          <Label>Industry</Label>
+          <div
+            className="flex items-center gap-2 rounded-md border border-input bg-muted/50 px-3 py-2 text-sm"
+            data-testid="industry-locked-badge"
+          >
+            <Lock className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+            <span className="font-medium">{lockedIndustryLabel}</span>
+            <span className="text-xs text-muted-foreground ml-auto">
+              Only your platform admin can change this.
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Label>Industry</Label>
+          <IndustryGroupPicker
+            industries={industries}
+            value={industry}
+            onChange={setIndustry}
+          />
+        </div>
+      )}
       {error && (
         <p className="text-sm text-destructive" role="alert">
           {error}

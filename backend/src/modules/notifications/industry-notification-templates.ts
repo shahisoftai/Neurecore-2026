@@ -395,6 +395,7 @@ export const INDUSTRY_NOTIFICATION_TEMPLATES: Record<
   ],
 };
 
+
 export function getNotificationTemplates(
   industryGroup: string,
 ): NotificationTemplate[] {
@@ -420,8 +421,4 @@ export function getTemplatesByCategory(
   return getNotificationTemplates(industryGroup).filter(
     (t) => t.category === category,
   );
-}
-
-export function getAllNotificationGroupSlugs(): string[] {
-  return Object.keys(INDUSTRY_NOTIFICATION_TEMPLATES);
 }

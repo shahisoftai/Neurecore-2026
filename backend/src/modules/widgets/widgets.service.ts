@@ -18,6 +18,11 @@ import { EntityType as PrismaEntityType, AgentStatus } from '@prisma/client';
 import { WidgetRegistry } from './widget-registry';
 import { AggregationEngine, WidgetDataFetcher } from './aggregation/aggregation-engine';
 import { BUILT_IN_WIDGETS } from './built-in-widgets';
+// Phase 7 G2 — Financial & Compliance widget pack. Registered at module
+// init alongside the built-in widget pack. The registry's
+// listForIndustryGroup() filter handles tenant-level visibility so a
+// non-F&C tenant never sees these.
+import { FC_WIDGETS } from '../financial-compliance/fc-widgets';
 import type {
   EaosEntityTypeForWidget,
   WidgetDefinition,
@@ -66,9 +71,13 @@ export class WidgetsService implements OnModuleInit {
    * Bootstrap the built-in widgets on module init.
    */
   onModuleInit(): void {
-    this.registry.registerAll([...BUILT_IN_WIDGETS]);
+    // Phase 7 G2 — also register the F&C widget pack. Retail widgets
+    // register themselves in RetailService.OnModuleInit (retail module
+    // is conditionally loaded). F&C is always loaded so we register
+    // eagerly here.
+    this.registry.registerAll([...BUILT_IN_WIDGETS, ...FC_WIDGETS]);
     this.logger.log(
-      `Widget registry bootstrapped with ${this.registry.count()} built-in widgets`,
+      `Widget registry bootstrapped with ${this.registry.count()} widgets (built-in + F&C)`,
     );
   }
 
@@ -80,6 +89,18 @@ export class WidgetsService implements OnModuleInit {
 
   listForEntityType(type: EaosEntityTypeForWidget): WidgetDefinition[] {
     return this.registry.listForEntityType(type);
+  }
+
+  /**
+   * Phase 7 G2 — filter widgets by tenant industry group. The command
+   * center service uses this when assembling the dashboard layout for
+   * a tenant: F&C tenants see FC_WIDGETS plus the built-in core set;
+   * other groups see only the core set.
+   */
+  listForIndustryGroup(
+    industryGroup: WidgetDefinition['industryGroup'],
+  ): WidgetDefinition[] {
+    return this.registry.listForIndustryGroup(industryGroup);
   }
 
   getDefinition(id: string): WidgetDefinition | undefined {

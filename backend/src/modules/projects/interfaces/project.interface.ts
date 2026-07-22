@@ -25,6 +25,14 @@ export type Project = {
   projectTypeId: string | null;
   projectTypeVersion: number | null;
 
+  /**
+   * INDUSTRY-SETUP-CONCEPT.md §3.1 G2 — project-level industry tag.
+   * Mirrors the schema column added in the 20260722_project_industry migration.
+   * Optional on this type to keep the existing test factories backward-
+   * compatible (they don't construct an `industry` value).
+   */
+  industry?: string | null;
+
   budgetType: BudgetType | null;
   budgetAmount: number | null;
   budgetCurrency: string | null;
@@ -58,6 +66,14 @@ export interface CreateProjectInput {
   customerId?: string | null;
   projectTypeId?: string | null;
   projectTypeVersion?: number | null;
+  /**
+   * Industry slug (e.g. "financial-services"). When supplied, the project
+   * row is created with this value on Project.industry — queryable without
+   * parsing derivedShape JSONB. Phase 0 G2 (INDUSTRY-SETUP-CONCEPT.md §3.1
+   * G2). Typically derived by ProjectsService from the synthesised shape
+   * or from Tenant.industry; callers normally don't set this directly.
+   */
+  industry?: string | null;
   budgetType?: BudgetType | null;
   budgetAmount?: number | null;
   budgetCurrency?: string | null;
@@ -96,6 +112,12 @@ export interface UpdateProjectInput {
   customerId?: string | null;
   projectTypeId?: string | null;
   projectTypeVersion?: number | null;
+  /**
+   * Phase 0 G2 (INDUSTRY-SETUP-CONCEPT.md §3.1 G2). Updating the project's
+   * industry tag. Normally only set automatically by ProjectsService.create()
+   * — callers shouldn't override this directly.
+   */
+  industry?: string | null;
   budgetType?: BudgetType | null;
   budgetAmount?: number | null;
   budgetCurrency?: string | null;

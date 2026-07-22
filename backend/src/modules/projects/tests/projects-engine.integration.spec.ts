@@ -235,6 +235,12 @@ describe('ProjectsService.create — engine integration', () => {
       opts.projectRepo,
       opts.projectTypesService as never,
       adapter,
+      // moduleRef — kept undefined for the integration test path; the
+      // resolveProjectIndustry helper degrades gracefully without prisma.
+      undefined,
+      undefined,
+      // Phase 0 G2: prisma is optional; the resolver falls back to null.
+      undefined,
     );
 
     const module = {

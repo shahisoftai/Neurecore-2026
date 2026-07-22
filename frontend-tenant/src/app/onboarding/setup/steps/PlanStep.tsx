@@ -2,6 +2,8 @@
 
 // steps/PlanStep.tsx — Tier-1 onboarding step 4.
 // Unchanged logic from the legacy wizard, extracted for clarity.
+// Phase 3 G15: wires the PlanImpactPanel so users see what each tier
+// unlocks for their industry (capability matrix endpoint).
 
 import { useEffect, useState } from 'react';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -11,6 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { onboardingService } from '@/services/onboarding.service';
 import { tiersService, type Tier } from '@/services/tiers.service';
+import { tenantsService } from '@/services/tenants.service';
+import { PlanImpactPanel } from '@/components/onboarding/PlanImpactPanel';
 
 export interface PlanStepProps {
   initialTierId: string | null;
@@ -30,6 +34,17 @@ export function PlanStep({
     initialTierId,
   );
   const [submitting, setSubmitting] = useState(false);
+  // Phase 3 G15: tenant industry drives the capability panel.
+  const [tenantIndustry, setTenantIndustry] = useState<string | null>(null);
+
+  useEffect(() => {
+    tenantsService
+      .getCurrent()
+      .then((t) => setTenantIndustry(t.industry ?? null))
+      .catch(() => {
+        /* non-fatal — panel will show its own empty-state */
+      });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,6 +137,16 @@ export function PlanStep({
           ))}
         </div>
       )}
+
+      {/* Phase 3 G15: Plan Impact panel — driven by GET /industries/:slug/capabilities?tier= */}
+      {selectedTierId ? (
+        <PlanImpactPanel
+          tierSlug={
+            tiers.find((t) => t.id === selectedTierId)?.slug ?? ''
+          }
+          industrySlug={tenantIndustry}
+        />
+      ) : null}
       <div className="flex justify-between pt-2">
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-1" /> Back

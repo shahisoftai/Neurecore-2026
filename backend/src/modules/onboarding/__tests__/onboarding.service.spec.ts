@@ -12,6 +12,7 @@
 
 import { NotFoundException } from '@nestjs/common';
 import { OnboardingService } from '../onboarding.service';
+import { IndustryGroupsService } from '../../industry/industry-groups.service';
 
 describe('OnboardingService — orchestrator', () => {
   let prismaMock: any;
@@ -30,10 +31,12 @@ describe('OnboardingService — orchestrator', () => {
       },
       industry: { findUnique: jest.fn() },
       tier: { findUnique: jest.fn() },
-      agent: { count: jest.fn() },
+      agent: { count: jest.fn(), create: jest.fn() },
       department: {
         count: jest.fn(),
         create: jest.fn(),
+        // Part 9 N9 — headAgentId pinning in selectTemplate().
+        update: jest.fn(),
       },
       departmentTemplate: { findUnique: jest.fn() },
       onboardingInvitation: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
@@ -44,10 +47,15 @@ describe('OnboardingService — orchestrator', () => {
     allocatorMock = { allocateForTenant: jest.fn().mockResolvedValue({ allocated: 5, skipped: 0 }) };
     templateSeederMock = { seedForTenant: jest.fn().mockResolvedValue(8) };
     departmentsServiceMock = { autoCreateFromTemplate: jest.fn().mockResolvedValue({ created: 0, skipped: 0 }) };
+    // Phase 0 G1: industryGroupsMock required by the new OnboardingService ctor.
+    const industryGroupsMock = {
+      resolveIndustryGroup: jest.fn().mockResolvedValue('finance'),
+    } as unknown as IndustryGroupsService;
 
     service = new OnboardingService(
       prismaMock,
       checklistMock,
+      industryGroupsMock,
       allocatorMock,
       templateSeederMock,
       departmentsServiceMock,
@@ -98,11 +106,13 @@ describe('OnboardingService — orchestrator', () => {
 
   describe('updateState()', () => {
     it('persists name/logoUrl/industry/timezone/currency', async () => {
+      // Phase 0 G1: industryGroup is resolved via IndustryGroupsService.
+      const industryMock = (service as any).industryGroups;
+      industryMock.resolveIndustryGroup.mockResolvedValue('finance');
+
       prismaMock.tenant.findUnique.mockResolvedValue({ id: 'tenant-1' });
-      prismaMock.industry.findUnique.mockResolvedValue({ industryGroup: 'finance' });
       // getState called at the end:
       prismaMock.tenant.findUnique.mockResolvedValueOnce({ id: 'tenant-1' });
-      prismaMock.industry.findUnique.mockResolvedValueOnce({ industryGroup: 'finance' });
       prismaMock.tenant.update.mockResolvedValue({});
       prismaMock.agent.count.mockResolvedValue(0);
       prismaMock.department.count.mockResolvedValue(0);
@@ -185,6 +195,35 @@ describe('OnboardingService — orchestrator', () => {
       });
 
       await expect(service.selectTemplate('tenant-1', 'big')).rejects.toThrow(/requires \d+ departments/);
+    });
+
+    // Part 9 N9 — FIX-048 regression guard: agents MUST be round-robined
+    // across departments, not all bunched into the first one.
+    it('distributes agents of same type across departments (round-robin, N9 regression)', async () => {
+      const d1 = { id: 'd1', headAgentType: 'CORE' };
+      const d2 = { id: 'd2', headAgentType: 'CORE' };
+      const d3 = { id: 'd3', headAgentType: 'CORE' };
+      prismaMock.departmentTemplate.findUnique.mockResolvedValue({
+        slug: 'starter',
+        structure: [
+          { name: 'A', headAgentType: 'CORE' },
+          { name: 'B', headAgentType: 'CORE' },
+          { name: 'C', headAgentType: 'CORE' },
+        ],
+      });
+      prismaMock.department.create
+        .mockResolvedValueOnce(d1)
+        .mockResolvedValueOnce(d2)
+        .mockResolvedValueOnce(d3);
+      prismaMock.department.update.mockResolvedValue({});
+      const pool = (s: number) => ({ id: `p${s}`, slot: s, isDefaultSelected: true, template: { id: `t${s}`, name: `A${s}`, type: 'CORE', model: 'gpt-4o', systemPrompt: null, instructions: null, permissions: [], config: {}, version: 1 } });
+      prismaMock.tenant.findUnique.mockResolvedValue({ id: 'tenant-1', tierId: 't1', tier: { maxDepartments: 10, maxAgents: 10, tierAgentPools: [pool(1), pool(2), pool(3), pool(4), pool(5), pool(6)] } });
+      prismaMock.agent.count.mockResolvedValue(0);
+      prismaMock.agent.create.mockResolvedValue({ id: 'ax', type: 'CORE', departmentId: 'd1' });
+      await service.selectTemplate('tenant-1', 'starter');
+      expect(prismaMock.agent.create).toHaveBeenCalledTimes(6);
+      const deptIds = prismaMock.agent.create.mock.calls.map((c: any) => c[0].data.departmentId as string);
+      expect(deptIds).toEqual(['d1', 'd2', 'd3', 'd1', 'd2', 'd3']);
     });
   });
 

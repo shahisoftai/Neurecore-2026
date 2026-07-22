@@ -12,12 +12,20 @@
  * SRP: this service only SYNTHESIZES. It does not persist anything. The caller
  * (CreateProjectTool → ProjectsService → DerivedShapeApplier) is responsible
  * for materializing the shape as Project/Stage/Goal/Member rows.
+ *
+ * Phase 0 G4 (INDUSTRY-SETUP-CONCEPT.md §3.1 G4): when an optional
+ * RAGPipeline is injected, the synthesis prompt is augmented with a
+ * tenant-scoped few-shot example mined from the Knowledge Hub. This is
+ * the primary motivation for the input type's existing `tenantId` field
+ * (see project-shape.types.ts docstring) and means the same prompt
+ * produces noticeably different shapes per tenant vertical.
  */
 
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service';
 import { FeatureFlagService } from '../../common/feature-flag/feature-flag.service';
+import { RAGPipeline } from '../knowledge/services/rag-pipeline.service';
 import {
   ProjectShapeSchema,
   type ProjectShape,
@@ -60,9 +68,16 @@ User asked: "create a project for the acme audit, q3 deadline, fixed fee 75k"
 export class ProjectShapeSynthesisService {
   private readonly logger = new Logger(ProjectShapeSynthesisService.name);
 
+  /**
+   * SRP: keep this bounded. RAG pipeline is only consulted if a tenant
+   * context is present and an industry hint is supplied. RAG is optional
+   * — the service degrades to the hardcoded FALLBACK_FEW_SHOT when the
+   * pipeline isn't wired or returns no chunks.
+   */
   constructor(
     private readonly aiGateway: AiGatewayService,
     private readonly featureFlags: FeatureFlagService,
+    @Optional() private readonly ragPipeline?: RAGPipeline,
   ) {}
 
   /**
@@ -89,7 +104,7 @@ export class ProjectShapeSynthesisService {
       );
     }
 
-    const prompt = this.buildPrompt(input);
+    const prompt = this.buildPrompt(input, await this.retrieveRagContext(input));
     let usedRepairRetry = false;
 
     try {
@@ -155,10 +170,15 @@ Respond with valid JSON only — no markdown.`;
    * Build the synthesis prompt. SRP: just builds the prompt string.
    * Public so tests can verify the prompt structure without running LLM calls.
    */
-  buildPrompt(input: SynthesizeShapeInput): string {
+  buildPrompt(input: SynthesizeShapeInput, ragContext?: string): string {
     const industryLine = input.industryHint
       ? `Industry hint from caller: ${input.industryHint}`
       : 'Industry hint: (none — infer from the goal)';
+
+    const ragBlock =
+      ragContext && ragContext.length > 0
+        ? `\nTENANT KNOWLEDGE (RAG-retrieved, treat as authoritative for this tenant's workflows):\n${ragContext}\n`
+        : '';
 
     return `You are Hermes, the AI brain of NeureCore. A user has asked to create a new project. Your job is to synthesize a complete project shape — stages, goals, team, and rationale — from the user's natural-language goal.
 
@@ -168,7 +188,7 @@ ${input.goal}
 """
 
 ${industryLine}
-
+${ragBlock}
 INSTRUCTIONS:
 1. Read the user's goal carefully. Extract what kind of project this is (audit? campaign? construction? legal matter?), who the stakeholders are, what deliverables are expected, and any timeline or budget signals.
 2. Synthesize a workflow of 3-6 sequential stages appropriate for THIS project. Standard projects have 3-5 stages; complex multi-month projects may have more.
@@ -193,6 +213,34 @@ The JSON must match this schema:
   "informationRequirements": ["string"],
   "rationale": "string (10-2000 chars)"
 }`;
+  }
+
+  /**
+   * Retrieve industry-scoped context from the Knowledge Hub via RAGPipeline.
+   *
+   * SRP: this method only retrieves. It returns an empty string when:
+   *   - RAGPipeline is not injected (degraded mode — FALLBACK_FEW_SHOT applies)
+   *   - RAG returns zero chunks (no corpus content for this tenant + industry)
+   *   - RAG throws (graceful failure logged but never blocks synthesis)
+   *
+   * Phase 0 G4. The shape of the query is deliberately industry-tagged so
+   * the chunk filter (when industry knowledge seeds land in Phase 2) can
+   * restrict retrieval to `tags: ["industry:<slug>"]` without changing this
+   * call site.
+   */
+  private async retrieveRagContext(input: SynthesizeShapeInput): Promise<string> {
+    if (!this.ragPipeline) return '';
+    const hint = input.industryHint?.trim();
+    if (!hint) return '';
+    const query = `${hint} project workflow stages roles goals compliance deliverables`;
+    const chunks = await this.ragPipeline.retrieveChunks(input.tenantId, query, {
+      topK: 3,
+      maxContextTokens: 1200,
+    });
+    if (!chunks.length) return '';
+    return chunks
+      .map((c, i) => `[${i + 1}] ${c.title} (type=${c.type})\n${c.text}`)
+      .join('\n\n---\n\n');
   }
 
   /**
