@@ -59,7 +59,9 @@ docker-volumes/
 # Temp folder (not part of main project)
 Temp/
 
-# Credential files (not part of main project)
+# Memory bank (contains credentials and project docs)
+memory-bank-new/
+memory-bank-ARCHIVED/
 memory-bank-new/pass/
 
 # Jest cache (regenerated on every test run; hashes change constantly)
