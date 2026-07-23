@@ -391,7 +391,11 @@ model Tier {
   // Relations
   tierAgentPools  TierAgentPool[]
   tenants         Tenant[]
-  packages        Package[]
+  // Part 9 N6 — renamed from `packages` to align with TIER-SYSTEM-CONCEPT.md
+  // §6.1 which uses `packageAnchors` (semantically clearer — the tier
+  // *anchors* packages, not the other way around). DB-level FK is unchanged;
+  // only the Prisma client field name moved.
+  packageAnchors   Package[]
   auditLogs       TierAuditLog[]
   changeRequestsFrom TierChangeRequest[] @relation("TierChangeFrom")
   changeRequestsTo   TierChangeRequest[] @relation("TierChangeTo")

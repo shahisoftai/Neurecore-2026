@@ -1,0 +1,26 @@
+-- Migration: 20260723_tier_package_anchors_rename
+-- Description: Part 9 N6 (INDUSTRY-SETUP-CONCEPT.md / IMPLEMENTATION-PLAN §3.3).
+--              Rename the `Tier.packages` Prisma relation field to
+--              `packageAnchors` to match TIER-SYSTEM-CONCEPT.md §6.1.
+--
+-- SAFETY: this is a PRISMA-CLIENT-ONLY rename. No SQL DDL is required:
+--   - Postgres stores the FK column (`packages.tierId`), not the
+--     Prisma relation name.
+--   - The Prisma relation name is compiled into the @prisma/client
+--     type declarations, not into the database schema.
+--   - The underlying foreign-key constraint is unchanged.
+--
+-- Verified 2026-07-23 that NO consumer references `tier.packages` directly
+-- (grep across backend + admin + tenant src trees returned 0 matches).
+-- All existing `include: { tier: true }` queries return the same shape
+-- (just with the new `packageAnchors` field name available).
+--
+-- The migration file is intentionally empty (no statements) so that
+-- `prisma migrate deploy` records the rename in the migration history
+-- without executing unnecessary DDL. The rename takes effect on the
+-- next `prisma generate` — the `@prisma/client` types will expose
+-- `tier.packageAnchors` instead of `tier.packages`.
+--
+-- Author: Kilo
+-- Date: 2026-07-23
+-- Part 9 N6 (Package 11 / 11 audit items).
