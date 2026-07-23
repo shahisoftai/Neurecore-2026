@@ -11,6 +11,7 @@ import {
   IsObject,
   IsBoolean,
   IsNotEmpty,
+  MaxLength,
 } from 'class-validator';
 
 export class CreateCustomerDto {
@@ -38,6 +39,49 @@ export class CreateCustomerDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  // Phase 4 — Financial & Compliance fields (per INDUSTRY-REQUIREMENTS-STAGED.md
+  // §3.4). Persisted on first-class columns by PrismaCustomerRepository.create().
+  // Empty strings are normalised to undefined by the FE so the BE validator
+  // never sees "" (which would fail IsEnum).
+  @IsOptional()
+  @IsIn(['PENDING', 'VERIFIED', 'EXPIRED', 'REJECTED'])
+  kycStatus?: 'PENDING' | 'VERIFIED' | 'EXPIRED' | 'REJECTED';
+
+  @IsOptional()
+  @IsIn(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'])
+  riskRating?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  taxId?: string;
+
+  @IsOptional()
+  @IsIn([
+    'BANKING',
+    'INSURANCE',
+    'WEALTH_MANAGEMENT',
+    'INVESTMENT',
+    'FINTECH',
+    'ACCOUNTING_AUDIT',
+  ])
+  financialSubType?:
+    | 'BANKING'
+    | 'INSURANCE'
+    | 'WEALTH_MANAGEMENT'
+    | 'INVESTMENT'
+    | 'FINTECH'
+    | 'ACCOUNTING_AUDIT';
+
+  @IsOptional()
+  @IsIn(['PROSPECT', 'KYC_VERIFIED', 'ACTIVE', 'DORMANT', 'CLOSED'])
+  lifecycleStage?:
+    | 'PROSPECT'
+    | 'KYC_VERIFIED'
+    | 'ACTIVE'
+    | 'DORMANT'
+    | 'CLOSED';
 }
 
 export class UpdateCustomerDto {
@@ -69,6 +113,47 @@ export class UpdateCustomerDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  // Phase 4 — Financial & Compliance fields (mirror CreateCustomerDto so
+  // the global ValidationPipe whitelist doesn't strip them).
+  @IsOptional()
+  @IsIn(['PENDING', 'VERIFIED', 'EXPIRED', 'REJECTED'])
+  kycStatus?: 'PENDING' | 'VERIFIED' | 'EXPIRED' | 'REJECTED';
+
+  @IsOptional()
+  @IsIn(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'])
+  riskRating?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  taxId?: string;
+
+  @IsOptional()
+  @IsIn([
+    'BANKING',
+    'INSURANCE',
+    'WEALTH_MANAGEMENT',
+    'INVESTMENT',
+    'FINTECH',
+    'ACCOUNTING_AUDIT',
+  ])
+  financialSubType?:
+    | 'BANKING'
+    | 'INSURANCE'
+    | 'WEALTH_MANAGEMENT'
+    | 'INVESTMENT'
+    | 'FINTECH'
+    | 'ACCOUNTING_AUDIT';
+
+  @IsOptional()
+  @IsIn(['PROSPECT', 'KYC_VERIFIED', 'ACTIVE', 'DORMANT', 'CLOSED'])
+  lifecycleStage?:
+    | 'PROSPECT'
+    | 'KYC_VERIFIED'
+    | 'ACTIVE'
+    | 'DORMANT'
+    | 'CLOSED';
 }
 
 export class AddCustomerContactDto {
@@ -116,4 +201,21 @@ export class ListCustomersQueryDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   sortDir?: 'asc' | 'desc';
+
+  @IsOptional()
+  @IsIn([
+    'BANKING',
+    'INSURANCE',
+    'WEALTH_MANAGEMENT',
+    'INVESTMENT',
+    'FINTECH',
+    'ACCOUNTING_AUDIT',
+  ])
+  financialSubType?:
+    | 'BANKING'
+    | 'INSURANCE'
+    | 'WEALTH_MANAGEMENT'
+    | 'INVESTMENT'
+    | 'FINTECH'
+    | 'ACCOUNTING_AUDIT';
 }

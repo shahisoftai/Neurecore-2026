@@ -57,6 +57,14 @@ export class CustomersController {
         primaryPhone: dto.primaryPhone,
         billingInfo: dto.billingInfo,
         tags: dto.tags,
+        // Phase 4 — propagate F&C fields through to the service so the
+        // repository persists them. The DTO validates the enums; the
+        // service/repo never sees unknown fields.
+        kycStatus: dto.kycStatus,
+        riskRating: dto.riskRating,
+        taxId: dto.taxId,
+        financialSubType: dto.financialSubType,
+        lifecycleStage: dto.lifecycleStage,
       },
       this.resolveTenantId(user),
     );
@@ -76,6 +84,8 @@ export class CustomersController {
       limit,
       sortKey: query.sortKey,
       sortDir: query.sortDir,
+      // Phase 4 G4 — propagate F&C sub-type filter to the service.
+      financialSubType: query.financialSubType,
     });
   }
 
@@ -99,6 +109,13 @@ export class CustomersController {
       billingInfo: dto.billingInfo,
       status: dto.status,
       tags: dto.tags,
+      // Phase 4 — propagate F&C fields through to the service. Same
+      // rationale as create() above.
+      kycStatus: dto.kycStatus,
+      riskRating: dto.riskRating,
+      taxId: dto.taxId,
+      financialSubType: dto.financialSubType,
+      lifecycleStage: dto.lifecycleStage,
     });
   }
 

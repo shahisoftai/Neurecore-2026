@@ -86,6 +86,7 @@ export class TiersService implements ITierService {
 
   async findAll() {
     const items = await this.prisma.tier.findMany({
+      where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
       include: {
         _count: {

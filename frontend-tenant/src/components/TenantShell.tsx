@@ -38,6 +38,7 @@ import { MobileNav } from '@/components/layout/MobileNav';
 import { useActivityStream } from '@/hooks/useActivityStream';
 import { registerTenantCommands } from '@/services/register-commands';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { useTenantStore } from '@/stores/tenantStore';
 
 export default function TenantShell({
   user,
@@ -51,7 +52,21 @@ export default function TenantShell({
   const { logout } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  const fetchTenant = useTenantStore((s) => s.fetchTenant);
+  const industryGroup = useTenantStore((s) => s.industryGroup);
+  const industry = useTenantStore((s) => s.industry);
+  const tenantLoading = useTenantStore((s) => s.loading);
+  const tenantError = useTenantStore((s) => s.error);
+
   useActivityStream();
+
+  useEffect(() => {
+    void fetchTenant();
+  }, [fetchTenant]);
+
+  // Block IconRail render until tenant data is loaded (prevents FALLBACK flash)
+  // This ensures workspace extras and customer label render correctly on first paint.
+  const isTenantReady = !tenantLoading && (industryGroup !== null || tenantError !== null);
 
   useEffect(() => {
     return registerTenantCommands(router);
@@ -80,12 +95,12 @@ export default function TenantShell({
         {/* Desktop: persistent IconRail. h-full lets the rail stretch the
             full viewport height so the inner <nav> can scroll independently. */}
         <div className="hidden md:block shrink-0 h-full">
-          <IconRail />
+          {isTenantReady ? <IconRail /> : <RailSkeleton />}
         </div>
 
         {/* Mobile: drawer with the same IconRail. */}
         <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)}>
-          <IconRail />
+          {isTenantReady ? <IconRail /> : <RailSkeleton />}
         </MobileNav>
 
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -135,4 +150,19 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith('/intelligence')) return 'Intelligence';
   if (pathname.startsWith('/login')) return 'Login';
   return 'NeureCore';
+}
+
+function RailSkeleton() {
+  return (
+    <div className="w-[240px] h-full bg-surface border-r border-border animate-pulse">
+      <div className="p-4 space-y-4">
+        <div className="h-8 bg-muted rounded-md" />
+        <div className="space-y-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-10 bg-muted rounded-md" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }

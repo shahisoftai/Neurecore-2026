@@ -61,20 +61,14 @@ export class WorkflowsController {
    */
   @Get('industry-templates')
   async getIndustryTemplates(
-    @Query('group') group: string,
+    @Query('group') group?: string,
     @Query('category') category?: string,
   ) {
-    if (!group) {
-      const templates = this.workflowTemplatesService.getByCategory(
-        'other',
-        category ?? '',
-      );
-      return { industryGroup: 'other', count: templates.length, templates };
-    }
+    const effectiveGroup = group ?? 'other';
     const templates = category
-      ? this.workflowTemplatesService.getByCategory(group, category)
-      : this.workflowTemplatesService.getTemplateList(group);
-    return { industryGroup: group, count: templates.length, templates };
+      ? this.workflowTemplatesService.getByCategory(effectiveGroup, category)
+      : this.workflowTemplatesService.getTemplateList(effectiveGroup);
+    return { industryGroup: effectiveGroup, count: templates.length, templates };
   }
 
   // ─── Read ────────────────────────────────────────────────────────────────

@@ -16,11 +16,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { onboardingService } from '@/services/onboarding.service';
-import api from '@/services/api';
 import {
   IndustryGroupPicker,
   type IndustryOption,
 } from '@/components/onboarding/IndustryGroupPicker';
+import { industriesService } from '@/services/industries.service';
 import { INDUSTRY_GROUPS, INDUSTRY_GROUP_INDUSTRIES } from '@/lib/industryGroups';
 
 export interface CompanyStepProps {
@@ -49,28 +49,15 @@ export function CompanyStep({
   const [error, setError] = useState<string | null>(null);
 
   // Fetch the canonical industry list (already grouped server-side).
+  // NOTE: `GET /api/v1/industries/groups` returns `{slug, label, industrySlugs: string[]}`
+  // (slugs only — no names/icons). Use `industriesService.listAllIndustries()` which
+  // walks `/industries/by-group/:slug` for each group to get full Industry objects.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        // /api/v1/industries/groups returns each group + its nested industries.
-        const res = await api.get('/industries/groups');
-        const groups = (res.data?.data ?? []) as Array<{
-          slug: string;
-          industries: IndustryOption[];
-        }>;
-        if (cancelled) return;
-        const all: IndustryOption[] = [];
-        for (const g of groups) {
-          for (const ind of g.industries ?? []) {
-            all.push({
-              ...ind,
-              industryGroup: g.slug,
-              groupSortOrder: 0,
-            });
-          }
-        }
-        setIndustries(all);
+        const all = await industriesService.listAllIndustries();
+        if (!cancelled) setIndustries(all);
       } catch {
         // Non-fatal — picker will just be empty
       }

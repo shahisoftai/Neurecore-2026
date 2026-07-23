@@ -24,7 +24,7 @@
 - **Auth cookies:** `__Host-nc_at` (HttpOnly 15min), `__Host-nc_rt` (HttpOnly 7d), `__Host-nc_csrf` (JS-readable 7d).
 - **`withCredentials`:** MUST be `false` for both frontends (same-origin cookies work regardless; prevents CORS credential issues).
 - **Port consistency:** `start.sh` port MUST match `ecosystem.config.js` PORT. Run `scripts/deploy.sh` which validates port alignment.
-- **Backend Redis:** Use local Redis at `redis://:password@localhost:6379/0`. Dead Upstash Redis causes `fetch failed` → login 500.
+- **Backend Redis:** Use Contabo local Redis at `redis://:kPzbcTiOQBWwTs6dr4xinAWfXhbUv3AFjRdkjhvxQ=@localhost:6379/0`. Upstash is no longer used.
 - **Rebuild cache:** Always `rm -rf .next node_modules/.cache` before `next build` to prevent stale `localhost:3000` hardcodes in JS bundles.
 - **Refresh exempt paths:** Never trigger token refresh on `/auth/login`, `/auth/register`, `/auth/google`, `/auth/refresh`.
 

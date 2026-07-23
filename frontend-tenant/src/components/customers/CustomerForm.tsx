@@ -25,7 +25,8 @@ import { IndustryCustomerFields } from '@/components/customers/IndustryCustomerF
 import { IndustryGroupPicker, type IndustryOption } from '@/components/onboarding/IndustryGroupPicker';
 import { customersService } from '@/services/customers.service';
 import { tenantsService } from '@/services/tenants.service';
-import api from '@/services/api';
+import { industriesService } from '@/services/industries.service';
+import { useTenantIndustryGroup } from '@/stores/tenantStore';
 import type {
   Customer,
   CustomerFinancialSubType,
@@ -57,6 +58,7 @@ function extractIndustryFields(billingInfo?: Record<string, unknown> | null): Re
 }
 
 export function CustomerForm({ customer, onClose, onCreated, onUpdated }: CustomerFormProps) {
+  const { industry: tenantIndustry } = useTenantIndustryGroup();
   const [name, setName] = useState(customer?.name ?? '');
   const [industry, setIndustry] = useState(customer?.industry ?? '');
   const [primaryEmail, setPrimaryEmail] = useState(customer?.primaryEmail ?? '');
@@ -73,6 +75,14 @@ export function CustomerForm({ customer, onClose, onCreated, onUpdated }: Custom
   // pre-filter the picker to the most relevant industries by default.
   const [allIndustries, setAllIndustries] = useState<IndustryOption[]>([]);
   const [tenantGroup, setTenantGroup] = useState<string | null>(null);
+
+  // When creating a new customer (no customer prop), default to tenant's industry
+  // so IndustryCustomerFields renders the correct industry-specific fields.
+  useEffect(() => {
+    if (!customer && tenantIndustry) {
+      setIndustry(tenantIndustry);
+    }
+  }, [customer, tenantIndustry]);
 
   // Phase 4 — KYC/AML + lifecycle + financialSubType fields. Only shown
   // for tenants in the 'financial-compliance' group.
@@ -94,21 +104,11 @@ export function CustomerForm({ customer, onClose, onCreated, onUpdated }: Custom
     let cancelled = false;
     void (async () => {
       try {
-        const [groupsRes, tenant] = await Promise.all([
-          api.get('/industries/groups'),
+        const [all, tenant] = await Promise.all([
+          industriesService.listAllIndustries(),
           tenantsService.getCurrent().catch(() => null),
         ]);
         if (cancelled) return;
-        const groups = (groupsRes.data?.data ?? []) as Array<{
-          slug: string;
-          industries: IndustryOption[];
-        }>;
-        const all: IndustryOption[] = [];
-        for (const g of groups) {
-          for (const ind of g.industries ?? []) {
-            all.push({ ...ind, industryGroup: g.slug, groupSortOrder: 0 });
-          }
-        }
         setAllIndustries(all);
         setTenantGroup(tenant?.industryGroup ?? null);
       } catch {

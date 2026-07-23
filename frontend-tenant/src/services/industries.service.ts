@@ -1,4 +1,7 @@
 import api from './api';
+import type { IndustryOption as PickerIndustryOption } from '@/components/onboarding/IndustryGroupPicker';
+
+export type IndustryOption = PickerIndustryOption;
 
 export interface IndustryGroup {
   slug: string;
@@ -7,14 +10,6 @@ export interface IndustryGroup {
   sortOrder: number;
   description: string;
   industries?: IndustryOption[];
-}
-
-export interface IndustryOption {
-  slug: string;
-  name: string;
-  description?: string;
-  industryGroup?: string;
-  groupSortOrder?: number;
 }
 
 export interface CapabilityResponse {
@@ -45,6 +40,50 @@ export const industriesService = {
   async listGroups(): Promise<IndustryGroup[]> {
     const res = await api.get('/industries/groups');
     return (res.data?.data ?? res.data ?? []) as IndustryGroup[];
+  },
+
+  /**
+   * Fetch every industry across every group, normalised to IndustryOption[].
+   * Walks `GET /industries/by-group/:slug` for each group returned by
+   * `listGroups()` so the consumer gets full Industry objects (name, icon,
+   * description) instead of just slug strings. The bare `GET /industries/groups`
+   * endpoint only returns `{slug, label, industrySlugs: string[]}`; that
+   * shape is unsuitable for pickers that need the industry's name + icon.
+   */
+  async listAllIndustries(): Promise<IndustryOption[]> {
+    const groups = await this.listGroups();
+    const lists = await Promise.all(
+      groups.map((g) =>
+        api
+          .get(`/industries/by-group/${encodeURIComponent(g.slug)}`)
+          .then((r) => ((r.data?.data ?? []) as Array<{
+            slug: string;
+            name: string;
+            icon?: string | null;
+            description?: string | null;
+          }>))
+          .catch(() => [] as Array<{
+            slug: string;
+            name: string;
+            icon?: string | null;
+            description?: string | null;
+          }>),
+      ),
+    );
+    const out: IndustryOption[] = [];
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i];
+      for (const ind of lists[i]) {
+        out.push({
+          slug: ind.slug,
+          name: ind.name,
+          icon: ind.icon ?? null,
+          industryGroup: g.slug,
+          groupSortOrder: g.sortOrder,
+        });
+      }
+    }
+    return out;
   },
 
   async getCapabilities(
